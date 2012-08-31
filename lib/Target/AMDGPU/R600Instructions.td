@@ -56,6 +56,8 @@ def MEMrr : Operand<iPTR> {
   let MIOperandInfo = (ops R600_Reg32:$ptr, R600_Reg32:$index);
 }
 
+def InstFlag : OperandWithDefaultOps <i32, (ops (i32 0))>;
+
 def ADDRParam : ComplexPattern<i32, 2, "SelectADDRParam", [], []>;
 def ADDRDWord : ComplexPattern<i32, 1, "SelectADDRDWord", [], []>;
 def ADDRVTX_READ : ComplexPattern<i32, 2, "SelectADDRVTX_READ", [], []>;
@@ -569,17 +571,12 @@ class CNDGE_Common <bits<32> inst> : R600_3OP <
 
 class DOT4_Common <bits<32> inst> : R600_REDUCTION <
   inst,
-  (ins R600_Reg128:$src0, R600_Reg128:$src1, i32imm:$flags),
-  "DOT4 $dst $src0, $src1",
-  []
+  (ins R600_Reg128:$src0, R600_Reg128:$src1, InstFlag:$flags),
+  "DOT4 $dst $src0, $src1, $flags",
+  [(set R600_Reg32:$dst, (int_AMDGPU_dp4 R600_Reg128:$src0, R600_Reg128:$src1))]
   > {
   let FlagOperandIdx = 3;
 }
-
-class DOT4_Pat <Instruction dot4> : Pat <
-  (int_AMDGPU_dp4 R600_Reg128:$src0, R600_Reg128:$src1),
-  (dot4 R600_Reg128:$src0, R600_Reg128:$src1, 0)
->;
 
 multiclass CUBE_Common <bits<32> inst> {
 
@@ -742,7 +739,6 @@ let Predicates = [isR600] in {
   def CNDGT_r600 : CNDGT_Common<0x19>;
   def CNDGE_r600 : CNDGE_Common<0x1A>;
   def DOT4_r600 : DOT4_Common<0x50>;
-  def : DOT4_Pat <DOT4_r600>;
   defm CUBE_r600 : CUBE_Common<0x52>;
   def EXP_IEEE_r600 : EXP_IEEE_Common<0x61>;
   def LOG_CLAMPED_r600 : LOG_CLAMPED_Common<0x62>;
@@ -859,7 +855,6 @@ let Predicates = [isEGorCayman] in {
   def SIN_eg : SIN_Common<0x8D>;
   def COS_eg : COS_Common<0x8E>;
   def DOT4_eg : DOT4_Common<0xBE>;
-  def : DOT4_Pat <DOT4_eg>;
   defm CUBE_eg : CUBE_Common<0xC0>;
 
   def DIV_eg : DIV_Common<RECIP_IEEE_eg>;
