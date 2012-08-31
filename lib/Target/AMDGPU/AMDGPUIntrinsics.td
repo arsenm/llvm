@@ -58,7 +58,7 @@ let TargetPrefix = "AMDGPU", isTarget = 1 in {
 
 let TargetPrefix = "TGSI", isTarget = 1 in {
 
-  def int_TGSI_lit_z : Intrinsic<[llvm_float_ty], [llvm_float_ty, llvm_float_ty, llvm_float_ty],[]>;
+  def int_TGSI_lit_z : Intrinsic<[llvm_float_ty], [llvm_float_ty, llvm_float_ty, llvm_float_ty],[IntrNoMem]>;
 }
 
 include "SIIntrinsics.td"

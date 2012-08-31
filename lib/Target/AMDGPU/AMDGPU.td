@@ -11,7 +11,9 @@
 include "AMDILBase.td"
 
 
-def AMDGPUInstrInfo : InstrInfo {}
+def AMDGPUInstrInfo : InstrInfo {
+  let guessInstructionProperties = 1;
+}
 
 //===----------------------------------------------------------------------===//
 // Declare the target which we are implementing

@@ -281,6 +281,10 @@ class SOP1 <bits<8> op, dag outs, dag ins, string asm, list<dag> pattern> :
   let Inst{22-16} = SDST;
   let Inst{31-23} = 0x17d; //encoding;
   let EncodingType = 6; //SIInstrEncodingType::SOP1
+
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
 }
 
 class SOP2 <bits<7> op, dag outs, dag ins, string asm, list<dag> pattern> :
@@ -296,6 +300,10 @@ class SOP2 <bits<7> op, dag outs, dag ins, string asm, list<dag> pattern> :
   let Inst{29-23} = op;
   let Inst{31-30} = 0x2; // encoding
   let EncodingType = 7; // SIInstrEncodingType::SOP2  
+
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
 }
 
 class SOPC <bits<7> op, dag outs, dag ins, string asm, list<dag> pattern> :
@@ -311,6 +319,9 @@ class SOPC <bits<7> op, dag outs, dag ins, string asm, list<dag> pattern> :
   let EncodingType = 8; // SIInstrEncodingType::SOPC
 
   let DisableEncoding = "$dst";
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
 }
 
 class SOPK <bits<5> op, dag outs, dag ins, string asm, list<dag> pattern> :
@@ -324,6 +335,10 @@ class SOPK <bits<5> op, dag outs, dag ins, string asm, list<dag> pattern> :
   let Inst{27-23} = op;
   let Inst{31-28} = 0xb; //encoding
   let EncodingType = 9; // SIInstrEncodingType::SOPK
+
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
 }
 
 class SOPP <bits<7> op, dag ins, string asm, list<dag> pattern> : Enc32 <
@@ -338,6 +353,10 @@ class SOPP <bits<7> op, dag ins, string asm, list<dag> pattern> : Enc32 <
   let Inst{22-16} = op;
   let Inst{31-23} = 0x17f; // encoding
   let EncodingType = 10; // SIInstrEncodingType::SOPP
+
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
 }
     
 let Uses = [EXEC] in {
@@ -359,6 +378,8 @@ class VINTRP <bits <2> op, dag outs, dag ins, string asm, list<dag> pattern> :
   let EncodingType = 11; // SIInstrEncodingType::VINTRP
 
   let neverHasSideEffects = 1;
+  let mayLoad = 1;
+  let mayStore = 0;
 }
 
 class VOP1 <bits<8> op, dag outs, dag ins, string asm, list<dag> pattern> :
@@ -374,6 +395,10 @@ class VOP1 <bits<8> op, dag outs, dag ins, string asm, list<dag> pattern> :
   
   let EncodingType = 12; // SIInstrEncodingType::VOP1
   let PostEncoderMethod = "VOPPostEncode";
+
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
 }
 
 class VOP2 <bits<6> op, dag outs, dag ins, string asm, list<dag> pattern> :
@@ -391,6 +416,10 @@ class VOP2 <bits<6> op, dag outs, dag ins, string asm, list<dag> pattern> :
   
   let EncodingType = 13; // SIInstrEncodingType::VOP2
   let PostEncoderMethod = "VOPPostEncode";
+
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
 }
 
 class VOP3 <bits<9> op, dag outs, dag ins, string asm, list<dag> pattern> :
@@ -418,6 +447,10 @@ class VOP3 <bits<9> op, dag outs, dag ins, string asm, list<dag> pattern> :
   
   let EncodingType = 14; // SIInstrEncodingType::VOP3
   let PostEncoderMethod = "VOPPostEncode";
+
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
 }
 
 class VOPC <bits<8> op, dag ins, string asm, list<dag> pattern> :
@@ -434,6 +467,9 @@ class VOPC <bits<8> op, dag ins, string asm, list<dag> pattern> :
   let EncodingType = 15; //SIInstrEncodingType::VOPC
   let PostEncoderMethod = "VOPPostEncode";
   let DisableEncoding = "$dst";
+  let mayLoad = 0;
+  let mayStore = 0;
+  let hasSideEffects = 0;
 }
 
 } // End Uses = [EXEC]
@@ -445,8 +481,10 @@ class MIMG_Load_Helper <bits<7> op, string asm> : MIMG <
        i1imm:$tfe, i1imm:$lwe, i1imm:$slc, VReg_128:$vaddr,
        GPR4Align<SReg_256>:$srsrc, GPR4Align<SReg_128>:$ssamp),
   asm,
-  []
->; 
+  []> {
+  let mayLoad = 1;
+  let mayStore = 0;
+}
 
 class MUBUF_Load_Helper <bits<7> op, string asm, RegisterClass regClass> : MUBUF <
   op,
@@ -457,6 +495,7 @@ class MUBUF_Load_Helper <bits<7> op, string asm, RegisterClass regClass> : MUBUF
   asm,
   []> {
   let mayLoad = 1;
+  let mayStore = 0;
 }
 
 class MTBUF_Load_Helper <bits<3> op, string asm, RegisterClass regClass> : MTBUF <
@@ -468,6 +507,7 @@ class MTBUF_Load_Helper <bits<3> op, string asm, RegisterClass regClass> : MTBUF
   asm,
   []> {
   let mayLoad = 1;
+  let mayStore = 0;
 }
 
 class MTBUF_Store_Helper <bits<3> op, string asm, RegisterClass regClass> : MTBUF <
@@ -479,6 +519,7 @@ class MTBUF_Store_Helper <bits<3> op, string asm, RegisterClass regClass> : MTBU
   asm,
   []> {
   let mayStore = 1;
+  let mayLoad = 0;
 }
 
 multiclass SMRD_Helper <bits<5> op, string asm, RegisterClass dstClass,

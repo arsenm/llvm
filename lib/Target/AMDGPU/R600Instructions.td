@@ -75,6 +75,8 @@ def R600_Pred : PredicateOperand<i32, (ops R600_Predicate),
                                      (ops PRED_SEL_OFF)>;
 
 
+let mayLoad = 0, mayStore = 0, hasSideEffects = 0 in {
+
 class R600_1OP <bits<32> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
@@ -106,8 +108,6 @@ class R600_3OP <bits<32> inst, string opName, list<dag> pattern,
 
     let Op3 = 1;
   }
-
-
 
 def PRED_X : InstR600 <0, (outs R600_Predicate_Bit:$dst),
            (ins R600_Reg32:$src0, i32imm:$src1, i32imm:$flags),
@@ -142,6 +142,7 @@ class R600_REDUCTION <bits<32> inst, dag ins, string asm, list<dag> pattern,
 
   >;
 
+
 class R600_TEX <bits<32> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
@@ -151,6 +152,8 @@ class R600_TEX <bits<32> inst, string opName, list<dag> pattern,
           pattern,
           itin
   >;
+
+} // End mayLoad = 1, mayStore = 0, hasSideEffects = 0
 
 def TEX_SHADOW : PatLeaf<
   (imm),
@@ -323,6 +326,8 @@ def FLOOR : R600_1OP <
   [(set R600_Reg32:$dst, (int_AMDGPU_floor R600_Reg32:$src))]
 >;
 
+let mayLoad = 0, mayStore = 0, hasSideEffects = 0 in {
+
 def MOV : InstR600 <0x19, (outs R600_Reg32:$dst),
                           (ins R600_Reg32:$src0, i32imm:$flags,
                                R600_Pred:$p),
@@ -336,6 +341,8 @@ class MOV_IMM <ValueType vt, Operand immType> : InstR600 <0x19,
   "MOV_IMM $dst, $imm",
   [], AnyALU
 >;
+
+} // End mayLoad = 0, mayStore = 0, hasSideEffects = 0
 
 def MOV_IMM_I32 : MOV_IMM<i32, i32imm>;
 def : Pat <
@@ -357,6 +364,9 @@ def KILLGT : InstR600 <0x2D,
           [],
           NullALU>{
   let FlagOperandIdx = 3;
+  let hasSideEffects = 1;
+  let mayLoad = 0;
+  let mayStore = 0;
 }
 
 def AND_INT : R600_2OP <
@@ -573,6 +583,8 @@ class DOT4_Pat <Instruction dot4> : Pat <
 
 multiclass CUBE_Common <bits<32> inst> {
 
+let mayLoad = 0, mayStore = 0, hasSideEffects = 0 in {
+
   def _pseudo : InstR600 <
     inst,
     (outs R600_Reg128:$dst),
@@ -591,6 +603,7 @@ multiclass CUBE_Common <bits<32> inst> {
   >{
     let FlagOperandIdx = 3;
   }
+} // End mayLoad = 0, mayStore = 0, hasSideEffects = 0
 }
 
 class EXP_IEEE_Common <bits<32> inst> : R600_1OP <
@@ -1144,7 +1157,7 @@ def CLAMP_R600 :  CLAMP <R600_Reg32>;
 def FABS_R600 : FABS<R600_Reg32>;
 def FNEG_R600 : FNEG<R600_Reg32>;
 
-let usesCustomInserter = 1 in {
+let usesCustomInserter = 1, mayLoad = 0, mayStore = 0, hasSideEffects = 1 in {
 
 def MASK_WRITE : AMDGPUShaderInst <
     (outs),
@@ -1153,7 +1166,7 @@ def MASK_WRITE : AMDGPUShaderInst <
     []
 >;
 
-} // End usesCustomInserter = 1
+} // End usesCustomInserter = 1, mayLoad = 0, mayStore = 0, hasSideEffects = 0
 
 //===---------------------------------------------------------------------===//
 // Return instruction

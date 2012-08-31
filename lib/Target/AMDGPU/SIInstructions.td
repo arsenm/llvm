@@ -940,14 +940,6 @@ def SET_M0 : InstSI <
   [(set SReg_32:$dst, (int_SI_set_M0 imm:$src0))]
 >;
 
-def CONFIG_WRITE : InstSI <
-  (outs i32imm:$reg),
-  (ins i32imm:$val),
-  "CONFIG_WRITE $reg, $val",
-  [] > {
-  field bits<32> Inst = 0;
-}
-
 def LOAD_CONST : AMDGPUShaderInst <
   (outs GPRF32:$dst),
   (ins i32imm:$src),
@@ -998,7 +990,8 @@ def SI_WQM : InstSI <
 // SI Psuedo branch instructions.  These are used by the CFG structurizer pass
 // and should be lowered to ISA instructions prior to codegen.
 
-let isBranch = 1, isTerminator = 1 in {
+let isBranch = 1, isTerminator = 1, mayLoad = 0, mayStore = 0,
+                                                 hasSideEffects = 0 in {
 def SI_IF_NZ : InstSI <
   (outs),
   (ins brtarget:$target, VCCReg:$vcc),
@@ -1012,7 +1005,8 @@ def SI_IF_Z : InstSI <
   "SI_BRANCH_Z",
   []
 >;
-} // end isBranch = 1, isTerminator = 1
+} // end isBranch = 1, isTerminator = 1, mayLoad = 0, mayStore = 0,
+  //     hasSideEffects = 0
 } // end IsCodeGenOnly, isPseudo
 
 /* int_SI_vs_load_input */

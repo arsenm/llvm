@@ -173,6 +173,9 @@ class ILFormat<dag outs, dag ins, string asmstr, list<dag> pattern>
      let Itinerary = NullALU;
      bit hasIEEEFlag = 0;
      bit hasZeroOpFlag = 0;
+     let mayLoad = 0;
+     let mayStore = 0;
+     let hasSideEffects = 0;
 }
 
 //===--------------------------------------------------------------------===//
