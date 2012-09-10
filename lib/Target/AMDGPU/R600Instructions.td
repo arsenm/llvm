@@ -84,7 +84,7 @@ class R600_1OP <bits<32> inst, string opName, list<dag> pattern,
   InstR600 <inst,
           (outs R600_Reg32:$dst),
           (ins R600_Reg32:$src, R600_Pred:$p, variable_ops),
-          !strconcat(opName, " $dst, $src ($p)"),
+          !strconcat(opName, " $dst, $src $p"),
           pattern,
           itin
   >;

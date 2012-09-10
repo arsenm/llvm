@@ -1,5 +1,6 @@
 
 #include "AMDGPUInstPrinter.h"
+#include "MCTargetDesc/AMDGPUMCTargetDesc.h"
 #include "llvm/MC/MCInst.h"
 
 using namespace llvm;
@@ -16,7 +17,11 @@ void AMDGPUInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
 
   const MCOperand &Op = MI->getOperand(OpNo);
   if (Op.isReg()) {
-    O << getRegisterName(Op.getReg());
+    switch (Op.getReg()) {
+    // This is the default predicate state, so we don't need to print it.
+    case AMDGPU::PRED_SEL_OFF: break;
+    default: O << getRegisterName(Op.getReg()); break;
+    }
   } else if (Op.isImm()) {
     O << Op.getImm();
   } else if (Op.isFPImm()) {
