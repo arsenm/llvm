@@ -13,17 +13,18 @@
 
 include "R600Intrinsics.td"
 
-class InstR600 <bits<32> inst, dag outs, dag ins, string asm, list<dag> pattern,
+class InstR600 <bits<11> inst, dag outs, dag ins, string asm, list<dag> pattern,
                 InstrItinClass itin>
     : AMDGPUInst <outs, ins, asm, pattern> {
 
-  field bits<32> Inst;
+  field bits<64> Inst;
   bit Trig = 0;
   bit Op3 = 0;
   bit isVector = 0;
   bits<2> FlagOperandIdx = 0;
 
-  let Inst = inst;
+  bits<11> op_code = inst;
+  //let Inst = inst;
   let Namespace = "AMDGPU";
   let OutOperandList = outs;
   let InOperandList = ins;
@@ -79,27 +80,39 @@ def R600_Pred : PredicateOperand<i32, (ops R600_Predicate),
 
 let mayLoad = 0, mayStore = 0, hasSideEffects = 0 in {
 
-class R600_1OP <bits<32> inst, string opName, list<dag> pattern,
+class R600_1OP <bits<11> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
           (ins R600_Reg32:$src, R600_Pred:$p, variable_ops),
           !strconcat(opName, " $dst, $src $p"),
           pattern,
-          itin
-  >;
+          itin>{
+    bits<7> dst;
+    bits<9> src;
+    let Inst{8-0}   = src;
+    let Inst{49-39} = inst;
+    let Inst{59-53} = dst;
+  }
 
-class R600_2OP <bits<32> inst, string opName, list<dag> pattern,
+class R600_2OP <bits<11> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
           (ins R600_Reg32:$src0, R600_Reg32:$src1,R600_Pred:$p, variable_ops),
           !strconcat(opName, " $dst, $src0, $src1"),
           pattern,
-          itin
-  >;
+          itin>{
+    bits<7> dst;
+    bits<9> src0;
+    bits<9> src1;
+    let Inst{8-0}   = src0;
+    let Inst{21-13} = src1;
+    let Inst{49-39} = inst;
+    let Inst{59-53} = dst;
+  }
 
-class R600_3OP <bits<32> inst, string opName, list<dag> pattern,
+class R600_3OP <bits<11> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
@@ -107,20 +120,31 @@ class R600_3OP <bits<32> inst, string opName, list<dag> pattern,
           !strconcat(opName, " $dst, $src0, $src1, $src2"),
           pattern,
           itin>{
-
+    bits<7> dst;
+    bits<9> src0;
+    bits<9> src1;
+    bits<9> src2;
+    let Inst{8-0}   = src0;
+    let Inst{21-13} = src1;
+    let Inst{40-32} = src2;
+    let Inst{49-45} = inst{4-0};
+    let Inst{59-53} = dst;
     let Op3 = 1;
   }
+
+
 
 def PRED_X : InstR600 <0, (outs R600_Predicate_Bit:$dst),
            (ins R600_Reg32:$src0, i32imm:$src1, i32imm:$flags),
            "PRED $dst, $src0, $src1",
            [], NullALU>
 {
-  let DisableEncoding = "$src0";
-  field bits<32> Inst;
-  bits<32> src1;
-
-  let Inst = src1;
+  bits<7> dst;
+  bits<9> src0;
+  bits<11> src1;
+  let Inst{8-0}   = src0;
+  let Inst{49-39} = src1;
+  let Inst{59-53} = dst;
   let FlagOperandIdx = 3;
 }
 
@@ -133,27 +157,29 @@ def JUMP : InstR600 <0x10,
   >;
 }
 
-class R600_REDUCTION <bits<32> inst, dag ins, string asm, list<dag> pattern,
+class R600_REDUCTION <bits<11> inst, dag ins, string asm, list<dag> pattern,
                       InstrItinClass itin = VecALU> :
   InstR600 <inst,
           (outs R600_Reg32:$dst),
           ins,
           asm,
           pattern,
-          itin
+          itin>{
+    bits<7> dst;
+    let Inst{49-39} = inst;
+    let Inst{59-53} = dst;
+  }
 
-  >;
-
-
-class R600_TEX <bits<32> inst, string opName, list<dag> pattern,
+class R600_TEX <bits<11> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg128:$dst),
           (ins R600_Reg128:$src0, i32imm:$src1, i32imm:$src2),
           !strconcat(opName, "$dst, $src0, $src1, $src2"),
           pattern,
-          itin
-  >;
+          itin>{
+    let Inst {10-0} = inst;
+  }
 
 } // End mayLoad = 1, mayStore = 0, hasSideEffects = 0
 
@@ -335,6 +361,11 @@ def MOV : InstR600 <0x19, (outs R600_Reg32:$dst),
                                R600_Pred:$p),
                           "MOV $dst, $src0", [], AnyALU> {
   let FlagOperandIdx = 2;
+  bits<7> dst;
+  bits<9> src0;
+  let Inst{8-0}   = src0;
+  let Inst{49-39} = op_code;
+  let Inst{59-53} = dst;
 }
 
 class MOV_IMM <ValueType vt, Operand immType> : InstR600 <0x19,
@@ -342,10 +373,17 @@ class MOV_IMM <ValueType vt, Operand immType> : InstR600 <0x19,
   (ins R600_Reg32:$alu_literal, R600_Pred:$p, immType:$imm),
   "MOV_IMM $dst, $imm",
   [], AnyALU
->;
+>{
+  bits<7> dst;
+  bits<9> alu_literal;
+  bits<9> p;
+  let Inst{8-0}   = alu_literal;
+  let Inst{21-13} = p;
+  let Inst{49-39} = op_code;
+  let Inst{59-53} = dst;
+}
 
 } // End mayLoad = 0, mayStore = 0, hasSideEffects = 0
-
 def MOV_IMM_I32 : MOV_IMM<i32, i32imm>;
 def : Pat <
   (imm:$val),
@@ -366,9 +404,13 @@ def KILLGT : InstR600 <0x2D,
           [],
           NullALU>{
   let FlagOperandIdx = 3;
-  let hasSideEffects = 1;
-  let mayLoad = 0;
-  let mayStore = 0;
+  bits<7> dst;
+  bits<9> src0;
+  bits<9> src1;
+  let Inst{8-0}   = src0;
+  let Inst{21-13} = src1;
+  let Inst{49-39} = op_code;
+  let Inst{59-53} = dst;
 }
 
 def AND_INT : R600_2OP <
@@ -542,45 +584,53 @@ def TEX_SAMPLE_C_G : R600_TEX <
 // Helper classes for common instructions
 //===----------------------------------------------------------------------===//
 
-class MUL_LIT_Common <bits<32> inst> : R600_3OP <
+class MUL_LIT_Common <bits<11> inst> : R600_3OP <
   inst, "MUL_LIT",
   []
 >;
 
-class MULADD_Common <bits<32> inst> : R600_3OP <
+class MULADD_Common <bits<11> inst> : R600_3OP <
   inst, "MULADD",
   [(set (f32 R600_Reg32:$dst),
    (IL_mad R600_Reg32:$src0, R600_Reg32:$src1, R600_Reg32:$src2))]
 >;
 
-class CNDE_Common <bits<32> inst> : R600_3OP <
+class CNDE_Common <bits<11> inst> : R600_3OP <
   inst, "CNDE",
   [(set (f32 R600_Reg32:$dst),
    (select (i32 (fp_to_sint (fneg R600_Reg32:$src0))), (f32 R600_Reg32:$src2), (f32 R600_Reg32:$src1)))]
 >;
 
-class CNDGT_Common <bits<32> inst> : R600_3OP <
+class CNDGT_Common <bits<11> inst> : R600_3OP <
   inst, "CNDGT",
   []
 >;
   
-class CNDGE_Common <bits<32> inst> : R600_3OP <
+class CNDGE_Common <bits<11> inst> : R600_3OP <
   inst, "CNDGE",
   [(set R600_Reg32:$dst, (int_AMDGPU_cndlt R600_Reg32:$src0, R600_Reg32:$src2, R600_Reg32:$src1))]
 >;
 
-class DOT4_Common <bits<32> inst> : R600_REDUCTION <
+class DOT4_Common <bits<11> inst> : R600_REDUCTION <
   inst,
-  (ins R600_Reg128:$src0, R600_Reg128:$src1, InstFlag:$flags),
-  "DOT4 $dst $src0, $src1, $flags",
-  [(set R600_Reg32:$dst, (int_AMDGPU_dp4 R600_Reg128:$src0, R600_Reg128:$src1))]
+  (ins R600_Reg128:$src0, R600_Reg128:$src1, i32imm:$flags),
+  "DOT4 $dst $src0, $src1",
+  []
   > {
+  bits<9> src0;
+  bits<9> src1;
+  let Inst{8-0}   = src0;
+  let Inst{21-13} = src1;
   let FlagOperandIdx = 3;
 }
 
-multiclass CUBE_Common <bits<32> inst> {
+class DOT4_Pat <Instruction dot4> : Pat <
+  (int_AMDGPU_dp4 R600_Reg128:$src0, R600_Reg128:$src1),
+  (dot4 R600_Reg128:$src0, R600_Reg128:$src1, 0)
+>;
 
 let mayLoad = 0, mayStore = 0, hasSideEffects = 0 in {
+multiclass CUBE_Common <bits<11> inst> {
 
   def _pseudo : InstR600 <
     inst,
@@ -599,111 +649,117 @@ let mayLoad = 0, mayStore = 0, hasSideEffects = 0 in {
     [], VecALU
   >{
     let FlagOperandIdx = 3;
+    bits<7> dst;
+    bits<9> src0;
+    bits<9> src1;
+    let Inst{8-0}   = src0;
+    let Inst{21-13} = src1;
+    let Inst{49-39} = inst;
+    let Inst{59-53} = dst;
   }
-} // End mayLoad = 0, mayStore = 0, hasSideEffects = 0
 }
 
-class EXP_IEEE_Common <bits<32> inst> : R600_1OP <
+class EXP_IEEE_Common <bits<11> inst> : R600_1OP <
   inst, "EXP_IEEE",
   [(set R600_Reg32:$dst, (fexp2 R600_Reg32:$src))]
 >;
 
-class FLT_TO_INT_Common <bits<32> inst> : R600_1OP <
+class FLT_TO_INT_Common <bits<11> inst> : R600_1OP <
   inst, "FLT_TO_INT",
   [(set R600_Reg32:$dst, (fp_to_sint R600_Reg32:$src))]
 >;
 
-class INT_TO_FLT_Common <bits<32> inst> : R600_1OP <
+class INT_TO_FLT_Common <bits<11> inst> : R600_1OP <
   inst, "INT_TO_FLT",
   [(set R600_Reg32:$dst, (sint_to_fp R600_Reg32:$src))]
 >;
 
-class FLT_TO_UINT_Common <bits<32> inst> : R600_1OP <
+class FLT_TO_UINT_Common <bits<11> inst> : R600_1OP <
   inst, "FLT_TO_UINT",
   [(set R600_Reg32:$dst, (fp_to_uint R600_Reg32:$src))]
 >;
 
-class UINT_TO_FLT_Common <bits<32> inst> : R600_1OP <
+class UINT_TO_FLT_Common <bits<11> inst> : R600_1OP <
   inst, "UINT_TO_FLT",
   [(set R600_Reg32:$dst, (uint_to_fp R600_Reg32:$src))]
 >;
 
-class LOG_CLAMPED_Common <bits<32> inst> : R600_1OP <
+class LOG_CLAMPED_Common <bits<11> inst> : R600_1OP <
   inst, "LOG_CLAMPED",
   []
 >;
 
-class LOG_IEEE_Common <bits<32> inst> : R600_1OP <
+class LOG_IEEE_Common <bits<11> inst> : R600_1OP <
   inst, "LOG_IEEE",
   [(set R600_Reg32:$dst, (int_AMDIL_log R600_Reg32:$src))]
 >;
 
-class LSHL_Common <bits<32> inst> : R600_2OP <
+class LSHL_Common <bits<11> inst> : R600_2OP <
   inst, "LSHL $dst, $src0, $src1",
   [(set R600_Reg32:$dst, (shl R600_Reg32:$src0, R600_Reg32:$src1))]
 >;
 
-class LSHR_Common <bits<32> inst> : R600_2OP <
+class LSHR_Common <bits<11> inst> : R600_2OP <
   inst, "LSHR $dst, $src0, $src1",
   [(set R600_Reg32:$dst, (srl R600_Reg32:$src0, R600_Reg32:$src1))]
 >;
 
-class ASHR_Common <bits<32> inst> : R600_2OP <
+class ASHR_Common <bits<11> inst> : R600_2OP <
   inst, "ASHR $dst, $src0, $src1",
   [(set R600_Reg32:$dst, (sra R600_Reg32:$src0, R600_Reg32:$src1))]
 >;
 
-class MULHI_INT_Common <bits<32> inst> : R600_2OP <
+class MULHI_INT_Common <bits<11> inst> : R600_2OP <
   inst, "MULHI_INT $dst, $src0, $src1",
   [(set R600_Reg32:$dst, (mulhs R600_Reg32:$src0, R600_Reg32:$src1))]
 >;
 
-class MULHI_UINT_Common <bits<32> inst> : R600_2OP <
+class MULHI_UINT_Common <bits<11> inst> : R600_2OP <
   inst, "MULHI $dst, $src0, $src1",
   [(set R600_Reg32:$dst, (mulhu R600_Reg32:$src0, R600_Reg32:$src1))]
 >;
 
-class MULLO_INT_Common <bits<32> inst> : R600_2OP <
+class MULLO_INT_Common <bits<11> inst> : R600_2OP <
   inst, "MULLO_INT $dst, $src0, $src1",
   [(set R600_Reg32:$dst, (mul R600_Reg32:$src0, R600_Reg32:$src1))]
 >;
 
-class MULLO_UINT_Common <bits<32> inst> : R600_2OP <
+class MULLO_UINT_Common <bits<11> inst> : R600_2OP <
   inst, "MULLO_UINT $dst, $src0, $src1",
   []
 >;
 
-class RECIP_CLAMPED_Common <bits<32> inst> : R600_1OP <
+class RECIP_CLAMPED_Common <bits<11> inst> : R600_1OP <
   inst, "RECIP_CLAMPED",
   []
 >;
 
-class RECIP_IEEE_Common <bits<32> inst> : R600_1OP <
+class RECIP_IEEE_Common <bits<11> inst> : R600_1OP <
   inst, "RECIP_IEEE",
   [(set R600_Reg32:$dst, (int_AMDGPU_rcp R600_Reg32:$src))]
 >;
 
-class RECIP_UINT_Common <bits<32> inst> : R600_1OP <
+class RECIP_UINT_Common <bits<11> inst> : R600_1OP <
   inst, "RECIP_INT $dst, $src",
   [(set R600_Reg32:$dst, (AMDGPUurecip R600_Reg32:$src))]
 >;
 
-class RECIPSQRT_CLAMPED_Common <bits<32> inst> : R600_1OP <
+class RECIPSQRT_CLAMPED_Common <bits<11> inst> : R600_1OP <
   inst, "RECIPSQRT_CLAMPED",
   [(set R600_Reg32:$dst, (int_AMDGPU_rsq R600_Reg32:$src))]
 >;
 
-class RECIPSQRT_IEEE_Common <bits<32> inst> : R600_1OP <
+class RECIPSQRT_IEEE_Common <bits<11> inst> : R600_1OP <
   inst, "RECIPSQRT_IEEE",
   []
 >;
 
-class SIN_Common <bits<32> inst> : R600_1OP <
+class SIN_Common <bits<11> inst> : R600_1OP <
   inst, "SIN", []>{
   let Trig = 1;
 }
 
-class COS_Common <bits<32> inst> : R600_1OP <
+class COS_Common <bits<11> inst> : R600_1OP <
   inst, "COS", []> {
   let Trig = 1;
 }
@@ -746,6 +802,7 @@ let Predicates = [isR600] in {
   def CNDGT_r600 : CNDGT_Common<0x19>;
   def CNDGE_r600 : CNDGE_Common<0x1A>;
   def DOT4_r600 : DOT4_Common<0x50>;
+  def : DOT4_Pat <DOT4_r600>;
   defm CUBE_r600 : CUBE_Common<0x52>;
   def EXP_IEEE_r600 : EXP_IEEE_Common<0x61>;
   def LOG_CLAMPED_r600 : LOG_CLAMPED_Common<0x62>;
@@ -862,6 +919,7 @@ let Predicates = [isEGorCayman] in {
   def SIN_eg : SIN_Common<0x8D>;
   def COS_eg : COS_Common<0x8E>;
   def DOT4_eg : DOT4_Common<0xBE>;
+  def : DOT4_Pat <DOT4_eg>;
   defm CUBE_eg : CUBE_Common<0xC0>;
 
   defm DIV_eg : DIV_Common<RECIP_IEEE_eg>;
