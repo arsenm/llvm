@@ -528,7 +528,7 @@ MachineInstr *R600InstrInfo::buildMovImm(MachineBasicBlock &BB,
 {
   MachineInstr *MovImm = buildDefaultInstruction(BB, I, AMDGPU::MOV, DstReg,
                                                   AMDGPU::ALU_LITERAL_X);
-  MovImm->getOperand(getOperandIdx(*MovImm, R600Operands::IMM)).setImm(Imm);
+  setImmOperand(MovImm, R600Operands::IMM, Imm);
   return MovImm;
 }
 
@@ -571,6 +571,15 @@ int R600InstrInfo::getOperandIdx(const MachineInstr &MI,
   }
 
   return OpTable[OpTableIdx][Op];
+}
+
+void R600InstrInfo::setImmOperand(MachineInstr *MI, R600Operands::Ops Op,
+                                  int64_t Imm) const
+{
+  int Idx = getOperandIdx(*MI, Op);
+  assert(Idx != -1 && "Operand not supported for this instruction.");
+  assert(MI->getOperand(Idx).isImm());
+  MI->getOperand(Idx).setImm(Imm);
 }
 
 //===----------------------------------------------------------------------===//

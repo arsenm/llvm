@@ -192,12 +192,9 @@ bool R600ExpandSpecialInstrsPass::runOnMachineFunction(MachineFunction &MF) {
                                             AMDGPU::ZERO);             // src1
         TII->addFlag(PredSet, 0, MO_FLAG_MASK);
         if (Flags & MO_FLAG_PUSH) {
-          PredSet->getOperand(TII->getOperandIdx(
-                  *PredSet, R600Operands::UPDATE_EXEC_MASK)).setImm(1);
+          TII->setImmOperand(PredSet, R600Operands::UPDATE_EXEC_MASK, 1);
         } else {
-          PredSet->getOperand(
-            TII->getOperandIdx(
-                  *PredSet, R600Operands::UPDATE_PREDICATE)).setImm(1);
+          TII->setImmOperand(PredSet, R600Operands::UPDATE_PREDICATE, 1);
         }
         MI.eraseFromParent();
         continue;
@@ -209,9 +206,7 @@ bool R600ExpandSpecialInstrsPass::runOnMachineFunction(MachineFunction &MF) {
                                           AMDGPU::ZERO,
                                           AMDGPU::ZERO);
         TII->addFlag(PredSet, 0, MO_FLAG_MASK);
-        PredSet->getOperand(
-          TII->getOperandIdx(
-              *PredSet, R600Operands::UPDATE_EXEC_MASK)).setImm(1);
+        TII->setImmOperand(PredSet, R600Operands::UPDATE_EXEC_MASK, 1);
 
         BuildMI(MBB, I, MBB.findDebugLoc(I),
                 TII->get(AMDGPU::BREAK_LOGICALNZ_i32))

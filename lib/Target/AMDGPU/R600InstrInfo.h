@@ -130,6 +130,9 @@ namespace llvm {
   /// if the Instruction does not contain the specified Op.
   int getOperandIdx(const MachineInstr &MI, R600Operands::Ops Op) const;
 
+  /// setImmOperand - Helper function for setting instruction flag values.
+  void setImmOperand(MachineInstr *MI, R600Operands::Ops Op, int64_t Imm) const;
+
   ///hasFlagOperand - Returns true if this instruction has an operand for
   /// storing target flags.
   bool hasFlagOperand(const MachineInstr &MI) const;
