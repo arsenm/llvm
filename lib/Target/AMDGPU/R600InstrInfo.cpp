@@ -543,7 +543,7 @@ int R600InstrInfo::getOperandIdx(const MachineInstr &MI,
 //   T  M  P  E  D  L  P  0  N  R  A  1  N  R  A  2  N  R  T  D  M
     {0,-1,-1, 1, 2, 3, 4, 5, 6, 7, 8,-1,-1,-1,-1,-1,-1,-1, 9,10,11},
     {0, 1, 2, 3, 4 ,5 ,6 ,7, 8, 9,10,11,12,-1,-1,-1,13,14,15,16,17},
-    {0,-1,-1, 1, 2, 3, 4, 5, 6, 7,-1, 8, 9,10,-1,11,12,13,14,15,16}
+    {0,-1,-1,-1,-1, 1, 2, 3, 4, 5,-1, 6, 7, 8,-1, 9,10,11,12,13,14}
   };
   unsigned TargetFlags = get(MI.getOpcode()).TSFlags;
   unsigned OpTableIdx;
