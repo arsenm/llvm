@@ -70,7 +70,7 @@ class InstFlag<string PM = "printOperand", int Default = 0>
   let PrintMethod = PM;
 }
 
-def LITERAL : InstFlag;
+def LITERAL : InstFlag<"printLiteral">;
 
 def WRITE : InstFlag <"printWrite", 1>;
 def OMOD : InstFlag <"printOMOD">;

@@ -36,6 +36,7 @@ private:
   void printIfSet(const MCInst *MI, unsigned OpNo, raw_ostream &O, StringRef Asm);
   void printAbs(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printClamp(const MCInst *MI, unsigned OpNo, raw_ostream &O);
+  void printLiteral(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printLast(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printNeg(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printOMOD(const MCInst *MI, unsigned OpNo, raw_ostream &O);

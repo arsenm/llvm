@@ -63,6 +63,17 @@ void AMDGPUInstPrinter::printClamp(const MCInst *MI, unsigned OpNo,
   printIfSet(MI, OpNo, O, "_SAT");
 }
 
+void AMDGPUInstPrinter::printLiteral(const MCInst *MI, unsigned OpNo,
+                                     raw_ostream &O) {
+  union Literal {
+    float f;
+    int32_t i;
+  } L;
+
+  L.i = MI->getOperand(OpNo).getImm();
+  O << L.i << "(" << L.f << ")";
+}
+
 void AMDGPUInstPrinter::printLast(const MCInst *MI, unsigned OpNo,
                                   raw_ostream &O) {
   printIfSet(MI, OpNo, O, " *");
