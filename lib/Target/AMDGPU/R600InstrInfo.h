@@ -50,6 +50,9 @@ namespace llvm {
   bool isReductionOp(unsigned opcode) const;
   bool isCubeOp(unsigned opcode) const;
 
+  /// isALUInstr - Returns true if this Opcode represents an ALU instruction.
+  bool isALUInstr(unsigned Opcode) const;
+
   /// isVector - Vector instructions are instructions that must fill all
   /// instruction slots within an instruction group.
   bool isVector(const MachineInstr &MI) const;
@@ -129,6 +132,10 @@ namespace llvm {
   /// getOperandIdx - Get the index of Op in the MachineInstr.  Returns -1
   /// if the Instruction does not contain the specified Op.
   int getOperandIdx(const MachineInstr &MI, R600Operands::Ops Op) const;
+
+  /// getOperandIdx - Get the index of Op for the given Opcode.  Returns -1
+  /// if the Instruction does not contain the specified Op.
+  int getOperandIdx(unsigned Opcode, R600Operands::Ops Op) const;
 
   /// setImmOperand - Helper function for setting instruction flag values.
   void setImmOperand(MachineInstr *MI, R600Operands::Ops Op, int64_t Imm) const;

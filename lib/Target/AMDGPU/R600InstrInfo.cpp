@@ -127,6 +127,15 @@ bool R600InstrInfo::isCubeOp(unsigned Opcode) const {
   }
 }
 
+bool R600InstrInfo::isALUInstr(unsigned Opcode) const
+{
+  unsigned TargetFlags = get(Opcode).TSFlags;
+
+  return ((TargetFlags & R600_InstFlag::OP1) |
+          (TargetFlags & R600_InstFlag::OP2) |
+          (TargetFlags & R600_InstFlag::OP3));
+}
+
 DFAPacketizer *R600InstrInfo::CreateTargetScheduleState(const TargetMachine *TM,
     const ScheduleDAG *DAG) const {
   const InstrItineraryData *II = TM->getInstrItineraryData();
@@ -505,6 +514,11 @@ MachineInstr *R600InstrInfo::buildMovImm(MachineBasicBlock &BB,
 
 int R600InstrInfo::getOperandIdx(const MachineInstr &MI,
                                  R600Operands::Ops Op) const {
+  return getOperandIdx(MI.getOpcode(), Op);
+}
+
+int R600InstrInfo::getOperandIdx(unsigned Opcode,
+                                 R600Operands::Ops Op) const {
   const static int OpTable[3][R600Operands::COUNT] = {
 //            W        C     S  S  S     S  S  S     S  S
 //            R  O  D  L  S  R  R  R  S  R  R  R  S  R  R  L  P
@@ -515,7 +529,7 @@ int R600InstrInfo::getOperandIdx(const MachineInstr &MI,
     {0, 1, 2, 3, 4 ,5 ,6 ,7, 8, 9,10,11,12,-1,-1,-1,13,14,15,16,17},
     {0,-1,-1,-1,-1, 1, 2, 3, 4, 5,-1, 6, 7, 8,-1, 9,10,11,12,13,14}
   };
-  unsigned TargetFlags = get(MI.getOpcode()).TSFlags;
+  unsigned TargetFlags = get(Opcode).TSFlags;
   unsigned OpTableIdx;
 
   if (!HAS_NATIVE_OPERANDS(TargetFlags)) {
