@@ -401,7 +401,9 @@ SDValue R600TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
       return CreateLiveInRegister(DAG, &AMDGPU::R600_TReg32RegClass, Reg, VT);
     }
     case AMDGPUIntrinsic::R600_load_input_perspective: {
-      unsigned slot = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
+      int slot = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
+      if (slot < 0)
+        return DAG.getUNDEF(MVT::f32);
       SDValue FullVector = DAG.getNode(
           AMDGPUISD::INTERP,
           DL, MVT::v4f32,
@@ -410,7 +412,9 @@ SDValue R600TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
         DL, VT, FullVector, DAG.getConstant(slot % 4, MVT::i32));
     }
     case AMDGPUIntrinsic::R600_load_input_linear: {
-      unsigned slot = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
+      int slot = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
+      if (slot < 0)
+        return DAG.getUNDEF(MVT::f32);
       SDValue FullVector = DAG.getNode(
         AMDGPUISD::INTERP,
         DL, MVT::v4f32,
@@ -419,7 +423,9 @@ SDValue R600TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
         DL, VT, FullVector, DAG.getConstant(slot % 4, MVT::i32));
     }
     case AMDGPUIntrinsic::R600_load_input_constant: {
-      unsigned slot = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
+      int slot = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
+      if (slot < 0)
+        return DAG.getUNDEF(MVT::f32);
       SDValue FullVector = DAG.getNode(
         AMDGPUISD::INTERP_P0,
         DL, MVT::v4f32,
