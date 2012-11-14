@@ -104,7 +104,7 @@ void AMDGPUInstPrinter::printRel(const MCInst *MI, unsigned OpNo,
                                  raw_ostream &O) {
   const MCOperand &Op = MI->getOperand(OpNo);
   if (Op.getImm() != 0) {
-    O << " + " + Op.getImm();
+    O << " + " << Op.getImm();
   }
 }
 
