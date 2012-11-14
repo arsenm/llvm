@@ -497,7 +497,7 @@ def IMAGE_SAMPLE : MIMG_Load_Helper <0x00000020, "IMAGE_SAMPLE">;
 //def IMAGE_SAMPLE_CL : MIMG_NoPattern_ <"IMAGE_SAMPLE_CL", 0x00000021>;
 def IMAGE_SAMPLE_D : MIMG_Load_Helper <0x00000022, "IMAGE_SAMPLE_D">;
 //def IMAGE_SAMPLE_D_CL : MIMG_NoPattern_ <"IMAGE_SAMPLE_D_CL", 0x00000023>;
-//def IMAGE_SAMPLE_L : MIMG_NoPattern_ <"IMAGE_SAMPLE_L", 0x00000024>;
+def IMAGE_SAMPLE_L : MIMG_Load_Helper <0x00000024, "IMAGE_SAMPLE_L">;
 def IMAGE_SAMPLE_B : MIMG_Load_Helper <0x00000025, "IMAGE_SAMPLE_B">;
 //def IMAGE_SAMPLE_B_CL : MIMG_NoPattern_ <"IMAGE_SAMPLE_B_CL", 0x00000026>;
 //def IMAGE_SAMPLE_LZ : MIMG_NoPattern_ <"IMAGE_SAMPLE_LZ", 0x00000027>;
@@ -1134,7 +1134,7 @@ def : Pat <
 /* int_SI_sample_lod */
 def : Pat <
   (int_SI_sample_lod imm:$writemask, VReg_128:$coord, SReg_256:$rsrc, SReg_128:$sampler),
-  (IMAGE_SAMPLE_D imm:$writemask, 0, 0, 0, 0, 0, 0, 0, VReg_128:$coord,
+  (IMAGE_SAMPLE_L imm:$writemask, 0, 0, 0, 0, 0, 0, 0, VReg_128:$coord,
                   SReg_256:$rsrc, SReg_128:$sampler)
 >;
 
