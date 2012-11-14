@@ -41,7 +41,7 @@ add_llvm_target(AMDGPUCodeGen
   SIInstrInfo.cpp
   SIISelLowering.cpp
   SILowerLiteralConstants.cpp
-  SILowerFlowControl.cpp
+  SILowerControlFlow.cpp
   SIMachineFunctionInfo.cpp
   SIRegisterInfo.cpp
   SIFixSGPRLiveness.cpp
