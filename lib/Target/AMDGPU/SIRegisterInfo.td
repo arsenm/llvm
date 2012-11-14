@@ -65,12 +65,12 @@ def SAMPLE_COVERAGE : SIReg <"SAMPLE_COVERAGE">;
 def POS_FIXED_PT : SIReg <"POS_FIXED_PT">;
 
 // SGPR 32-bit registers
-foreach Index = 0-103 in {
+foreach Index = 0-101 in {
   def SGPR#Index : SGPR_32 <Index, "SGPR"#Index>;
 }
 
 def SGPR_32 : RegisterClass<"AMDGPU", [f32, i32], 32,
-                            (add (sequence "SGPR%u", 0, 103))>;
+                            (add (sequence "SGPR%u", 0, 101))>;
 
 // SGPR 64-bit registers
 def SGPR_64 : RegisterTuples<[low, high],
