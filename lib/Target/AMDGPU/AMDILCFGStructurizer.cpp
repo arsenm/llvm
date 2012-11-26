@@ -12,7 +12,6 @@
 
 #include "AMDGPUInstrInfo.h"
 #include "AMDIL.h"
-#include "AMDILUtilityFunctions.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
@@ -29,7 +28,6 @@
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/Target/TargetInstrInfo.h"
 
-#define FirstNonDebugInstr(A) A->begin()
 using namespace llvm;
 
 // TODO: move-begin.
@@ -1407,7 +1405,7 @@ void CFGStructurizer<PassT>::mergeSerialBlock(BlockT *dstBlk, BlockT *srcBlk) {
            << " <= BB" << srcBlk->getNumber() << "\n";
   }
   //removeUnconditionalBranch(dstBlk);
-  dstBlk->splice(dstBlk->end(), srcBlk, FirstNonDebugInstr(srcBlk), srcBlk->end());
+  dstBlk->splice(dstBlk->end(), srcBlk, srcBlk->begin(), srcBlk->end());
 
   dstBlk->removeSuccessor(srcBlk);
   CFGTraits::cloneSuccessorList(dstBlk, srcBlk);
@@ -1462,7 +1460,7 @@ void CFGStructurizer<PassT>::mergeIfthenelseBlock(InstrT *branchInstr,
 									branchDL);
 
   if (trueBlk) {
-    curBlk->splice(branchInstrPos, trueBlk, FirstNonDebugInstr(trueBlk), trueBlk->end());
+    curBlk->splice(branchInstrPos, trueBlk, trueBlk->begin(), trueBlk->end());
     curBlk->removeSuccessor(trueBlk);
     if (landBlk && trueBlk->succ_size()!=0) {
       trueBlk->removeSuccessor(landBlk);
@@ -1472,7 +1470,7 @@ void CFGStructurizer<PassT>::mergeIfthenelseBlock(InstrT *branchInstr,
   CFGTraits::insertInstrBefore(branchInstrPos, AMDGPU::ELSE, passRep);
 
   if (falseBlk) {
-    curBlk->splice(branchInstrPos, falseBlk, FirstNonDebugInstr(falseBlk),
+    curBlk->splice(branchInstrPos, falseBlk, falseBlk->begin(),
                    falseBlk->end());
     curBlk->removeSuccessor(falseBlk);
     if (landBlk && falseBlk->succ_size() != 0) {
@@ -2682,8 +2680,9 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
   static int getBranchNzeroOpcode(int oldOpcode) {
     switch(oldOpcode) {
     case AMDGPU::JUMP: return AMDGPU::IF_PREDICATE_SET;
-      ExpandCaseToAllScalarReturn(AMDGPU::BRANCH_COND, AMDGPU::IF_LOGICALNZ);
-      case AMDGPU::SI_IF_NZ: return AMDGPU::SI_IF_NZ;
+    case AMDGPU::BRANCH_COND_i32:
+    case AMDGPU::BRANCH_COND_f32: return AMDGPU::IF_LOGICALNZ_f32;
+    case AMDGPU::SI_IF_NZ: return AMDGPU::SI_IF_NZ;
     default:
       assert(0 && "internal error");
     };
@@ -2693,8 +2692,9 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
   static int getBranchZeroOpcode(int oldOpcode) {
     switch(oldOpcode) {
     case AMDGPU::JUMP: return AMDGPU::IF_PREDICATE_SET;
-      ExpandCaseToAllScalarReturn(AMDGPU::BRANCH_COND, AMDGPU::IF_LOGICALZ);
-      case AMDGPU::SI_IF_Z: return AMDGPU::SI_IF_Z;
+    case AMDGPU::BRANCH_COND_i32:
+    case AMDGPU::BRANCH_COND_f32: return AMDGPU::IF_LOGICALZ_f32;
+    case AMDGPU::SI_IF_Z: return AMDGPU::SI_IF_Z;
     default:
       assert(0 && "internal error");
     };
@@ -2704,25 +2704,21 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
   static int getContinueNzeroOpcode(int oldOpcode)
   {
     switch(oldOpcode) {
-      case AMDGPU::JUMP: return AMDGPU::CONTINUE_LOGICALNZ_i32;
-      default:
-        assert(0 && "internal error");
-    };
-    return -1;
-  }
-
-  static int getContinueZeroOpcode(int oldOpcode) {
-    switch(oldOpcode) {
-      case AMDGPU::JUMP: return AMDGPU::CONTINUE_LOGICALZ_i32;
+    case AMDGPU::JUMP: return AMDGPU::CONTINUE_LOGICALNZ_i32;
     default:
       assert(0 && "internal error");
     };
     return -1;
   }
 
-// the explicitly represented branch target is the true branch target
-#define getExplicitBranch getTrueBranch
-#define setExplicitBranch setTrueBranch
+  static int getContinueZeroOpcode(int oldOpcode) {
+    switch(oldOpcode) {
+    case AMDGPU::JUMP: return AMDGPU::CONTINUE_LOGICALZ_i32;
+    default:
+      assert(0 && "internal error");
+    };
+    return -1;
+  }
 
   static MachineBasicBlock *getTrueBranch(MachineInstr *instr) {
     return instr->getOperand(0).getMBB();
@@ -2747,7 +2743,8 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
     switch (instr->getOpcode()) {
       case AMDGPU::JUMP:
         return instr->getOperand(instr->findFirstPredOperandIdx()).getReg() != 0;
-      ExpandCaseToAllScalarTypes(AMDGPU::BRANCH_COND);
+      case AMDGPU::BRANCH_COND_i32:
+      case AMDGPU::BRANCH_COND_f32:
       case AMDGPU::SI_IF_NZ:
       case AMDGPU::SI_IF_Z:
       break;
@@ -3064,8 +3061,8 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
                                          MachineBasicBlock *newBlk) {
     MachineInstr *branchInstr = getLoopendBlockBranchInstr(srcBlk);
     if (branchInstr && isCondBranch(branchInstr) &&
-        getExplicitBranch(branchInstr) == oldBlk) {
-      setExplicitBranch(branchInstr, newBlk);
+        getTrueBranch(branchInstr) == oldBlk) {
+      setTrueBranch(branchInstr, newBlk);
     }
   }
 

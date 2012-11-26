@@ -16,7 +16,6 @@
 #include "AMDGPURegisterInfo.h"
 #include "AMDGPUTargetMachine.h"
 #include "AMDIL.h"
-#include "AMDILUtilityFunctions.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -88,7 +87,8 @@ bool AMDGPUInstrInfo::getNextBranchInstr(MachineBasicBlock::iterator &iter,
     switch (iter->getOpcode()) {
     default:
       break;
-      ExpandCaseToAllScalarTypes(AMDGPU::BRANCH_COND);
+    case AMDGPU::BRANCH_COND_i32:
+    case AMDGPU::BRANCH_COND_f32:
     case AMDGPU::BRANCH:
       return true;
     };
