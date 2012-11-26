@@ -25,14 +25,12 @@ using namespace llvm;
 #undef GET_LLVM_INTRINSIC_FOR_GCC_BUILTIN
 
 AMDGPUIntrinsicInfo::AMDGPUIntrinsicInfo(TargetMachine *tm) 
-  : TargetIntrinsicInfo()
-{
+  : TargetIntrinsicInfo() {
 }
 
 std::string 
 AMDGPUIntrinsicInfo::getName(unsigned int IntrID, Type **Tys,
-    unsigned int numTys) const 
-{
+    unsigned int numTys) const  {
   static const char* const names[] = {
 #define GET_INTRINSIC_NAME_TABLE
 #include "AMDGPUGenIntrinsics.inc"
@@ -52,8 +50,7 @@ AMDGPUIntrinsicInfo::getName(unsigned int IntrID, Type **Tys,
 }
 
 unsigned int
-AMDGPUIntrinsicInfo::lookupName(const char *Name, unsigned int Len) const 
-{
+AMDGPUIntrinsicInfo::lookupName(const char *Name, unsigned int Len) const  {
 #define GET_FUNCTION_RECOGNIZER
 #include "AMDGPUGenIntrinsics.inc"
 #undef GET_FUNCTION_RECOGNIZER
@@ -68,8 +65,7 @@ AMDGPUIntrinsicInfo::lookupName(const char *Name, unsigned int Len) const
 }
 
 bool 
-AMDGPUIntrinsicInfo::isOverloaded(unsigned id) const 
-{
+AMDGPUIntrinsicInfo::isOverloaded(unsigned id) const  {
   // Overload Table
 #define GET_INTRINSIC_OVERLOAD_TABLE
 #include "AMDGPUGenIntrinsics.inc"
@@ -79,7 +75,6 @@ AMDGPUIntrinsicInfo::isOverloaded(unsigned id) const
 Function*
 AMDGPUIntrinsicInfo::getDeclaration(Module *M, unsigned IntrID,
     Type **Tys,
-    unsigned numTys) const 
-{
+    unsigned numTys) const  {
   assert(!"Not implemented");
 }

@@ -156,8 +156,7 @@ AMDGPURedwoodDevice::AMDGPURedwoodDevice(AMDGPUSubtarget *ST)
   setCaps();
 }
 
-AMDGPURedwoodDevice::~AMDGPURedwoodDevice()
-{
+AMDGPURedwoodDevice::~AMDGPURedwoodDevice() {
 }
 
 void AMDGPURedwoodDevice::setCaps() {

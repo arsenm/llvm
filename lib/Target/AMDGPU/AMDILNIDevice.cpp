@@ -13,8 +13,7 @@
 using namespace llvm;
 
 AMDGPUNIDevice::AMDGPUNIDevice(AMDGPUSubtarget *ST)
-  : AMDGPUEvergreenDevice(ST)
-{
+  : AMDGPUEvergreenDevice(ST) {
   std::string name = ST->getDeviceName();
   if (name == "caicos") {
     mDeviceFlag = OCL_DEVICE_CAICOS;
@@ -26,13 +25,11 @@ AMDGPUNIDevice::AMDGPUNIDevice(AMDGPUSubtarget *ST)
     mDeviceFlag = OCL_DEVICE_BARTS;
   }
 }
-AMDGPUNIDevice::~AMDGPUNIDevice()
-{
+AMDGPUNIDevice::~AMDGPUNIDevice() {
 }
 
 size_t
-AMDGPUNIDevice::getMaxLDSSize() const
-{
+AMDGPUNIDevice::getMaxLDSSize() const {
   if (usesHardware(AMDGPUDeviceInfo::LocalMem)) {
     return MAX_LDS_SIZE_900;
   } else {
@@ -41,25 +38,21 @@ AMDGPUNIDevice::getMaxLDSSize() const
 }
 
 uint32_t
-AMDGPUNIDevice::getGeneration() const
-{
+AMDGPUNIDevice::getGeneration() const {
   return AMDGPUDeviceInfo::HD6XXX;
 }
 
 
 AMDGPUCaymanDevice::AMDGPUCaymanDevice(AMDGPUSubtarget *ST)
-  : AMDGPUNIDevice(ST)
-{
+  : AMDGPUNIDevice(ST) {
   setCaps();
 }
 
-AMDGPUCaymanDevice::~AMDGPUCaymanDevice()
-{
+AMDGPUCaymanDevice::~AMDGPUCaymanDevice() {
 }
 
 void
-AMDGPUCaymanDevice::setCaps()
-{
+AMDGPUCaymanDevice::setCaps() {
   if (mSTM->isOverride(AMDGPUDeviceInfo::DoubleOps)) {
     mHWBits.set(AMDGPUDeviceInfo::DoubleOps);
     mHWBits.set(AMDGPUDeviceInfo::FMA);

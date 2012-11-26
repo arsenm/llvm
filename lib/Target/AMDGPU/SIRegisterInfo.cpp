@@ -24,15 +24,13 @@ SIRegisterInfo::SIRegisterInfo(AMDGPUTargetMachine &tm,
   TII(tii)
   { }
 
-BitVector SIRegisterInfo::getReservedRegs(const MachineFunction &MF) const
-{
+BitVector SIRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
   return Reserved;
 }
 
 const TargetRegisterClass *
-SIRegisterInfo::getISARegClass(const TargetRegisterClass * rc) const
-{
+SIRegisterInfo::getISARegClass(const TargetRegisterClass * rc) const {
   switch (rc->getID()) {
   case AMDGPU::GPRF32RegClassID:
     return &AMDGPU::VReg_32RegClass;
@@ -41,8 +39,7 @@ SIRegisterInfo::getISARegClass(const TargetRegisterClass * rc) const
 }
 
 const TargetRegisterClass * SIRegisterInfo::getCFGStructurizerRegClass(
-                                                                   MVT VT) const
-{
+                                                                   MVT VT) const {
   switch(VT.SimpleTy) {
     default:
     case MVT::i32: return &AMDGPU::VReg_32RegClass;

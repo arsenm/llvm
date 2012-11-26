@@ -66,21 +66,18 @@ char SIFixSGPRLiveness::ID = 0;
 
 SIFixSGPRLiveness::SIFixSGPRLiveness(TargetMachine &tm):
   MachineFunctionPass(ID),
-  TII(tm.getInstrInfo())
-{
+  TII(tm.getInstrInfo()) {
   initializeLiveIntervalsPass(*PassRegistry::getPassRegistry());
 }
 
-void SIFixSGPRLiveness::getAnalysisUsage(AnalysisUsage &AU) const
-{
+void SIFixSGPRLiveness::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<MachineDominatorTree>();
   AU.addRequired<MachinePostDominatorTree>();
   AU.setPreservesCFG();
   MachineFunctionPass::getAnalysisUsage(AU);
 }
 
-void SIFixSGPRLiveness::addKill(MachineBasicBlock::iterator I, unsigned Reg)
-{
+void SIFixSGPRLiveness::addKill(MachineBasicBlock::iterator I, unsigned Reg) {
   MachineBasicBlock *MBB = I->getParent();
 
   BuildMI(*MBB, I, DebugLoc(), TII->get(TargetOpcode::KILL)).addReg(Reg);
@@ -88,8 +85,7 @@ void SIFixSGPRLiveness::addKill(MachineBasicBlock::iterator I, unsigned Reg)
 
 // Find the common post dominator of all uses
 MachineBasicBlock *SIFixSGPRLiveness::handleUses(unsigned VirtReg,
-                                                 MachineBasicBlock *Begin)
-{
+                                                 MachineBasicBlock *Begin) {
   MachineBasicBlock *LastUse = Begin, *End = Begin;
   bool EndUsesReg = true;
 
@@ -116,8 +112,7 @@ MachineBasicBlock *SIFixSGPRLiveness::handleUses(unsigned VirtReg,
 // Handles predecessors separately, only add KILLs to dominated ones
 void SIFixSGPRLiveness::handlePreds(MachineBasicBlock *Begin,
                                     MachineBasicBlock *End,
-                                    unsigned VirtReg)
-{
+                                    unsigned VirtReg) {
   MachineBasicBlock::pred_iterator i, e;
   for (i = End->pred_begin(), e = End->pred_end(); i != e; ++i) {
 
@@ -137,8 +132,7 @@ void SIFixSGPRLiveness::handlePreds(MachineBasicBlock *Begin,
   }
 }
 
-bool SIFixSGPRLiveness::handleVirtReg(unsigned VirtReg)
-{
+bool SIFixSGPRLiveness::handleVirtReg(unsigned VirtReg) {
 
   MachineInstr *Def = MRI->getVRegDef(VirtReg);
   if (!Def || MRI->use_empty(VirtReg))
@@ -159,8 +153,7 @@ bool SIFixSGPRLiveness::handleVirtReg(unsigned VirtReg)
   return true;
 }
 
-bool SIFixSGPRLiveness::runOnMachineFunction(MachineFunction &MF)
-{
+bool SIFixSGPRLiveness::runOnMachineFunction(MachineFunction &MF) {
   bool Changes = false;
 
   MRI = &MF.getRegInfo();
@@ -180,7 +173,6 @@ bool SIFixSGPRLiveness::runOnMachineFunction(MachineFunction &MF)
   return Changes;
 }
 
-FunctionPass *llvm::createSIFixSGPRLivenessPass(TargetMachine &tm)
-{
+FunctionPass *llvm::createSIFixSGPRLivenessPass(TargetMachine &tm) {
   return new SIFixSGPRLiveness(tm);
 }

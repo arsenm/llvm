@@ -37,31 +37,26 @@ AMDGPUSubtarget::AMDGPUSubtarget(StringRef TT, StringRef CPU, StringRef FS) :
   mDevice = AMDGPUDeviceInfo::getDeviceFromName(mDevName, this, mIs64bit);
 }
 
-AMDGPUSubtarget::~AMDGPUSubtarget()
-{
+AMDGPUSubtarget::~AMDGPUSubtarget() {
   delete mDevice;
 }
 
 bool
-AMDGPUSubtarget::isOverride(AMDGPUDeviceInfo::Caps caps) const
-{
+AMDGPUSubtarget::isOverride(AMDGPUDeviceInfo::Caps caps) const {
   assert(caps < AMDGPUDeviceInfo::MaxNumberCapabilities &&
       "Caps index is out of bounds!");
   return CapsOverride[caps];
 }
 bool
-AMDGPUSubtarget::is64bit() const 
-{
+AMDGPUSubtarget::is64bit() const  {
   return mIs64bit;
 }
 bool
-AMDGPUSubtarget::isTargetELF() const
-{
+AMDGPUSubtarget::isTargetELF() const {
   return false;
 }
 size_t
-AMDGPUSubtarget::getDefaultSize(uint32_t dim) const
-{
+AMDGPUSubtarget::getDefaultSize(uint32_t dim) const {
   if (dim > 3) {
     return 1;
   } else {
@@ -70,8 +65,7 @@ AMDGPUSubtarget::getDefaultSize(uint32_t dim) const
 }
 
 std::string
-AMDGPUSubtarget::getDataLayout() const
-{
+AMDGPUSubtarget::getDataLayout() const {
     if (!mDevice) {
         return std::string("e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16"
                 "-i32:32:32-i64:64:64-f32:32:32-f64:64:64-f80:32:32"
@@ -83,12 +77,10 @@ AMDGPUSubtarget::getDataLayout() const
 }
 
 std::string
-AMDGPUSubtarget::getDeviceName() const
-{
+AMDGPUSubtarget::getDeviceName() const {
   return mDevName;
 }
 const AMDGPUDevice *
-AMDGPUSubtarget::device() const
-{
+AMDGPUSubtarget::device() const {
   return mDevice;
 }

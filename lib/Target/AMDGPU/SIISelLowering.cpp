@@ -26,8 +26,7 @@ using namespace llvm;
 
 SITargetLowering::SITargetLowering(TargetMachine &TM) :
     AMDGPUTargetLowering(TM),
-    TII(static_cast<const SIInstrInfo*>(TM.getInstrInfo()))
-{
+    TII(static_cast<const SIInstrInfo*>(TM.getInstrInfo())) {
   addRegisterClass(MVT::v4f32, &AMDGPU::VReg_128RegClass);
   addRegisterClass(MVT::f32, &AMDGPU::VReg_32RegClass);
   addRegisterClass(MVT::i32, &AMDGPU::VReg_32RegClass);
@@ -64,8 +63,7 @@ SITargetLowering::SITargetLowering(TargetMachine &TM) :
 }
 
 MachineBasicBlock * SITargetLowering::EmitInstrWithCustomInserter(
-    MachineInstr * MI, MachineBasicBlock * BB) const
-{
+    MachineInstr * MI, MachineBasicBlock * BB) const {
   const TargetInstrInfo * TII = getTargetMachine().getInstrInfo();
   MachineRegisterInfo & MRI = BB->getParent()->getRegInfo();
   MachineBasicBlock::iterator I = MI;
@@ -149,16 +147,14 @@ MachineBasicBlock * SITargetLowering::EmitInstrWithCustomInserter(
 }
 
 void SITargetLowering::AppendS_WAITCNT(MachineInstr *MI, MachineBasicBlock &BB,
-    MachineBasicBlock::iterator I) const
-{
+    MachineBasicBlock::iterator I) const {
   BuildMI(BB, I, BB.findDebugLoc(I), TII->get(AMDGPU::S_WAITCNT))
           .addImm(0);
 }
 
 
 void SITargetLowering::LowerSI_WQM(MachineInstr *MI, MachineBasicBlock &BB,
-    MachineBasicBlock::iterator I, MachineRegisterInfo & MRI) const
-{
+    MachineBasicBlock::iterator I, MachineRegisterInfo & MRI) const {
   BuildMI(BB, I, BB.findDebugLoc(I), TII->get(AMDGPU::S_WQM_B64), AMDGPU::EXEC)
           .addReg(AMDGPU::EXEC);
 
@@ -166,8 +162,7 @@ void SITargetLowering::LowerSI_WQM(MachineInstr *MI, MachineBasicBlock &BB,
 }
 
 void SITargetLowering::LowerSI_INTERP(MachineInstr *MI, MachineBasicBlock &BB,
-    MachineBasicBlock::iterator I, MachineRegisterInfo & MRI) const
-{
+    MachineBasicBlock::iterator I, MachineRegisterInfo & MRI) const {
   unsigned tmp = MRI.createVirtualRegister(&AMDGPU::VReg_32RegClass);
   unsigned M0 = MRI.createVirtualRegister(&AMDGPU::M0RegRegClass);
   MachineOperand dst = MI->getOperand(0);
@@ -199,8 +194,7 @@ void SITargetLowering::LowerSI_INTERP(MachineInstr *MI, MachineBasicBlock &BB,
 
 void SITargetLowering::LowerSI_INTERP_CONST(MachineInstr *MI,
     MachineBasicBlock &BB, MachineBasicBlock::iterator I,
-    MachineRegisterInfo &MRI) const
-{
+    MachineRegisterInfo &MRI) const {
   MachineOperand dst = MI->getOperand(0);
   MachineOperand attr_chan = MI->getOperand(1);
   MachineOperand attr = MI->getOperand(2);
@@ -220,8 +214,7 @@ void SITargetLowering::LowerSI_INTERP_CONST(MachineInstr *MI,
 }
 
 void SITargetLowering::LowerSI_KIL(MachineInstr *MI, MachineBasicBlock &BB,
-    MachineBasicBlock::iterator I, MachineRegisterInfo & MRI) const
-{
+    MachineBasicBlock::iterator I, MachineRegisterInfo & MRI) const {
   // Clear this pixel from the exec mask if the operand is negative
   BuildMI(BB, I, BB.findDebugLoc(I), TII->get(AMDGPU::V_CMPX_LE_F32_e32),
           AMDGPU::VCC)
@@ -232,8 +225,7 @@ void SITargetLowering::LowerSI_KIL(MachineInstr *MI, MachineBasicBlock &BB,
 }
 
 void SITargetLowering::LowerSI_V_CNDLT(MachineInstr *MI, MachineBasicBlock &BB,
-    MachineBasicBlock::iterator I, MachineRegisterInfo & MRI) const
-{
+    MachineBasicBlock::iterator I, MachineRegisterInfo & MRI) const {
   unsigned VCC = MRI.createVirtualRegister(&AMDGPU::SReg_64RegClass);
 
   BuildMI(BB, I, BB.findDebugLoc(I),
@@ -251,8 +243,7 @@ void SITargetLowering::LowerSI_V_CNDLT(MachineInstr *MI, MachineBasicBlock &BB,
   MI->eraseFromParent();
 }
 
-EVT SITargetLowering::getSetCCResultType(EVT VT) const
-{
+EVT SITargetLowering::getSetCCResultType(EVT VT) const {
   return MVT::i1;
 }
 
@@ -260,8 +251,7 @@ EVT SITargetLowering::getSetCCResultType(EVT VT) const
 // Custom DAG Lowering Operations
 //===----------------------------------------------------------------------===//
 
-SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   default: return AMDGPUTargetLowering::LowerOperation(Op, DAG);
   case ISD::BR_CC: return LowerBR_CC(Op, DAG);
@@ -294,8 +284,7 @@ SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
 ///
 SDValue SITargetLowering::Loweri1ContextSwitch(SDValue Op,
                                                SelectionDAG &DAG,
-                                               unsigned VCCNode) const
-{
+                                               unsigned VCCNode) const {
   DebugLoc DL = Op.getDebugLoc();
 
   SDValue OpNode = DAG.getNode(VCCNode, DL, MVT::i64,
@@ -307,8 +296,7 @@ SDValue SITargetLowering::Loweri1ContextSwitch(SDValue Op,
   return DAG.getNode(SIISD::VCC_BITCAST, DL, MVT::i1, OpNode);
 }
 
-SDValue SITargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue SITargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   SDValue CC = Op.getOperand(1);
   SDValue LHS   = Op.getOperand(2);
@@ -331,8 +319,7 @@ SDValue SITargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const
   return Result;
 }
 
-SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   EVT VT = Op.getValueType();
   LoadSDNode *Ptr = dyn_cast<LoadSDNode>(Op);
 
@@ -373,8 +360,7 @@ SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const
   return SDValue();
 }
 
-SDValue SITargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue SITargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue LHS = Op.getOperand(0);
   SDValue RHS = Op.getOperand(1);
   SDValue True = Op.getOperand(2);
@@ -439,8 +425,7 @@ SDValue SITargetLowering::PerformDAGCombine(SDNode *N,
 
 #define NODE_NAME_CASE(node) case SIISD::node: return #node;
 
-const char* SITargetLowering::getTargetNodeName(unsigned Opcode) const
-{
+const char* SITargetLowering::getTargetNodeName(unsigned Opcode) const {
   switch (Opcode) {
   default: return AMDGPUTargetLowering::getTargetNodeName(Opcode);
   NODE_NAME_CASE(VCC_AND)

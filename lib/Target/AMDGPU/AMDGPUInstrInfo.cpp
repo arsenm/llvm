@@ -155,8 +155,7 @@ AMDGPUInstrInfo::foldMemoryOperandImpl(MachineFunction &MF,
 }
 bool
 AMDGPUInstrInfo::canFoldMemoryOperand(const MachineInstr *MI,
-                                     const SmallVectorImpl<unsigned> &Ops) const
-{
+                                     const SmallVectorImpl<unsigned> &Ops) const {
   // TODO: Implement this function
   return false;
 }
@@ -236,8 +235,7 @@ AMDGPUInstrInfo::isSafeToMoveRegClassDefs(const TargetRegisterClass *RC) const {
 }
  
 void AMDGPUInstrInfo::convertToISA(MachineInstr & MI, MachineFunction &MF,
-    DebugLoc DL) const
-{
+    DebugLoc DL) const {
   MachineRegisterInfo &MRI = MF.getRegInfo();
   const AMDGPURegisterInfo & RI = getRegisterInfo();
 

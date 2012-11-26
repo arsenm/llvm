@@ -29,18 +29,15 @@ R600InstrInfo::R600InstrInfo(AMDGPUTargetMachine &tm)
     RI(tm, *this)
   { }
 
-const R600RegisterInfo &R600InstrInfo::getRegisterInfo() const
-{
+const R600RegisterInfo &R600InstrInfo::getRegisterInfo() const {
   return RI;
 }
 
-bool R600InstrInfo::isTrig(const MachineInstr &MI) const
-{
+bool R600InstrInfo::isTrig(const MachineInstr &MI) const {
   return get(MI.getOpcode()).TSFlags & R600_InstFlag::TRIG;
 }
 
-bool R600InstrInfo::isVector(const MachineInstr &MI) const
-{
+bool R600InstrInfo::isVector(const MachineInstr &MI) const {
   return get(MI.getOpcode()).TSFlags & R600_InstFlag::VECTOR;
 }
 
@@ -48,8 +45,7 @@ void
 R600InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator MI, DebugLoc DL,
                            unsigned DestReg, unsigned SrcReg,
-                           bool KillSrc) const
-{
+                           bool KillSrc) const {
   if (AMDGPU::R600_Reg128RegClass.contains(DestReg)
       && AMDGPU::R600_Reg128RegClass.contains(SrcReg)) {
     for (unsigned I = 0; I < 4; I++) {
@@ -74,8 +70,7 @@ R600InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 }
 
 MachineInstr * R600InstrInfo::getMovImmInstr(MachineFunction *MF,
-                                             unsigned DstReg, int64_t Imm) const
-{
+                                             unsigned DstReg, int64_t Imm) const {
   MachineInstr * MI = MF->CreateMachineInstr(get(AMDGPU::MOV), DebugLoc());
   MachineInstrBuilder(MI).addReg(DstReg, RegState::Define);
   MachineInstrBuilder(MI).addReg(AMDGPU::ALU_LITERAL_X);
@@ -85,13 +80,11 @@ MachineInstr * R600InstrInfo::getMovImmInstr(MachineFunction *MF,
   return MI;
 }
 
-unsigned R600InstrInfo::getIEQOpcode() const
-{
+unsigned R600InstrInfo::getIEQOpcode() const {
   return AMDGPU::SETE_INT;
 }
 
-bool R600InstrInfo::isMov(unsigned Opcode) const
-{
+bool R600InstrInfo::isMov(unsigned Opcode) const {
 
 
   switch(Opcode) {
@@ -106,8 +99,7 @@ bool R600InstrInfo::isMov(unsigned Opcode) const
 // Some instructions act as place holders to emulate operations that the GPU
 // hardware does automatically. This function can be used to check if
 // an opcode falls into this category.
-bool R600InstrInfo::isPlaceHolderOpcode(unsigned Opcode) const
-{
+bool R600InstrInfo::isPlaceHolderOpcode(unsigned Opcode) const {
   switch (Opcode) {
   default: return false;
   case AMDGPU::RETURN:
@@ -116,8 +108,7 @@ bool R600InstrInfo::isPlaceHolderOpcode(unsigned Opcode) const
   }
 }
 
-bool R600InstrInfo::isReductionOp(unsigned Opcode) const
-{
+bool R600InstrInfo::isReductionOp(unsigned Opcode) const {
   switch(Opcode) {
     default: return false;
     case AMDGPU::DOT4_r600_pseudo:
@@ -126,8 +117,7 @@ bool R600InstrInfo::isReductionOp(unsigned Opcode) const
   }
 }
 
-bool R600InstrInfo::isCubeOp(unsigned Opcode) const
-{
+bool R600InstrInfo::isCubeOp(unsigned Opcode) const {
   switch(Opcode) {
     default: return false;
     case AMDGPU::CUBE_r600_pseudo:
@@ -139,15 +129,13 @@ bool R600InstrInfo::isCubeOp(unsigned Opcode) const
 }
 
 DFAPacketizer *R600InstrInfo::CreateTargetScheduleState(const TargetMachine *TM,
-    const ScheduleDAG *DAG) const
-{
+    const ScheduleDAG *DAG) const {
   const InstrItineraryData *II = TM->getInstrItineraryData();
   return TM->getSubtarget<AMDGPUSubtarget>().createDFAPacketizer(II);
 }
 
 static bool
-isPredicateSetter(unsigned Opcode)
-{
+isPredicateSetter(unsigned Opcode) {
   switch (Opcode) {
   case AMDGPU::PRED_X:
     return true;
@@ -158,8 +146,7 @@ isPredicateSetter(unsigned Opcode)
 
 static MachineInstr *
 findFirstPredicateSetterFrom(MachineBasicBlock &MBB,
-                             MachineBasicBlock::iterator I)
-{
+                             MachineBasicBlock::iterator I) {
   while (I != MBB.begin()) {
     --I;
     MachineInstr *MI = I;
@@ -175,8 +162,7 @@ R600InstrInfo::AnalyzeBranch(MachineBasicBlock &MBB,
                              MachineBasicBlock *&TBB,
                              MachineBasicBlock *&FBB,
                              SmallVectorImpl<MachineOperand> &Cond,
-                             bool AllowModify) const
-{
+                             bool AllowModify) const {
   // Most of the following comes from the ARM implementation of AnalyzeBranch
 
   // If the block has no terminators, it just falls into the block after it.
@@ -259,8 +245,7 @@ R600InstrInfo::InsertBranch(MachineBasicBlock &MBB,
                             MachineBasicBlock *TBB,
                             MachineBasicBlock *FBB,
                             const SmallVectorImpl<MachineOperand> &Cond,
-                            DebugLoc DL) const
-{
+                            DebugLoc DL) const {
   assert(TBB && "InsertBranch must not be told to insert a fallthrough");
 
   if (FBB == 0) {
@@ -292,8 +277,7 @@ R600InstrInfo::InsertBranch(MachineBasicBlock &MBB,
 }
 
 unsigned
-R600InstrInfo::RemoveBranch(MachineBasicBlock &MBB) const
-{
+R600InstrInfo::RemoveBranch(MachineBasicBlock &MBB) const {
 
   // Note : we leave PRED* instructions there.
   // They may be needed when predicating instructions.
@@ -337,8 +321,7 @@ R600InstrInfo::RemoveBranch(MachineBasicBlock &MBB) const
 }
 
 bool
-R600InstrInfo::isPredicated(const MachineInstr *MI) const
-{
+R600InstrInfo::isPredicated(const MachineInstr *MI) const {
   int idx = MI->findFirstPredOperandIdx();
   if (idx < 0)
     return false;
@@ -354,8 +337,7 @@ R600InstrInfo::isPredicated(const MachineInstr *MI) const
 }
 
 bool
-R600InstrInfo::isPredicable(MachineInstr *MI) const
-{
+R600InstrInfo::isPredicable(MachineInstr *MI) const {
   // XXX: KILL* instructions can be predicated, but they must be the last
   // instruction in a clause, so this means any instructions after them cannot
   // be predicated.  Until we have proper support for instruction clauses in the
@@ -384,8 +366,7 @@ R600InstrInfo::isProfitableToIfCvt(MachineBasicBlock &TMBB,
                                    MachineBasicBlock &FMBB,
                                    unsigned NumFCycles,
                                    unsigned ExtraFCycles,
-                                   const BranchProbability &Probability) const
-{
+                                   const BranchProbability &Probability) const {
   return true;
 }
 
@@ -393,22 +374,19 @@ bool
 R600InstrInfo::isProfitableToDupForIfCvt(MachineBasicBlock &MBB,
                                          unsigned NumCyles,
                                          const BranchProbability &Probability)
-                                         const
-{
+                                         const {
   return true;
 }
 
 bool
 R600InstrInfo::isProfitableToUnpredicate(MachineBasicBlock &TMBB,
-                                         MachineBasicBlock &FMBB) const
-{
+                                         MachineBasicBlock &FMBB) const {
   return false;
 }
 
 
 bool
-R600InstrInfo::ReverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const
-{
+R600InstrInfo::ReverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const {
   MachineOperand &MO = Cond[1];
   switch (MO.getImm()) {
   case OPCODE_IS_ZERO_INT:
@@ -443,24 +421,21 @@ R600InstrInfo::ReverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) con
 
 bool
 R600InstrInfo::DefinesPredicate(MachineInstr *MI,
-                                std::vector<MachineOperand> &Pred) const
-{
+                                std::vector<MachineOperand> &Pred) const {
   return isPredicateSetter(MI->getOpcode());
 }
 
 
 bool
 R600InstrInfo::SubsumesPredicate(const SmallVectorImpl<MachineOperand> &Pred1,
-                       const SmallVectorImpl<MachineOperand> &Pred2) const
-{
+                       const SmallVectorImpl<MachineOperand> &Pred2) const {
   return false;
 }
 
 
 bool
 R600InstrInfo::PredicateInstruction(MachineInstr *MI,
-                      const SmallVectorImpl<MachineOperand> &Pred) const
-{
+                      const SmallVectorImpl<MachineOperand> &Pred) const {
   int PIdx = MI->findFirstPredOperandIdx();
 
   if (PIdx != -1) {
@@ -475,8 +450,7 @@ R600InstrInfo::PredicateInstruction(MachineInstr *MI,
 
 unsigned int R600InstrInfo::getInstrLatency(const InstrItineraryData *ItinData,
                                             const MachineInstr *MI,
-                                            unsigned *PredCost) const
-{
+                                            unsigned *PredCost) const {
   if (PredCost)
     *PredCost = 2;
   return 2;
@@ -487,8 +461,7 @@ MachineInstrBuilder R600InstrInfo::buildDefaultInstruction(MachineBasicBlock &MB
                                                   unsigned Opcode,
                                                   unsigned DstReg,
                                                   unsigned Src0Reg,
-                                                  unsigned Src1Reg) const
-{
+                                                  unsigned Src1Reg) const {
   MachineInstrBuilder MIB = BuildMI(MBB, I, MBB.findDebugLoc(I), get(Opcode),
     DstReg);           // $dst
 
@@ -524,8 +497,7 @@ MachineInstrBuilder R600InstrInfo::buildDefaultInstruction(MachineBasicBlock &MB
 MachineInstr *R600InstrInfo::buildMovImm(MachineBasicBlock &BB,
                                          MachineBasicBlock::iterator I,
                                          unsigned DstReg,
-                                         uint64_t Imm) const
-{
+                                         uint64_t Imm) const {
   MachineInstr *MovImm = buildDefaultInstruction(BB, I, AMDGPU::MOV, DstReg,
                                                   AMDGPU::ALU_LITERAL_X);
   setImmOperand(MovImm, R600Operands::IMM, Imm);
@@ -533,8 +505,7 @@ MachineInstr *R600InstrInfo::buildMovImm(MachineBasicBlock &BB,
 }
 
 int R600InstrInfo::getOperandIdx(const MachineInstr &MI,
-                                 R600Operands::Ops Op) const
-{
+                                 R600Operands::Ops Op) const {
   const static int OpTable[3][R600Operands::COUNT] = {
 //            W        C     S  S  S     S  S  S     S  S
 //            R  O  D  L  S  R  R  R  S  R  R  R  S  R  R  L  P
@@ -574,8 +545,7 @@ int R600InstrInfo::getOperandIdx(const MachineInstr &MI,
 }
 
 void R600InstrInfo::setImmOperand(MachineInstr *MI, R600Operands::Ops Op,
-                                  int64_t Imm) const
-{
+                                  int64_t Imm) const {
   int Idx = getOperandIdx(*MI, Op);
   assert(Idx != -1 && "Operand not supported for this instruction.");
   assert(MI->getOperand(Idx).isImm());
@@ -586,14 +556,12 @@ void R600InstrInfo::setImmOperand(MachineInstr *MI, R600Operands::Ops Op,
 // Instruction flag getters/setters
 //===----------------------------------------------------------------------===//
 
-bool R600InstrInfo::hasFlagOperand(const MachineInstr &MI) const
-{
+bool R600InstrInfo::hasFlagOperand(const MachineInstr &MI) const {
   return GET_FLAG_OPERAND_IDX(get(MI.getOpcode()).TSFlags) != 0;
 }
 
 MachineOperand &R600InstrInfo::getFlagOp(MachineInstr *MI, unsigned SrcIdx,
-                                         unsigned Flag) const
-{
+                                         unsigned Flag) const {
   unsigned TargetFlags = get(MI->getOpcode()).TSFlags;
   int FlagIndex = 0;
   if (Flag != 0) {
@@ -647,8 +615,7 @@ MachineOperand &R600InstrInfo::getFlagOp(MachineInstr *MI, unsigned SrcIdx,
 }
 
 void R600InstrInfo::addFlag(MachineInstr *MI, unsigned Operand,
-                            unsigned Flag) const
-{
+                            unsigned Flag) const {
   unsigned TargetFlags = get(MI->getOpcode()).TSFlags;
   if (Flag == 0) {
     return;
@@ -669,8 +636,7 @@ void R600InstrInfo::addFlag(MachineInstr *MI, unsigned Operand,
 }
 
 void R600InstrInfo::clearFlag(MachineInstr *MI, unsigned Operand,
-                              unsigned Flag) const
-{
+                              unsigned Flag) const {
   unsigned TargetFlags = get(MI->getOpcode()).TSFlags;
   if (HAS_NATIVE_OPERANDS(TargetFlags)) {
     MachineOperand &FlagOp = getFlagOp(MI, Operand, Flag);

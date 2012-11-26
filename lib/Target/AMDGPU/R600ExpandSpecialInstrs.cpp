@@ -52,8 +52,7 @@ FunctionPass *llvm::createR600ExpandSpecialInstrsPass(TargetMachine &TM) {
   return new R600ExpandSpecialInstrsPass(TM);
 }
 
-bool R600ExpandSpecialInstrsPass::ExpandInputPerspective(MachineInstr &MI)
-{
+bool R600ExpandSpecialInstrsPass::ExpandInputPerspective(MachineInstr &MI) {
   const R600RegisterInfo &TRI = TII->getRegisterInfo();
   if (MI.getOpcode() != AMDGPU::input_perspective)
     return false;
@@ -129,8 +128,7 @@ bool R600ExpandSpecialInstrsPass::ExpandInputPerspective(MachineInstr &MI)
   return true;
 }
 
-bool R600ExpandSpecialInstrsPass::ExpandInputConstant(MachineInstr &MI)
-{
+bool R600ExpandSpecialInstrsPass::ExpandInputConstant(MachineInstr &MI) {
   const R600RegisterInfo &TRI = TII->getRegisterInfo();
   if (MI.getOpcode() != AMDGPU::input_constant)
     return false;

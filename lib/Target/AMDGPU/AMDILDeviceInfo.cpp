@@ -18,8 +18,7 @@ namespace llvm {
 namespace AMDGPUDeviceInfo {
     AMDGPUDevice*
 getDeviceFromName(const std::string &deviceName, AMDGPUSubtarget *ptr,
-                  bool is64bit, bool is64on32bit)
-{
+                  bool is64bit, bool is64on32bit) {
     if (deviceName.c_str()[2] == '7') {
         switch (deviceName.c_str()[3]) {
             case '1':

@@ -142,8 +142,7 @@ private:
 // function with a pointer to the current iterator.
 template<class InputIterator, class SecondIterator, class Function>
 Function safeNestedForEach(InputIterator First, InputIterator Last,
-                              SecondIterator S, Function F)
-{
+                              SecondIterator S, Function F) {
   for ( ; First != Last; ++First) {
     SecondIterator sf, sl;
     for (sf = First->begin(), sl = First->end();
@@ -167,26 +166,22 @@ namespace llvm {
 } // llvm namespace
 
 AMDGPUPeepholeOpt::AMDGPUPeepholeOpt(TargetMachine &tm)
-  : FunctionPass(ID), TM(tm) 
-{
+  : FunctionPass(ID), TM(tm)  {
   mDebug = DEBUGME;
   optLevel = TM.getOptLevel();
 
 }
 
-AMDGPUPeepholeOpt::~AMDGPUPeepholeOpt() 
-{
+AMDGPUPeepholeOpt::~AMDGPUPeepholeOpt()  {
 }
 
 const char *
-AMDGPUPeepholeOpt::getPassName() const 
-{
+AMDGPUPeepholeOpt::getPassName() const  {
   return "AMDGPU PeepHole Optimization Pass";
 }
 
 bool 
-containsPointerType(Type *Ty) 
-{
+containsPointerType(Type *Ty)  {
   if (!Ty) {
     return false;
   }
@@ -214,8 +209,7 @@ containsPointerType(Type *Ty)
 }
 
 bool 
-AMDGPUPeepholeOpt::dumpAllIntoArena(Function &F) 
-{
+AMDGPUPeepholeOpt::dumpAllIntoArena(Function &F)  {
   bool dumpAll = false;
   for (Function::const_arg_iterator cab = F.arg_begin(),
        cae = F.arg_end(); cab != cae; ++cab) {
@@ -240,8 +234,7 @@ AMDGPUPeepholeOpt::dumpAllIntoArena(Function &F)
   return dumpAll;
 }
 void
-AMDGPUPeepholeOpt::doIsConstCallConversionIfNeeded()
-{
+AMDGPUPeepholeOpt::doIsConstCallConversionIfNeeded() {
   if (isConstVec.empty()) {
     return;
   }
@@ -257,8 +250,7 @@ AMDGPUPeepholeOpt::doIsConstCallConversionIfNeeded()
   isConstVec.clear();
 }
 void 
-AMDGPUPeepholeOpt::doAtomicConversionIfNeeded(Function &F) 
-{
+AMDGPUPeepholeOpt::doAtomicConversionIfNeeded(Function &F)  {
   // Don't do anything if we don't have any atomic operations.
   if (atomicFuncs.empty()) {
     return;
@@ -278,8 +270,7 @@ AMDGPUPeepholeOpt::doAtomicConversionIfNeeded(Function &F)
 }
 
 bool 
-AMDGPUPeepholeOpt::runOnFunction(Function &MF) 
-{
+AMDGPUPeepholeOpt::runOnFunction(Function &MF)  {
   mChanged = false;
   mF = &MF;
   mSTM = &TM.getSubtarget<AMDGPUSubtarget>();
@@ -302,8 +293,7 @@ AMDGPUPeepholeOpt::runOnFunction(Function &MF)
 }
 
 bool 
-AMDGPUPeepholeOpt::optimizeCallInst(BasicBlock::iterator *bbb) 
-{
+AMDGPUPeepholeOpt::optimizeCallInst(BasicBlock::iterator *bbb)  {
   Instruction *inst = (*bbb);
   CallInst *CI = dyn_cast<CallInst>(inst);
   if (!CI) {
@@ -397,8 +387,7 @@ bool
 AMDGPUPeepholeOpt::setupBitInsert(Instruction *base, 
     Instruction *&src, 
     Constant *&mask, 
-    Constant *&shift)
-{
+    Constant *&shift) {
   if (!base) {
     if (mDebug) {
       dbgs() << "Null pointer passed into function.\n";
@@ -447,8 +436,7 @@ AMDGPUPeepholeOpt::setupBitInsert(Instruction *base,
   return true;
 }
 bool
-AMDGPUPeepholeOpt::optimizeBitInsert(Instruction *inst) 
-{
+AMDGPUPeepholeOpt::optimizeBitInsert(Instruction *inst)  {
   if (!inst) {
     return false;
   }
@@ -687,8 +675,7 @@ AMDGPUPeepholeOpt::optimizeBitInsert(Instruction *inst)
 }
 
 bool 
-AMDGPUPeepholeOpt::optimizeBitExtract(Instruction *inst) 
-{
+AMDGPUPeepholeOpt::optimizeBitExtract(Instruction *inst)  {
   if (!inst) {
     return false;
   }
@@ -846,8 +833,7 @@ AMDGPUPeepholeOpt::optimizeBitExtract(Instruction *inst)
 }
 
 bool
-AMDGPUPeepholeOpt::expandBFI(CallInst *CI)
-{
+AMDGPUPeepholeOpt::expandBFI(CallInst *CI) {
   if (!CI) {
     return false;
   }
@@ -885,8 +871,7 @@ AMDGPUPeepholeOpt::expandBFI(CallInst *CI)
 }
 
 bool
-AMDGPUPeepholeOpt::expandBFM(CallInst *CI)
-{
+AMDGPUPeepholeOpt::expandBFM(CallInst *CI) {
   if (!CI) {
     return false;
   }
@@ -929,8 +914,7 @@ AMDGPUPeepholeOpt::expandBFM(CallInst *CI)
 }
 
 bool
-AMDGPUPeepholeOpt::instLevelOptimizations(BasicBlock::iterator *bbb) 
-{
+AMDGPUPeepholeOpt::instLevelOptimizations(BasicBlock::iterator *bbb)  {
   Instruction *inst = (*bbb);
   if (optimizeCallInst(bbb)) {
     return true;
@@ -947,8 +931,7 @@ AMDGPUPeepholeOpt::instLevelOptimizations(BasicBlock::iterator *bbb)
   return false;
 }
 bool
-AMDGPUPeepholeOpt::correctMisalignedMemOp(Instruction *inst)
-{
+AMDGPUPeepholeOpt::correctMisalignedMemOp(Instruction *inst) {
   LoadInst *linst = dyn_cast<LoadInst>(inst);
   StoreInst *sinst = dyn_cast<StoreInst>(inst);
   unsigned alignment;
@@ -981,8 +964,7 @@ AMDGPUPeepholeOpt::correctMisalignedMemOp(Instruction *inst)
   return false;
 }
 bool 
-AMDGPUPeepholeOpt::isSigned24BitOps(CallInst *CI) 
-{
+AMDGPUPeepholeOpt::isSigned24BitOps(CallInst *CI)  {
   if (!CI) {
     return false;
   }
@@ -999,8 +981,7 @@ AMDGPUPeepholeOpt::isSigned24BitOps(CallInst *CI)
 }
 
 void 
-AMDGPUPeepholeOpt::expandSigned24BitOps(CallInst *CI) 
-{
+AMDGPUPeepholeOpt::expandSigned24BitOps(CallInst *CI)  {
   assert(isSigned24BitOps(CI) && "Must be a "
       "signed 24 bit operation to call this function!");
   Value *LHS = CI->getOperand(CI->getNumOperands()-1);
@@ -1071,16 +1052,14 @@ AMDGPUPeepholeOpt::expandSigned24BitOps(CallInst *CI)
 }
 
 bool 
-AMDGPUPeepholeOpt::isRWGLocalOpt(CallInst *CI) 
-{
+AMDGPUPeepholeOpt::isRWGLocalOpt(CallInst *CI)  {
   return (CI != NULL
           && CI->getOperand(CI->getNumOperands() - 1)->getName() 
           == "__amdil_get_local_size_int");
 }
 
 bool 
-AMDGPUPeepholeOpt::convertAccurateDivide(CallInst *CI) 
-{
+AMDGPUPeepholeOpt::convertAccurateDivide(CallInst *CI)  {
   if (!CI) {
     return false;
   }
@@ -1093,8 +1072,7 @@ AMDGPUPeepholeOpt::convertAccurateDivide(CallInst *CI)
 }
 
 void 
-AMDGPUPeepholeOpt::expandAccurateDivide(CallInst *CI) 
-{
+AMDGPUPeepholeOpt::expandAccurateDivide(CallInst *CI)  {
   assert(convertAccurateDivide(CI)
          && "expanding accurate divide can only happen if it is expandable!");
   BinaryOperator *divOp =
@@ -1104,8 +1082,7 @@ AMDGPUPeepholeOpt::expandAccurateDivide(CallInst *CI)
 }
 
 bool
-AMDGPUPeepholeOpt::propagateSamplerInst(CallInst *CI)
-{
+AMDGPUPeepholeOpt::propagateSamplerInst(CallInst *CI) {
   if (optLevel != CodeGenOpt::None) {
     return false;
   }
@@ -1159,20 +1136,17 @@ AMDGPUPeepholeOpt::propagateSamplerInst(CallInst *CI)
 }
 
 bool 
-AMDGPUPeepholeOpt::doInitialization(Module &M) 
-{
+AMDGPUPeepholeOpt::doInitialization(Module &M)  {
   return false;
 }
 
 bool 
-AMDGPUPeepholeOpt::doFinalization(Module &M) 
-{
+AMDGPUPeepholeOpt::doFinalization(Module &M)  {
   return false;
 }
 
 void 
-AMDGPUPeepholeOpt::getAnalysisUsage(AnalysisUsage &AU) const 
-{
+AMDGPUPeepholeOpt::getAnalysisUsage(AnalysisUsage &AU) const  {
   AU.addRequired<MachineFunctionAnalysis>();
   FunctionPass::getAnalysisUsage(AU);
   AU.setPreservesAll();

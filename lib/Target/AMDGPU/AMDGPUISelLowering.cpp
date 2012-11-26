@@ -21,8 +21,7 @@
 using namespace llvm;
 
 AMDGPUTargetLowering::AMDGPUTargetLowering(TargetMachine &TM) :
-  TargetLowering(TM, new TargetLoweringObjectFileELF())
-{
+  TargetLowering(TM, new TargetLoweringObjectFileELF()) {
 
   // Initialize target lowering borrowed from AMDIL
   InitAMDILLowering();
@@ -55,8 +54,7 @@ SDValue AMDGPUTargetLowering::LowerFormalArguments(
                                       bool isVarArg,
                                       const SmallVectorImpl<ISD::InputArg> &Ins,
                                       DebugLoc DL, SelectionDAG &DAG,
-                                      SmallVectorImpl<SDValue> &InVals) const
-{
+                                      SmallVectorImpl<SDValue> &InVals) const {
   for (unsigned i = 0, e = Ins.size(); i < e; ++i) {
     InVals.push_back(SDValue());
   }
@@ -69,8 +67,7 @@ SDValue AMDGPUTargetLowering::LowerReturn(
                                      bool isVarArg,
                                      const SmallVectorImpl<ISD::OutputArg> &Outs,
                                      const SmallVectorImpl<SDValue> &OutVals,
-                                     DebugLoc DL, SelectionDAG &DAG) const
-{
+                                     DebugLoc DL, SelectionDAG &DAG) const {
   return DAG.getNode(AMDGPUISD::RET_FLAG, DL, MVT::Other, Chain);
 }
 
@@ -79,8 +76,7 @@ SDValue AMDGPUTargetLowering::LowerReturn(
 //===---------------------------------------------------------------------===//
 
 SDValue AMDGPUTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG)
-    const
-{
+    const {
   switch (Op.getOpcode()) {
   default:
     Op.getNode()->dump();
@@ -100,8 +96,7 @@ SDValue AMDGPUTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG)
 }
 
 SDValue AMDGPUTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
-    SelectionDAG &DAG) const
-{
+    SelectionDAG &DAG) const {
   unsigned IntrinsicID = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
   DebugLoc DL = Op.getDebugLoc();
   EVT VT = Op.getValueType();
@@ -144,8 +139,7 @@ SDValue AMDGPUTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
 
 ///IABS(a) = SMAX(sub(0, a), a)
 SDValue AMDGPUTargetLowering::LowerIntrinsicIABS(SDValue Op,
-    SelectionDAG &DAG) const
-{
+    SelectionDAG &DAG) const {
 
   DebugLoc DL = Op.getDebugLoc();
   EVT VT = Op.getValueType();
@@ -158,8 +152,7 @@ SDValue AMDGPUTargetLowering::LowerIntrinsicIABS(SDValue Op,
 /// Linear Interpolation
 /// LRP(a, b, c) = muladd(a,  b, (1 - a) * c)
 SDValue AMDGPUTargetLowering::LowerIntrinsicLRP(SDValue Op,
-    SelectionDAG &DAG) const
-{
+    SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT VT = Op.getValueType();
   SDValue OneSubA = DAG.getNode(ISD::FSUB, DL, VT,
@@ -175,8 +168,7 @@ SDValue AMDGPUTargetLowering::LowerIntrinsicLRP(SDValue Op,
 
 
 SDValue AMDGPUTargetLowering::LowerUDIVREM(SDValue Op,
-    SelectionDAG &DAG) const
-{
+    SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT VT = Op.getValueType();
 
@@ -284,8 +276,7 @@ SDValue AMDGPUTargetLowering::LowerUDIVREM(SDValue Op,
 // Helper functions
 //===----------------------------------------------------------------------===//
 
-bool AMDGPUTargetLowering::isHWTrueValue(SDValue Op) const
-{
+bool AMDGPUTargetLowering::isHWTrueValue(SDValue Op) const {
   if (ConstantFPSDNode * CFP = dyn_cast<ConstantFPSDNode>(Op)) {
     return CFP->isExactlyValue(1.0);
   }
@@ -295,8 +286,7 @@ bool AMDGPUTargetLowering::isHWTrueValue(SDValue Op) const
   return false;
 }
 
-bool AMDGPUTargetLowering::isHWFalseValue(SDValue Op) const
-{
+bool AMDGPUTargetLowering::isHWFalseValue(SDValue Op) const {
   if (ConstantFPSDNode * CFP = dyn_cast<ConstantFPSDNode>(Op)) {
     return CFP->getValueAPF().isZero();
   }
@@ -323,8 +313,7 @@ SDValue AMDGPUTargetLowering::CreateLiveInRegister(SelectionDAG &DAG,
 
 #define NODE_NAME_CASE(node) case AMDGPUISD::node: return #node;
 
-const char* AMDGPUTargetLowering::getTargetNodeName(unsigned Opcode) const
-{
+const char* AMDGPUTargetLowering::getTargetNodeName(unsigned Opcode) const {
   switch (Opcode) {
   default: return 0;
   // AMDIL DAG nodes

@@ -27,8 +27,7 @@ SIInstrInfo::SIInstrInfo(AMDGPUTargetMachine &tm)
     RI(tm, *this)
     { }
 
-const SIRegisterInfo &SIInstrInfo::getRegisterInfo() const
-{
+const SIRegisterInfo &SIInstrInfo::getRegisterInfo() const {
   return RI;
 }
 
@@ -36,8 +35,7 @@ void
 SIInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                            MachineBasicBlock::iterator MI, DebugLoc DL,
                            unsigned DestReg, unsigned SrcReg,
-                           bool KillSrc) const
-{
+                           bool KillSrc) const {
   // If we are trying to copy to or from SCC, there is a bug somewhere else in
   // the backend.  While it may be theoretically possible to do this, it should
   // never be necessary.
@@ -61,8 +59,7 @@ SIInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 }
 
 MachineInstr * SIInstrInfo::getMovImmInstr(MachineFunction *MF, unsigned DstReg,
-                                           int64_t Imm) const
-{
+                                           int64_t Imm) const {
   MachineInstr * MI = MF->CreateMachineInstr(get(AMDGPU::V_MOV_IMM_I32), DebugLoc());
   MachineInstrBuilder(MI).addReg(DstReg, RegState::Define);
   MachineInstrBuilder(MI).addImm(Imm);
@@ -71,8 +68,7 @@ MachineInstr * SIInstrInfo::getMovImmInstr(MachineFunction *MF, unsigned DstReg,
 
 }
 
-bool SIInstrInfo::isMov(unsigned Opcode) const
-{
+bool SIInstrInfo::isMov(unsigned Opcode) const {
   switch(Opcode) {
   default: return false;
   case AMDGPU::S_MOV_B32:

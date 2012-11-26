@@ -25,8 +25,7 @@ using namespace llvm;
 
 R600TargetLowering::R600TargetLowering(TargetMachine &TM) :
     AMDGPUTargetLowering(TM),
-    TII(static_cast<const R600InstrInfo*>(TM.getInstrInfo()))
-{
+    TII(static_cast<const R600InstrInfo*>(TM.getInstrInfo())) {
   setOperationAction(ISD::MUL, MVT::i64, Expand);
   addRegisterClass(MVT::v4f32, &AMDGPU::R600_Reg128RegClass);
   addRegisterClass(MVT::f32, &AMDGPU::R600_Reg32RegClass);
@@ -73,8 +72,7 @@ R600TargetLowering::R600TargetLowering(TargetMachine &TM) :
 }
 
 MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
-    MachineInstr * MI, MachineBasicBlock * BB) const
-{
+    MachineInstr * MI, MachineBasicBlock * BB) const {
   MachineFunction * MF = BB->getParent();
   MachineRegisterInfo &MRI = MF->getRegInfo();
   MachineBasicBlock::iterator I = *MI;
@@ -316,8 +314,7 @@ MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
 using namespace llvm::Intrinsic;
 using namespace llvm::AMDGPUIntrinsic;
 
-SDValue R600TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue R600TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   default: return AMDGPUTargetLowering::LowerOperation(Op, DAG);
   case ISD::BR_CC: return LowerBR_CC(Op, DAG);
@@ -487,16 +484,14 @@ SDValue R600TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const
 
 void R600TargetLowering::ReplaceNodeResults(SDNode *N,
                                             SmallVectorImpl<SDValue> &Results,
-                                            SelectionDAG &DAG) const
-{
+                                            SelectionDAG &DAG) const {
   switch (N->getOpcode()) {
   default: return;
   case ISD::FP_TO_UINT: Results.push_back(LowerFPTOUINT(N->getOperand(0), DAG));
   }
 }
 
-SDValue R600TargetLowering::LowerFPTOUINT(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue R600TargetLowering::LowerFPTOUINT(SDValue Op, SelectionDAG &DAG) const {
   return DAG.getNode(
       ISD::SETCC,
       Op.getDebugLoc(),
@@ -506,8 +501,7 @@ SDValue R600TargetLowering::LowerFPTOUINT(SDValue Op, SelectionDAG &DAG) const
       );
 }
 
-SDValue R600TargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue R600TargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   SDValue CC = Op.getOperand(1);
   SDValue LHS   = Op.getOperand(2);
@@ -547,8 +541,7 @@ SDValue R600TargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const
 
 SDValue R600TargetLowering::LowerImplicitParameter(SelectionDAG &DAG, EVT VT,
                                                    DebugLoc DL,
-                                                   unsigned DwordOffset) const
-{
+                                                   unsigned DwordOffset) const {
   unsigned ByteOffset = DwordOffset * 4;
   PointerType * PtrType = PointerType::get(VT.getTypeForEVT(*DAG.getContext()),
                                       AMDGPUAS::PARAM_I_ADDRESS);
@@ -562,8 +555,7 @@ SDValue R600TargetLowering::LowerImplicitParameter(SelectionDAG &DAG, EVT VT,
                      false, false, false, 0);
 }
 
-SDValue R600TargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue R600TargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT VT = Op.getValueType();
 
@@ -575,8 +567,7 @@ SDValue R600TargetLowering::LowerROTL(SDValue Op, SelectionDAG &DAG) const
                                  Op.getOperand(1)));
 }
 
-bool R600TargetLowering::isZero(SDValue Op) const
-{
+bool R600TargetLowering::isZero(SDValue Op) const {
   if(ConstantSDNode *Cst = dyn_cast<ConstantSDNode>(Op)) {
     return Cst->isNullValue();
   } else if(ConstantFPSDNode *CstFP = dyn_cast<ConstantFPSDNode>(Op)){
@@ -586,8 +577,7 @@ bool R600TargetLowering::isZero(SDValue Op) const
   }
 }
 
-SDValue R600TargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue R600TargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT VT = Op.getValueType();
 
@@ -720,8 +710,7 @@ SDValue R600TargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const
       DAG.getCondCode(ISD::SETNE));
 }
 
-SDValue R600TargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue R600TargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   return DAG.getNode(ISD::SELECT_CC,
       Op.getDebugLoc(),
       Op.getValueType(),
@@ -732,8 +721,7 @@ SDValue R600TargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const
       DAG.getCondCode(ISD::SETNE));
 }
 
-SDValue R600TargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const
-{
+SDValue R600TargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Cond;
   SDValue LHS = Op.getOperand(0);
   SDValue RHS = Op.getOperand(1);
@@ -776,8 +764,7 @@ SDValue R600TargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const
 }
 
 SDValue R600TargetLowering::LowerFPOW(SDValue Op,
-    SelectionDAG &DAG) const
-{
+    SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT VT = Op.getValueType();
   SDValue LogBase = DAG.getNode(ISD::FLOG2, DL, VT, Op.getOperand(0));
@@ -795,8 +782,7 @@ SDValue R600TargetLowering::LowerFormalArguments(
                                       bool isVarArg,
                                       const SmallVectorImpl<ISD::InputArg> &Ins,
                                       DebugLoc DL, SelectionDAG &DAG,
-                                      SmallVectorImpl<SDValue> &InVals) const
-{
+                                      SmallVectorImpl<SDValue> &InVals) const {
   unsigned ParamOffsetBytes = 36;
   for (unsigned i = 0, e = Ins.size(); i < e; ++i) {
     EVT VT = Ins[i].VT;
@@ -822,8 +808,7 @@ EVT R600TargetLowering::getSetCCResultType(EVT VT) const {
 //===----------------------------------------------------------------------===//
 
 SDValue R600TargetLowering::PerformDAGCombine(SDNode *N,
-                                              DAGCombinerInfo &DCI) const
-{
+                                              DAGCombinerInfo &DCI) const {
   SelectionDAG &DAG = DCI.DAG;
 
   switch (N->getOpcode()) {

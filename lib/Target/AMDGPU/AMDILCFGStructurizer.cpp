@@ -58,8 +58,7 @@ STATISTIC(numClonedInstr,           "CFGStructurizer cloned instructions");
 // Miscellaneous utility for CFGStructurizer.
 //
 //===----------------------------------------------------------------------===//
-namespace llvmCFGStruct
-{
+namespace llvmCFGStruct {
 #define SHOWNEWINSTR(i) \
   if (DEBUGME) errs() << "New instr: " << *i << "\n"
 
@@ -108,8 +107,7 @@ void ReverseVector(SmallVector<NodeT *, DEFAULT_VEC_SLOTS> &Src) {
 //
 //===----------------------------------------------------------------------===//
 
-namespace llvmCFGStruct
-{
+namespace llvmCFGStruct {
 template<class PassT>
 struct CFGStructTraits {
 };
@@ -153,12 +151,10 @@ public:
 //
 //===----------------------------------------------------------------------===//
 
-namespace llvmCFGStruct
-{
+namespace llvmCFGStruct {
 // bixia TODO: port it to BasicBlock, not just MachineBasicBlock.
 template<class PassT>
-class  CFGStructurizer
-{
+class  CFGStructurizer {
 public:
   typedef enum {
     Not_SinglePath = 0,
@@ -1570,8 +1566,7 @@ void CFGStructurizer<PassT>::mergeLooplandBlock(BlockT *dstBlk,
 } //mergeLooplandBlock
 
 template<class PassT>
-void CFGStructurizer<PassT>::reversePredicateSetter(typename BlockT::iterator I)
-{
+void CFGStructurizer<PassT>::reversePredicateSetter(typename BlockT::iterator I) {
   while (I--) {
     if (I->getOpcode() == AMDGPU::PRED_X) {
       switch (static_cast<MachineInstr *>(I)->getOperand(2).getImm()) {
@@ -2547,10 +2542,8 @@ CFGStructurizer<PassT>::findNearestCommonPostDom
 
 using namespace llvmCFGStruct;
 
-namespace llvm
-{
-class AMDGPUCFGStructurizer : public MachineFunctionPass
-{
+namespace llvm {
+class AMDGPUCFGStructurizer : public MachineFunctionPass {
 public:
   typedef MachineInstr              InstructionType;
   typedef MachineFunction           FunctionType;
@@ -2596,10 +2589,8 @@ const TargetInstrInfo *AMDGPUCFGStructurizer::getTargetInstrInfo() const {
 
 using namespace llvmCFGStruct;
 
-namespace llvm
-{
-class AMDGPUCFGPrepare : public AMDGPUCFGStructurizer
-{
+namespace llvm {
+class AMDGPUCFGPrepare : public AMDGPUCFGStructurizer {
 public:
   static char ID;
 
@@ -2619,8 +2610,7 @@ char AMDGPUCFGPrepare::ID = 0;
 } //end of namespace llvm
 
 AMDGPUCFGPrepare::AMDGPUCFGPrepare(TargetMachine &tm)
-  : AMDGPUCFGStructurizer(ID, tm ) 
-{
+  : AMDGPUCFGStructurizer(ID, tm )  {
 }
 const char *AMDGPUCFGPrepare::getPassName() const {
   return "AMD IL Control Flow Graph Preparation Pass";
@@ -2643,10 +2633,8 @@ void AMDGPUCFGPrepare::getAnalysisUsage(AnalysisUsage &AU) const {
 
 using namespace llvmCFGStruct;
 
-namespace llvm
-{
-class AMDGPUCFGPerform : public AMDGPUCFGStructurizer
-{
+namespace llvm {
+class AMDGPUCFGPerform : public AMDGPUCFGStructurizer {
 public:
   static char ID;
 
@@ -2664,8 +2652,7 @@ char AMDGPUCFGPerform::ID = 0;
 } //end of namespace llvm
 
   AMDGPUCFGPerform::AMDGPUCFGPerform(TargetMachine &tm)
-: AMDGPUCFGStructurizer(ID, tm)
-{
+: AMDGPUCFGStructurizer(ID, tm) {
 }
 
 const char *AMDGPUCFGPerform::getPassName() const {
@@ -2686,12 +2673,10 @@ void AMDGPUCFGPerform::getAnalysisUsage(AnalysisUsage &AU) const {
 //
 //===----------------------------------------------------------------------===//
 
-namespace llvmCFGStruct
-{
+namespace llvmCFGStruct {
 // this class is tailor to the AMDGPU backend
 template<>
-struct CFGStructTraits<AMDGPUCFGStructurizer>
-{
+struct CFGStructTraits<AMDGPUCFGStructurizer> {
   typedef int RegiT;
 
   static int getBranchNzeroOpcode(int oldOpcode) {

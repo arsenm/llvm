@@ -44,8 +44,7 @@ FunctionPass *llvm::createAMDGPUConvertToISAPass(TargetMachine &tm) {
   return new AMDGPUConvertToISAPass(tm);
 }
 
-bool AMDGPUConvertToISAPass::runOnMachineFunction(MachineFunction &MF)
-{
+bool AMDGPUConvertToISAPass::runOnMachineFunction(MachineFunction &MF) {
   const AMDGPUInstrInfo * TII =
                       static_cast<const AMDGPUInstrInfo*>(TM.getInstrInfo());
 

@@ -25,8 +25,7 @@ R600RegisterInfo::R600RegisterInfo(AMDGPUTargetMachine &tm,
   TII(tii)
   { }
 
-BitVector R600RegisterInfo::getReservedRegs(const MachineFunction &MF) const
-{
+BitVector R600RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
   const R600MachineFunctionInfo * MFI = MF.getInfo<R600MachineFunctionInfo>();
 
@@ -57,8 +56,7 @@ BitVector R600RegisterInfo::getReservedRegs(const MachineFunction &MF) const
 }
 
 const TargetRegisterClass *
-R600RegisterInfo::getISARegClass(const TargetRegisterClass * rc) const
-{
+R600RegisterInfo::getISARegClass(const TargetRegisterClass * rc) const {
   switch (rc->getID()) {
   case AMDGPU::GPRF32RegClassID:
   case AMDGPU::GPRI32RegClassID:
@@ -67,22 +65,19 @@ R600RegisterInfo::getISARegClass(const TargetRegisterClass * rc) const
   }
 }
 
-unsigned R600RegisterInfo::getHWRegChan(unsigned reg) const
-{
+unsigned R600RegisterInfo::getHWRegChan(unsigned reg) const {
   return this->getEncodingValue(reg) >> HW_CHAN_SHIFT;
 }
 
 const TargetRegisterClass * R600RegisterInfo::getCFGStructurizerRegClass(
-                                                                   MVT VT) const
-{
+                                                                   MVT VT) const {
   switch(VT.SimpleTy) {
   default:
   case MVT::i32: return &AMDGPU::R600_TReg32RegClass;
   }
 }
 
-unsigned R600RegisterInfo::getSubRegFromChannel(unsigned Channel) const
-{
+unsigned R600RegisterInfo::getSubRegFromChannel(unsigned Channel) const {
   switch (Channel) {
     default: assert(!"Invalid channel index"); return 0;
     case 0: return AMDGPU::sel_x;

@@ -44,8 +44,7 @@ using namespace llvm;
 //===----------------------------------------------------------------------===//
 // TargetLowering Class Implementation Begins
 //===----------------------------------------------------------------------===//
-void AMDGPUTargetLowering::InitAMDILLowering()
-{
+void AMDGPUTargetLowering::InitAMDILLowering() {
   int types[] =
   {
     (int)MVT::i8,
@@ -239,15 +238,13 @@ void AMDGPUTargetLowering::InitAMDILLowering()
 
 bool
 AMDGPUTargetLowering::getTgtMemIntrinsic(IntrinsicInfo &Info,
-    const CallInst &I, unsigned Intrinsic) const
-{
+    const CallInst &I, unsigned Intrinsic) const {
   return false;
 }
 
 // The backend supports 32 and 64 bit floating point immediates
 bool
-AMDGPUTargetLowering::isFPImmLegal(const APFloat &Imm, EVT VT) const
-{
+AMDGPUTargetLowering::isFPImmLegal(const APFloat &Imm, EVT VT) const {
   if (VT.getScalarType().getSimpleVT().SimpleTy == MVT::f32
       || VT.getScalarType().getSimpleVT().SimpleTy == MVT::f64) {
     return true;
@@ -257,8 +254,7 @@ AMDGPUTargetLowering::isFPImmLegal(const APFloat &Imm, EVT VT) const
 }
 
 bool
-AMDGPUTargetLowering::ShouldShrinkFPConstant(EVT VT) const
-{
+AMDGPUTargetLowering::ShouldShrinkFPConstant(EVT VT) const {
   if (VT.getScalarType().getSimpleVT().SimpleTy == MVT::f32
       || VT.getScalarType().getSimpleVT().SimpleTy == MVT::f64) {
     return false;
@@ -278,8 +274,7 @@ AMDGPUTargetLowering::computeMaskedBitsForTargetNode(
     APInt &KnownZero,
     APInt &KnownOne,
     const SelectionDAG &DAG,
-    unsigned Depth) const
-{
+    unsigned Depth) const {
   APInt KnownZero2;
   APInt KnownOne2;
   KnownZero = KnownOne = APInt(KnownOne.getBitWidth(), 0); // Don't know anything
@@ -313,8 +308,7 @@ AMDGPUTargetLowering::computeMaskedBitsForTargetNode(
 //===----------------------------------------------------------------------===//
 
 SDValue
-AMDGPUTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const {
   EVT OVT = Op.getValueType();
   SDValue DST;
   if (OVT.getScalarType() == MVT::i64) {
@@ -331,8 +325,7 @@ AMDGPUTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const
 }
 
 SDValue
-AMDGPUTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
   EVT OVT = Op.getValueType();
   SDValue DST;
   if (OVT.getScalarType() == MVT::i64) {
@@ -350,8 +343,7 @@ AMDGPUTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const
 }
 
 SDValue
-AMDGPUTargetLowering::LowerSIGN_EXTEND_INREG(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSIGN_EXTEND_INREG(SDValue Op, SelectionDAG &DAG) const {
   SDValue Data = Op.getOperand(0);
   VTSDNode *BaseType = cast<VTSDNode>(Op.getOperand(1));
   DebugLoc DL = Op.getDebugLoc();
@@ -381,8 +373,7 @@ AMDGPUTargetLowering::LowerSIGN_EXTEND_INREG(SDValue Op, SelectionDAG &DAG) cons
   return Data;
 }
 EVT
-AMDGPUTargetLowering::genIntType(uint32_t size, uint32_t numEle) const
-{
+AMDGPUTargetLowering::genIntType(uint32_t size, uint32_t numEle) const {
   int iSize = (size * numEle);
   int vEle = (iSize >> ((size == 64) ? 6 : 5));
   if (!vEle) {
@@ -404,8 +395,7 @@ AMDGPUTargetLowering::genIntType(uint32_t size, uint32_t numEle) const
 }
 
 SDValue
-AMDGPUTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   SDValue Cond  = Op.getOperand(1);
   SDValue Jump  = Op.getOperand(2);
@@ -419,8 +409,7 @@ AMDGPUTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const
 }
 
 SDValue
-AMDGPUTargetLowering::LowerSDIV24(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSDIV24(SDValue Op, SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT OVT = Op.getValueType();
   SDValue LHS = Op.getOperand(0);
@@ -500,8 +489,7 @@ AMDGPUTargetLowering::LowerSDIV24(SDValue Op, SelectionDAG &DAG) const
 }
 
 SDValue
-AMDGPUTargetLowering::LowerSDIV32(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSDIV32(SDValue Op, SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT OVT = Op.getValueType();
   SDValue LHS = Op.getOperand(0);
@@ -567,14 +555,12 @@ AMDGPUTargetLowering::LowerSDIV32(SDValue Op, SelectionDAG &DAG) const
 }
 
 SDValue
-AMDGPUTargetLowering::LowerSDIV64(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSDIV64(SDValue Op, SelectionDAG &DAG) const {
   return SDValue(Op.getNode(), 0);
 }
 
 SDValue
-AMDGPUTargetLowering::LowerSREM8(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSREM8(SDValue Op, SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT OVT = Op.getValueType();
   MVT INTTY = MVT::i32;
@@ -591,8 +577,7 @@ AMDGPUTargetLowering::LowerSREM8(SDValue Op, SelectionDAG &DAG) const
 }
 
 SDValue
-AMDGPUTargetLowering::LowerSREM16(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSREM16(SDValue Op, SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT OVT = Op.getValueType();
   MVT INTTY = MVT::i32;
@@ -609,8 +594,7 @@ AMDGPUTargetLowering::LowerSREM16(SDValue Op, SelectionDAG &DAG) const
 }
 
 SDValue
-AMDGPUTargetLowering::LowerSREM32(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSREM32(SDValue Op, SelectionDAG &DAG) const {
   DebugLoc DL = Op.getDebugLoc();
   EVT OVT = Op.getValueType();
   SDValue LHS = Op.getOperand(0);
@@ -672,7 +656,6 @@ AMDGPUTargetLowering::LowerSREM32(SDValue Op, SelectionDAG &DAG) const
 }
 
 SDValue
-AMDGPUTargetLowering::LowerSREM64(SDValue Op, SelectionDAG &DAG) const
-{
+AMDGPUTargetLowering::LowerSREM64(SDValue Op, SelectionDAG &DAG) const {
   return SDValue(Op.getNode(), 0);
 }

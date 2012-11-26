@@ -86,8 +86,7 @@ FunctionPass *llvm::createAMDGPUISelDag(TargetMachine &TM
 
 AMDGPUDAGToDAGISel::AMDGPUDAGToDAGISel(TargetMachine &TM
                                      )
-  : SelectionDAGISel(TM), Subtarget(TM.getSubtarget<AMDGPUSubtarget>())
-{
+  : SelectionDAGISel(TM), Subtarget(TM.getSubtarget<AMDGPUSubtarget>()) {
 }
 
 AMDGPUDAGToDAGISel::~AMDGPUDAGToDAGISel() {
@@ -181,8 +180,7 @@ bool AMDGPUDAGToDAGISel::checkType(const Value *ptr, unsigned int addrspace) {
   return dyn_cast<PointerType>(ptrType)->getAddressSpace() == addrspace;
 }
 
-const Value * AMDGPUDAGToDAGISel::getBasePointerValue(const Value *V)
-{
+const Value * AMDGPUDAGToDAGISel::getBasePointerValue(const Value *V) {
   if (!V) {
     return NULL;
   }
@@ -353,8 +351,7 @@ bool AMDGPUDAGToDAGISel::SelectADDR8BitOffset(SDValue Addr, SDValue& Base,
 }
 
 bool AMDGPUDAGToDAGISel::SelectADDRVTX_READ(SDValue Addr, SDValue &Base,
-                                           SDValue &Offset)
-{
+                                           SDValue &Offset) {
   ConstantSDNode * IMMOffset;
 
   if (Addr.getOpcode() == ISD::ADD

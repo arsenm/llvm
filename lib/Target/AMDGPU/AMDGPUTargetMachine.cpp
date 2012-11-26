@@ -65,8 +65,7 @@ AMDGPUTargetMachine::AMDGPUTargetMachine(const Target &T, StringRef TT,
   }
 }
 
-AMDGPUTargetMachine::~AMDGPUTargetMachine()
-{
+AMDGPUTargetMachine::~AMDGPUTargetMachine() {
 }
 
 namespace {
@@ -93,8 +92,7 @@ TargetPassConfig *AMDGPUTargetMachine::createPassConfig(PassManagerBase &PM) {
 }
 
 bool
-AMDGPUPassConfig::addPreISel()
-{
+AMDGPUPassConfig::addPreISel() {
   return false;
 }
 

@@ -11,33 +11,28 @@
 
 using namespace llvm;
 // Default implementation for all of the classes.
-AMDGPUDevice::AMDGPUDevice(AMDGPUSubtarget *ST) : mSTM(ST)
-{
+AMDGPUDevice::AMDGPUDevice(AMDGPUSubtarget *ST) : mSTM(ST) {
   mHWBits.resize(AMDGPUDeviceInfo::MaxNumberCapabilities);
   mSWBits.resize(AMDGPUDeviceInfo::MaxNumberCapabilities);
   setCaps();
   mDeviceFlag = OCL_DEVICE_ALL;
 }
 
-AMDGPUDevice::~AMDGPUDevice()
-{
+AMDGPUDevice::~AMDGPUDevice() {
     mHWBits.clear();
     mSWBits.clear();
 }
 
-size_t AMDGPUDevice::getMaxGDSSize() const
-{
+size_t AMDGPUDevice::getMaxGDSSize() const {
   return 0;
 }
 
 uint32_t 
-AMDGPUDevice::getDeviceFlag() const
-{
+AMDGPUDevice::getDeviceFlag() const {
   return mDeviceFlag;
 }
 
-size_t AMDGPUDevice::getMaxNumCBs() const
-{
+size_t AMDGPUDevice::getMaxNumCBs() const {
   if (usesHardware(AMDGPUDeviceInfo::ConstantMem)) {
     return HW_MAX_NUM_CB;
   }
@@ -45,8 +40,7 @@ size_t AMDGPUDevice::getMaxNumCBs() const
   return 0;
 }
 
-size_t AMDGPUDevice::getMaxCBSize() const
-{
+size_t AMDGPUDevice::getMaxCBSize() const {
   if (usesHardware(AMDGPUDeviceInfo::ConstantMem)) {
     return MAX_CB_SIZE;
   }
@@ -54,18 +48,15 @@ size_t AMDGPUDevice::getMaxCBSize() const
   return 0;
 }
 
-size_t AMDGPUDevice::getMaxScratchSize() const
-{
+size_t AMDGPUDevice::getMaxScratchSize() const {
   return 65536;
 }
 
-uint32_t AMDGPUDevice::getStackAlignment() const
-{
+uint32_t AMDGPUDevice::getStackAlignment() const {
   return 16;
 }
 
-void AMDGPUDevice::setCaps()
-{
+void AMDGPUDevice::setCaps() {
   mSWBits.set(AMDGPUDeviceInfo::HalfOps);
   mSWBits.set(AMDGPUDeviceInfo::ByteOps);
   mSWBits.set(AMDGPUDeviceInfo::ShortOps);
@@ -94,8 +85,7 @@ void AMDGPUDevice::setCaps()
 }
 
 AMDGPUDeviceInfo::ExecutionMode
-AMDGPUDevice::getExecutionMode(AMDGPUDeviceInfo::Caps Caps) const
-{
+AMDGPUDevice::getExecutionMode(AMDGPUDeviceInfo::Caps Caps) const {
   if (mHWBits[Caps]) {
     assert(!mSWBits[Caps] && "Cannot set both SW and HW caps");
     return AMDGPUDeviceInfo::Hardware;
@@ -110,24 +100,20 @@ AMDGPUDevice::getExecutionMode(AMDGPUDeviceInfo::Caps Caps) const
 
 }
 
-bool AMDGPUDevice::isSupported(AMDGPUDeviceInfo::Caps Mode) const
-{
+bool AMDGPUDevice::isSupported(AMDGPUDeviceInfo::Caps Mode) const {
   return getExecutionMode(Mode) != AMDGPUDeviceInfo::Unsupported;
 }
 
-bool AMDGPUDevice::usesHardware(AMDGPUDeviceInfo::Caps Mode) const
-{
+bool AMDGPUDevice::usesHardware(AMDGPUDeviceInfo::Caps Mode) const {
   return getExecutionMode(Mode) == AMDGPUDeviceInfo::Hardware;
 }
 
-bool AMDGPUDevice::usesSoftware(AMDGPUDeviceInfo::Caps Mode) const
-{
+bool AMDGPUDevice::usesSoftware(AMDGPUDeviceInfo::Caps Mode) const {
   return getExecutionMode(Mode) == AMDGPUDeviceInfo::Software;
 }
 
 std::string
-AMDGPUDevice::getDataLayout() const
-{
+AMDGPUDevice::getDataLayout() const {
     return std::string("e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16"
       "-i32:32:32-i64:64:64-f32:32:32-f64:64:64-f80:32:32"
       "-v16:16:16-v24:32:32-v32:32:32-v48:64:64-v64:64:64"

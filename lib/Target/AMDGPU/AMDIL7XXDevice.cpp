@@ -12,8 +12,7 @@
 
 using namespace llvm;
 
-AMDGPU7XXDevice::AMDGPU7XXDevice(AMDGPUSubtarget *ST) : AMDGPUDevice(ST)
-{
+AMDGPU7XXDevice::AMDGPU7XXDevice(AMDGPUSubtarget *ST) : AMDGPUDevice(ST) {
   setCaps();
   std::string name = mSTM->getDeviceName();
   if (name == "rv710") {
@@ -25,35 +24,29 @@ AMDGPU7XXDevice::AMDGPU7XXDevice(AMDGPUSubtarget *ST) : AMDGPUDevice(ST)
   }
 }
 
-AMDGPU7XXDevice::~AMDGPU7XXDevice()
-{
+AMDGPU7XXDevice::~AMDGPU7XXDevice() {
 }
 
-void AMDGPU7XXDevice::setCaps()
-{
+void AMDGPU7XXDevice::setCaps() {
   mSWBits.set(AMDGPUDeviceInfo::LocalMem);
 }
 
-size_t AMDGPU7XXDevice::getMaxLDSSize() const
-{
+size_t AMDGPU7XXDevice::getMaxLDSSize() const {
   if (usesHardware(AMDGPUDeviceInfo::LocalMem)) {
     return MAX_LDS_SIZE_700;
   }
   return 0;
 }
 
-size_t AMDGPU7XXDevice::getWavefrontSize() const
-{
+size_t AMDGPU7XXDevice::getWavefrontSize() const {
   return AMDGPUDevice::HalfWavefrontSize;
 }
 
-uint32_t AMDGPU7XXDevice::getGeneration() const
-{
+uint32_t AMDGPU7XXDevice::getGeneration() const {
   return AMDGPUDeviceInfo::HD4XXX;
 }
 
-uint32_t AMDGPU7XXDevice::getResourceID(uint32_t DeviceID) const
-{
+uint32_t AMDGPU7XXDevice::getResourceID(uint32_t DeviceID) const {
   switch (DeviceID) {
   default:
     assert(0 && "ID type passed in is unknown!");
@@ -84,22 +77,18 @@ uint32_t AMDGPU7XXDevice::getResourceID(uint32_t DeviceID) const
   return 0;
 }
 
-uint32_t AMDGPU7XXDevice::getMaxNumUAVs() const
-{
+uint32_t AMDGPU7XXDevice::getMaxNumUAVs() const {
   return 1;
 }
 
-AMDGPU770Device::AMDGPU770Device(AMDGPUSubtarget *ST): AMDGPU7XXDevice(ST)
-{
+AMDGPU770Device::AMDGPU770Device(AMDGPUSubtarget *ST): AMDGPU7XXDevice(ST) {
   setCaps();
 }
 
-AMDGPU770Device::~AMDGPU770Device()
-{
+AMDGPU770Device::~AMDGPU770Device() {
 }
 
-void AMDGPU770Device::setCaps()
-{
+void AMDGPU770Device::setCaps() {
   if (mSTM->isOverride(AMDGPUDeviceInfo::DoubleOps)) {
     mSWBits.set(AMDGPUDeviceInfo::FMA);
     mHWBits.set(AMDGPUDeviceInfo::DoubleOps);
@@ -110,20 +99,16 @@ void AMDGPU770Device::setCaps()
   mSWBits.set(AMDGPUDeviceInfo::LocalMem);
 }
 
-size_t AMDGPU770Device::getWavefrontSize() const
-{
+size_t AMDGPU770Device::getWavefrontSize() const {
   return AMDGPUDevice::WavefrontSize;
 }
 
-AMDGPU710Device::AMDGPU710Device(AMDGPUSubtarget *ST) : AMDGPU7XXDevice(ST)
-{
+AMDGPU710Device::AMDGPU710Device(AMDGPUSubtarget *ST) : AMDGPU7XXDevice(ST) {
 }
 
-AMDGPU710Device::~AMDGPU710Device()
-{
+AMDGPU710Device::~AMDGPU710Device() {
 }
 
-size_t AMDGPU710Device::getWavefrontSize() const
-{
+size_t AMDGPU710Device::getWavefrontSize() const {
   return AMDGPUDevice::QuarterWavefrontSize;
 }

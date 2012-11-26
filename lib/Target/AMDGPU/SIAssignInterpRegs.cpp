@@ -65,8 +65,7 @@ FunctionPass *llvm::createSIAssignInterpRegsPass(TargetMachine &tm) {
   return new SIAssignInterpRegsPass(tm);
 }
 
-bool SIAssignInterpRegsPass::runOnMachineFunction(MachineFunction &MF)
-{
+bool SIAssignInterpRegsPass::runOnMachineFunction(MachineFunction &MF) {
 
   struct InterpInfo InterpUse[INTERP_VALUES] = {
     {false, {AMDGPU::PERSP_SAMPLE_I, AMDGPU::PERSP_SAMPLE_J}, 2},
@@ -136,8 +135,7 @@ bool SIAssignInterpRegsPass::runOnMachineFunction(MachineFunction &MF)
 
 void SIAssignInterpRegsPass::addLiveIn(MachineFunction * MF,
                            MachineRegisterInfo & MRI,
-                           unsigned physReg, unsigned virtReg)
-{
+                           unsigned physReg, unsigned virtReg) {
     const TargetInstrInfo * TII = TM.getInstrInfo();
     if (!MRI.isLiveIn(physReg)) {
       MRI.addLiveIn(physReg, virtReg);
