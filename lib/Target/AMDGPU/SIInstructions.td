@@ -6,6 +6,10 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+// This file was originally auto-generated from a GPU register header file and
+// all the instruction definitions were originally commented out.  Instructions
+// that are not yet supported remain commented out.
+//===----------------------------------------------------------------------===//
 
 def isSI : Predicate<"Subtarget.device()"
                             "->getGeneration() == AMDGPUDeviceInfo::HD7XXX">;

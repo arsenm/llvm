@@ -37,8 +37,6 @@ AMDGPUIntrinsicInfo::getName(unsigned int IntrID, Type **Tys,
 #undef GET_INTRINSIC_NAME_TABLE
   };
 
-  //assert(!isOverloaded(IntrID)
-  //&& "AMDGPU Intrinsics are not overloaded");
   if (IntrID < Intrinsic::num_intrinsics) {
     return 0;
   }

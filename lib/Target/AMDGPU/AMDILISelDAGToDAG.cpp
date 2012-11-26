@@ -211,7 +211,7 @@ const Value * AMDGPUDAGToDAGISel::getBasePointerValue(const Value *V) {
           ValueQueue.push(I->getOperand(x));
         }
       } else {
-        // assert(0 && "Found a Value that we didn't know how to handle!");
+        assert(!"Found a Value that we didn't know how to handle!");
       }
     }
     ValueQueue.pop();

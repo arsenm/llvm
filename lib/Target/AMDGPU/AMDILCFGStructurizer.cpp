@@ -325,33 +325,13 @@ bool CFGStructurizer<PassT>::prepare(FuncT &func, PassT &pass,
   TRI = tri;
 
   bool changed = false;
-  //func.RenumberBlocks();
 
-  //to do, if not reducible flow graph, make it so ???
+  //FIXME: if not reducible flow graph, make it so ???
 
   if (DEBUGME) {
         errs() << "AMDGPUCFGStructurizer::prepare\n";
-    //func.viewCFG();
-    //func.viewCFGOnly();
-    //func.dump();
   }
 
-  //FIXME: gcc complains on this.
-  //domTree = &pass.getAnalysis<DomTreeT>();
-      //domTree = CFGTraits::getDominatorTree(pass);
-      //if (DEBUGME) {
-      //    domTree->print(errs());
-    //}
-
-  //FIXME: gcc complains on this.
-  //domTree = &pass.getAnalysis<DomTreeT>();
-      //postDomTree = CFGTraits::getPostDominatorTree(pass);
-      //if (DEBUGME) {
-      //   postDomTree->print(errs());
-    //}
-
-  //FIXME: gcc complains on this.
-  //loopInfo = &pass.getAnalysis<LoopInfoT>();
   loopInfo = CFGTraits::getLoopInfo(pass);
   if (DEBUGME) {
     errs() << "LoopInfo:\n";
@@ -394,8 +374,6 @@ bool CFGStructurizer<PassT>::prepare(FuncT &func, PassT &pass,
       retBlks.push_back(curBlk);
     }
     assert(curBlk->succ_size() <= 2);
-    //assert(curBlk->size() > 0);
-    //removeEmptyBlock(curBlk) ??
   } //for
 
   if (retBlks.size() >= 2) {
@@ -413,35 +391,22 @@ bool CFGStructurizer<PassT>::run(FuncT &func, PassT &pass,
   funcRep = &func;
   TRI = tri;
 
-  //func.RenumberBlocks();
-
   //Assume reducible CFG...
   if (DEBUGME) {
     errs() << "AMDGPUCFGStructurizer::run\n";
-    //errs() << func.getFunction()->getNameStr() << "\n";
     func.viewCFG();
-    //func.viewCFGOnly();
-    //func.dump();
   }
 
-#if 1
-  //FIXME: gcc complains on this.
-  //domTree = &pass.getAnalysis<DomTreeT>();
   domTree = CFGTraits::getDominatorTree(pass);
   if (DEBUGME) {
     domTree->print(errs(), (const llvm::Module*)0);
   }
-#endif
 
-  //FIXME: gcc complains on this.
-  //domTree = &pass.getAnalysis<DomTreeT>();
   postDomTree = CFGTraits::getPostDominatorTree(pass);
   if (DEBUGME) {
     postDomTree->print(errs());
   }
 
-  //FIXME: gcc complains on this.
-  //loopInfo = &pass.getAnalysis<LoopInfoT>();
   loopInfo = CFGTraits::getLoopInfo(pass);
   if (DEBUGME) {
     errs() << "LoopInfo:\n";
@@ -449,7 +414,6 @@ bool CFGStructurizer<PassT>::run(FuncT &func, PassT &pass,
   }
 
   orderBlocks();
-//#define STRESSTEST
 #ifdef STRESSTEST
   //Use the worse block ordering to test the algorithm.
   ReverseVector(orderedBlks);
@@ -526,7 +490,6 @@ bool CFGStructurizer<PassT>::run(FuncT &func, PassT &pass,
             errs() << "repeat processing SCC" << getSCCNum(curBlk)
                    << "sccNumIter = " << sccNumIter << "\n";
             func.viewCFG();
-            //func.viewCFGOnly();
           }
         } else {
           // Finish the current scc.
@@ -590,7 +553,6 @@ bool CFGStructurizer<PassT>::run(FuncT &func, PassT &pass,
 
   if (DEBUGME) {
     func.viewCFG();
-    //func.dump();
   }
 
   if (!finish) {
@@ -673,7 +635,6 @@ int CFGStructurizer<PassT>::patternMatchGroup(BlockT *curBlk) {
   int numMatch = 0;
   numMatch += serialPatternMatch(curBlk);
   numMatch += ifPatternMatch(curBlk);
-  //numMatch += switchPatternMatch(curBlk);
   numMatch += loopendPatternMatch(curBlk);
   numMatch += loopPatternMatch(curBlk);
   return numMatch;
@@ -915,10 +876,8 @@ int CFGStructurizer<PassT>::loopbreakPatternMatch(LoopT *loopRep,
     } // check all exit blocks
 
     if (allNotInPath) {
-#if 1
 
       // TODO: Simplify, maybe separate function?
-      //funcRep->viewCFG();
       LoopT *parentLoopRep = loopRep->getParentLoop();
       BlockT *parentLoopHeader = NULL;
       if (parentLoopRep)
@@ -944,9 +903,6 @@ int CFGStructurizer<PassT>::loopbreakPatternMatch(LoopT *loopRep,
         }
         return -1;
       }
-#else
-      return -1;
-#endif
     }
 
     // Handle side entry to exit path.
@@ -996,7 +952,6 @@ int CFGStructurizer<PassT>::loopbreakPatternMatch(LoopT *loopRep,
     }
   } // else
 
-  // LoopT *exitLandLoop = loopInfo->getLoopFor(exitLandBlk);
   exitLandBlk = recordLoopLandBlock(loopRep, exitLandBlk, exitBlks, exitBlkSet);
 
   // Fold break into the breaking block. Leverage across level breaks.
@@ -1107,8 +1062,7 @@ int CFGStructurizer<PassT>::handleJumpintoIfImp(BlockT *headBlk,
       errs() << "check down = BB" << downBlk->getNumber();
     }
 
-    if (//postDomTree->dominates(downBlk, falseBlk) &&
-        singlePathTo(falseBlk, downBlk) == SinglePath_InPath) {
+    if (singlePathTo(falseBlk, downBlk) == SinglePath_InPath) {
       if (DEBUGME) {
         errs() << " working\n";
       }
@@ -1120,7 +1074,7 @@ int CFGStructurizer<PassT>::handleJumpintoIfImp(BlockT *headBlk,
       num += serialPatternMatch(*headBlk->succ_begin());
       num += serialPatternMatch(*(++headBlk->succ_begin()));
       num += ifPatternMatch(headBlk);
-      assert(num > 0); //
+      assert(num > 0);
 
       break;
     }
@@ -1195,16 +1149,6 @@ int CFGStructurizer<PassT>::improveSimpleJumpintoIf(BlockT *headBlk,
     return 0;
   }
 
-#if 0
-  if (DEBUGME) {
-    errs() << "improveSimpleJumpintoIf: ";
-    showImproveSimpleJumpintoIf(headBlk, trueBlk, falseBlk, landBlk, 0);
-  }
-#endif
-
-  // unsigned landPredSize = landBlk ? landBlk->pred_size() : 0;
-  // May consider the # landBlk->pred_size() as it represents the number of
-  // assignment initReg = .. needed to insert.
   migrateTrue = needMigrateBlock(trueBlk);
   migrateFalse = needMigrateBlock(falseBlk);
 
@@ -1225,7 +1169,6 @@ int CFGStructurizer<PassT>::improveSimpleJumpintoIf(BlockT *headBlk,
   if (DEBUGME) {
     errs() << "before improveSimpleJumpintoIf: ";
     showImproveSimpleJumpintoIf(headBlk, trueBlk, falseBlk, landBlk, 0);
-    //showImproveSimpleJumpintoIf(headBlk, trueBlk, falseBlk, landBlk, 1);
   }
 
   // org: headBlk => if () {trueBlk} else {falseBlk} => landBlk
@@ -1308,7 +1251,6 @@ int CFGStructurizer<PassT>::improveSimpleJumpintoIf(BlockT *headBlk,
     // (initVal != 0)
     CFGTraits::insertAssignInstrBefore(falseBlk, passRep, initReg, 0);
   }
-  //CFGTraits::insertInstrBefore(insertPos, AMDGPU::ENDIF, passRep);
 
   if (landBlkHasOtherPred) {
     // add endif
@@ -1327,7 +1269,6 @@ int CFGStructurizer<PassT>::improveSimpleJumpintoIf(BlockT *headBlk,
   if (DEBUGME) {
     errs() << "result from improveSimpleJumpintoIf: ";
     showImproveSimpleJumpintoIf(headBlk, trueBlk, falseBlk, landBlk, 0);
-    //showImproveSimpleJumpintoIf(headBlk, trueBlk, falseBlk, landBlk, 1);
   }
 
   // update landBlk
@@ -1395,7 +1336,6 @@ void CFGStructurizer<PassT>::handleLoopcontBlock(BlockT *contingBlk,
   }
 
   settleLoopcontBlock(contingBlk, contBlk, initReg);
-  //contingBlk->removeSuccessor(loopHeader);
 } //handleLoopcontBlock
 
 template<class PassT>
@@ -1404,7 +1344,6 @@ void CFGStructurizer<PassT>::mergeSerialBlock(BlockT *dstBlk, BlockT *srcBlk) {
     errs() << "serialPattern BB" << dstBlk->getNumber()
            << " <= BB" << srcBlk->getNumber() << "\n";
   }
-  //removeUnconditionalBranch(dstBlk);
   dstBlk->splice(dstBlk->end(), srcBlk, srcBlk->begin(), srcBlk->end());
 
   dstBlk->removeSuccessor(srcBlk);
@@ -1480,7 +1419,6 @@ void CFGStructurizer<PassT>::mergeIfthenelseBlock(InstrT *branchInstr,
   }
   CFGTraits::insertInstrBefore(branchInstrPos, AMDGPU::ENDIF, passRep);
 
-  //curBlk->remove(branchInstrPos);
   branchInstr->eraseFromParent();
 
   if (landBlk && trueBlk && falseBlk) {
@@ -1641,7 +1579,6 @@ void CFGStructurizer<PassT>::mergeLoopbreakBlock(BlockT *exitingBlk,
   } //if_logical
 
   //now branchInst can be erase safely
-  //exitingBlk->eraseFromParent(branchInstr);
   branchInstr->eraseFromParent();
 
   //now take care of successors, retire blocks
@@ -1712,12 +1649,11 @@ void CFGStructurizer<PassT>::settleLoopcontBlock(BlockT *contingBlk,
       CFGTraits::insertCondBranchBefore(branchInstrPos, branchOpcode, passRep, DL);
     }
 
-    //contingBlk->eraseFromParent(branchInstr);
     branchInstr->eraseFromParent();
   } else {
-    /* if we've arrived here then we've already erased the branch instruction
-	 * travel back up the basic block to see the last reference of our debug location
-	 * we've just inserted that reference here so it should be representative */
+    // if we've arrived here then we've already erased the branch instruction
+    // travel back up the basic block to see the last reference of our debug location
+    // we've just inserted that reference here so it should be representative
     if (setReg != INVALIDREGNUM) {
       CFGTraits::insertAssignInstrBefore(contingBlk, passRep, setReg, 1);
       // insertEnd to ensure phi-moves, if exist, go before the continue-instr.
@@ -1747,7 +1683,6 @@ CFGStructurizer<PassT>::relocateLoopcontBlock(LoopT *parentLoopRep,
                                               BlockT *exitLandBlk) {
   std::set<BlockT *> endBlkSet;
 
-//  BlockT *parentLoopHead = parentLoopRep->getHeader();
 
 
   for (typename std::set<BlockT *>::const_iterator iter = exitBlkSet.begin(),
@@ -2153,17 +2088,6 @@ void CFGStructurizer<PassT>::addDummyExitBlock(SmallVector<BlockT*,
     if (curInstr) {
       curInstr->eraseFromParent();
     }
-#if 0
-    if (curBlk->size()==0 && curBlk->pred_size() == 1) {
-      if (DEBUGME) {
-        errs() << "Replace empty block BB" <<  curBlk->getNumber()
-          << " with dummyExitBlock\n";
-      }
-      BlockT *predb = *curBlk->pred_begin();
-      predb->removeSuccessor(curBlk);
-      curBlk = predb;
-    } //handle empty curBlk
-#endif
     curBlk->addSuccessor(dummyExitBlk);
     if (DEBUGME) {
       errs() << "Add dummyExitBlock to BB" << curBlk->getNumber()
@@ -2211,8 +2135,6 @@ void CFGStructurizer<PassT>::retireBlock(BlockT *dstBlk, BlockT *srcBlk) {
   }
 
   srcBlkInfo->isRetired = true;
-  //int i = srcBlk->succ_size();
-  //int j = srcBlk->pred_size();
   assert(srcBlk->succ_size() == 0 && srcBlk->pred_size() == 0
          && "can't retire block yet");
 }
@@ -2560,13 +2482,11 @@ protected:
 public:
   AMDGPUCFGStructurizer(char &pid, TargetMachine &tm);
   const TargetInstrInfo *getTargetInstrInfo() const;
-  //bool runOnMachineFunction(MachineFunction &F);
 
 private:
 
 };   //end of class AMDGPUCFGStructurizer
 
-//char AMDGPUCFGStructurizer::ID = 0;
 } //end of namespace llvm
 AMDGPUCFGStructurizer::AMDGPUCFGStructurizer(char &pid, TargetMachine &tm
                                           )
@@ -3043,7 +2963,6 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
     MachineFunction *func = srcBlk->getParent();
     MachineBasicBlock *newBlk = func->CreateMachineBasicBlock();
     func->push_back(newBlk);  //insert to function
-    //newBlk->setNumber(srcBlk->getNumber());
     for (MachineBasicBlock::iterator iter = srcBlk->begin(),
          iterEnd = srcBlk->end();
          iter != iterEnd; ++iter) {
