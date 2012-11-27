@@ -975,6 +975,9 @@ let Predicates = [isR600] in {
     let Inst{63} = 1; // BARRIER
   }
 
+  def : Pat<(fsqrt R600_Reg32:$src),
+    (MUL R600_Reg32:$src, (RECIPSQRT_CLAMPED_r600 R600_Reg32:$src))>;
+
   defm : ExportPattern<R600_Export, 39>;
 }
 
