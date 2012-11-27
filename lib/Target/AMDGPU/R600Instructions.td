@@ -969,8 +969,8 @@ let Predicates = [isR600] in {
   def R600_Export : ExportInst
   {
     let Inst{52-49} = 1; // BURST_COUNT
-    let Inst{53} = 1; // VALID_PIXEL_MODE
-    let Inst{54} = eop;
+    let Inst{53} = eop;
+    let Inst{54} = 1; // VALID_PIXEL_MODE
     let Inst{62-55} = inst;
     let Inst{63} = 1; // BARRIER
   }
