@@ -326,8 +326,8 @@ class R600_TEX <bits<11> inst, string opName, list<dag> pattern,
                 InstrItinClass itin = AnyALU> :
   InstR600 <inst,
           (outs R600_Reg128:$dst),
-          (ins R600_Reg128:$src0, i32imm:$src1, i32imm:$src2),
-          !strconcat(opName, "$dst, $src0, $src1, $src2"),
+          (ins R600_Reg128:$src0, i32imm:$resourceId, i32imm:$samplerId, i32imm:$textureTarget),
+          !strconcat(opName, "$dst, $src0, $resourceId, $samplerId, $textureTarget"),
           pattern,
           itin>{
     let Inst {10-0} = inst;
@@ -696,25 +696,25 @@ def CNDGT_INT : R600_3OP <
 
 def TEX_LD : R600_TEX <
   0x03, "TEX_LD",
-  [(set R600_Reg128:$dst, (int_AMDGPU_txf R600_Reg128:$src0, imm:$src1, imm:$src2, imm:$src3, imm:$src4, imm:$src5))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txf R600_Reg128:$src0, imm:$src1, imm:$src2, imm:$src3, imm:$resourceId, imm:$samplerId, imm:$textureTarget))]
 > {
-let AsmString = "TEX_LD $dst, $src0, $src1, $src2, $src3, $src4, $src5";
-let InOperandList = (ins R600_Reg128:$src0, i32imm:$src1, i32imm:$src2, i32imm:$src3, i32imm:$src4, i32imm:$src5);
+let AsmString = "TEX_LD $dst, $src0, $src1, $src2, $src3, $resourceId, $samplerId, $textureTarget";
+let InOperandList = (ins R600_Reg128:$src0, i32imm:$src1, i32imm:$src2, i32imm:$src3, i32imm:$resourceId, i32imm:$samplerId, i32imm:$textureTarget);
 }
 
 def TEX_GET_TEXTURE_RESINFO : R600_TEX <
   0x04, "TEX_GET_TEXTURE_RESINFO",
-  [(set R600_Reg128:$dst, (int_AMDGPU_txq R600_Reg128:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txq R600_Reg128:$src0, imm:$resourceId, imm:$samplerId, imm:$textureTarget))]
 >;
 
 def TEX_GET_GRADIENTS_H : R600_TEX <
   0x07, "TEX_GET_GRADIENTS_H",
-  [(set R600_Reg128:$dst, (int_AMDGPU_ddx R600_Reg128:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_ddx R600_Reg128:$src0, imm:$resourceId, imm:$samplerId, imm:$textureTarget))]
 >;
 
 def TEX_GET_GRADIENTS_V : R600_TEX <
   0x08, "TEX_GET_GRADIENTS_V",
-  [(set R600_Reg128:$dst, (int_AMDGPU_ddy R600_Reg128:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_ddy R600_Reg128:$src0, imm:$resourceId, imm:$samplerId, imm:$textureTarget))]
 >;
 
 def TEX_SET_GRADIENTS_H : R600_TEX <
@@ -729,32 +729,32 @@ def TEX_SET_GRADIENTS_V : R600_TEX <
 
 def TEX_SAMPLE : R600_TEX <
   0x10, "TEX_SAMPLE",
-  [(set R600_Reg128:$dst, (int_AMDGPU_tex R600_Reg128:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_tex R600_Reg128:$src0, imm:$resourceId, imm:$samplerId, imm:$textureTarget))]
 >;
 
 def TEX_SAMPLE_C : R600_TEX <
   0x18, "TEX_SAMPLE_C",
-  [(set R600_Reg128:$dst, (int_AMDGPU_tex R600_Reg128:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_tex R600_Reg128:$src0, imm:$resourceId, imm:$samplerId, TEX_SHADOW:$textureTarget))]
 >;
 
 def TEX_SAMPLE_L : R600_TEX <
   0x11, "TEX_SAMPLE_L",
-  [(set R600_Reg128:$dst, (int_AMDGPU_txl R600_Reg128:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txl R600_Reg128:$src0, imm:$resourceId, imm:$samplerId, imm:$textureTarget))]
 >;
 
 def TEX_SAMPLE_C_L : R600_TEX <
   0x19, "TEX_SAMPLE_C_L",
-  [(set R600_Reg128:$dst, (int_AMDGPU_txl R600_Reg128:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txl R600_Reg128:$src0, imm:$resourceId, imm:$samplerId, TEX_SHADOW:$textureTarget))]
 >;
 
 def TEX_SAMPLE_LB : R600_TEX <
   0x12, "TEX_SAMPLE_LB",
-  [(set R600_Reg128:$dst, (int_AMDGPU_txb R600_Reg128:$src0, imm:$src1, imm:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txb R600_Reg128:$src0,imm:$resourceId, imm:$samplerId, imm:$textureTarget))]
 >;
 
 def TEX_SAMPLE_C_LB : R600_TEX <
   0x1A, "TEX_SAMPLE_C_LB",
-  [(set R600_Reg128:$dst, (int_AMDGPU_txb R600_Reg128:$src0, imm:$src1, TEX_SHADOW:$src2))]
+  [(set R600_Reg128:$dst, (int_AMDGPU_txb R600_Reg128:$src0, imm:$resourceId, imm:$samplerId, TEX_SHADOW:$textureTarget))]
 >;
 
 def TEX_SAMPLE_G : R600_TEX <
@@ -1451,16 +1451,16 @@ def RESERVE_REG : AMDGPUShaderInst <
 
 def TXD: AMDGPUShaderInst <
   (outs R600_Reg128:$dst),
-  (ins R600_Reg128:$src0, R600_Reg128:$src1, R600_Reg128:$src2, i32imm:$src3, i32imm:$src4),
-  "TXD $dst, $src0, $src1, $src2, $src3, $src4",
-  [(set R600_Reg128:$dst, (int_AMDGPU_txd R600_Reg128:$src0, R600_Reg128:$src1, R600_Reg128:$src2, imm:$src3, imm:$src4))]
+  (ins R600_Reg128:$src0, R600_Reg128:$src1, R600_Reg128:$src2, i32imm:$resourceId, i32imm:$samplerId, i32imm:$textureTarget),
+  "TXD $dst, $src0, $src1, $src2, $resourceId, $samplerId, $textureTarget",
+  [(set R600_Reg128:$dst, (int_AMDGPU_txd R600_Reg128:$src0, R600_Reg128:$src1, R600_Reg128:$src2, imm:$resourceId, imm:$samplerId, imm:$textureTarget))]
 >;
 
 def TXD_SHADOW: AMDGPUShaderInst <
   (outs R600_Reg128:$dst),
-  (ins R600_Reg128:$src0, R600_Reg128:$src1, R600_Reg128:$src2, i32imm:$src3, i32imm:$src4),
-  "TXD_SHADOW $dst, $src0, $src1, $src2, $src3, $src4",
-  [(set R600_Reg128:$dst, (int_AMDGPU_txd R600_Reg128:$src0, R600_Reg128:$src1, R600_Reg128:$src2, imm:$src3, TEX_SHADOW:$src4))]
+  (ins R600_Reg128:$src0, R600_Reg128:$src1, R600_Reg128:$src2, i32imm:$resourceId, i32imm:$samplerId, i32imm:$textureTarget),
+  "TXD_SHADOW $dst, $src0, $src1, $src2, $resourceId, $samplerId, $textureTarget",
+  [(set R600_Reg128:$dst, (int_AMDGPU_txd R600_Reg128:$src0, R600_Reg128:$src1, R600_Reg128:$src2, imm:$resourceId, imm:$samplerId, TEX_SHADOW:$textureTarget))]
 >;
 
 } // End isPseudo = 1

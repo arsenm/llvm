@@ -186,16 +186,19 @@ MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
       BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_H), t0)
               .addOperand(MI->getOperand(3))
               .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5));
+              .addOperand(MI->getOperand(5))
+              .addOperand(MI->getOperand(6));
       BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_V), t1)
               .addOperand(MI->getOperand(2))
               .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5));
+              .addOperand(MI->getOperand(5))
+              .addOperand(MI->getOperand(6));
       BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SAMPLE_G))
               .addOperand(MI->getOperand(0))
               .addOperand(MI->getOperand(1))
               .addOperand(MI->getOperand(4))
               .addOperand(MI->getOperand(5))
+              .addOperand(MI->getOperand(6))
               .addReg(t0, RegState::Implicit)
               .addReg(t1, RegState::Implicit);
       break;
@@ -208,16 +211,19 @@ MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
       BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_H), t0)
               .addOperand(MI->getOperand(3))
               .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5));
+              .addOperand(MI->getOperand(5))
+              .addOperand(MI->getOperand(6));
       BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_V), t1)
               .addOperand(MI->getOperand(2))
               .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5));
+              .addOperand(MI->getOperand(5))
+              .addOperand(MI->getOperand(6));
       BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SAMPLE_C_G))
               .addOperand(MI->getOperand(0))
               .addOperand(MI->getOperand(1))
               .addOperand(MI->getOperand(4))
               .addOperand(MI->getOperand(5))
+              .addOperand(MI->getOperand(6))
               .addReg(t0, RegState::Implicit)
               .addReg(t1, RegState::Implicit);
       break;

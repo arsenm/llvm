@@ -336,11 +336,12 @@ void R600MCCodeEmitter::EmitTexInstr(const MCInst &MI,
                                      SmallVectorImpl<MCFixup> &Fixups,
                                      raw_ostream &OS) const {
 
-  unsigned opcode = MI.getOpcode();
-  bool hasOffsets = (opcode == AMDGPU::TEX_LD);
-  unsigned op_offset = hasOffsets ? 3 : 0;
-  int64_t sampler = MI.getOperand(op_offset+2).getImm();
-  int64_t textureType = MI.getOperand(op_offset+3).getImm();
+  unsigned Opcode = MI.getOpcode();
+  bool hasOffsets = (Opcode == AMDGPU::TEX_LD);
+  unsigned OpOffset = hasOffsets ? 3 : 0;
+  int64_t Resource = MI.getOperand(OpOffset + 2).getImm();
+  int64_t Sampler = MI.getOperand(OpOffset + 3).getImm();
+  int64_t TextureType = MI.getOperand(OpOffset + 4).getImm();
   unsigned srcSelect[4] = {0, 1, 2, 3};
 
   // Emit instruction type
@@ -349,8 +350,8 @@ void R600MCCodeEmitter::EmitTexInstr(const MCInst &MI,
   // Emit instruction
   EmitByte(getBinaryCodeForInstr(MI, Fixups), OS);
 
-  // XXX: Emit resource id (sampler + 3 (R600_MAX_CONST_BUFFERS) )
-  EmitByte(sampler + 3, OS);
+  // Emit resource id
+  EmitByte(Resource, OS);
 
   // Emit source register
   EmitByte(getHWReg(MI.getOperand(1).getReg()), OS);
@@ -376,22 +377,22 @@ void R600MCCodeEmitter::EmitTexInstr(const MCInst &MI,
   // XXX: Emit coord types
   unsigned coordType[4] = {1, 1, 1, 1};
 
-  if (textureType == TEXTURE_RECT
-      || textureType == TEXTURE_SHADOWRECT) {
+  if (TextureType == TEXTURE_RECT
+      || TextureType == TEXTURE_SHADOWRECT) {
     coordType[ELEMENT_X] = 0;
     coordType[ELEMENT_Y] = 0;
   }
 
-  if (textureType == TEXTURE_1D_ARRAY
-      || textureType == TEXTURE_SHADOW1D_ARRAY) {
-    if (opcode == AMDGPU::TEX_SAMPLE_C_L || opcode == AMDGPU::TEX_SAMPLE_C_LB) {
+  if (TextureType == TEXTURE_1D_ARRAY
+      || TextureType == TEXTURE_SHADOW1D_ARRAY) {
+    if (Opcode == AMDGPU::TEX_SAMPLE_C_L || Opcode == AMDGPU::TEX_SAMPLE_C_LB) {
       coordType[ELEMENT_Y] = 0;
     } else {
       coordType[ELEMENT_Z] = 0;
       srcSelect[ELEMENT_Z] = ELEMENT_Y;
     }
-  } else if (textureType == TEXTURE_2D_ARRAY
-             || textureType == TEXTURE_SHADOW2D_ARRAY) {
+  } else if (TextureType == TEXTURE_2D_ARRAY
+             || TextureType == TEXTURE_SHADOW2D_ARRAY) {
     coordType[ELEMENT_Z] = 0;
   }
 
@@ -407,15 +408,15 @@ void R600MCCodeEmitter::EmitTexInstr(const MCInst &MI,
 	  EmitNullBytes(3, OS);
 
   // Emit sampler id
-  EmitByte(sampler, OS);
+  EmitByte(Sampler, OS);
 
   // XXX:Emit source select
-  if ((textureType == TEXTURE_SHADOW1D
-      || textureType == TEXTURE_SHADOW2D
-      || textureType == TEXTURE_SHADOWRECT
-      || textureType == TEXTURE_SHADOW1D_ARRAY)
-      && opcode != AMDGPU::TEX_SAMPLE_C_L
-      && opcode != AMDGPU::TEX_SAMPLE_C_LB) {
+  if ((TextureType == TEXTURE_SHADOW1D
+      || TextureType == TEXTURE_SHADOW2D
+      || TextureType == TEXTURE_SHADOWRECT
+      || TextureType == TEXTURE_SHADOW1D_ARRAY)
+      && Opcode != AMDGPU::TEX_SAMPLE_C_L
+      && Opcode != AMDGPU::TEX_SAMPLE_C_LB) {
     srcSelect[ELEMENT_W] = ELEMENT_Z;
   }
 
