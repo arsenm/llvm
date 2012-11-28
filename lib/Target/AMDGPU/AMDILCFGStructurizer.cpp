@@ -1291,11 +1291,11 @@ int CFGStructurizer<PassT>::improveSimpleJumpintoIf(BlockT *headBlk,
     CFGTraits::insertCompareInstrBefore(landBlk, insertPos, passRep, cmpResReg,
                                         initReg, immReg);
     CFGTraits::insertCondBranchBefore(landBlk, insertPos,
-                                      AMDGPU::IF_LOGICALZ_i32, passRep,
+                                      AMDGPU::IF_PREDICATE_SET, passRep,
                                       cmpResReg, DebugLoc());
   }
 
-  CFGTraits::insertCondBranchBefore(landBlk, insertPos, AMDGPU::IF_LOGICALNZ_i32,
+  CFGTraits::insertCondBranchBefore(landBlk, insertPos, AMDGPU::IF_PREDICATE_SET,
                                     passRep, initReg, DebugLoc());
 
   if (migrateTrue) {
@@ -1546,7 +1546,7 @@ void CFGStructurizer<PassT>::mergeLooplandBlock(BlockT *dstBlk,
   for (typename std::set<RegiT>::const_iterator iter =
          loopLand->breakOnRegs.begin(),
        iterEnd = loopLand->breakOnRegs.end(); iter != iterEnd; ++iter) {
-    CFGTraits::insertCondBranchEnd(dstBlk, AMDGPU::BREAK_LOGICALNZ_i32, passRep,
+    CFGTraits::insertCondBranchEnd(dstBlk, AMDGPU::PREDICATED_BREAK, passRep,
                                    *iter);
   }
 
@@ -1630,14 +1630,12 @@ void CFGStructurizer<PassT>::mergeLoopbreakBlock(BlockT *exitingBlk,
     if (trueBranch != exitBlk) {
       reversePredicateSetter(branchInstrPos);
     }
-    int newOpcode = CFGTraits::getBreakZeroOpcode(oldOpcode);
-    CFGTraits::insertCondBranchBefore(branchInstrPos, newOpcode, passRep, DL);
+    CFGTraits::insertCondBranchBefore(branchInstrPos, AMDGPU::PREDICATED_BREAK, passRep, DL);
   } else {
     if (trueBranch != exitBlk) {
       reversePredicateSetter(branchInstr);
     }
-    int newOpcode = CFGTraits::getBreakZeroOpcode(oldOpcode);
-    CFGTraits::insertCondBranchBefore(branchInstrPos, newOpcode, passRep, DL);
+    CFGTraits::insertCondBranchBefore(branchInstrPos, AMDGPU::PREDICATED_BREAK, passRep, DL);
     if (exitBlk != exitLandBlk) {
       //splice is insert-before ...
       exitingBlk->splice(branchInstrPos, exitBlk, exitBlk->begin(),
@@ -2696,27 +2694,9 @@ struct CFGStructTraits<AMDGPUCFGStructurizer>
 {
   typedef int RegiT;
 
-  static int getBreakNzeroOpcode(int oldOpcode) {
-    switch(oldOpcode) {
-      case AMDGPU::JUMP: return AMDGPU::BREAK_LOGICALNZ_i32;
-    default:
-      assert(0 && "internal error");
-    };
-    return -1;
-  }
-
-  static int getBreakZeroOpcode(int oldOpcode) {
-    switch(oldOpcode) {
-      case AMDGPU::JUMP: return AMDGPU::BREAK_LOGICALZ_i32;
-    default:
-      assert(0 && "internal error");
-    };
-    return -1;
-  }
-
   static int getBranchNzeroOpcode(int oldOpcode) {
     switch(oldOpcode) {
-    case AMDGPU::JUMP: return AMDGPU::IF_LOGICALNZ_i32;
+    case AMDGPU::JUMP: return AMDGPU::IF_PREDICATE_SET;
       ExpandCaseToAllScalarReturn(AMDGPU::BRANCH_COND, AMDGPU::IF_LOGICALNZ);
       case AMDGPU::SI_IF_NZ: return AMDGPU::SI_IF_NZ;
     default:
@@ -2727,7 +2707,7 @@ struct CFGStructTraits<AMDGPUCFGStructurizer>
 
   static int getBranchZeroOpcode(int oldOpcode) {
     switch(oldOpcode) {
-    case AMDGPU::JUMP: return AMDGPU::IF_LOGICALZ_i32;
+    case AMDGPU::JUMP: return AMDGPU::IF_PREDICATE_SET;
       ExpandCaseToAllScalarReturn(AMDGPU::BRANCH_COND, AMDGPU::IF_LOGICALZ);
       case AMDGPU::SI_IF_Z: return AMDGPU::SI_IF_Z;
     default:
@@ -2874,7 +2854,7 @@ struct CFGStructTraits<AMDGPUCFGStructurizer>
   static MachineInstr *getLoopBreakInstr(MachineBasicBlock *blk) {
     for (MachineBasicBlock::iterator iter = blk->begin(); (iter != blk->end()); ++iter) {
       MachineInstr *instr = &(*iter);
-      if ((instr->getOpcode() == AMDGPU::BREAK_LOGICALNZ_i32) || (instr->getOpcode() == AMDGPU::BREAK_LOGICALZ_i32)) {
+      if (instr->getOpcode() == AMDGPU::PREDICATED_BREAK) {
         return instr;
       }
     }

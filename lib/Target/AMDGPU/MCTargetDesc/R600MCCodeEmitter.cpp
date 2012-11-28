@@ -106,17 +106,13 @@ enum InstrTypes {
 };
 
 enum FCInstr {
-  FC_IF = 0,
-  FC_IF_INT,
+  FC_IF_PREDICATE = 0,
   FC_ELSE,
   FC_ENDIF,
   FC_BGNLOOP,
   FC_ENDLOOP,
-  FC_BREAK,
-  FC_BREAK_NZ_INT,
-  FC_CONTINUE,
-  FC_BREAK_Z_INT,
-  FC_BREAK_NZ
+  FC_BREAK_PREDICATE,
+  FC_CONTINUE
 };
 
 enum TextureTypes {
@@ -442,28 +438,14 @@ void R600MCCodeEmitter::EmitFCInstr(const MCInst &MI, raw_ostream &OS) const {
   // Emit FC Instruction
   enum FCInstr instr;
   switch (MI.getOpcode()) {
-  case AMDGPU::BREAK_LOGICALZ_f32:
-    instr = FC_BREAK;
-    break;
-  case AMDGPU::BREAK_LOGICALNZ_f32:
-    instr = FC_BREAK_NZ;
-    break;
-  case AMDGPU::BREAK_LOGICALNZ_i32:
-    instr = FC_BREAK_NZ_INT;
-    break;
-  case AMDGPU::BREAK_LOGICALZ_i32:
-    instr = FC_BREAK_Z_INT;
+  case AMDGPU::PREDICATED_BREAK:
+    instr = FC_BREAK_PREDICATE;
     break;
   case AMDGPU::CONTINUE:
     instr = FC_CONTINUE;
     break;
-  case AMDGPU::IF_LOGICALNZ_f32:
-    instr = FC_IF;
-  case AMDGPU::IF_LOGICALNZ_i32:
-    instr = FC_IF_INT;
-    break;
-  case AMDGPU::IF_LOGICALZ_f32:
-    abort();
+  case AMDGPU::IF_PREDICATE_SET:
+    instr = FC_IF_PREDICATE;
     break;
   case AMDGPU::ELSE:
     instr = FC_ELSE;
@@ -546,17 +528,12 @@ uint64_t R600MCCodeEmitter::getMachineOpValue(const MCInst &MI,
 bool R600MCCodeEmitter::isFCOp(unsigned opcode) const {
   switch(opcode) {
   default: return false;
-  case AMDGPU::BREAK_LOGICALZ_f32:
-  case AMDGPU::BREAK_LOGICALNZ_i32:
-  case AMDGPU::BREAK_LOGICALZ_i32:
-  case AMDGPU::BREAK_LOGICALNZ_f32:
+  case AMDGPU::PREDICATED_BREAK:
   case AMDGPU::CONTINUE:
-  case AMDGPU::IF_LOGICALNZ_i32:
-  case AMDGPU::IF_LOGICALZ_f32:
+  case AMDGPU::IF_PREDICATE_SET:
   case AMDGPU::ELSE:
   case AMDGPU::ENDIF:
   case AMDGPU::ENDLOOP:
-  case AMDGPU::IF_LOGICALNZ_f32:
   case AMDGPU::WHILELOOP:
     return true;
   }

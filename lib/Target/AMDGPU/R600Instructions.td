@@ -1399,6 +1399,17 @@ def : Pat<(fsqrt R600_Reg32:$src),
 } // End isCayman
 
 //===----------------------------------------------------------------------===//
+// Branch Instructions
+//===----------------------------------------------------------------------===//
+
+
+def IF_PREDICATE_SET  : ILFormat<(outs), (ins GPRI32:$src),
+  "IF_PREDICATE_SET $src", []>;
+
+def PREDICATED_BREAK : ILFormat<(outs), (ins GPRI32:$src),
+  "PREDICATED_BREAK $src", []>;
+
+//===----------------------------------------------------------------------===//
 // Pseudo instructions
 //===----------------------------------------------------------------------===//
 

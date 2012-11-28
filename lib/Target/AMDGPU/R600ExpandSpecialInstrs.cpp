@@ -209,7 +209,7 @@ bool R600ExpandSpecialInstrsPass::runOnMachineFunction(MachineFunction &MF) {
         TII->setImmOperand(PredSet, R600Operands::UPDATE_EXEC_MASK, 1);
 
         BuildMI(MBB, I, MBB.findDebugLoc(I),
-                TII->get(AMDGPU::BREAK_LOGICALNZ_i32))
+                TII->get(AMDGPU::PREDICATED_BREAK))
                 .addReg(AMDGPU::PREDICATE_BIT);
         MI.eraseFromParent();
         continue;
