@@ -7,12 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This pass maps the pseudo interpolation registers to the correct physical
-// registers.  Prior to executing a fragment shader, the GPU loads interpolation
-// parameters into physical registers.  The specific physical register that each
-// interpolation parameter ends up in depends on the type of the interpolation
-// parameter as well as how many interpolation parameters are used by the
-// shader.
+/// \file
+/// \brief This pass maps the pseudo interpolation registers to the correct physical
+/// registers.
+//
+/// Prior to executing a fragment shader, the GPU loads interpolation
+/// parameters into physical registers.  The specific physical register that each
+/// interpolation parameter ends up in depends on the type of the interpolation
+/// parameter as well as how many interpolation parameters are used by the
+/// shader.
 //
 //===----------------------------------------------------------------------===//
 

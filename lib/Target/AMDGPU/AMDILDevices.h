@@ -5,11 +5,11 @@
 // This file is distributed under the University of Illinois Open Source
 // License. See LICENSE.TXT for details.
 //
+/// \file
 //==-----------------------------------------------------------------------===//
 #ifndef AMDIL_DEVICES_H
 #define AMDIL_DEVICES_H
 // Include all of the device specific header files
-// This file is for Internal use only!
 #include "AMDIL7XXDevice.h"
 #include "AMDILDevice.h"
 #include "AMDILEvergreenDevice.h"

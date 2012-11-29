@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Interface definition for R600InstrInfo
+/// \file
+/// \brief Interface definition for R600InstrInfo
 //
 //===----------------------------------------------------------------------===//
 
@@ -50,10 +51,10 @@ namespace llvm {
   bool isReductionOp(unsigned opcode) const;
   bool isCubeOp(unsigned opcode) const;
 
-  /// isALUInstr - Returns true if this Opcode represents an ALU instruction.
+  /// \returns true if this \p Opcode represents an ALU instruction.
   bool isALUInstr(unsigned Opcode) const;
 
-  /// isVector - Vector instructions are instructions that must fill all
+  /// \breif Vector instructions are instructions that must fill all
   /// instruction slots within an instruction group.
   bool isVector(const MachineInstr &MI) const;
 
@@ -113,10 +114,11 @@ namespace llvm {
   virtual int getInstrLatency(const InstrItineraryData *ItinData,
                               SDNode *Node) const { return 1;}
 
-  ///buildDefaultInstruction - This function returns a MachineInstr with
-  /// all the instruction modifiers initialized to their default values.
   /// You can use this function to avoid manually specifying each instruction
   /// modifier operand when building a new instruction.
+  ///
+  /// \returns a MachineInstr with all the instruction modifiers initialized
+  /// to their default values.
   MachineInstrBuilder buildDefaultInstruction(MachineBasicBlock &MBB,
                                               MachineBasicBlock::iterator I,
                                               unsigned Opcode,
@@ -129,34 +131,36 @@ namespace llvm {
                                   unsigned DstReg,
                                   uint64_t Imm) const;
 
-  /// getOperandIdx - Get the index of Op in the MachineInstr.  Returns -1
-  /// if the Instruction does not contain the specified Op.
+  /// \brief Get the index of Op in the MachineInstr.
+  ///
+  /// \returns -1 if the Instruction does not contain the specified \p Op.
   int getOperandIdx(const MachineInstr &MI, R600Operands::Ops Op) const;
 
-  /// getOperandIdx - Get the index of Op for the given Opcode.  Returns -1
-  /// if the Instruction does not contain the specified Op.
+  /// \brief Get the index of \p Op for the given Opcode.
+  ///
+  /// \returns -1 if the Instruction does not contain the specified \p Op.
   int getOperandIdx(unsigned Opcode, R600Operands::Ops Op) const;
 
-  /// setImmOperand - Helper function for setting instruction flag values.
+  /// \brief Helper function for setting instruction flag values.
   void setImmOperand(MachineInstr *MI, R600Operands::Ops Op, int64_t Imm) const;
 
-  ///hasFlagOperand - Returns true if this instruction has an operand for
-  /// storing target flags.
+  /// \returns true if this instruction has an operand for storing target flags.
   bool hasFlagOperand(const MachineInstr &MI) const;
 
-  ///addFlag - Add one of the MO_FLAG* flags to the specified Operand.
+  ///\brief Add one of the MO_FLAG* flags to the specified \p Operand.
   void addFlag(MachineInstr *MI, unsigned Operand, unsigned Flag) const;
 
-  ///isFlagSet - Determine if the specified flag is set on this Operand.
+  ///\brief Determine if the specified \p Flag is set on this \p Operand.
   bool isFlagSet(const MachineInstr &MI, unsigned Operand, unsigned Flag) const;
 
-  ///getFlagOp - Return the operand containing the flags for this instruction.
-  /// SrcIdx is the register source to set the flag on (e.g src0, src1, src2)
-  /// Flag is the flag being set.
+  /// \param SrcIdx The register source to set the flag on (e.g src0, src1, src2)
+  /// \param Flag The flag being set.
+  ///
+  /// \returns the operand containing the flags for this instruction.
   MachineOperand &getFlagOp(MachineInstr *MI, unsigned SrcIdx = 0,
                             unsigned Flag = 0) const;
 
-  ///clearFlag - Clear the specified flag on the instruction.
+  /// \brief Clear the specified flag on the instruction.
   void clearFlag(MachineInstr *MI, unsigned Operand, unsigned Flag) const;
 };
 

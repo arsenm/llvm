@@ -7,12 +7,14 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This code emitters outputs bytecode that is understood by the r600g driver
-// in the Mesa [1] project.  The bytecode is very similar to the hardware's ISA,
-// except that the size of the instruction fields are rounded up to the
-// nearest byte.
-//
-// [1] http://www.mesa3d.org/
+/// \file
+///
+/// This code emitter outputs bytecode that is understood by the r600g driver
+/// in the Mesa [1] project.  The bytecode is very similar to the hardware's ISA,
+/// but it still needs to be run through a finalizer in order to be executed
+/// by the GPU.
+///
+/// [1] http://www.mesa3d.org/
 //
 //===----------------------------------------------------------------------===//
 
@@ -50,11 +52,11 @@ public:
                     const MCSubtargetInfo &sti, MCContext &ctx)
     : MCII(mcii), MRI(mri), STI(sti), Ctx(ctx) { }
 
-  /// EncodeInstruction - Encode the instruction and write it to the OS.
+  /// \brief Encode the instruction and write it to the OS.
   virtual void EncodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups) const;
 
-  /// getMachineOpValue - Reutrn the encoding for an MCOperand.
+  /// \returns the encoding for an MCOperand.
   virtual uint64_t getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                                      SmallVectorImpl<MCFixup> &Fixups) const;
 private:

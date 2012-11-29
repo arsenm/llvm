@@ -7,8 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains the definition of a TargetInstrInfo class that is common
-// to all AMD GPUs.
+/// \file
+/// \brief Contains the definition of a TargetInstrInfo class that is common
+/// to all AMD GPUs.
 //
 //===----------------------------------------------------------------------===//
 
@@ -136,7 +137,7 @@ public:
   virtual unsigned getIEQOpcode() const = 0;
   virtual bool isMov(unsigned opcode) const = 0;
 
-  /// convertToISA - Convert the AMDIL MachineInstr to a supported ISA
+  /// \brief Convert the AMDIL MachineInstr to a supported ISA
   /// MachineInstr
   virtual void convertToISA(MachineInstr & MI, MachineFunction &MF,
     DebugLoc DL) const;

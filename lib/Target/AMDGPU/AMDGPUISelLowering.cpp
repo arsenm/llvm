@@ -7,7 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This is the parent TargetLowering class for hardware code gen targets.
+/// \file
+/// \brief This is the parent TargetLowering class for hardware code gen
+/// targets.
 //
 //===----------------------------------------------------------------------===//
 

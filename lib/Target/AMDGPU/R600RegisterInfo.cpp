@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// The file contains the R600 implementation of the TargetRegisterInfo class.
+/// \file
+/// \brief R600 implementation of the TargetRegisterInfo class.
 //
 //===----------------------------------------------------------------------===//
 

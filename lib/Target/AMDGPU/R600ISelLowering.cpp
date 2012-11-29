@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Most of the DAG lowering is handled in AMDGPUISelLowering.cpp.  This file
-// is mostly EmitInstrWithCustomInserter().
+/// \file
+/// \brief Custom DAG lowering for R600
 //
 //===----------------------------------------------------------------------===//
 
@@ -766,10 +766,9 @@ SDValue R600TargetLowering::LowerFPOW(SDValue Op,
   return DAG.getNode(ISD::FEXP2, DL, VT, MulLogBase);
 }
 
-// XXX Only kernel functions are supporte, so we can assume for now that
-// every function is a kernel function, but in the future we should use
-// separate calling conventions for kernel and non-kernel functions.
-// Only kernel functions are supported, so we can assume for now
+/// XXX Only kernel functions are supported, so we can assume for now that
+/// every function is a kernel function, but in the future we should use
+/// separate calling conventions for kernel and non-kernel functions.
 SDValue R600TargetLowering::LowerFormalArguments(
                                       SDValue Chain,
                                       CallingConv::ID CallConv,

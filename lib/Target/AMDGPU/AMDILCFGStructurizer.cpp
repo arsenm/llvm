@@ -5,6 +5,7 @@
 // This file is distributed under the University of Illinois Open Source
 // License. See LICENSE.TXT for details.
 //
+/// \file
 //==-----------------------------------------------------------------------===//
 
 #define DEBUGME 0
@@ -1540,7 +1541,6 @@ void CFGStructurizer<PassT>::mergeLoopbreakBlock(BlockT *exitingBlk,
   DebugLoc DL = branchInstr->getDebugLoc();
 
   BlockT *trueBranch = CFGTraits::getTrueBranch(branchInstr);
-  int oldOpcode = branchInstr->getOpcode();
 
   //    transform exitingBlk to
   //    if ( ) {

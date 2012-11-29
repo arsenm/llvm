@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// R600 DAG Lowering interface definition
+/// \file
+/// \brief R600 DAG Lowering interface definition
 //
 //===----------------------------------------------------------------------===//
 
@@ -41,10 +42,10 @@ public:
 private:
   const R600InstrInfo * TII;
 
-  /// lowerImplicitParameter - Each OpenCL kernel has nine implicit parameters
-  /// that are stored in the first nine dwords of a Vertex Buffer.  These
-  /// implicit parameters are lowered to load instructions which retreive the
-  /// values from the Vertex Buffer.
+  /// Each OpenCL kernel has nine implicit parameters that are stored in the
+  /// first nine dwords of a Vertex Buffer.  These implicit parameters are
+  /// lowered to load instructions which retreive the values from the Vertex
+  /// Buffer.
   SDValue LowerImplicitParameter(SelectionDAG &DAG, EVT VT,
                                  DebugLoc DL, unsigned DwordOffset) const;
 
@@ -53,7 +54,7 @@ private:
 
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
 
-  /// LowerROTL - Lower ROTL opcode to BITALIGN
+  /// \brief Lower ROTL opcode to BITALIGN
   SDValue LowerROTL(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;

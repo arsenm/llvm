@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Interface definition for R600RegisterInfo
+/// \file
+/// \brief Interface definition for R600RegisterInfo
 //
 //===----------------------------------------------------------------------===//
 
@@ -30,20 +31,21 @@ struct R600RegisterInfo : public AMDGPURegisterInfo {
 
   virtual BitVector getReservedRegs(const MachineFunction &MF) const;
 
-  /// getISARegClass - rc is an AMDIL reg class.  This function returns the
-  /// R600 reg class that is equivalent to the given AMDIL reg class.
-  virtual const TargetRegisterClass * getISARegClass(
-    const TargetRegisterClass * rc) const;
+  /// \param RC is an AMDIL reg class.
+  ///
+  /// \returns the R600 reg class that is equivalent to \p RC.
+  virtual const TargetRegisterClass *getISARegClass(
+    const TargetRegisterClass *RC) const;
 
-  /// getHWRegChan - get the HW encoding for a register's channel.
+  /// \brief get the HW encoding for a register's channel.
   unsigned getHWRegChan(unsigned reg) const;
 
-  /// getCFGStructurizerRegClass - get the register class of the specified
-  /// type to use in the CFGStructurizer
+  /// \brief get the register class of the specified type to use in the
+  /// CFGStructurizer
   virtual const TargetRegisterClass * getCFGStructurizerRegClass(MVT VT) const;
 
-  /// getSubRegFromChannel - Return the sub reg enum value for the given
-  /// Channel (e.g. getSubRegFromChannel(0) -> AMDGPU::sel_x)
+  /// \returns the sub reg enum value for the given \p Channel
+  /// (e.g. getSubRegFromChannel(0) -> AMDGPU::sel_x)
   unsigned getSubRegFromChannel(unsigned Channel) const;
 
 };

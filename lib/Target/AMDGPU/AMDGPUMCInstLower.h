@@ -5,6 +5,7 @@
 // This file is distributed under the University of Illinois Open Source
 // License. See LICENSE.TXT for details.
 //
+/// \file
 //===----------------------------------------------------------------------===//
 
 #ifndef AMDGPU_MCINSTLOWER_H
@@ -20,7 +21,7 @@ class AMDGPUMCInstLower {
 public:
   AMDGPUMCInstLower();
 
-  /// lower - Lower a MachineInstr to an MCInst
+  /// \brief Lower a MachineInstr to an MCInst
   void lower(const MachineInstr *MI, MCInst &OutMI) const;
 
 };

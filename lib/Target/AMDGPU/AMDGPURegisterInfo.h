@@ -7,8 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains the TargetRegisterInfo interface that is implemented
-// by all hw codegen targets.
+/// \file
+/// \brief TargetRegisterInfo interface that is implemented by all hw codegen
+/// targets.
 //
 //===----------------------------------------------------------------------===//
 
@@ -38,10 +39,11 @@ struct AMDGPURegisterInfo : public AMDGPUGenRegisterInfo {
     assert(!"Unimplemented");  return BitVector();
   }
 
-  /// getISARegClass - rc is an AMDIL reg class.  This function returns the
-  /// ISA reg class that is equivalent to the given AMDIL reg class.
+  /// \param RC is an AMDIL reg class.
+  ///
+  /// \returns The ISA reg class that is equivalent to \p RC.
   virtual const TargetRegisterClass * getISARegClass(
-                                         const TargetRegisterClass * rc) const {
+                                         const TargetRegisterClass * RC) const {
     assert(!"Unimplemented"); return NULL;
   }
 

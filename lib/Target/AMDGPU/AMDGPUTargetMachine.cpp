@@ -7,8 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// The AMDGPU target machine contains all of the hardware specific information
-// needed to emit code for R600 and SI GPUs.
+/// \file
+/// \brief The AMDGPU target machine contains all of the hardware specific
+/// information  needed to emit code for R600 and SI GPUs.
 //
 //===----------------------------------------------------------------------===//
 

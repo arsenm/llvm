@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Interface definition for SIInstrInfo.
+/// \file
+/// \brief Interface definition for SIInstrInfo.
 //
 //===----------------------------------------------------------------------===//
 
@@ -34,11 +35,10 @@ public:
                            unsigned DestReg, unsigned SrcReg,
                            bool KillSrc) const;
 
-  /// getEncodingType - Returns the encoding type of this instruction.  
+  /// \returns the encoding type of this instruction.
   unsigned getEncodingType(const MachineInstr &MI) const;
 
-  /// getEncodingBytes - Returns the size of this instructions encoding in
-  /// number of bytes.
+  /// \returns the size of this instructions encoding in number of bytes.
   unsigned getEncodingBytes(const MachineInstr &MI) const;
 
   virtual MachineInstr * getMovImmInstr(MachineFunction *MF, unsigned DstReg,

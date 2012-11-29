@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains the SI implementation of the TargetRegisterInfo class.
+/// \file
+/// \brief SI implementation of the TargetRegisterInfo class.
 //
 //===----------------------------------------------------------------------===//
 

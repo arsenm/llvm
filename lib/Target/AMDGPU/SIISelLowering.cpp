@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Most of the DAG lowering is handled in AMDGPUISelLowering.cpp.  This file is
-// mostly EmitInstrWithCustomInserter().
+/// \file
+/// \brief Custom DAG lowering for SI
 //
 //===----------------------------------------------------------------------===//
 
@@ -274,8 +274,10 @@ SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   return SDValue();
 }
 
-/// Loweri1ContextSwitch - The function is for lowering i1 operations on the
-/// VCC register.  In the VALU context, VCC is a one bit register, but in the
+/// \brief The function is for lowering i1 operations on the
+/// VCC register.
+///
+/// In the VALU context, VCC is a one bit register, but in the
 /// SALU context the VCC is a 64-bit register (1-bit per thread).  Since only
 /// the SALU can perform operations on the VCC register, we need to promote
 /// the operand types from i1 to i64 in order for tablegen to be able to match

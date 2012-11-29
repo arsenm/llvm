@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// SIMachineFunctionInfo is used to keep track of the spi_sp_input_addr config
-// register, which is to tell the hardware which interpolation parameters to
-// load.
+/// \file
 //
 //===----------------------------------------------------------------------===//
 
@@ -21,15 +19,13 @@
 
 namespace llvm {
 
+/// This class keeps track of the SPI_SP_INPUT_ADDR config register, which
+/// tells the hardware which interpolation parameters to load.
 class SIMachineFunctionInfo : public MachineFunctionInfo {
-
-  private:
-
-  public:
-    SIMachineFunctionInfo(const MachineFunction &MF);
-    unsigned SPIPSInputAddr;
-    unsigned ShaderType;
-
+public:
+  SIMachineFunctionInfo(const MachineFunction &MF);
+  unsigned SPIPSInputAddr;
+  unsigned ShaderType;
 };
 
 } // End namespace llvm

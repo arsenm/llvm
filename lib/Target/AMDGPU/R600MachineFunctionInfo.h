@@ -7,9 +7,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// R600MachineFunctionInfo is used for keeping track of which registers have
-// been reserved by the llvm.AMDGPU.reserve.reg intrinsic.
-//
+/// \file
 //===----------------------------------------------------------------------===//
 
 #ifndef R600MACHINEFUNCTIONINFO_H

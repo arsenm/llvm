@@ -7,7 +7,8 @@
 //
 //==-----------------------------------------------------------------------===//
 //
-// Function that creates DeviceInfo from a device name and other information.
+/// \file
+/// \brief Function that creates DeviceInfo from a device name and other information.
 //
 //==-----------------------------------------------------------------------===//
 #include "AMDILDevices.h"

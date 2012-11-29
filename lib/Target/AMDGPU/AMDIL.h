@@ -7,8 +7,8 @@
 //
 //==-----------------------------------------------------------------------===//
 //
-// This file contains the entry points for global functions defined in the LLVM
-// AMDGPU back-end.
+/// This file contains the entry points for global functions defined in the LLVM
+/// AMDGPU back-end.
 //
 //===----------------------------------------------------------------------===//
 
@@ -61,13 +61,13 @@ class raw_ostream;
 class Target;
 class TargetMachine;
 
-/// Instruction selection passes.
+// Instruction selection passes.
 FunctionPass*
   createAMDGPUISelDag(TargetMachine &TM);
 FunctionPass*
   createAMDGPUPeepholeOpt(TargetMachine &TM);
 
-/// Pre emit passes.
+// Pre emit passes.
 FunctionPass*
   createAMDGPUCFGPreparationPass(TargetMachine &TM);
 FunctionPass*
@@ -76,7 +76,7 @@ FunctionPass*
 extern Target TheAMDGPUTarget;
 } // end namespace llvm;
 
-/// Include device information enumerations
+// Include device information enumerations
 #include "AMDILDeviceInfo.h"
 
 namespace llvm {
@@ -88,15 +88,15 @@ namespace llvm {
 /// memory locations.
 namespace AMDGPUAS {
 enum AddressSpaces {
-  PRIVATE_ADDRESS  = 0, // Address space for private memory.
-  GLOBAL_ADDRESS   = 1, // Address space for global memory (RAT0, VTX0).
-  CONSTANT_ADDRESS = 2, // Address space for constant memory.
-  LOCAL_ADDRESS    = 3, // Address space for local memory.
-  REGION_ADDRESS   = 4, // Address space for region memory.
-  ADDRESS_NONE     = 5, // Address space for unknown memory.
-  PARAM_D_ADDRESS  = 6, // Address space for direct addressible parameter memory (CONST0)
-  PARAM_I_ADDRESS  = 7, // Address space for indirect addressible parameter memory (VTX1)
-  USER_SGPR_ADDRESS = 8, // Address space for USER_SGPRS on SI
+  PRIVATE_ADDRESS  = 0, ///< Address space for private memory.
+  GLOBAL_ADDRESS   = 1, ///< Address space for global memory (RAT0, VTX0).
+  CONSTANT_ADDRESS = 2, ///< Address space for constant memory.
+  LOCAL_ADDRESS    = 3, ///< Address space for local memory.
+  REGION_ADDRESS   = 4, ///< Address space for region memory.
+  ADDRESS_NONE     = 5, ///< Address space for unknown memory.
+  PARAM_D_ADDRESS  = 6, ///< Address space for direct addressible parameter memory (CONST0)
+  PARAM_I_ADDRESS  = 7, ///< Address space for indirect addressible parameter memory (VTX1)
+  USER_SGPR_ADDRESS = 8, ///< Address space for USER_SGPRS on SI
   LAST_ADDRESS     = 9
 };
 

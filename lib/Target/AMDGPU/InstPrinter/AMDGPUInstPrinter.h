@@ -6,6 +6,9 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
+//
+/// \file
+//===----------------------------------------------------------------------===//
 
 #ifndef AMDGPUINSTPRINTER_H
 #define AMDGPUINSTPRINTER_H
@@ -26,12 +29,10 @@ public:
   void printInstruction(const MCInst *MI, raw_ostream &O);
   static const char *getRegisterName(unsigned RegNo);
 
-//  virtual void printRegName(raw_ostream &OS, unsigned RegNo) const;
   virtual void printInst(const MCInst *MI, raw_ostream &O, StringRef Annot);
 
 private:
   void printOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
-//  void printUnsignedImm(const MCInst *MI, int OpNo, raw_ostream &O);
   void printMemOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printIfSet(const MCInst *MI, unsigned OpNo, raw_ostream &O, StringRef Asm);
   void printAbs(const MCInst *MI, unsigned OpNo, raw_ostream &O);

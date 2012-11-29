@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// Interface definition for SIRegisterInfo
+/// \file
+/// \brief Interface definition for SIRegisterInfo
 //
 //===----------------------------------------------------------------------===//
 
@@ -30,15 +31,15 @@ struct SIRegisterInfo : public AMDGPURegisterInfo {
 
   virtual BitVector getReservedRegs(const MachineFunction &MF) const;
 
-  /// getISARegClass - rc is an AMDIL reg class.  This function returns the
-  /// SI register class that is equivalent to the given AMDIL register class.
+  /// \param RC is an AMDIL reg class.
+  ///
+  /// \returns the SI register class that is equivalent to \p RC.
   virtual const TargetRegisterClass *
-    getISARegClass(const TargetRegisterClass * rc) const;
+    getISARegClass(const TargetRegisterClass *RC) const;
 
-  /// getCFGStructurizerRegClass - get the register class of the specified
-  /// type to use in the CFGStructurizer
+  /// \brief get the register class of the specified type to use in the
+  /// CFGStructurizer
   virtual const TargetRegisterClass * getCFGStructurizerRegClass(MVT VT) const;
-
 };
 
 } // End namespace llvm

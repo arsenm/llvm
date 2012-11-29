@@ -7,7 +7,9 @@
 //
 //==-----------------------------------------------------------------------===//
 //
-// Interface to describe a layout of a stack frame on a AMDIL target machine
+/// \file
+/// \brief Interface to describe a layout of a stack frame on a AMDGPU target
+/// machine.
 //
 //===----------------------------------------------------------------------===//
 #include "AMDILFrameLowering.h"
@@ -22,8 +24,6 @@ AMDGPUFrameLowering::AMDGPUFrameLowering(StackDirection D, unsigned StackAl,
 AMDGPUFrameLowering::~AMDGPUFrameLowering() {
 }
 
-/// getFrameIndexOffset - Returns the displacement from the frame register to
-/// the stack frame of the specified index.
 int AMDGPUFrameLowering::getFrameIndexOffset(const MachineFunction &MF,
                                          int FI) const {
   const MachineFrameInfo *MFI = MF.getFrameInfo();

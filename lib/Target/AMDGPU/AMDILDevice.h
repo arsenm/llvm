@@ -7,12 +7,12 @@
 //
 //==-----------------------------------------------------------------------===//
 //
-// Interface for the subtarget data classes.
+/// \file
+/// \brief Interface for the subtarget data classes.
 //
-//===----------------------------------------------------------------------===//
-// This file will define the interface that each generation needs to
-// implement in order to correctly answer queries on the capabilities of the
-// specific hardware.
+/// This file will define the interface that each generation needs to
+/// implement in order to correctly answer queries on the capabilities of the
+/// specific hardware.
 //===----------------------------------------------------------------------===//
 #ifndef AMDILDEVICEIMPL_H
 #define AMDILDEVICEIMPL_H
@@ -42,43 +42,43 @@ public:
     MAX_IDS      = 7
   } IO_TYPE_IDS;
 
-  // Returns the max LDS size that the hardware supports.  Size is in
-  // bytes.
+  /// \returns The max LDS size that the hardware supports.  Size is in
+  /// bytes.
   virtual size_t getMaxLDSSize() const = 0;
 
-  // Returns the max GDS size that the hardware supports if the GDS is
-  // supported by the hardware.  Size is in bytes.
+  /// \returns The max GDS size that the hardware supports if the GDS is
+  /// supported by the hardware.  Size is in bytes.
   virtual size_t getMaxGDSSize() const;
 
-  // Returns the max number of hardware constant address spaces that
-  // are supported by this device.
+  /// \returns The max number of hardware constant address spaces that
+  /// are supported by this device.
   virtual size_t getMaxNumCBs() const;
 
-  // Returns the max number of bytes a single hardware constant buffer
-  // can support.  Size is in bytes.
+  /// \returns The max number of bytes a single hardware constant buffer
+  /// can support.  Size is in bytes.
   virtual size_t getMaxCBSize() const;
 
-  // Returns the max number of bytes allowed by the hardware scratch
-  // buffer.  Size is in bytes.
+  /// \returns The max number of bytes allowed by the hardware scratch
+  /// buffer.  Size is in bytes.
   virtual size_t getMaxScratchSize() const;
 
-  // Get the flag that corresponds to the device.
+  /// \brief Get the flag that corresponds to the device.
   virtual uint32_t getDeviceFlag() const;
 
-  // Returns the number of work-items that exist in a single hardware
-  // wavefront.
+  /// \returns The number of work-items that exist in a single hardware
+  /// wavefront.
   virtual size_t getWavefrontSize() const = 0;
 
-  // Get the generational name of this specific device.
+  /// \brief Get the generational name of this specific device.
   virtual uint32_t getGeneration() const = 0;
 
-  // Get the stack alignment of this specific device.
+  /// \brief Get the stack alignment of this specific device.
   virtual uint32_t getStackAlignment() const;
 
-  // Get the resource ID for this specific device.
+  /// \brief Get the resource ID for this specific device.
   virtual uint32_t getResourceID(uint32_t DeviceID) const = 0;
 
-  // Get the max number of UAV's for this device.
+  /// \brief Get the max number of UAV's for this device.
   virtual uint32_t getMaxNumUAVs() const = 0;
 
 
@@ -92,6 +92,7 @@ public:
   // software that emulates it with possibly using the hardware for
   // support since the hardware does not fully comply with OpenCL
   // specs.
+
   bool isSupported(AMDGPUDeviceInfo::Caps Mode) const;
   bool usesHardware(AMDGPUDeviceInfo::Caps Mode) const;
   bool usesSoftware(AMDGPUDeviceInfo::Caps Mode) const;
@@ -110,7 +111,7 @@ protected:
 private:
   AMDGPUDeviceInfo::ExecutionMode
   getExecutionMode(AMDGPUDeviceInfo::Caps Caps) const;
-}; // AMDGPUDevice
+};
 
 } // namespace llvm
 #endif // AMDILDEVICEIMPL_H

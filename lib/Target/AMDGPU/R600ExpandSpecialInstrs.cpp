@@ -6,9 +6,12 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-// Vector, Reduction, and Cube instructions need to fill the entire instruction
-// group to work correctly.  This pass expands these individual instructions
-// into several instructions that will completely fill the instruction group.
+//
+/// \file
+/// Vector, Reduction, and Cube instructions need to fill the entire instruction
+/// group to work correctly.  This pass expands these individual instructions
+/// into several instructions that will completely fill the instruction group.
+//
 //===----------------------------------------------------------------------===//
 
 #include "AMDGPU.h"

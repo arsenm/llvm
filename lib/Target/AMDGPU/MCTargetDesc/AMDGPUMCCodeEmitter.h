@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// CodeEmitter interface for R600 and SI codegen.
+/// \file
+/// \brief CodeEmitter interface for R600 and SI codegen.
 //
 //===----------------------------------------------------------------------===//
 
@@ -19,40 +20,40 @@
 
 namespace llvm {
 
-  class MCInst;
-  class MCOperand;
+class MCInst;
+class MCOperand;
 
-  class AMDGPUMCCodeEmitter : public MCCodeEmitter {
-  public:
+class AMDGPUMCCodeEmitter : public MCCodeEmitter {
+public:
 
-    uint64_t getBinaryCodeForInstr(const MCInst &MI,
-                                   SmallVectorImpl<MCFixup> &Fixups) const;
+  uint64_t getBinaryCodeForInstr(const MCInst &MI,
+                                 SmallVectorImpl<MCFixup> &Fixups) const;
 
-    virtual uint64_t getMachineOpValue(const MCInst &MI, const MCOperand &MO,
-                                       SmallVectorImpl<MCFixup> &Fixups) const {
-      return 0;
-    }
+  virtual uint64_t getMachineOpValue(const MCInst &MI, const MCOperand &MO,
+                                     SmallVectorImpl<MCFixup> &Fixups) const {
+    return 0;
+  }
 
-    virtual unsigned GPR4AlignEncode(const MCInst  &MI, unsigned OpNo,
-                                     SmallVectorImpl<MCFixup> &Fixups) const {
-      return 0;
-    }
-    virtual unsigned GPR2AlignEncode(const MCInst &MI, unsigned OpNo,
-                                     SmallVectorImpl<MCFixup> &Fixups) const {
-      return 0;
-    }
-    virtual uint64_t VOPPostEncode(const MCInst &MI, uint64_t Value) const {
-      return Value;
-    }
-    virtual uint64_t i32LiteralEncode(const MCInst &MI, unsigned OpNo,
-                                     SmallVectorImpl<MCFixup> &Fixups) const {
-      return 0;
-    }
-    virtual uint32_t SMRDmemriEncode(const MCInst &MI, unsigned OpNo,
-                                     SmallVectorImpl<MCFixup> &Fixups) const {
-      return 0;
-    }
-  };
+  virtual unsigned GPR4AlignEncode(const MCInst  &MI, unsigned OpNo,
+                                   SmallVectorImpl<MCFixup> &Fixups) const {
+    return 0;
+  }
+  virtual unsigned GPR2AlignEncode(const MCInst &MI, unsigned OpNo,
+                                   SmallVectorImpl<MCFixup> &Fixups) const {
+    return 0;
+  }
+  virtual uint64_t VOPPostEncode(const MCInst &MI, uint64_t Value) const {
+    return Value;
+  }
+  virtual uint64_t i32LiteralEncode(const MCInst &MI, unsigned OpNo,
+                                   SmallVectorImpl<MCFixup> &Fixups) const {
+    return 0;
+  }
+  virtual uint32_t SMRDmemriEncode(const MCInst &MI, unsigned OpNo,
+                                   SmallVectorImpl<MCFixup> &Fixups) const {
+    return 0;
+  }
+};
 
 } // End namespace llvm
 

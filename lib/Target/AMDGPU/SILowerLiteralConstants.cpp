@@ -6,23 +6,25 @@
 // License. See LICENSE.TXT for details.
 //
 //===----------------------------------------------------------------------===//
-// This pass performs the following transformation on instructions with
-// literal constants:
 //
-// %VGPR0 = V_MOV_IMM_I32 1
-//
-// becomes:
-//
-// BUNDLE
-//   * %VGPR = V_MOV_B32_32 SI_LITERAL_CONSTANT
-//   * SI_LOAD_LITERAL 1
-//
-// The resulting sequence matches exactly how the hardware handles immediate
-// operands, so this transformation greatly simplifies the code generator.
-//
-// Only the *_MOV_IMM_* support immediate operands at the moment, but when
-// support for immediate operands is added to other instructions, they
-// will be lowered here as well.
+/// \file
+/// \brief This pass performs the following transformation on instructions with
+/// literal constants:
+///
+/// %VGPR0 = V_MOV_IMM_I32 1
+///
+/// becomes:
+///
+/// BUNDLE
+///   * %VGPR = V_MOV_B32_32 SI_LITERAL_CONSTANT
+///   * SI_LOAD_LITERAL 1
+///
+/// The resulting sequence matches exactly how the hardware handles immediate
+/// operands, so this transformation greatly simplifies the code generator.
+///
+/// Only the *_MOV_IMM_* support immediate operands at the moment, but when
+/// support for immediate operands is added to other instructions, they
+/// will be lowered here as well.
 //===----------------------------------------------------------------------===//
 
 #include "AMDGPU.h"

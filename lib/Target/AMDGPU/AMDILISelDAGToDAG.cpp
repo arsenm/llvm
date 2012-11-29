@@ -7,7 +7,8 @@
 //
 //==-----------------------------------------------------------------------===//
 //
-// This file defines an instruction selector for the AMDIL target.
+/// \file
+/// \brief Defines an instruction selector for the AMDGPU target.
 //
 //===----------------------------------------------------------------------===//
 #include "AMDGPUInstrInfo.h"
@@ -28,11 +29,9 @@ using namespace llvm;
 // Instruction Selector Implementation
 //===----------------------------------------------------------------------===//
 
-//===----------------------------------------------------------------------===//
-// AMDGPUDAGToDAGISel - AMDGPU specific code to select AMDGPU machine instructions
-// //for SelectionDAG operations.
-//
 namespace {
+/// AMDGPU specific code to select AMDGPU machine instructions for
+/// SelectionDAG operations.
 class AMDGPUDAGToDAGISel : public SelectionDAGISel {
   // Subtarget - Keep a pointer to the AMDGPU Subtarget around so that we can
   // make the right decision when generating code for different targets.
@@ -76,9 +75,8 @@ private:
 };
 }  // end anonymous namespace
 
-// createAMDGPUISelDag - This pass converts a legalized DAG into a AMDGPU-specific
+/// \brief This pass converts a legalized DAG into a AMDGPU-specific
 // DAG, ready for instruction scheduling.
-//
 FunctionPass *llvm::createAMDGPUISelDag(TargetMachine &TM
                                        ) {
   return new AMDGPUDAGToDAGISel(TM);

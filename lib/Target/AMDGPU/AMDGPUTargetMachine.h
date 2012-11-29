@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-//  The AMDGPU TargetMachine interface definition for hw codgen targets.
+/// \file
+/// \brief The AMDGPU TargetMachine interface definition for hw codgen targets.
 //
 //===----------------------------------------------------------------------===//
 

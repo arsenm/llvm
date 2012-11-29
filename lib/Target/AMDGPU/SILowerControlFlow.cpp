@@ -7,44 +7,45 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This pass lowers the pseudo control flow instructions (SI_IF_NZ, ELSE, ENDIF)
-// to predicated instructions.
-//
-// All control flow (except loops) is handled using predicated instructions and
-// a predicate stack.  Each Scalar ALU controls the operations of 64 Vector
-// ALUs.  The Scalar ALU can update the predicate for any of the Vector ALUs
-// by writting to the 64-bit EXEC register (each bit corresponds to a
-// single vector ALU).  Typically, for predicates, a vector ALU will write
-// to its bit of the VCC register (like EXEC VCC is 64-bits, one for each
-// Vector ALU) and then the ScalarALU will AND the VCC register with the
-// EXEC to update the predicates.
-//
-// For example:
-// %VCC = V_CMP_GT_F32 %VGPR1, %VGPR2
-// SI_IF_NZ %VCC
-//   %VGPR0 = V_ADD_F32 %VGPR0, %VGPR0
-// ELSE
-//   %VGPR0 = V_SUB_F32 %VGPR0, %VGPR0
-// ENDIF
-//
-// becomes:
-//
-// %SGPR0 = S_AND_SAVEEXEC_B64 %VCC  // Save and update the exec mask
-// %SGPR0 = S_XOR_B64 %SGPR0, %EXEC  // Clear live bits from saved exec mask
-// S_CBRANCH_EXECZ label0            // This instruction is an
-//                                   // optimization which allows us to
-//                                   // branch if all the bits of
-//                                   // EXEC are zero.
-// %VGPR0 = V_ADD_F32 %VGPR0, %VGPR0 // Do the IF block of the branch
-//
-// label0:
-// %SGPR0 = S_OR_SAVEEXEC_B64 %EXEC   // Restore the exec mask for the Then block
-// %EXEC = S_XOR_B64 %SGPR0, %EXEC    // Clear live bits from saved exec mask
-// S_BRANCH_EXECZ label1              // Use our branch optimization
-//                                    // instruction again.
-// %VGPR0 = V_SUB_F32 %VGPR0, %VGPR   // Do the THEN block
-// label1:
-// %EXEC = S_OR_B64 %EXEC, %SGPR2     // Re-enable saved exec mask bits
+/// \file
+/// \brief This pass lowers the pseudo control flow instructions (SI_IF_NZ, ELSE, ENDIF)
+/// to predicated instructions.
+///
+/// All control flow (except loops) is handled using predicated instructions and
+/// a predicate stack.  Each Scalar ALU controls the operations of 64 Vector
+/// ALUs.  The Scalar ALU can update the predicate for any of the Vector ALUs
+/// by writting to the 64-bit EXEC register (each bit corresponds to a
+/// single vector ALU).  Typically, for predicates, a vector ALU will write
+/// to its bit of the VCC register (like EXEC VCC is 64-bits, one for each
+/// Vector ALU) and then the ScalarALU will AND the VCC register with the
+/// EXEC to update the predicates.
+///
+/// For example:
+/// %VCC = V_CMP_GT_F32 %VGPR1, %VGPR2
+/// SI_IF_NZ %VCC
+///   %VGPR0 = V_ADD_F32 %VGPR0, %VGPR0
+/// ELSE
+///   %VGPR0 = V_SUB_F32 %VGPR0, %VGPR0
+/// ENDIF
+///
+/// becomes:
+///
+/// %SGPR0 = S_AND_SAVEEXEC_B64 %VCC  // Save and update the exec mask
+/// %SGPR0 = S_XOR_B64 %SGPR0, %EXEC  // Clear live bits from saved exec mask
+/// S_CBRANCH_EXECZ label0            // This instruction is an
+///                                   // optimization which allows us to
+///                                   // branch if all the bits of
+///                                   // EXEC are zero.
+/// %VGPR0 = V_ADD_F32 %VGPR0, %VGPR0 // Do the IF block of the branch
+///
+/// label0:
+/// %SGPR0 = S_OR_SAVEEXEC_B64 %EXEC   // Restore the exec mask for the Then block
+/// %EXEC = S_XOR_B64 %SGPR0, %EXEC    // Clear live bits from saved exec mask
+/// S_BRANCH_EXECZ label1              // Use our branch optimization
+///                                    // instruction again.
+/// %VGPR0 = V_SUB_F32 %VGPR0, %VGPR   // Do the THEN block
+/// label1:
+/// %EXEC = S_OR_B64 %EXEC, %SGPR2     // Re-enable saved exec mask bits
 //===----------------------------------------------------------------------===//
 
 #include "AMDGPU.h"

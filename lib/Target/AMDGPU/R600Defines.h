@@ -5,6 +5,7 @@
 // This file is distributed under the University of Illinois Open Source
 // License. See LICENSE.TXT for details.
 //
+/// \file
 //===----------------------------------------------------------------------===//
 
 #ifndef R600DEFINES_H_
@@ -22,8 +23,8 @@
 #define MO_FLAG_LAST  (1 << 6)
 #define NUM_MO_FLAGS 7
 
-// Helper for finding getting the operand index for the instruction flags
-// operand.
+/// \brief Helper for getting the operand index for the instruction flags
+/// operand.
 #define GET_FLAG_OPERAND_IDX(Flags) (((Flags) >> 7) & 0x3)
 
 namespace R600_InstFlag {
@@ -44,7 +45,7 @@ namespace R600_InstFlag {
 
 #define HAS_NATIVE_OPERANDS(Flags) ((Flags) & R600_InstFlag::NATIVE_OPERANDS)
 
-// Defines for extracting register infomation from register encoding
+/// \brief Defines for extracting register infomation from register encoding
 #define HW_REG_MASK 0x1ff
 #define HW_CHAN_SHIFT 9
 

@@ -7,9 +7,11 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// The AMDGPUAsmPrinter is used to print both assembly string and also binary
-// code.  When passed an MCAsmStreamer it prints assembly and when passed
-// an MCObjectStreamer it outputs binary code.
+/// \file
+///
+/// The AMDGPUAsmPrinter is used to print both assembly string and also binary
+/// code.  When passed an MCAsmStreamer it prints assembly and when passed
+/// an MCObjectStreamer it outputs binary code.
 //
 //===----------------------------------------------------------------------===//
 //
@@ -35,7 +37,7 @@ extern "C" void LLVMInitializeAMDGPUAsmPrinter() {
   TargetRegistry::RegisterAsmPrinter(TheAMDGPUTarget, createAMDGPUAsmPrinterPass);
 }
 
-/// runOnMachineFunction - We need to override this function so we can avoid
+/// We need to override this function so we can avoid
 /// the call to EmitFunctionHeader(), which the MCPureStreamer can't handle.
 bool AMDGPUAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   const AMDGPUSubtarget &STM = TM.getSubtarget<AMDGPUSubtarget>();

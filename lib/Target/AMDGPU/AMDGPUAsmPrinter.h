@@ -7,7 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// AMDGPU Assembly printer class.
+/// \file
+/// \brief AMDGPU Assembly printer class.
 //
 //===----------------------------------------------------------------------===//
 
@@ -30,11 +31,11 @@ public:
     return "AMDGPU Assembly Printer";
   }
 
-  /// EmitProgramInfo - Emit register usage information so that the GPU driver
+  /// \brief Emit register usage information so that the GPU driver
   /// can correctly setup the GPU state.
   void EmitProgramInfo(MachineFunction &MF);
 
-  /// EmitInstuction - Implemented in AMDGPUMCInstLower.cpp
+  /// Implemented in AMDGPUMCInstLower.cpp
   virtual void EmitInstruction(const MachineInstr *MI);
 };
 

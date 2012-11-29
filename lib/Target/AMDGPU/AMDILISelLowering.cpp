@@ -7,7 +7,8 @@
 //
 //==-----------------------------------------------------------------------===//
 //
-// This file contains TargetLowering functions borrowed from AMDLI.
+/// \file
+/// \brief TargetLowering functions borrowed from AMDIL.
 //
 //===----------------------------------------------------------------------===//
 

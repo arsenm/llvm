@@ -7,8 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains the interface defintiion of the TargetLowering class
-// that is common to all AMD GPUs.
+/// \file
+/// \brief Interface definition of the TargetLowering class that is common
+/// to all AMD GPUs.
 //
 //===----------------------------------------------------------------------===//
 
@@ -28,9 +29,10 @@ private:
 
 protected:
 
-  /// CreateLiveInRegister - Helper function that adds Reg to the LiveIn list
-  /// of the DAG's MachineFunction.  This returns a Register SDNode representing
-  /// Reg.
+  /// \brief Helper function that adds Reg to the LiveIn list of the DAG's
+  /// MachineFunction.
+  ///
+  /// \returns a RegisterSDNode representing Reg.
   SDValue CreateLiveInRegister(SelectionDAG &DAG, const TargetRegisterClass *RC,
                                                   unsigned Reg, EVT VT) const;
 
@@ -60,9 +62,9 @@ public:
 // Functions defined in AMDILISelLowering.cpp
 public:
 
-  /// computeMaskedBitsForTargetNode - Determine which of the bits specified
-  /// in Mask are known to be either zero or one and return them in the
-  /// KnownZero/KnownOne bitsets.
+  /// \brief Determine which of the bits specified in \p Mask are known to be
+  /// either zero or one and return them in the \p KnownZero and \p KnownOne
+  /// bitsets.
   virtual void computeMaskedBitsForTargetNode(const SDValue Op,
                                               APInt &KnownZero,
                                               APInt &KnownOne,
@@ -72,10 +74,10 @@ public:
   virtual bool getTgtMemIntrinsic(IntrinsicInfo &Info,
                                   const CallInst &I, unsigned Intrinsic) const;
 
-  /// isFPImmLegal - We want to mark f32/f64 floating point values as legal.
+  /// We want to mark f32/f64 floating point values as legal.
   bool isFPImmLegal(const APFloat &Imm, EVT VT) const;
 
-  /// ShouldShrinkFPConstant - We don't want to shrink f64/f32 constants.
+  /// We don't want to shrink f64/f32 constants.
   bool ShouldShrinkFPConstant(EVT VT) const;
 
 private:

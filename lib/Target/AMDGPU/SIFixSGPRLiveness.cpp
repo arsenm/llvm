@@ -7,8 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// SGPRs are not affected by control flow. This pass adjust SGPR liveness in
-// so that the register allocator can still correctly allocate them.
+/// \file
+///
+/// SGPRs are not affected by control flow. This pass adjusts SGPR liveness in
+/// so that the register allocator can still correctly allocate them.
 //
 //===----------------------------------------------------------------------===//
 

@@ -7,8 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// The SI code emitter produces machine code that can be executed directly on
-// the GPU device.
+/// \file
+/// \brief The SI code emitter produces machine code that can be executed
+/// directly on the GPU device.
 //
 //===----------------------------------------------------------------------===//
 
@@ -69,46 +70,46 @@ public:
 
   ~SIMCCodeEmitter() { }
 
-  /// EncodeInstruction - Encode the instruction and write it to the OS.
+  /// \breif Encode the instruction and write it to the OS.
   virtual void EncodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups) const;
 
-  /// getMachineOpValue - Reutrn the encoding for an MCOperand.
+  /// \returns the encoding for an MCOperand.
   virtual uint64_t getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                                      SmallVectorImpl<MCFixup> &Fixups) const;
 
 public:
 
-  /// GPRAlign - Encode a sequence of registers with the correct alignment.
+  /// \brief Encode a sequence of registers with the correct alignment.
   unsigned GPRAlign(const MCInst &MI, unsigned OpNo, unsigned shift) const;
 
-  /// GPR2AlignEncode - Encoding for when 2 consecutive registers are used
+  /// \brief Encoding for when 2 consecutive registers are used
   virtual unsigned GPR2AlignEncode(const MCInst &MI, unsigned OpNo,
                                    SmallVectorImpl<MCFixup> &Fixup) const;
 
-  /// GPR4AlignEncode - Encoding for when 4 consectuive registers are used
+  /// \brief Encoding for when 4 consectuive registers are used
   virtual unsigned GPR4AlignEncode(const MCInst &MI, unsigned OpNo,
                                    SmallVectorImpl<MCFixup> &Fixup) const;
 
-  /// SMRDmemriEncode - Encoding for SMRD indexed loads
+  /// \brief Encoding for SMRD indexed loads
   virtual uint32_t SMRDmemriEncode(const MCInst &MI, unsigned OpNo,
                                    SmallVectorImpl<MCFixup> &Fixup) const;
 
-  /// VOPPostEncode - Post-Encoder method for VOP instructions
+  /// \brief Post-Encoder method for VOP instructions
   virtual uint64_t VOPPostEncode(const MCInst &MI, uint64_t Value) const;
 
 private:
 
-  ///getEncodingType =  Return this SIInstrEncodingType for this instruction.
+  /// \returns this SIInstrEncodingType for this instruction.
   unsigned getEncodingType(const MCInst &MI) const;
 
-  ///getEncodingBytes - Get then size in bytes of this instructions encoding.
+  /// \brief Get then size in bytes of this instructions encoding.
   unsigned getEncodingBytes(const MCInst &MI) const;
 
-  /// getRegBinaryCode - Returns the hardware encoding for a register
+  /// \returns the hardware encoding for a register
   unsigned getRegBinaryCode(unsigned reg) const;
 
-  /// getHWRegNum - Generated function that returns the hardware encoding for
+  /// \brief Generated function that returns the hardware encoding for
   /// a register
   unsigned getHWRegNum(unsigned reg) const;
 
@@ -180,7 +181,7 @@ unsigned SIMCCodeEmitter::GPR4AlignEncode(const MCInst &MI,
 #define SMRD_IMM_SHIFT 8
 #define SMRD_SBASE_MASK 0x3f
 #define SMRD_SBASE_SHIFT 9
-/// SMRDmemriEncode - This function is responsibe for encoding the offset
+/// This function is responsibe for encoding the offset
 /// and the base ptr for SMRD instructions it should return a bit string in
 /// this format:
 ///

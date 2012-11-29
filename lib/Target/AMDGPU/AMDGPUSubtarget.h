@@ -7,7 +7,8 @@
 //
 //==-----------------------------------------------------------------------===//
 //
-// This file declares the AMDGPU specific subclass of TargetSubtarget.
+/// \file
+/// \brief AMDGPU specific subclass of TargetSubtarget.
 //
 //===----------------------------------------------------------------------===//
 

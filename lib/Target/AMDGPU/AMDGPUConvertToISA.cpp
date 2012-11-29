@@ -7,8 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This pass lowers AMDIL machine instructions to the appropriate hardware
-// instructions. 
+/// \file
+/// \brief This pass lowers AMDIL machine instructions to the appropriate
+/// hardware instructions.
 //
 //===----------------------------------------------------------------------===//
 

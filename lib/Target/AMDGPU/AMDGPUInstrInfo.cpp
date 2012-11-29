@@ -7,8 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains the implementation of the TargetInstrInfo class that is
-// common to all AMD GPUs.
+/// \file
+/// \brief Implementation of the TargetInstrInfo class that is common to all
+/// AMD GPUs.
 //
 //===----------------------------------------------------------------------===//
 
