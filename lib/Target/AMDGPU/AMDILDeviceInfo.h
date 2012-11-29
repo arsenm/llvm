@@ -6,18 +6,16 @@
 // License. See LICENSE.TXT for details.
 //
 //==-----------------------------------------------------------------------===//
-#ifndef _AMDILDEVICEINFO_H_
-#define _AMDILDEVICEINFO_H_
+#ifndef AMDILDEVICEINFO_H
+#define AMDILDEVICEINFO_H
 
 
 #include <string>
 
-namespace llvm
-{
+namespace llvm {
   class AMDGPUDevice;
   class AMDGPUSubtarget;
-  namespace AMDGPUDeviceInfo
-  {
+  namespace AMDGPUDeviceInfo {
     // Each Capabilities can be executed using a hardware instruction,
     // emulated with a sequence of software instructions, or not
     // supported at all.
@@ -87,4 +85,4 @@ namespace llvm
                       bool is64bit = false, bool is64on32bit = false);
   } // namespace AMDILDeviceInfo
 } // namespace llvm
-#endif // _AMDILDEVICEINFO_H_
+#endif // AMDILDEVICEINFO_H

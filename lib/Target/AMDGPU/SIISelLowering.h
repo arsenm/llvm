@@ -19,8 +19,7 @@
 
 namespace llvm {
 
-class SITargetLowering : public AMDGPUTargetLowering
-{
+class SITargetLowering : public AMDGPUTargetLowering {
   const SIInstrInfo * TII;
 
   /// AppendS_WAITCNT - Memory reads and writes are syncronized using the

@@ -607,7 +607,7 @@ template<class PassT> void CFGStructurizer<PassT>::orderBlocks() {
     if (sccNum == INVALIDSCCNUM) {
       errs() << "unreachable block BB" << bb->getNumber() << "\n";
     }
-  } //end of for
+  }
 } //orderBlocks
 
 template<class PassT> int CFGStructurizer<PassT>::patternMatch(BlockT *curBlk) {
@@ -839,8 +839,7 @@ int CFGStructurizer<PassT>::loopbreakPatternMatch(LoopT *loopRep,
   int numCloned = 0;
   int numSerial = 0;
 
-  if (exitBlkSet.size() == 1)
-  {
+  if (exitBlkSet.size() == 1) {
     exitLandBlk = *exitBlkSet.begin();
   } else {
     exitLandBlk = findNearestCommonPostDom(exitBlkSet);
@@ -1396,7 +1395,7 @@ void CFGStructurizer<PassT>::mergeIfthenelseBlock(InstrT *branchInstr,
   CFGTraits::insertCondBranchBefore(branchInstrPos,
                                     CFGTraits::getBranchNzeroOpcode(oldOpcode),
                                     passRep,
-									branchDL);
+                                    branchDL);
 
   if (trueBlk) {
     curBlk->splice(branchInstrPos, trueBlk, trueBlk->begin(), trueBlk->end());
@@ -1455,8 +1454,7 @@ void CFGStructurizer<PassT>::mergeLooplandBlock(BlockT *dstBlk,
   // Loop breakInitRegs are init before entering the loop.
   for (typename std::set<RegiT>::const_iterator iter =
          loopLand->breakInitRegs.begin(),
-       iterEnd = loopLand->breakInitRegs.end(); iter != iterEnd; ++iter)
-  {
+       iterEnd = loopLand->breakInitRegs.end(); iter != iterEnd; ++iter) {
     CFGTraits::insertAssignInstrBefore(dstBlk, passRep, *iter, 0);
   }
   // Loop endbranchInitRegs are init before entering the loop.
@@ -1608,7 +1606,7 @@ void CFGStructurizer<PassT>::settleLoopcontBlock(BlockT *contingBlk,
       CFGTraits::getInstrPos(contingBlk, branchInstr);
     BlockT *trueBranch = CFGTraits::getTrueBranch(branchInstr);
     int oldOpcode = branchInstr->getOpcode();
-	DebugLoc DL = branchInstr->getDebugLoc();
+    DebugLoc DL = branchInstr->getDebugLoc();
 
     //    transform contingBlk to
     //     if () {
@@ -1623,8 +1621,7 @@ void CFGStructurizer<PassT>::settleLoopcontBlock(BlockT *contingBlk,
     bool useContinueLogical = 
       (setReg == INVALIDREGNUM && (&*contingBlk->rbegin()) == branchInstr);
 
-    if (useContinueLogical == false) 
-    {
+    if (useContinueLogical == false) {
       int branchOpcode =
         trueBranch == contBlk ? CFGTraits::getBranchNzeroOpcode(oldOpcode)
                               : CFGTraits::getBranchZeroOpcode(oldOpcode);
@@ -2325,8 +2322,7 @@ void CFGStructurizer<PassT>::addLoopEndbranchInitReg(LoopT *loopRep,
   }
   theEntry->endbranchInitRegs.insert(regNum);
 
-  if (DEBUGME)
-  {
+  if (DEBUGME) {
         errs() << "addLoopEndbranchInitReg loop-header = BB"
       << loopRep->getHeader()->getNumber()
       << "  regNum = " << regNum << "\n";
@@ -2485,14 +2481,12 @@ public:
 
 private:
 
-};   //end of class AMDGPUCFGStructurizer
+};
 
 } //end of namespace llvm
-AMDGPUCFGStructurizer::AMDGPUCFGStructurizer(char &pid, TargetMachine &tm
-                                          )
+AMDGPUCFGStructurizer::AMDGPUCFGStructurizer(char &pid, TargetMachine &tm)
 : MachineFunctionPass(pid), TM(tm), TII(tm.getInstrInfo()),
-  TRI(static_cast<const AMDGPURegisterInfo *>(tm.getRegisterInfo())
-  ) {
+  TRI(static_cast<const AMDGPURegisterInfo *>(tm.getRegisterInfo())) {
 }
 
 const TargetInstrInfo *AMDGPUCFGStructurizer::getTargetInstrInfo() const {
@@ -2522,7 +2516,7 @@ public:
 
 private:
 
-};   //end of class AMDGPUCFGPrepare
+};
 
 char AMDGPUCFGPrepare::ID = 0;
 } //end of namespace llvm
@@ -2564,7 +2558,7 @@ public:
 
 private:
 
-};   //end of class AMDGPUCFGPerform
+};
 
 char AMDGPUCFGPerform::ID = 0;
 } //end of namespace llvm
@@ -2605,7 +2599,7 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
     case AMDGPU::SI_IF_NZ: return AMDGPU::SI_IF_NZ;
     default:
       assert(0 && "internal error");
-    };
+    }
     return -1;
   }
 
@@ -2617,12 +2611,11 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
     case AMDGPU::SI_IF_Z: return AMDGPU::SI_IF_Z;
     default:
       assert(0 && "internal error");
-    };
+    }
     return -1;
   }
 
-  static int getContinueNzeroOpcode(int oldOpcode)
-  {
+  static int getContinueNzeroOpcode(int oldOpcode) {
     switch(oldOpcode) {
     case AMDGPU::JUMP: return AMDGPU::CONTINUE_LOGICALNZ_i32;
     default:
@@ -2636,7 +2629,7 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
     case AMDGPU::JUMP: return AMDGPU::CONTINUE_LOGICALZ_i32;
     default:
       assert(0 && "internal error");
-    };
+    }
     return -1;
   }
 
@@ -2689,11 +2682,11 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
   static DebugLoc getLastDebugLocInBB(MachineBasicBlock *blk) {
     //get DebugLoc from the first MachineBasicBlock instruction with debug info
     DebugLoc DL;
-	for (MachineBasicBlock::iterator iter = blk->begin(); iter != blk->end(); ++iter) {
-	  MachineInstr *instr = &(*iter);
-	  if (instr->getDebugLoc().isUnknown() == false) {
-	    DL = instr->getDebugLoc();
-	  }
+    for (MachineBasicBlock::iterator iter = blk->begin(); iter != blk->end(); ++iter) {
+      MachineInstr *instr = &(*iter);
+      if (instr->getDebugLoc().isUnknown() == false) {
+        DL = instr->getDebugLoc();
+      }
     }
     return DL;
   }
@@ -2851,7 +2844,7 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
   static void insertCondBranchBefore(MachineBasicBlock::iterator instrPos,
                                      int newOpcode,
                                      AMDGPUCFGStructurizer *passRep,
-									 DebugLoc DL) {
+                                     DebugLoc DL) {
     MachineInstr *oldInstr = &(*instrPos);
     const TargetInstrInfo *tii = passRep->getTargetInstrInfo();
     MachineBasicBlock *blk = oldInstr->getParent();
@@ -2872,7 +2865,7 @@ struct CFGStructTraits<AMDGPUCFGStructurizer> {
                                      int newOpcode,
                                      AMDGPUCFGStructurizer *passRep,
                                      RegiT regNum,
-									 DebugLoc DL) {
+                                     DebugLoc DL) {
     const TargetInstrInfo *tii = passRep->getTargetInstrInfo();
 
     MachineInstr *newInstr =
@@ -3054,6 +3047,3 @@ bool AMDGPUCFGPerform::runOnMachineFunction(MachineFunction &func) {
                                                                     *this,
                                                                     TRI);
 }
-
-//end of file newline goes below
-

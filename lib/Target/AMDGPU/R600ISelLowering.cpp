@@ -80,53 +80,49 @@ MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
   switch (MI->getOpcode()) {
   default: return AMDGPUTargetLowering::EmitInstrWithCustomInserter(MI, BB);
   case AMDGPU::SHADER_TYPE: break;
-  case AMDGPU::CLAMP_R600:
-    {
-      MachineInstr *NewMI = TII->buildDefaultInstruction(*BB, I,
-                                                    AMDGPU::MOV,
-                                                    MI->getOperand(0).getReg(),
-                                                    MI->getOperand(1).getReg());
-      TII->addFlag(NewMI, 0, MO_FLAG_CLAMP);
-      break;
-    }
-  case AMDGPU::FABS_R600:
-    {
-      MachineInstr *NewMI = TII->buildDefaultInstruction(*BB, I,
-                                                    AMDGPU::MOV,
-                                                    MI->getOperand(0).getReg(),
-                                                    MI->getOperand(1).getReg());
-      TII->addFlag(NewMI, 0, MO_FLAG_ABS);
-      break;
-    }
-
-  case AMDGPU::FNEG_R600:
-    {
-      MachineInstr *NewMI = TII->buildDefaultInstruction(*BB, I,
-                                                    AMDGPU::MOV,
-                                                    MI->getOperand(0).getReg(),
-                                                    MI->getOperand(1).getReg());
-      TII->addFlag(NewMI, 0, MO_FLAG_NEG);
+  case AMDGPU::CLAMP_R600: {
+    MachineInstr *NewMI = TII->buildDefaultInstruction(*BB, I,
+                                                   AMDGPU::MOV,
+                                                   MI->getOperand(0).getReg(),
+                                                   MI->getOperand(1).getReg());
+    TII->addFlag(NewMI, 0, MO_FLAG_CLAMP);
     break;
-    }
+  }
 
-  case AMDGPU::R600_LOAD_CONST:
-    {
-      int64_t RegIndex = MI->getOperand(1).getImm();
-      unsigned ConstantReg = AMDGPU::R600_CReg32RegClass.getRegister(RegIndex);
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::COPY))
-                  .addOperand(MI->getOperand(0))
-                  .addReg(ConstantReg);
-      break;
-    }
+  case AMDGPU::FABS_R600: {
+    MachineInstr *NewMI = TII->buildDefaultInstruction(*BB, I,
+                                                    AMDGPU::MOV,
+                                                    MI->getOperand(0).getReg(),
+                                                    MI->getOperand(1).getReg());
+    TII->addFlag(NewMI, 0, MO_FLAG_ABS);
+    break;
+  }
 
-  case AMDGPU::MASK_WRITE:
-    {
-      unsigned maskedRegister = MI->getOperand(0).getReg();
-      assert(TargetRegisterInfo::isVirtualRegister(maskedRegister));
-      MachineInstr * defInstr = MRI.getVRegDef(maskedRegister);
-      TII->addFlag(defInstr, 0, MO_FLAG_MASK);
-      break;
-    }
+  case AMDGPU::FNEG_R600: {
+    MachineInstr *NewMI = TII->buildDefaultInstruction(*BB, I,
+                                                    AMDGPU::MOV,
+                                                    MI->getOperand(0).getReg(),
+                                                    MI->getOperand(1).getReg());
+    TII->addFlag(NewMI, 0, MO_FLAG_NEG);
+    break;
+  }
+
+  case AMDGPU::R600_LOAD_CONST: {
+    int64_t RegIndex = MI->getOperand(1).getImm();
+    unsigned ConstantReg = AMDGPU::R600_CReg32RegClass.getRegister(RegIndex);
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::COPY))
+                .addOperand(MI->getOperand(0))
+                .addReg(ConstantReg);
+    break;
+  }
+
+  case AMDGPU::MASK_WRITE: {
+    unsigned maskedRegister = MI->getOperand(0).getReg();
+    assert(TargetRegisterInfo::isVirtualRegister(maskedRegister));
+    MachineInstr * defInstr = MRI.getVRegDef(maskedRegister);
+    TII->addFlag(defInstr, 0, MO_FLAG_MASK);
+    break;
+  }
 
   case AMDGPU::MOV_IMM_F32:
     TII->buildMovImm(*BB, I, MI->getOperand(0).getReg(),
@@ -140,156 +136,154 @@ MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
 
 
   case AMDGPU::RAT_WRITE_CACHELESS_32_eg:
-  case AMDGPU::RAT_WRITE_CACHELESS_128_eg:
-    {
-      // Convert to DWORD address
-      unsigned NewAddr = MRI.createVirtualRegister(
+  case AMDGPU::RAT_WRITE_CACHELESS_128_eg: {
+    // Convert to DWORD address
+    unsigned NewAddr = MRI.createVirtualRegister(
                                              &AMDGPU::R600_TReg32_XRegClass);
-      unsigned ShiftValue = MRI.createVirtualRegister(
+    unsigned ShiftValue = MRI.createVirtualRegister(
                                               &AMDGPU::R600_TReg32RegClass);
-      unsigned EOP = (llvm::next(I)->getOpcode() == AMDGPU::RETURN) ? 1 : 0;
+    unsigned EOP = (llvm::next(I)->getOpcode() == AMDGPU::RETURN) ? 1 : 0;
 
-      // XXX In theory, we should be able to pass ShiftValue directly to
-      // the LSHR_eg instruction as an inline literal, but I tried doing it
-      // this way and it didn't produce the correct results.
-      TII->buildMovImm(*BB, I, ShiftValue, 2);
-      TII->buildDefaultInstruction(*BB, I, AMDGPU::LSHR_eg, NewAddr,
-                                   MI->getOperand(1).getReg(),
-                                   ShiftValue);
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(MI->getOpcode()))
-              .addOperand(MI->getOperand(0))
-              .addReg(NewAddr)
-              .addImm(EOP); // Set End of program bit
-      break;
-    }
+    // XXX In theory, we should be able to pass ShiftValue directly to
+    // the LSHR_eg instruction as an inline literal, but I tried doing it
+    // this way and it didn't produce the correct results.
+    TII->buildMovImm(*BB, I, ShiftValue, 2);
+    TII->buildDefaultInstruction(*BB, I, AMDGPU::LSHR_eg, NewAddr,
+                                 MI->getOperand(1).getReg(),
+                                 ShiftValue);
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(MI->getOpcode()))
+            .addOperand(MI->getOperand(0))
+            .addReg(NewAddr)
+            .addImm(EOP); // Set End of program bit
+    break;
+  }
 
-  case AMDGPU::RESERVE_REG:
-    {
-      R600MachineFunctionInfo * MFI = MF->getInfo<R600MachineFunctionInfo>();
-      int64_t ReservedIndex = MI->getOperand(0).getImm();
-      unsigned ReservedReg =
-                          AMDGPU::R600_TReg32RegClass.getRegister(ReservedIndex);
-      MFI->ReservedRegs.push_back(ReservedReg);
-      unsigned SuperReg =
+  case AMDGPU::RESERVE_REG: {
+    R600MachineFunctionInfo * MFI = MF->getInfo<R600MachineFunctionInfo>();
+    int64_t ReservedIndex = MI->getOperand(0).getImm();
+    unsigned ReservedReg =
+                         AMDGPU::R600_TReg32RegClass.getRegister(ReservedIndex);
+    MFI->ReservedRegs.push_back(ReservedReg);
+    unsigned SuperReg =
           AMDGPU::R600_Reg128RegClass.getRegister(ReservedIndex / 4);
-      MFI->ReservedRegs.push_back(SuperReg);
-      break;
-    }
+    MFI->ReservedRegs.push_back(SuperReg);
+    break;
+  }
 
-  case AMDGPU::TXD:
-    {
-      unsigned t0 = MRI.createVirtualRegister(&AMDGPU::R600_Reg128RegClass);
-      unsigned t1 = MRI.createVirtualRegister(&AMDGPU::R600_Reg128RegClass);
+  case AMDGPU::TXD: {
+    unsigned T0 = MRI.createVirtualRegister(&AMDGPU::R600_Reg128RegClass);
+    unsigned T1 = MRI.createVirtualRegister(&AMDGPU::R600_Reg128RegClass);
 
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_H), t0)
-              .addOperand(MI->getOperand(3))
-              .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5))
-              .addOperand(MI->getOperand(6));
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_V), t1)
-              .addOperand(MI->getOperand(2))
-              .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5))
-              .addOperand(MI->getOperand(6));
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SAMPLE_G))
-              .addOperand(MI->getOperand(0))
-              .addOperand(MI->getOperand(1))
-              .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5))
-              .addOperand(MI->getOperand(6))
-              .addReg(t0, RegState::Implicit)
-              .addReg(t1, RegState::Implicit);
-      break;
-    }
-  case AMDGPU::TXD_SHADOW:
-    {
-      unsigned t0 = MRI.createVirtualRegister(&AMDGPU::R600_Reg128RegClass);
-      unsigned t1 = MRI.createVirtualRegister(&AMDGPU::R600_Reg128RegClass);
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_H), T0)
+            .addOperand(MI->getOperand(3))
+            .addOperand(MI->getOperand(4))
+            .addOperand(MI->getOperand(5))
+            .addOperand(MI->getOperand(6));
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_V), T1)
+            .addOperand(MI->getOperand(2))
+            .addOperand(MI->getOperand(4))
+            .addOperand(MI->getOperand(5))
+            .addOperand(MI->getOperand(6));
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SAMPLE_G))
+            .addOperand(MI->getOperand(0))
+            .addOperand(MI->getOperand(1))
+            .addOperand(MI->getOperand(4))
+            .addOperand(MI->getOperand(5))
+            .addOperand(MI->getOperand(6))
+            .addReg(T0, RegState::Implicit)
+            .addReg(T1, RegState::Implicit);
+    break;
+  }
 
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_H), t0)
-              .addOperand(MI->getOperand(3))
-              .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5))
-              .addOperand(MI->getOperand(6));
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_V), t1)
-              .addOperand(MI->getOperand(2))
-              .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5))
-              .addOperand(MI->getOperand(6));
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SAMPLE_C_G))
-              .addOperand(MI->getOperand(0))
-              .addOperand(MI->getOperand(1))
-              .addOperand(MI->getOperand(4))
-              .addOperand(MI->getOperand(5))
-              .addOperand(MI->getOperand(6))
-              .addReg(t0, RegState::Implicit)
-              .addReg(t1, RegState::Implicit);
-      break;
-    }
+  case AMDGPU::TXD_SHADOW: {
+    unsigned T0 = MRI.createVirtualRegister(&AMDGPU::R600_Reg128RegClass);
+    unsigned T1 = MRI.createVirtualRegister(&AMDGPU::R600_Reg128RegClass);
+
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_H), T0)
+            .addOperand(MI->getOperand(3))
+            .addOperand(MI->getOperand(4))
+            .addOperand(MI->getOperand(5))
+            .addOperand(MI->getOperand(6));
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SET_GRADIENTS_V), T1)
+            .addOperand(MI->getOperand(2))
+            .addOperand(MI->getOperand(4))
+            .addOperand(MI->getOperand(5))
+            .addOperand(MI->getOperand(6));
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::TEX_SAMPLE_C_G))
+            .addOperand(MI->getOperand(0))
+            .addOperand(MI->getOperand(1))
+            .addOperand(MI->getOperand(4))
+            .addOperand(MI->getOperand(5))
+            .addOperand(MI->getOperand(6))
+            .addReg(T0, RegState::Implicit)
+            .addReg(T1, RegState::Implicit);
+    break;
+  }
+
   case AMDGPU::BRANCH:
       BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::JUMP))
               .addOperand(MI->getOperand(0))
               .addReg(0);
       break;
-  case AMDGPU::BRANCH_COND_f32:
-    {
-      MachineInstr *NewMI =
-        BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::PRED_X),
-                AMDGPU::PREDICATE_BIT)
-                .addOperand(MI->getOperand(1))
-                .addImm(OPCODE_IS_NOT_ZERO)
-                .addImm(0); // Flags
-      TII->addFlag(NewMI, 0, MO_FLAG_PUSH);
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::JUMP))
-              .addOperand(MI->getOperand(0))
-              .addReg(AMDGPU::PREDICATE_BIT, RegState::Kill);
-      break;
-    }
-  case AMDGPU::BRANCH_COND_i32:
-    {
-      MachineInstr *NewMI =
-        BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::PRED_X),
+
+  case AMDGPU::BRANCH_COND_f32: {
+    MachineInstr *NewMI =
+      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::PRED_X),
               AMDGPU::PREDICATE_BIT)
               .addOperand(MI->getOperand(1))
-              .addImm(OPCODE_IS_NOT_ZERO_INT)
+              .addImm(OPCODE_IS_NOT_ZERO)
               .addImm(0); // Flags
-      TII->addFlag(NewMI, 0, MO_FLAG_PUSH);
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::JUMP))
-             .addOperand(MI->getOperand(0))
-              .addReg(AMDGPU::PREDICATE_BIT, RegState::Kill);
+    TII->addFlag(NewMI, 0, MO_FLAG_PUSH);
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::JUMP))
+            .addOperand(MI->getOperand(0))
+            .addReg(AMDGPU::PREDICATE_BIT, RegState::Kill);
+    break;
+  }
+
+  case AMDGPU::BRANCH_COND_i32: {
+    MachineInstr *NewMI =
+      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::PRED_X),
+            AMDGPU::PREDICATE_BIT)
+            .addOperand(MI->getOperand(1))
+            .addImm(OPCODE_IS_NOT_ZERO_INT)
+            .addImm(0); // Flags
+    TII->addFlag(NewMI, 0, MO_FLAG_PUSH);
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(AMDGPU::JUMP))
+           .addOperand(MI->getOperand(0))
+            .addReg(AMDGPU::PREDICATE_BIT, RegState::Kill);
+    break;
+  }
+
+  case AMDGPU::input_perspective: {
+    R600MachineFunctionInfo *MFI = MF->getInfo<R600MachineFunctionInfo>();
+
+    // XXX Be more fine about register reservation
+    for (unsigned i = 0; i < 4; i ++) {
+      unsigned ReservedReg = AMDGPU::R600_TReg32RegClass.getRegister(i);
+      MFI->ReservedRegs.push_back(ReservedReg);
+    }
+
+    switch (MI->getOperand(1).getImm()) {
+    case 0:// Perspective
+      MFI->HasPerspectiveInterpolation = true;
       break;
+    case 1:// Linear
+      MFI->HasLinearInterpolation = true;
+      break;
+    default:
+      assert(0 && "Unknow ij index");
     }
-  case AMDGPU::input_perspective:
-    {
-      R600MachineFunctionInfo *MFI = MF->getInfo<R600MachineFunctionInfo>();
 
-      // XXX Be more fine about register reservation
-      for (unsigned i = 0; i < 4; i ++) {
-        unsigned ReservedReg = AMDGPU::R600_TReg32RegClass.getRegister(i);
-        MFI->ReservedRegs.push_back(ReservedReg);
-      }
+    return BB;
+  }
 
-      switch (MI->getOperand(1).getImm()) {
-      case 0:// Perspective
-        MFI->HasPerspectiveInterpolation = true;
-        break;
-      case 1:// Linear
-        MFI->HasLinearInterpolation = true;
-        break;
-      default:
-        assert(0 && "Unknow ij index");
-      }
-
-      return BB;
-    }
   case AMDGPU::EG_Export:
-  case AMDGPU::R600_Export:
-    {
-      bool EOP = (llvm::next(I)->getOpcode() == AMDGPU::RETURN)? 1 : 0;
-      if (!EOP)
-        return BB;
-      unsigned CfInst = (MI->getOpcode() == AMDGPU::EG_Export)? 84 : 40;
-      BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(MI->getOpcode()))
+  case AMDGPU::R600_Export: {
+    bool EOP = (llvm::next(I)->getOpcode() == AMDGPU::RETURN)? 1 : 0;
+    if (!EOP)
+      return BB;
+    unsigned CfInst = (MI->getOpcode() == AMDGPU::EG_Export)? 84 : 40;
+    BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(MI->getOpcode()))
             .addOperand(MI->getOperand(0))
             .addOperand(MI->getOperand(1))
             .addOperand(MI->getOperand(2))
@@ -299,8 +293,8 @@ MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
             .addOperand(MI->getOperand(6))
             .addImm(CfInst)
             .addImm(1);
-      break;
-    }
+    break;
+  }
   }
 
   MI->eraseFromParent();

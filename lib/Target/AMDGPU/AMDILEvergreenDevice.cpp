@@ -15,13 +15,13 @@ AMDGPUEvergreenDevice::AMDGPUEvergreenDevice(AMDGPUSubtarget *ST)
   setCaps();
   std::string name = ST->getDeviceName();
   if (name == "cedar") {
-    mDeviceFlag = OCL_DEVICE_CEDAR;
+    DeviceFlag = OCL_DEVICE_CEDAR;
   } else if (name == "redwood") {
-    mDeviceFlag = OCL_DEVICE_REDWOOD;
+    DeviceFlag = OCL_DEVICE_REDWOOD;
   } else if (name == "cypress") {
-    mDeviceFlag = OCL_DEVICE_CYPRESS;
+    DeviceFlag = OCL_DEVICE_CYPRESS;
   } else {
-    mDeviceFlag = OCL_DEVICE_JUNIPER;
+    DeviceFlag = OCL_DEVICE_JUNIPER;
   }
 }
 

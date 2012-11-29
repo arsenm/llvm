@@ -1058,10 +1058,10 @@ def LOAD_CONST : AMDGPUShaderInst <
 let usesCustomInserter = 1 in {
 
 def SI_V_CNDLT : InstSI <
-	(outs VReg_32:$dst),
-	(ins VReg_32:$src0, VReg_32:$src1, VReg_32:$src2),
-	"SI_V_CNDLT $dst, $src0, $src1, $src2",
-	[(set VReg_32:$dst, (int_AMDGPU_cndlt VReg_32:$src0, VReg_32:$src1, VReg_32:$src2))]
+  (outs VReg_32:$dst),
+  (ins VReg_32:$src0, VReg_32:$src1, VReg_32:$src2),
+  "SI_V_CNDLT $dst, $src0, $src1, $src2",
+  [(set VReg_32:$dst, (int_AMDGPU_cndlt VReg_32:$src0, VReg_32:$src1, VReg_32:$src2))]
 >;
 
 def SI_INTERP : InstSI <
@@ -1080,17 +1080,17 @@ def SI_INTERP_CONST : InstSI <
 >;
 
 def SI_KIL : InstSI <
-	(outs),
-	(ins VReg_32:$src),
-	"SI_KIL $src",
-	[(int_AMDGPU_kill VReg_32:$src)]
+  (outs),
+  (ins VReg_32:$src),
+  "SI_KIL $src",
+  [(int_AMDGPU_kill VReg_32:$src)]
 >;
 
 def SI_WQM : InstSI <
-	(outs),
-	(ins),
-	"SI_WQM",
-	[(int_SI_wqm)]
+  (outs),
+  (ins),
+  "SI_WQM",
+  [(int_SI_wqm)]
 >;
 
 } // end usesCustomInserter 

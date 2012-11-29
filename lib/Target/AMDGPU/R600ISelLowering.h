@@ -20,8 +20,7 @@ namespace llvm {
 
 class R600InstrInfo;
 
-class R600TargetLowering : public AMDGPUTargetLowering
-{
+class R600TargetLowering : public AMDGPUTargetLowering {
 public:
   R600TargetLowering(TargetMachine &TM);
   virtual MachineBasicBlock * EmitInstrWithCustomInserter(MachineInstr *MI,

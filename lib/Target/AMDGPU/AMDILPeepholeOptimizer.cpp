@@ -159,8 +159,7 @@ Function safeNestedForEach(InputIterator First, InputIterator Last,
 
 namespace llvm {
   FunctionPass *
-  createAMDGPUPeepholeOpt(TargetMachine &tm) 
-  {
+  createAMDGPUPeepholeOpt(TargetMachine &tm) {
     return new AMDGPUPeepholeOpt(tm);
   }
 } // llvm namespace

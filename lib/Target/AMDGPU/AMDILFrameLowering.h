@@ -17,8 +17,8 @@
 // Interface to describe a layout of a stack frame on a AMDIL target machine
 //
 //===----------------------------------------------------------------------===//
-#ifndef _AMDILFRAME_LOWERING_H_
-#define _AMDILFRAME_LOWERING_H_
+#ifndef AMDILFRAME_LOWERING_H
+#define AMDILFRAME_LOWERING_H
 
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/Target/TargetFrameLowering.h"
@@ -43,4 +43,4 @@ namespace llvm {
       virtual bool hasFP(const MachineFunction &MF) const;
   }; // class AMDGPUFrameLowering
 } // namespace llvm
-#endif // _AMDILFRAME_LOWERING_H_
+#endif // AMDILFRAME_LOWERING_H

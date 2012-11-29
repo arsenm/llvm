@@ -47,7 +47,7 @@ SIInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
             .addReg(SrcReg, getKillRegState(KillSrc));
   } else if (AMDGPU::VReg_32RegClass.contains(DestReg)) {
     assert(AMDGPU::VReg_32RegClass.contains(SrcReg) ||
-	   AMDGPU::SReg_32RegClass.contains(SrcReg));
+           AMDGPU::SReg_32RegClass.contains(SrcReg));
     BuildMI(MBB, MI, DL, get(AMDGPU::V_MOV_B32_e32), DestReg)
             .addReg(SrcReg, getKillRegState(KillSrc));
   } else {

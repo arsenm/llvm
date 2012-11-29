@@ -179,7 +179,7 @@ void SITargetLowering::LowerSI_INTERP(MachineInstr *MI, MachineBasicBlock &BB,
           .addOperand(iReg)
           .addOperand(attr_chan)
           .addOperand(attr)
-	  .addReg(M0);
+          .addReg(M0);
 
   BuildMI(BB, I, BB.findDebugLoc(I), TII->get(AMDGPU::V_INTERP_P2_F32))
           .addOperand(dst)
@@ -187,7 +187,7 @@ void SITargetLowering::LowerSI_INTERP(MachineInstr *MI, MachineBasicBlock &BB,
           .addOperand(jReg)
           .addOperand(attr_chan)
           .addOperand(attr)
-	  .addReg(M0);
+          .addReg(M0);
 
   MI->eraseFromParent();
 }
@@ -208,7 +208,7 @@ void SITargetLowering::LowerSI_INTERP_CONST(MachineInstr *MI,
           .addOperand(dst)
           .addOperand(attr_chan)
           .addOperand(attr)
-	  .addReg(M0);
+          .addReg(M0);
 
   MI->eraseFromParent();
 }
@@ -229,8 +229,8 @@ void SITargetLowering::LowerSI_V_CNDLT(MachineInstr *MI, MachineBasicBlock &BB,
   unsigned VCC = MRI.createVirtualRegister(&AMDGPU::SReg_64RegClass);
 
   BuildMI(BB, I, BB.findDebugLoc(I),
-	  TII->get(AMDGPU::V_CMP_GT_F32_e32),
-	  VCC)
+          TII->get(AMDGPU::V_CMP_GT_F32_e32),
+          VCC)
           .addReg(AMDGPU::SREG_LIT_0)
           .addOperand(MI->getOperand(1));
 

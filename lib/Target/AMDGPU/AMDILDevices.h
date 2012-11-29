@@ -6,8 +6,8 @@
 // License. See LICENSE.TXT for details.
 //
 //==-----------------------------------------------------------------------===//
-#ifndef __AMDIL_DEVICES_H_
-#define __AMDIL_DEVICES_H_
+#ifndef AMDIL_DEVICES_H
+#define AMDIL_DEVICES_H
 // Include all of the device specific header files
 // This file is for Internal use only!
 #include "AMDIL7XXDevice.h"
@@ -16,4 +16,4 @@
 #include "AMDILNIDevice.h"
 #include "AMDILSIDevice.h"
 
-#endif // _AMDIL_DEVICES_H_
+#endif // AMDIL_DEVICES_H

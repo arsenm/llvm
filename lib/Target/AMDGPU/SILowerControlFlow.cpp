@@ -146,8 +146,8 @@ bool SILowerControlFlowPass::runOnMachineFunction(MachineFunction &MF) {
                   .addReg(Reg);
           freeReg(Reg);
 
-	  if (MF.getInfo<SIMachineFunctionInfo>()->ShaderType == ShaderType::PIXEL &&
-	      PredicateStack.empty()) {
+          if (MF.getInfo<SIMachineFunctionInfo>()->ShaderType == ShaderType::PIXEL &&
+              PredicateStack.empty()) {
             // If the exec mask is non-zero, skip the next two instructions
             BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_CBRANCH_EXECNZ))
                     .addImm(3)
@@ -167,7 +167,7 @@ bool SILowerControlFlowPass::runOnMachineFunction(MachineFunction &MF) {
 
             // ... and terminate wavefront
             BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_ENDPGM));
-	  }
+          }
           MI.eraseFromParent();
           break;
       }

@@ -44,8 +44,7 @@ using namespace llvm;
 // TargetLowering Class Implementation Begins
 //===----------------------------------------------------------------------===//
 void AMDGPUTargetLowering::InitAMDILLowering() {
-  int types[] =
-  {
+  int types[] = {
     (int)MVT::i8,
     (int)MVT::i16,
     (int)MVT::i32,
@@ -64,22 +63,19 @@ void AMDGPUTargetLowering::InitAMDILLowering() {
     (int)MVT::v2i64
   };
 
-  int IntTypes[] =
-  {
+  int IntTypes[] = {
     (int)MVT::i8,
     (int)MVT::i16,
     (int)MVT::i32,
     (int)MVT::i64
   };
 
-  int FloatTypes[] =
-  {
+  int FloatTypes[] = {
     (int)MVT::f32,
     (int)MVT::f64
   };
 
-  int VectorTypes[] =
-  {
+  int VectorTypes[] = {
     (int)MVT::v2i8,
     (int)MVT::v4i8,
     (int)MVT::v2i16,
@@ -91,16 +87,16 @@ void AMDGPUTargetLowering::InitAMDILLowering() {
     (int)MVT::v2f64,
     (int)MVT::v2i64
   };
-  size_t numTypes = sizeof(types) / sizeof(*types);
-  size_t numFloatTypes = sizeof(FloatTypes) / sizeof(*FloatTypes);
-  size_t numIntTypes = sizeof(IntTypes) / sizeof(*IntTypes);
-  size_t numVectorTypes = sizeof(VectorTypes) / sizeof(*VectorTypes);
+  size_t NumTypes = sizeof(types) / sizeof(*types);
+  size_t NumFloatTypes = sizeof(FloatTypes) / sizeof(*FloatTypes);
+  size_t NumIntTypes = sizeof(IntTypes) / sizeof(*IntTypes);
+  size_t NumVectorTypes = sizeof(VectorTypes) / sizeof(*VectorTypes);
 
   const AMDGPUSubtarget &STM = getTargetMachine().getSubtarget<AMDGPUSubtarget>();
   // These are the current register classes that are
   // supported
 
-  for (unsigned int x  = 0; x < numTypes; ++x) {
+  for (unsigned int x  = 0; x < NumTypes; ++x) {
     MVT::SimpleValueType VT = (MVT::SimpleValueType)types[x];
 
     //FIXME: SIGN_EXTEND_INREG is not meaningful for floating point types
@@ -121,7 +117,7 @@ void AMDGPUTargetLowering::InitAMDILLowering() {
       setOperationAction(ISD::SDIV, VT, Custom);
     }
   }
-  for (unsigned int x = 0; x < numFloatTypes; ++x) {
+  for (unsigned int x = 0; x < NumFloatTypes; ++x) {
     MVT::SimpleValueType VT = (MVT::SimpleValueType)FloatTypes[x];
 
     // IL does not have these operations for floating point types
@@ -136,7 +132,7 @@ void AMDGPUTargetLowering::InitAMDILLowering() {
     setOperationAction(ISD::SETULE, VT, Expand);
   }
 
-  for (unsigned int x = 0; x < numIntTypes; ++x) {
+  for (unsigned int x = 0; x < NumIntTypes; ++x) {
     MVT::SimpleValueType VT = (MVT::SimpleValueType)IntTypes[x];
 
     // GPU also does not have divrem function for signed or unsigned
@@ -156,8 +152,7 @@ void AMDGPUTargetLowering::InitAMDILLowering() {
     setOperationAction(ISD::CTLZ, VT, Expand);
   }
 
-  for ( unsigned int ii = 0; ii < numVectorTypes; ++ii )
-  {
+  for (unsigned int ii = 0; ii < NumVectorTypes; ++ii) {
     MVT::SimpleValueType VT = (MVT::SimpleValueType)VectorTypes[ii];
 
     setOperationAction(ISD::VECTOR_SHUFFLE, VT, Expand);
@@ -229,10 +224,6 @@ void AMDGPUTargetLowering::InitAMDILLowering() {
   maxStoresPerMemmove = 4096;
   maxStoresPerMemset  = 4096;
 
-#undef numTypes
-#undef numIntTypes
-#undef numVectorTypes
-#undef numFloatTypes
 }
 
 bool

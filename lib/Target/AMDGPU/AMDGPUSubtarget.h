@@ -11,8 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef _AMDGPUSUBTARGET_H_
-#define _AMDGPUSUBTARGET_H_
+#ifndef AMDGPUSUBTARGET_H
+#define AMDGPUSUBTARGET_H
 #include "AMDILDevice.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
@@ -25,18 +25,16 @@
 
 namespace llvm {
 
-class AMDGPUSubtarget : public AMDGPUGenSubtargetInfo
-{
+class AMDGPUSubtarget : public AMDGPUGenSubtargetInfo {
 private:
   bool CapsOverride[AMDGPUDeviceInfo::MaxNumberCapabilities];
-  const AMDGPUDevice *mDevice;
-  size_t mDefaultSize[3];
-  size_t mMinimumSize[3];
-  std::string mDevName;
-  bool mIs64bit;
-  bool mIs32on64bit;
-  bool mDumpCode;
-  bool mR600ALUInst;
+  const AMDGPUDevice *Device;
+  size_t DefaultSize[3];
+  std::string DevName;
+  bool Is64bit;
+  bool Is32on64bit;
+  bool DumpCode;
+  bool R600ALUInst;
 
   InstrItineraryData InstrItins;
 
@@ -56,11 +54,11 @@ public:
   std::string getDataLayout() const;
   std::string getDeviceName() const;
   virtual size_t getDefaultSize(uint32_t dim) const;
-  bool dumpCode() const { return mDumpCode; }
-  bool r600ALUEncoding() const { return mR600ALUInst; }
+  bool dumpCode() const { return DumpCode; }
+  bool r600ALUEncoding() const { return R600ALUInst; }
 
 };
 
 } // End namespace llvm
 
-#endif // AMDGPUSUBTARGET_H_
+#endif // AMDGPUSUBTARGET_H

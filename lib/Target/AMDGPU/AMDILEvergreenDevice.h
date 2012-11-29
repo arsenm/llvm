@@ -14,8 +14,8 @@
 // implement in order to correctly answer queries on the capabilities of the
 // specific hardware.
 //===----------------------------------------------------------------------===//
-#ifndef _AMDILEVERGREENDEVICE_H_
-#define _AMDILEVERGREENDEVICE_H_
+#ifndef AMDILEVERGREENDEVICE_H
+#define AMDILEVERGREENDEVICE_H
 #include "AMDILDevice.h"
 #include "AMDGPUSubtarget.h"
 
@@ -84,4 +84,4 @@ private:
 }; // AMDGPURedwoodDevice
   
 } // namespace llvm
-#endif // _AMDILEVERGREENDEVICE_H_
+#endif // AMDILEVERGREENDEVICE_H

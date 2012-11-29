@@ -32,8 +32,7 @@ private:
   MachineDominatorTree *MD;
   MachinePostDominatorTree *MPD;
 
-  bool isSGPR(const TargetRegisterClass *RegClass)
-  {
+  bool isSGPR(const TargetRegisterClass *RegClass) {
     return RegClass == &AMDGPU::SReg_1RegClass ||
            RegClass == &AMDGPU::SReg_32RegClass ||
            RegClass == &AMDGPU::SReg_64RegClass ||

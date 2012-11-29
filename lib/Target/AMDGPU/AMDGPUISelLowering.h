@@ -21,8 +21,7 @@ namespace llvm {
 
 class MachineRegisterInfo;
 
-class AMDGPUTargetLowering : public TargetLowering
-{
+class AMDGPUTargetLowering : public TargetLowering {
 private:
   SDValue LowerINTRINSIC_WO_CHAIN(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerUDIVREM(SDValue Op, SelectionDAG &DAG) const;
@@ -96,11 +95,9 @@ private:
   SDValue LowerFP_ROUND(SDValue Op, SelectionDAG &DAG) const;
 };
 
-namespace AMDGPUISD
-{
+namespace AMDGPUISD {
 
-enum
-{
+enum {
   // AMDIL ISD Opcodes
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
   MAD,         // 32bit Fused Multiply Add instruction

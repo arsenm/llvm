@@ -52,12 +52,12 @@ def FeatureNoInline : SubtargetFeature<"no-inline",
         "specify whether to not inline functions">;
 
 def Feature64BitPtr : SubtargetFeature<"64BitPtr",
-        "mIs64bit",
+        "Is64bit",
         "false",
         "Specify if 64bit addressing should be used.">;
 
 def Feature32on64BitPtr : SubtargetFeature<"64on32BitPtr",
-        "mIs32on64bit",
+        "Is32on64bit",
         "false",
         "Specify if 64bit sized pointers with 32bit addressing should be used.">;
 def FeatureDebug : SubtargetFeature<"debug",
@@ -65,12 +65,12 @@ def FeatureDebug : SubtargetFeature<"debug",
         "true",
         "Debug mode is enabled, so disable hardware accelerated address spaces.">;
 def FeatureDumpCode : SubtargetFeature <"DumpCode",
-        "mDumpCode",
+        "DumpCode",
         "true",
         "Dump MachineInstrs in the CodeEmitter">;
 
 def FeatureR600ALUInst : SubtargetFeature<"R600ALUInst",
-        "mR600ALUInst",
+        "R600ALUInst",
         "false",
         "Older version of ALU instructions encoding.">;
 

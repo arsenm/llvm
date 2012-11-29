@@ -22,8 +22,7 @@ namespace llvm {
 class AMDGPUTargetMachine;
 class TargetInstrInfo;
 
-struct SIRegisterInfo : public AMDGPURegisterInfo
-{
+struct SIRegisterInfo : public AMDGPURegisterInfo {
   AMDGPUTargetMachine &TM;
   const TargetInstrInfo &TII;
 

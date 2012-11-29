@@ -14,8 +14,8 @@
 // implement in order to correctly answer queries on the capabilities of the
 // specific hardware.
 //===----------------------------------------------------------------------===//
-#ifndef _AMDIL7XXDEVICEIMPL_H_
-#define _AMDIL7XXDEVICEIMPL_H_
+#ifndef AMDIL7XXDEVICEIMPL_H
+#define AMDIL7XXDEVICEIMPL_H
 #include "AMDILDevice.h"
 
 namespace llvm {
@@ -67,4 +67,4 @@ public:
 }; // AMDGPU710Device
 
 } // namespace llvm
-#endif // _AMDILDEVICEIMPL_H_
+#endif // AMDILDEVICEIMPL_H

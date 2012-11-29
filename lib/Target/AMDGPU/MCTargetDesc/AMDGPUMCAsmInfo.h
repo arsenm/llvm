@@ -11,8 +11,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef AMDGPUMCASMINFO_H_
-#define AMDGPUMCASMINFO_H_
+#ifndef AMDGPUMCASMINFO_H
+#define AMDGPUMCASMINFO_H
 
 #include "llvm/MC/MCAsmInfo.h"
 namespace llvm {
@@ -27,4 +27,4 @@ namespace llvm {
       const MCSection* getNonexecutableStackSection(MCContext &CTX) const;
   };
 } // namespace llvm
-#endif // AMDGPUMCASMINFO_H_
+#endif // AMDGPUMCASMINFO_H

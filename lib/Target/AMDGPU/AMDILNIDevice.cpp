@@ -16,13 +16,13 @@ AMDGPUNIDevice::AMDGPUNIDevice(AMDGPUSubtarget *ST)
   : AMDGPUEvergreenDevice(ST) {
   std::string name = ST->getDeviceName();
   if (name == "caicos") {
-    mDeviceFlag = OCL_DEVICE_CAICOS;
+    DeviceFlag = OCL_DEVICE_CAICOS;
   } else if (name == "turks") {
-    mDeviceFlag = OCL_DEVICE_TURKS;
+    DeviceFlag = OCL_DEVICE_TURKS;
   } else if (name == "cayman") {
-    mDeviceFlag = OCL_DEVICE_CAYMAN;
+    DeviceFlag = OCL_DEVICE_CAYMAN;
   } else {
-    mDeviceFlag = OCL_DEVICE_BARTS;
+    DeviceFlag = OCL_DEVICE_BARTS;
   }
 }
 AMDGPUNIDevice::~AMDGPUNIDevice() {

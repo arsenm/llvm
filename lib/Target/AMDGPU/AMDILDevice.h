@@ -14,8 +14,8 @@
 // implement in order to correctly answer queries on the capabilities of the
 // specific hardware.
 //===----------------------------------------------------------------------===//
-#ifndef _AMDILDEVICEIMPL_H_
-#define _AMDILDEVICEIMPL_H_
+#ifndef AMDILDEVICEIMPL_H
+#define AMDILDEVICEIMPL_H
 #include "AMDIL.h"
 #include "llvm/ADT/BitVector.h"
 
@@ -106,11 +106,11 @@ protected:
   llvm::BitVector mHWBits;
   llvm::BitVector mSWBits;
   AMDGPUSubtarget *mSTM;
-  uint32_t mDeviceFlag;
+  uint32_t DeviceFlag;
 private:
   AMDGPUDeviceInfo::ExecutionMode
   getExecutionMode(AMDGPUDeviceInfo::Caps Caps) const;
 }; // AMDGPUDevice
 
 } // namespace llvm
-#endif // _AMDILDEVICEIMPL_H_
+#endif // AMDILDEVICEIMPL_H

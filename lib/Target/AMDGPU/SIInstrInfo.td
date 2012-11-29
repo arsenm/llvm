@@ -562,7 +562,7 @@ class MTBUF_Store_Helper <bits<3> op, string asm, RegisterClass regClass> : MTBU
 }
 
 multiclass SMRD_Helper <bits<5> op, string asm, RegisterClass dstClass,
-			ValueType vt> {
+                        ValueType vt> {
   def _IMM : SMRD <
               op,
               (outs dstClass:$dst),

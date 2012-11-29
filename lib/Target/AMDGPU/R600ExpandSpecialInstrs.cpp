@@ -98,7 +98,7 @@ bool R600ExpandSpecialInstrsPass::ExpandInputPerspective(MachineInstr &MI) {
         MI.getOperand(2).getImm());
 
 
-    unsigned Sel;
+    unsigned Sel = AMDGPU::sel_x;
     switch (i % 4) {
     case 0:Sel = AMDGPU::sel_x;break;
     case 1:Sel = AMDGPU::sel_y;break;
@@ -140,7 +140,7 @@ bool R600ExpandSpecialInstrsPass::ExpandInputConstant(MachineInstr &MI) {
     unsigned ReadReg = AMDGPU::R600_ArrayBaseRegClass.getRegister(
         MI.getOperand(1).getImm());
 
-    unsigned Sel;
+    unsigned Sel = AMDGPU::sel_x;
     switch (i % 4) {
     case 0:Sel = AMDGPU::sel_x;break;
     case 1:Sel = AMDGPU::sel_y;break;
@@ -220,7 +220,7 @@ bool R600ExpandSpecialInstrsPass::runOnMachineFunction(MachineFunction &MF) {
 
       bool IsReduction = TII->isReductionOp(MI.getOpcode());
       bool IsVector = TII->isVector(MI);
-	    bool IsCube = TII->isCubeOp(MI.getOpcode());
+      bool IsCube = TII->isCubeOp(MI.getOpcode());
       if (!IsReduction && !IsVector && !IsCube) {
         continue;
       }

@@ -14,8 +14,8 @@
 // implement in order to correctly answer queries on the capabilities of the
 // specific hardware.
 //===---------------------------------------------------------------------===//
-#ifndef _AMDILNIDEVICE_H_
-#define _AMDILNIDEVICE_H_
+#ifndef AMDILNIDEVICE_H
+#define AMDILNIDEVICE_H
 #include "AMDILEvergreenDevice.h"
 #include "AMDGPUSubtarget.h"
 
@@ -56,4 +56,4 @@ namespace llvm {
 
   static const unsigned int MAX_LDS_SIZE_900 = AMDGPUDevice::MAX_LDS_SIZE_800;
 } // namespace llvm
-#endif // _AMDILNIDEVICE_H_
+#endif // AMDILNIDEVICE_H

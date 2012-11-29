@@ -15,7 +15,7 @@ AMDGPUDevice::AMDGPUDevice(AMDGPUSubtarget *ST) : mSTM(ST) {
   mHWBits.resize(AMDGPUDeviceInfo::MaxNumberCapabilities);
   mSWBits.resize(AMDGPUDeviceInfo::MaxNumberCapabilities);
   setCaps();
-  mDeviceFlag = OCL_DEVICE_ALL;
+  DeviceFlag = OCL_DEVICE_ALL;
 }
 
 AMDGPUDevice::~AMDGPUDevice() {
@@ -29,7 +29,7 @@ size_t AMDGPUDevice::getMaxGDSSize() const {
 
 uint32_t 
 AMDGPUDevice::getDeviceFlag() const {
-  return mDeviceFlag;
+  return DeviceFlag;
 }
 
 size_t AMDGPUDevice::getMaxNumCBs() const {

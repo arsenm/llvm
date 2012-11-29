@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef AMDGPUREGISTERINFO_H_
-#define AMDGPUREGISTERINFO_H_
+#ifndef AMDGPUREGISTERINFO_H
+#define AMDGPUREGISTERINFO_H
 
 #include "llvm/ADT/BitVector.h"
 #include "llvm/Target/TargetRegisterInfo.h"
@@ -27,8 +27,7 @@ namespace llvm {
 class AMDGPUTargetMachine;
 class TargetInstrInfo;
 
-struct AMDGPURegisterInfo : public AMDGPUGenRegisterInfo
-{
+struct AMDGPURegisterInfo : public AMDGPUGenRegisterInfo {
   TargetMachine &TM;
   const TargetInstrInfo &TII;
   static const uint16_t CalleeSavedReg;
@@ -59,4 +58,4 @@ struct AMDGPURegisterInfo : public AMDGPUGenRegisterInfo
 
 } // End namespace llvm
 
-#endif // AMDIDSAREGISTERINFO_H_
+#endif // AMDIDSAREGISTERINFO_H

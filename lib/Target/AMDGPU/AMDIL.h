@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef AMDIL_H_
-#define AMDIL_H_
+#ifndef AMDIL_H
+#define AMDIL_H
 
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/Target/TargetMachine.h"
@@ -103,4 +103,4 @@ enum AddressSpaces {
 } // namespace AMDGPUAS
 
 } // end namespace llvm
-#endif // AMDIL_H_
+#endif // AMDIL_H

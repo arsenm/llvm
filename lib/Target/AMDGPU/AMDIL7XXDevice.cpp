@@ -16,11 +16,11 @@ AMDGPU7XXDevice::AMDGPU7XXDevice(AMDGPUSubtarget *ST) : AMDGPUDevice(ST) {
   setCaps();
   std::string name = mSTM->getDeviceName();
   if (name == "rv710") {
-    mDeviceFlag = OCL_DEVICE_RV710;
+    DeviceFlag = OCL_DEVICE_RV710;
   } else if (name == "rv730") {
-    mDeviceFlag = OCL_DEVICE_RV730;
+    DeviceFlag = OCL_DEVICE_RV730;
   } else {
-    mDeviceFlag = OCL_DEVICE_RV770;
+    DeviceFlag = OCL_DEVICE_RV770;
   }
 }
 

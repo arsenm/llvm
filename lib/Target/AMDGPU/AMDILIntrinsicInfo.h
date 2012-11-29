@@ -10,8 +10,8 @@
 //   Interface for the AMDGPU Implementation of the Intrinsic Info class.
 //
 //===-----------------------------------------------------------------------===//
-#ifndef _AMDIL_INTRINSICS_H_
-#define _AMDIL_INTRINSICS_H_
+#ifndef AMDIL_INTRINSICS_H
+#define AMDIL_INTRINSICS_H
 
 #include "llvm/Intrinsics.h"
 #include "llvm/Target/TargetIntrinsicInfo.h"
@@ -43,5 +43,5 @@ namespace llvm {
   }; // AMDGPUIntrinsicInfo
 }
 
-#endif // _AMDIL_INTRINSICS_H_
+#endif // AMDIL_INTRINSICS_H
 

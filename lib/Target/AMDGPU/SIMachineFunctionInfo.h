@@ -14,8 +14,8 @@
 //===----------------------------------------------------------------------===//
 
 
-#ifndef _SIMACHINEFUNCTIONINFO_H_
-#define _SIMACHINEFUNCTIONINFO_H_
+#ifndef SIMACHINEFUNCTIONINFO_H_
+#define SIMACHINEFUNCTIONINFO_H_
 
 #include "llvm/CodeGen/MachineFunction.h"
 

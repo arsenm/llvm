@@ -150,13 +150,12 @@ void R600MCCodeEmitter::EncodeInstruction(const MCInst &MI, raw_ostream &OS,
   } else {
     switch(MI.getOpcode()) {
     case AMDGPU::RAT_WRITE_CACHELESS_32_eg:
-    case AMDGPU::RAT_WRITE_CACHELESS_128_eg:
-      {
-        uint64_t inst = getBinaryCodeForInstr(MI, Fixups);
-        EmitByte(INSTR_NATIVE, OS);
-        Emit(inst, OS);
-        break;
-      }
+    case AMDGPU::RAT_WRITE_CACHELESS_128_eg: {
+      uint64_t inst = getBinaryCodeForInstr(MI, Fixups);
+      EmitByte(INSTR_NATIVE, OS);
+      Emit(inst, OS);
+      break;
+    }
     case AMDGPU::CONSTANT_LOAD_eg:
     case AMDGPU::VTX_READ_PARAM_i32_eg:
     case AMDGPU::VTX_READ_PARAM_f32_eg:
@@ -164,24 +163,22 @@ void R600MCCodeEmitter::EncodeInstruction(const MCInst &MI, raw_ostream &OS,
     case AMDGPU::VTX_READ_GLOBAL_i32_eg:
     case AMDGPU::VTX_READ_GLOBAL_f32_eg:
     case AMDGPU::VTX_READ_GLOBAL_v4i32_eg:
-    case AMDGPU::VTX_READ_GLOBAL_v4f32_eg:
-      {
-        uint64_t InstWord01 = getBinaryCodeForInstr(MI, Fixups);
-        uint32_t InstWord2 = MI.getOperand(2).getImm(); // Offset
+    case AMDGPU::VTX_READ_GLOBAL_v4f32_eg: {
+      uint64_t InstWord01 = getBinaryCodeForInstr(MI, Fixups);
+      uint32_t InstWord2 = MI.getOperand(2).getImm(); // Offset
 
-        EmitByte(INSTR_VTX, OS);
-        Emit(InstWord01, OS);
-        Emit(InstWord2, OS);
-        break;
-      }
+      EmitByte(INSTR_VTX, OS);
+      Emit(InstWord01, OS);
+      Emit(InstWord2, OS);
+      break;
+    }
     case AMDGPU::EG_Export:
-    case AMDGPU::R600_Export:
-      {
-        uint64_t Inst = getBinaryCodeForInstr(MI, Fixups);
-        EmitByte(INSTR_EXPORT, OS);
-        Emit(Inst, OS);
-        break;
-      }
+    case AMDGPU::R600_Export: {
+      uint64_t Inst = getBinaryCodeForInstr(MI, Fixups);
+      EmitByte(INSTR_EXPORT, OS);
+      Emit(Inst, OS);
+      break;
+    }
 
     default:
       EmitALUInstr(MI, Fixups, OS);

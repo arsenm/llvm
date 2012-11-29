@@ -51,10 +51,7 @@ AMDGPUTargetMachine::AMDGPUTargetMachine(const Target &T, StringRef TT,
   FrameLowering(TargetFrameLowering::StackGrowsUp,
       Subtarget.device()->getStackAlignment(), 0),
   IntrinsicInfo(this),
-  InstrItins(&Subtarget.getInstrItineraryData()),
-  mDump(false)
-
-{
+  InstrItins(&Subtarget.getInstrItineraryData()) {
   // TLInfo uses InstrInfo so it must be initialized after.
   if (Subtarget.device()->getGeneration() <= AMDGPUDeviceInfo::HD6XXX) {
     InstrInfo = new R600InstrInfo(*this);

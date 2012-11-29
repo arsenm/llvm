@@ -12,8 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef AMDGPUINSTRUCTIONINFO_H_
-#define AMDGPUINSTRUCTIONINFO_H_
+#ifndef AMDGPUINSTRUCTIONINFO_H
+#define AMDGPUINSTRUCTIONINFO_H
 
 #include "AMDGPURegisterInfo.h"
 #include "AMDGPUInstrInfo.h"
@@ -145,4 +145,4 @@ public:
 
 } // End llvm namespace
 
-#endif // AMDGPUINSTRINFO_H_
+#endif // AMDGPUINSTRINFO_H

@@ -35,7 +35,6 @@ class AMDGPUTargetMachine : public LLVMTargetMachine {
   const AMDGPUInstrInfo * InstrInfo;
   AMDGPUTargetLowering * TLInfo;
   const InstrItineraryData* InstrItins;
-  bool mDump;
 
 public:
    AMDGPUTargetMachine(const Target &T, StringRef TT, StringRef FS,

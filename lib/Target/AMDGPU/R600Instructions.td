@@ -48,8 +48,7 @@ class InstR600 <bits<11> inst, dag outs, dag ins, string asm, list<dag> pattern,
 }
 
 class InstR600ISA <dag outs, dag ins, string asm, list<dag> pattern> :
-    AMDGPUInst <outs, ins, asm, pattern>
-{
+    AMDGPUInst <outs, ins, asm, pattern> {
   field bits<64> Inst;
 
   let Namespace = "AMDGPU";
@@ -344,8 +343,7 @@ def TEX_SHADOW : PatLeaf<
 
 class EG_CF_RAT <bits <8> cf_inst, bits <6> rat_inst, bits<4> rat_id, dag outs,
                  dag ins, string asm, list<dag> pattern> :
-    InstR600ISA <outs, ins, asm, pattern>
-{
+    InstR600ISA <outs, ins, asm, pattern> {
   bits<7>  RW_GPR;
   bits<7>  INDEX_GPR;
 
@@ -410,8 +408,8 @@ def isCayman : Predicate<"Subtarget.device()"
                             "->getDeviceFlag() == OCL_DEVICE_CAYMAN">;
 def isEGorCayman : Predicate<"Subtarget.device()"
                             "->getGeneration() == AMDGPUDeviceInfo::HD5XXX"
-			    "|| Subtarget.device()->getGeneration() =="
-			    "AMDGPUDeviceInfo::HD6XXX">;
+                            "|| Subtarget.device()->getGeneration() =="
+                            "AMDGPUDeviceInfo::HD6XXX">;
 
 def isR600toCayman : Predicate<
                      "Subtarget.device()->getGeneration() <= AMDGPUDeviceInfo::HD6XXX">;
@@ -444,13 +442,11 @@ def input_constant :  AMDGPUShaderInst <
 
 
 
-def INTERP_XY : R600_2OP <0xD6, "INTERP_XY", []>
-{
+def INTERP_XY : R600_2OP <0xD6, "INTERP_XY", []> {
   let bank_swizzle = 5;
 }
 
-def INTERP_ZW : R600_2OP <0xD7, "INTERP_ZW", []>
-{
+def INTERP_ZW : R600_2OP <0xD7, "INTERP_ZW", []> {
   let bank_swizzle = 5;
 }
 
@@ -499,8 +495,7 @@ class ExportInst : InstR600ISA<(
     i32imm:$sw_x, i32imm:$sw_y, i32imm:$sw_z, i32imm:$sw_w, i32imm:$inst,
     i32imm:$eop),
     !strconcat("EXPORT", " $src"),
-    []>
-{
+    []> {
   bits<13> arraybase;
   bits<2> type;
   bits<7> src;
@@ -638,8 +633,8 @@ def SETGT_INT : R600_2OP <
 >;
 
 def SETGE_INT : R600_2OP <
-	0x3C, "SETGE_INT",
-	[(set (i32 R600_Reg32:$dst),
+  0x3C, "SETGE_INT",
+  [(set (i32 R600_Reg32:$dst),
    (selectcc (i32 R600_Reg32:$src0), R600_Reg32:$src1, -1, 0, SETGE))]
 >;
 
@@ -667,7 +662,7 @@ def PRED_SETGE_INT : R600_2OP <0x44, "PRED_SETGE_INT", []>;
 def PRED_SETNE_INT : R600_2OP <0x45, "PRED_SETNE_INT", []>;
 
 def CNDE_INT : R600_3OP <
-	0x1C, "CNDE_INT",
+  0x1C, "CNDE_INT",
   [(set (i32 R600_Reg32:$dst),
    (selectcc (i32 R600_Reg32:$src0), 0,
        (i32 R600_Reg32:$src1), (i32 R600_Reg32:$src2),
@@ -675,7 +670,7 @@ def CNDE_INT : R600_3OP <
 >;
 
 def CNDGE_INT : R600_3OP <
-	0x1E, "CNDGE_INT",
+  0x1E, "CNDGE_INT",
   [(set (i32 R600_Reg32:$dst),
    (selectcc (i32 R600_Reg32:$src0), 0,
        (i32 R600_Reg32:$src1), (i32 R600_Reg32:$src2),
@@ -683,7 +678,7 @@ def CNDGE_INT : R600_3OP <
 >;
 
 def CNDGT_INT : R600_3OP <
-	0x1D, "CNDGT_INT",
+  0x1D, "CNDGT_INT",
   [(set (i32 R600_Reg32:$dst),
    (selectcc (i32 R600_Reg32:$src0), 0,
        (i32 R600_Reg32:$src1), (i32 R600_Reg32:$src2),
@@ -966,8 +961,7 @@ let Predicates = [isR600] in {
   defm DIV_r600 : DIV_Common<RECIP_IEEE_r600>;
   def TGSI_LIT_Z_r600 : TGSI_LIT_Z_Common<MUL_LIT_r600, LOG_CLAMPED_r600, EXP_IEEE_r600>;
 
-  def R600_Export : ExportInst
-  {
+  def R600_Export : ExportInst {
     let Inst{52-49} = 1; // BURST_COUNT
     let Inst{53} = eop;
     let Inst{54} = 1; // VALID_PIXEL_MODE
@@ -1109,8 +1103,7 @@ let Predicates = [isEGorCayman] in {
   def : Pat<(fp_to_uint R600_Reg32:$src0),
     (FLT_TO_UINT_eg (TRUNC R600_Reg32:$src0))>;
 
-  def EG_Export : ExportInst
-  {
+  def EG_Export : ExportInst {
     let Inst{51-48} = 1; // BURST_COUNT
     let Inst{52} = 1; // VALID_PIXEL_MODE
     let Inst{53} = eop;
@@ -1128,8 +1121,7 @@ let Predicates = [isEGorCayman] in {
 let usesCustomInserter = 1 in {
 
 class RAT_WRITE_CACHELESS_eg <dag ins, bits<4> comp_mask, string name> : EG_CF_RAT <
-  0x57, 0x2, 0, (outs), ins, !strconcat(name, " $rw_gpr, $index_gpr, $eop"), []>
-{
+  0x57, 0x2, 0, (outs), ins, !strconcat(name, " $rw_gpr, $index_gpr, $eop"), []> {
   let RIM         = 0;
   // XXX: Have a separate instruction for non-indexed writes.
   let TYPE        = 1;

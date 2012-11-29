@@ -14,8 +14,8 @@
 // implement in order to correctly answer queries on the capabilities of the
 // specific hardware.
 //===---------------------------------------------------------------------===//
-#ifndef _AMDILSIDEVICE_H_
-#define _AMDILSIDEVICE_H_
+#ifndef AMDILSIDEVICE_H
+#define AMDILSIDEVICE_H
 #include "AMDILEvergreenDevice.h"
 #include "AMDGPUSubtarget.h"
 
@@ -42,4 +42,4 @@ namespace llvm {
   }; // AMDGPUSIDevice
 
 } // namespace llvm
-#endif // _AMDILSIDEVICE_H_
+#endif // AMDILSIDEVICE_H
