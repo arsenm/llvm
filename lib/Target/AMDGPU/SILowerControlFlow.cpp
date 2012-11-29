@@ -29,8 +29,7 @@
 //
 // becomes:
 //
-// %SGPR0 = S_MOV_B64 %EXEC          // Save the current exec mask
-// %EXEC = S_AND_B64 %VCC, %EXEC     // Update the exec mask
+// %SGPR0 = S_AND_SAVEEXEC_B64 %VCC  // Save and update the exec mask
 // %SGPR0 = S_XOR_B64 %SGPR0, %EXEC  // Clear live bits from saved exec mask
 // S_CBRANCH_EXECZ label0            // This instruction is an
 //                                   // optimization which allows us to
@@ -39,14 +38,13 @@
 // %VGPR0 = V_ADD_F32 %VGPR0, %VGPR0 // Do the IF block of the branch
 //
 // label0:
-// %SGPR2 = S_MOV_B64 %EXEC           // Save the current exec mask
-// %EXEC = S_MOV_B64 %SGPR0           // Restore the exec mask for the Then block
-// %SGPR0 = S_MOV_B64 %SGPR2          // Save the exec mask from the If block
+// %SGPR0 = S_OR_SAVEEXEC_B64 %EXEC   // Restore the exec mask for the Then block
+// %EXEC = S_XOR_B64 %SGPR0, %EXEC    // Clear live bits from saved exec mask
 // S_BRANCH_EXECZ label1              // Use our branch optimization
 //                                    // instruction again.
 // %VGPR0 = V_SUB_F32 %VGPR0, %VGPR   // Do the THEN block
 // label1:
-// %EXEC = S_OR_B64 %EXEC, %SGPR0     // Re-enable saved exec mask bits
+// %EXEC = S_OR_B64 %EXEC, %SGPR2     // Re-enable saved exec mask bits
 //===----------------------------------------------------------------------===//
 
 #include "AMDGPU.h"
@@ -69,8 +67,8 @@ private:
   std::vector<unsigned> PredicateStack;
   std::vector<unsigned> UnusedRegisters;
 
-  void pushExecMask(MachineBasicBlock &MBB, MachineBasicBlock::iterator I);
-  void popExecMask(MachineBasicBlock &MBB, MachineBasicBlock::iterator I);
+  unsigned allocReg();
+  void freeReg(unsigned Reg);
 
 public:
   SILowerControlFlowPass(TargetMachine &tm) :
@@ -111,34 +109,43 @@ bool SILowerControlFlowPass::runOnMachineFunction(MachineFunction &MF) {
                                I != MBB.end(); I = Next) {
       Next = llvm::next(I);
       MachineInstr &MI = *I;
+      unsigned Reg;
       switch (MI.getOpcode()) {
         default: break;
         case AMDGPU::SI_IF_NZ:
-          pushExecMask(MBB, I);
-          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_AND_B64),
-                  AMDGPU::EXEC)
-                  .addOperand(MI.getOperand(0)) // VCC
-                  .addReg(AMDGPU::EXEC);
+          Reg = allocReg();
+          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_AND_SAVEEXEC_B64),
+                  Reg)
+                  .addOperand(MI.getOperand(0)); // VCC
           BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_XOR_B64),
-                  PredicateStack.back())
-                  .addReg(PredicateStack.back())
+                  Reg)
+                  .addReg(Reg)
                   .addReg(AMDGPU::EXEC);
           MI.eraseFromParent();
+          PredicateStack.push_back(Reg);
           break;
+
         case AMDGPU::ELSE:
-          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_MOV_B64),
-                  UnusedRegisters.back())
-                  .addReg(AMDGPU::EXEC);
-          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_MOV_B64),
+          Reg = PredicateStack.back();
+          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_OR_SAVEEXEC_B64),
+                  Reg)
+                  .addReg(Reg);
+          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_XOR_B64),
                   AMDGPU::EXEC)
-                  .addReg(PredicateStack.back());
-          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_MOV_B64),
-                  PredicateStack.back())
-                  .addReg(UnusedRegisters.back());
+                  .addReg(Reg)
+                  .addReg(AMDGPU::EXEC);
           MI.eraseFromParent();
           break;
+
         case AMDGPU::ENDIF:
-          popExecMask(MBB, I);
+          Reg = PredicateStack.back();
+          PredicateStack.pop_back();
+          BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_OR_B64),
+                  AMDGPU::EXEC)
+                  .addReg(AMDGPU::EXEC)
+                  .addReg(Reg);
+          freeReg(Reg);
+
 	  if (MF.getInfo<SIMachineFunctionInfo>()->ShaderType == ShaderType::PIXEL &&
 	      PredicateStack.empty()) {
             // If the exec mask is non-zero, skip the next two instructions
@@ -166,28 +173,18 @@ bool SILowerControlFlowPass::runOnMachineFunction(MachineFunction &MF) {
       }
     }
   }
-  return false;
+  return true;
 }
 
-void SILowerControlFlowPass::pushExecMask(MachineBasicBlock &MBB,
-                                          MachineBasicBlock::iterator I) {
+unsigned SILowerControlFlowPass::allocReg() {
 
   assert(!UnusedRegisters.empty() && "Ran out of registers for predicate stack");
-  unsigned StackReg = UnusedRegisters.back();
+  unsigned Reg = UnusedRegisters.back();
   UnusedRegisters.pop_back();
-  PredicateStack.push_back(StackReg);
-  BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_MOV_B64),
-          StackReg)
-          .addReg(AMDGPU::EXEC);
+  return Reg;
 }
 
-void SILowerControlFlowPass::popExecMask(MachineBasicBlock &MBB,
-                                        MachineBasicBlock::iterator I) {
-  unsigned StackReg = PredicateStack.back();
-  PredicateStack.pop_back();
-  UnusedRegisters.push_back(StackReg);
-  BuildMI(MBB, I, MBB.findDebugLoc(I), TII->get(AMDGPU::S_OR_B64),
-          AMDGPU::EXEC)
-          .addReg(AMDGPU::EXEC)
-          .addReg(StackReg);
+void SILowerControlFlowPass::freeReg(unsigned Reg) {
+
+  UnusedRegisters.push_back(Reg);
 }
