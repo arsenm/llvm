@@ -4,7 +4,7 @@
 
 define void @test() {
    %r0 = call float @llvm.R600.load.input(i32 0)
-   %r1 = call float @llvm.AMDGPU.rcp( float %r0)
+   %r1 = fdiv float 1.0, %r0
    call void @llvm.AMDGPU.store.output(float %r1, i32 0)
    ret void
 }

@@ -876,8 +876,8 @@ class RECIP_CLAMPED_Common <bits<11> inst> : R600_1OP <
   inst, "RECIP_CLAMPED", []
 >;
 
-class RECIP_IEEE_Common <bits<11> inst> : R600_1OP_Helper <
-  inst, "RECIP_IEEE", int_AMDGPU_rcp
+class RECIP_IEEE_Common <bits<11> inst> : R600_1OP <
+  inst, "RECIP_IEEE", [(set R600_Reg32:$dst, (fdiv FP_ONE, R600_Reg32:$src0))]
 >;
 
 class RECIP_UINT_Common <bits<11> inst> : R600_1OP_Helper <
