@@ -1269,6 +1269,27 @@ def : Pat <
   (SI_KIL (V_MOV_IMM_I32 0xbf800000))
 >;
 
+def : Pat <
+  (int_AMDGPU_cube VReg_128:$src),
+  (INSERT_SUBREG (INSERT_SUBREG (INSERT_SUBREG (INSERT_SUBREG (v4f32 (IMPLICIT_DEF)),
+    (V_CUBETC_F32 (EXTRACT_SUBREG VReg_128:$src, sel_x),
+                  (EXTRACT_SUBREG VReg_128:$src, sel_y),
+                  (EXTRACT_SUBREG VReg_128:$src, sel_z),
+                  0, 0, 0, 0), sel_x),
+    (V_CUBESC_F32 (EXTRACT_SUBREG VReg_128:$src, sel_x),
+                  (EXTRACT_SUBREG VReg_128:$src, sel_y),
+                  (EXTRACT_SUBREG VReg_128:$src, sel_z),
+                  0, 0, 0, 0), sel_y),
+    (V_CUBEMA_F32 (EXTRACT_SUBREG VReg_128:$src, sel_x),
+                  (EXTRACT_SUBREG VReg_128:$src, sel_y),
+                  (EXTRACT_SUBREG VReg_128:$src, sel_z),
+                  0, 0, 0, 0), sel_z),
+    (V_CUBEID_F32 (EXTRACT_SUBREG VReg_128:$src, sel_x),
+                  (EXTRACT_SUBREG VReg_128:$src, sel_y),
+                  (EXTRACT_SUBREG VReg_128:$src, sel_z),
+                  0, 0, 0, 0), sel_w)
+>;
+
 /********** ================== **********/
 /**********   VOP3 Patterns    **********/
 /********** ================== **********/
