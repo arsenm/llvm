@@ -57,6 +57,7 @@ public:
   virtual SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerIntrinsicIABS(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerIntrinsicLRP(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerMinMax(SDValue Op, SelectionDAG &DAG) const;
   virtual const char* getTargetNodeName(unsigned Opcode) const;
 
 // Functions defined in AMDILISelLowering.cpp

@@ -167,6 +167,66 @@ SDValue AMDGPUTargetLowering::LowerIntrinsicLRP(SDValue Op,
                                                OneSubAC);
 }
 
+/// \brief Generate Min/Max node
+SDValue AMDGPUTargetLowering::LowerMinMax(SDValue Op,
+    SelectionDAG &DAG) const {
+  DebugLoc DL = Op.getDebugLoc();
+  EVT VT = Op.getValueType();
+
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  SDValue True = Op.getOperand(2);
+  SDValue False = Op.getOperand(3);
+  SDValue CC = Op.getOperand(4);
+
+  if (VT != MVT::f32 ||
+      !((LHS == True && RHS == False) || (LHS == False && RHS == True))) {
+    return SDValue();
+  }
+
+  ISD::CondCode CCOpcode = cast<CondCodeSDNode>(CC)->get();
+  switch (CCOpcode) {
+  case ISD::SETOEQ:
+  case ISD::SETONE:
+  case ISD::SETUNE:
+  case ISD::SETNE:
+  case ISD::SETUEQ:
+  case ISD::SETEQ:
+  case ISD::SETFALSE:
+  case ISD::SETFALSE2:
+  case ISD::SETTRUE:
+  case ISD::SETTRUE2:
+  case ISD::SETUO:
+  case ISD::SETO:
+    assert(0 && "Operation should already be optimised !");
+  case ISD::SETULE:
+  case ISD::SETULT:
+  case ISD::SETOLE:
+  case ISD::SETOLT:
+  case ISD::SETLE:
+  case ISD::SETLT: {
+    if (LHS == True)
+      return DAG.getNode(AMDGPUISD::FMIN, DL, VT, LHS, RHS);
+    else
+      return DAG.getNode(AMDGPUISD::FMAX, DL, VT, LHS, RHS);
+  }
+  case ISD::SETGT:
+  case ISD::SETGE:
+  case ISD::SETUGE:
+  case ISD::SETOGE:
+  case ISD::SETUGT:
+  case ISD::SETOGT: {
+    if (LHS == True)
+      return DAG.getNode(AMDGPUISD::FMAX, DL, VT, LHS, RHS);
+    else
+      return DAG.getNode(AMDGPUISD::FMIN, DL, VT, LHS, RHS);
+  }
+  case ISD::SETCC_INVALID:
+    assert(0 && "Invalid setcc condcode !");
+  }
+  return Op;
+}
+
 
 
 SDValue AMDGPUTargetLowering::LowerUDIVREM(SDValue Op,

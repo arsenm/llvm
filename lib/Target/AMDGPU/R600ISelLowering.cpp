@@ -679,6 +679,12 @@ SDValue R600TargetLowering::LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const 
     }
   }
 
+  // Possible Min/Max pattern
+  SDValue MinMax = LowerMinMax(Op, DAG);
+  if (MinMax.getNode()) {
+    return MinMax;
+  }
+
   // If we make it this for it means we have no native instructions to handle
   // this SELECT_CC, so we must lower it.
   SDValue HWTrue, HWFalse;
