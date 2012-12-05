@@ -208,8 +208,9 @@ SDNode *AMDGPUDAGToDAGISel::Select(SDNode *N) {
       }
     }
 
-    for (SDNode::use_iterator Use = N->use_begin(), E = SDNode::use_end();
-                                                    Use != E; ++Use) {
+    for (SDNode::use_iterator Use = N->use_begin(), Next = llvm::next(Use);
+                              Use != SDNode::use_end(); Use = Next) {
+      Next = llvm::next(Use);
       std::vector<SDValue> Ops;
       for (unsigned i = 0; i < Use->getNumOperands(); ++i) {
         Ops.push_back(Use->getOperand(i));
