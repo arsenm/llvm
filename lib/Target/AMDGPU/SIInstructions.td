@@ -1264,6 +1264,11 @@ def : Pat <
   (V_MUL_LEGACY_F32_e32 AllReg_32:$src0, (V_RCP_LEGACY_F32_e32 AllReg_32:$src1))
 >;
 
+def : Pat<
+  (fdiv AllReg_32:$src0, AllReg_32:$src1),
+  (V_MUL_F32_e32 AllReg_32:$src0, (V_RCP_F32_e32 AllReg_32:$src1))
+>;
+
 def : Pat <
   (int_AMDGPU_kilp),
   (SI_KIL (V_MOV_IMM_I32 0xbf800000))
