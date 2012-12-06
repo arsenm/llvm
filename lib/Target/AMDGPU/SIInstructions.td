@@ -764,15 +764,15 @@ def V_CNDMASK_B32_e32 : VOP2 <0x00000000, (outs VReg_32:$dst),
 }
 
 def V_CNDMASK_B32_e64 : VOP3 <0x00000100, (outs VReg_32:$dst),
-  (ins AllReg_32:$src0, AllReg_32:$src1, SReg_1:$src2, InstFlag:$abs, InstFlag:$clamp, InstFlag:$omod, InstFlag:$neg),
+  (ins VReg_32:$src0, VReg_32:$src1, SReg_1:$src2, InstFlag:$abs, InstFlag:$clamp, InstFlag:$omod, InstFlag:$neg),
   "V_CNDMASK_B32_e64",
-  [(set (i32 VReg_32:$dst), (select SReg_1:$src2, AllReg_32:$src1, AllReg_32:$src0))]
+  [(set (i32 VReg_32:$dst), (select SReg_1:$src2, VReg_32:$src1, VReg_32:$src0))]
 >;
 
 //f32 pattern for V_CNDMASK_B32_e64
 def : Pat <
-  (f32 (select SReg_1:$src2, AllReg_32:$src1, AllReg_32:$src0)),
-  (V_CNDMASK_B32_e64 AllReg_32:$src0, AllReg_32:$src1, SReg_1:$src2)
+  (f32 (select SReg_1:$src2, VReg_32:$src1, VReg_32:$src0)),
+  (V_CNDMASK_B32_e64 VReg_32:$src0, VReg_32:$src1, SReg_1:$src2)
 >;
 
 defm V_READLANE_B32 : VOP2_32 <0x00000001, "V_READLANE_B32", []>;
