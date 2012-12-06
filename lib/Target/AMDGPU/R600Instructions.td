@@ -1119,8 +1119,10 @@ let Predicates = [isEGorCayman] in {
 //===----------------------------------------------------------------------===//
 let usesCustomInserter = 1 in {
 
-class RAT_WRITE_CACHELESS_eg <dag ins, bits<4> comp_mask, string name> : EG_CF_RAT <
-  0x57, 0x2, 0, (outs), ins, !strconcat(name, " $rw_gpr, $index_gpr, $eop"), []> {
+class RAT_WRITE_CACHELESS_eg <dag ins, bits<4> comp_mask, string name,
+                              list<dag> pattern>
+    : EG_CF_RAT <0x57, 0x2, 0, (outs), ins,
+                 !strconcat(name, " $rw_gpr, $index_gpr, $eop"), pattern> {
   let RIM         = 0;
   // XXX: Have a separate instruction for non-indexed writes.
   let TYPE        = 1;
@@ -1139,38 +1141,16 @@ class RAT_WRITE_CACHELESS_eg <dag ins, bits<4> comp_mask, string name> : EG_CF_R
 
 // 32-bit store
 def RAT_WRITE_CACHELESS_32_eg : RAT_WRITE_CACHELESS_eg <
-  (ins R600_TReg32_X:$rw_gpr, R600_TReg32_X:$index_gpr, i32imm:$eop),
-  0x1, "RAT_WRITE_CACHELESS_32_eg"
->;
-
-// i32 global_store
-def : Pat <
-  (global_store (i32 R600_TReg32_X:$val), R600_TReg32_X:$ptr),
-  (RAT_WRITE_CACHELESS_32_eg R600_TReg32_X:$val, R600_TReg32_X:$ptr, 0)
->;
-
-// Floating point global_store
-def : Pat <
-  (global_store (f32 R600_TReg32_X:$val), R600_TReg32_X:$ptr),
-  (RAT_WRITE_CACHELESS_32_eg R600_TReg32_X:$val, R600_TReg32_X:$ptr, 0)
+  (ins R600_TReg32_X:$rw_gpr, R600_TReg32_X:$index_gpr, InstFlag:$eop),
+  0x1, "RAT_WRITE_CACHELESS_32_eg",
+  [(global_store (i32 R600_TReg32_X:$rw_gpr), R600_TReg32_X:$index_gpr)]
 >;
 
 //128-bit store
 def RAT_WRITE_CACHELESS_128_eg : RAT_WRITE_CACHELESS_eg <
-  (ins R600_Reg128:$rw_gpr, R600_TReg32_X:$index_gpr, i32imm:$eop),
-  0xf, "RAT_WRITE_CACHELESS_128"
->;
-
-// v4f32 global store
-def : Pat <
-  (global_store (v4f32 R600_Reg128:$val), R600_TReg32_X:$ptr),
-  (RAT_WRITE_CACHELESS_128_eg R600_Reg128:$val, R600_TReg32_X:$ptr, 0)
->;
-
-// v4i32 global store
-def : Pat <
-  (global_store (v4i32 R600_Reg128:$val), R600_TReg32_X:$ptr),
-  (RAT_WRITE_CACHELESS_128_eg R600_Reg128:$val, R600_TReg32_X:$ptr, 0)
+  (ins R600_Reg128:$rw_gpr, R600_TReg32_X:$index_gpr, InstFlag:$eop),
+  0xf, "RAT_WRITE_CACHELESS_128",
+  [(global_store (v4i32 R600_Reg128:$rw_gpr), R600_TReg32_X:$index_gpr)]
 >;
 
 class VTX_READ_eg <bits<8> buffer_id, dag outs, list<dag> pattern>
@@ -1280,7 +1260,7 @@ class VTX_READ_32_eg <bits<8> buffer_id, list<dag> pattern>
   // to be caused by ALU instructions in the next instruction group that wrote
   // to the $ptr registers of the VTX_READ.  
   // e.g.
-  // %T3_X<def> = VTX_READ_PARAM_i32_eg %T2_X<kill>, 24
+  // %T3_X<def> = VTX_READ_PARAM_32_eg %T2_X<kill>, 24
   // %T2_X<def> = MOV %ZERO
   //Adding this constraint prevents this from happening.
   let Constraints = "$ptr.ptr = $dst";
@@ -1306,40 +1286,28 @@ class VTX_READ_128_eg <bits<8> buffer_id, list<dag> pattern>
 // VTX Read from parameter memory space
 //===----------------------------------------------------------------------===//
 
-class VTX_READ_PARAM_32_eg <ValueType vt> : VTX_READ_32_eg <0,
-  [(set (vt R600_TReg32_X:$dst), (load_param ADDRVTX_READ:$ptr))]
+def VTX_READ_PARAM_32_eg : VTX_READ_32_eg <0,
+  [(set (i32 R600_TReg32_X:$dst), (load_param ADDRVTX_READ:$ptr))]
 >;
-
-def VTX_READ_PARAM_i32_eg : VTX_READ_PARAM_32_eg<i32>;
-def VTX_READ_PARAM_f32_eg : VTX_READ_PARAM_32_eg<f32>;
-
 
 //===----------------------------------------------------------------------===//
 // VTX Read from global memory space
 //===----------------------------------------------------------------------===//
 
 // 8-bit reads
-def VTX_READ_GLOBAL_i8_eg : VTX_READ_8_eg <1,
+def VTX_READ_GLOBAL_8_eg : VTX_READ_8_eg <1,
   [(set (i32 R600_TReg32_X:$dst), (zextloadi8_global ADDRVTX_READ:$ptr))]
 >;
 
 // 32-bit reads
-
-class VTX_READ_GLOBAL_eg <ValueType vt> : VTX_READ_32_eg <1,
-  [(set (vt R600_TReg32_X:$dst), (global_load ADDRVTX_READ:$ptr))]
+def VTX_READ_GLOBAL_32_eg : VTX_READ_32_eg <1,
+  [(set (i32 R600_TReg32_X:$dst), (global_load ADDRVTX_READ:$ptr))]
 >;
-
-def VTX_READ_GLOBAL_i32_eg : VTX_READ_GLOBAL_eg<i32>;
-def VTX_READ_GLOBAL_f32_eg : VTX_READ_GLOBAL_eg<f32>;
 
 // 128-bit reads
-
-class VTX_READ_GLOBAL_128_eg <ValueType vt> : VTX_READ_128_eg <1,
-  [(set (vt R600_Reg128:$dst), (global_load ADDRVTX_READ:$ptr))]
+def VTX_READ_GLOBAL_128_eg : VTX_READ_128_eg <1,
+  [(set (v4i32 R600_Reg128:$dst), (global_load ADDRVTX_READ:$ptr))]
 >;
-
-def VTX_READ_GLOBAL_v4i32_eg : VTX_READ_GLOBAL_128_eg<v4i32>;
-def VTX_READ_GLOBAL_v4f32_eg : VTX_READ_GLOBAL_128_eg<v4f32>;
 
 //===----------------------------------------------------------------------===//
 // Constant Loads
@@ -1347,7 +1315,7 @@ def VTX_READ_GLOBAL_v4f32_eg : VTX_READ_GLOBAL_128_eg<v4f32>;
 //===----------------------------------------------------------------------===//
 
 def CONSTANT_LOAD_eg : VTX_READ_32_eg <1,
-  [(set (f32 R600_TReg32_X:$dst), (constant_load ADDRVTX_READ:$ptr))]
+  [(set (i32 R600_TReg32_X:$dst), (constant_load ADDRVTX_READ:$ptr))]
 >;
 
 }

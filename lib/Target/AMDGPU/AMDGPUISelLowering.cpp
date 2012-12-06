@@ -41,6 +41,20 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(TargetMachine &TM) :
   setOperationAction(ISD::FFLOOR, MVT::f32, Legal);
   setOperationAction(ISD::FRINT,  MVT::f32, Legal);
 
+  // Lower floating point store/load to integer store/load to reduce the number
+  // of patterns in tablegen.
+  setOperationAction(ISD::STORE, MVT::f32, Promote);
+  AddPromotedToType(ISD::STORE, MVT::f32, MVT::i32);
+
+  setOperationAction(ISD::STORE, MVT::v4f32, Promote);
+  AddPromotedToType(ISD::STORE, MVT::v4f32, MVT::v4i32);
+
+  setOperationAction(ISD::LOAD, MVT::f32, Promote);
+  AddPromotedToType(ISD::LOAD, MVT::f32, MVT::i32);
+
+  setOperationAction(ISD::LOAD, MVT::v4f32, Promote);
+  AddPromotedToType(ISD::LOAD, MVT::v4f32, MVT::v4i32);
+
   setOperationAction(ISD::UDIV, MVT::i32, Expand);
   setOperationAction(ISD::UDIVREM, MVT::i32, Custom);
   setOperationAction(ISD::UREM, MVT::i32, Expand);

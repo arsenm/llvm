@@ -159,13 +159,10 @@ void R600MCCodeEmitter::EncodeInstruction(const MCInst &MI, raw_ostream &OS,
       break;
     }
     case AMDGPU::CONSTANT_LOAD_eg:
-    case AMDGPU::VTX_READ_PARAM_i32_eg:
-    case AMDGPU::VTX_READ_PARAM_f32_eg:
-    case AMDGPU::VTX_READ_GLOBAL_i8_eg:
-    case AMDGPU::VTX_READ_GLOBAL_i32_eg:
-    case AMDGPU::VTX_READ_GLOBAL_f32_eg:
-    case AMDGPU::VTX_READ_GLOBAL_v4i32_eg:
-    case AMDGPU::VTX_READ_GLOBAL_v4f32_eg: {
+    case AMDGPU::VTX_READ_PARAM_32_eg:
+    case AMDGPU::VTX_READ_GLOBAL_8_eg:
+    case AMDGPU::VTX_READ_GLOBAL_32_eg:
+    case AMDGPU::VTX_READ_GLOBAL_128_eg: {
       uint64_t InstWord01 = getBinaryCodeForInstr(MI, Fixups);
       uint32_t InstWord2 = MI.getOperand(2).getImm(); // Offset
 

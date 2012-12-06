@@ -67,9 +67,7 @@ R600TargetLowering::R600TargetLowering(TargetMachine &TM) :
   setOperationAction(ISD::SELECT, MVT::f32, Custom);
 
   setOperationAction(ISD::STORE, MVT::i32, Custom);
-  setOperationAction(ISD::STORE, MVT::f32, Custom);
   setOperationAction(ISD::STORE, MVT::v4i32, Custom);
-  setOperationAction(ISD::STORE, MVT::v4f32, Custom);
 
   setTargetDAGCombine(ISD::FP_ROUND);
 
