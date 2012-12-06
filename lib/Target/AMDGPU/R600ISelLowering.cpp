@@ -66,6 +66,11 @@ R600TargetLowering::R600TargetLowering(TargetMachine &TM) :
   setOperationAction(ISD::SELECT, MVT::i32, Custom);
   setOperationAction(ISD::SELECT, MVT::f32, Custom);
 
+  setOperationAction(ISD::STORE, MVT::i32, Custom);
+  setOperationAction(ISD::STORE, MVT::f32, Custom);
+  setOperationAction(ISD::STORE, MVT::v4i32, Custom);
+  setOperationAction(ISD::STORE, MVT::v4f32, Custom);
+
   setTargetDAGCombine(ISD::FP_ROUND);
 
   setSchedulingPreference(Sched::VLIW);
@@ -137,23 +142,11 @@ MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
 
   case AMDGPU::RAT_WRITE_CACHELESS_32_eg:
   case AMDGPU::RAT_WRITE_CACHELESS_128_eg: {
-    // Convert to DWORD address
-    unsigned NewAddr = MRI.createVirtualRegister(
-                                             &AMDGPU::R600_TReg32_XRegClass);
-    unsigned ShiftValue = MRI.createVirtualRegister(
-                                              &AMDGPU::R600_TReg32RegClass);
     unsigned EOP = (llvm::next(I)->getOpcode() == AMDGPU::RETURN) ? 1 : 0;
 
-    // XXX In theory, we should be able to pass ShiftValue directly to
-    // the LSHR_eg instruction as an inline literal, but I tried doing it
-    // this way and it didn't produce the correct results.
-    TII->buildMovImm(*BB, I, ShiftValue, 2);
-    TII->buildDefaultInstruction(*BB, I, AMDGPU::LSHR_eg, NewAddr,
-                                 MI->getOperand(1).getReg(),
-                                 ShiftValue);
     BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(MI->getOpcode()))
             .addOperand(MI->getOperand(0))
-            .addReg(NewAddr)
+            .addOperand(MI->getOperand(1))
             .addImm(EOP); // Set End of program bit
     break;
   }
@@ -316,6 +309,7 @@ SDValue R600TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const 
   case ISD::SELECT_CC: return LowerSELECT_CC(Op, DAG);
   case ISD::SELECT: return LowerSELECT(Op, DAG);
   case ISD::SETCC: return LowerSETCC(Op, DAG);
+  case ISD::STORE: return LowerSTORE(Op, DAG);
   case ISD::FPOW: return LowerFPOW(Op, DAG);
   case ISD::INTRINSIC_VOID: {
     SDValue Chain = Op.getOperand(0);
@@ -762,6 +756,31 @@ SDValue R600TargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
       Cond);
   return Cond;
 }
+
+SDValue R600TargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
+  DebugLoc DL = Op.getDebugLoc();
+  StoreSDNode *StoreNode = cast<StoreSDNode>(Op);
+  SDValue Chain = Op.getOperand(0);
+  SDValue Value = Op.getOperand(1);
+  SDValue Ptr = Op.getOperand(2);
+
+  if (StoreNode->getAddressSpace() == AMDGPUAS::GLOBAL_ADDRESS &&
+      Ptr->getOpcode() != AMDGPUISD::DWORDADDR) {
+    // Convert pointer from byte address to dword address.
+    Ptr = DAG.getNode(AMDGPUISD::DWORDADDR, DL, Ptr.getValueType(),
+                      DAG.getNode(ISD::SRL, DL, Ptr.getValueType(),
+                                  Ptr, DAG.getConstant(2, MVT::i32)));
+
+    if (StoreNode->isTruncatingStore() || StoreNode->isIndexed()) {
+      assert(!"Truncated and indexed stores not supported yet");
+    } else {
+      Chain = DAG.getStore(Chain, DL, Value, Ptr, StoreNode->getMemOperand());
+    }
+    return Chain;
+  }
+  return SDValue();
+}
+
 
 SDValue R600TargetLowering::LowerFPOW(SDValue Op,
     SelectionDAG &DAG) const {

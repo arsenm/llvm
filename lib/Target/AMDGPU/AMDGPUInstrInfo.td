@@ -29,6 +29,9 @@ def AMDGPUDTIntTernaryOp : SDTypeProfile<1, 3, [
 // rotl(a, b) = bitalign(a, a, 32 - b)
 def AMDGPUbitalign : SDNode<"AMDGPUISD::BITALIGN", AMDGPUDTIntTernaryOp>;
 
+// This argument to this node is a dword address.
+def AMDGPUdwordaddr : SDNode<"AMDGPUISD::DWORDADDR", SDTIntUnaryOp>;
+
 // out = a - floor(a)
 def AMDGPUfract : SDNode<"AMDGPUISD::FRACT", SDTFPUnaryOp>;
 

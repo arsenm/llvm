@@ -387,6 +387,7 @@ const char* AMDGPUTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(BRANCH_COND);
 
   // AMDGPU DAG nodes
+  NODE_NAME_CASE(DWORDADDR)
   NODE_NAME_CASE(FRACT)
   NODE_NAME_CASE(FMAX)
   NODE_NAME_CASE(SMAX)

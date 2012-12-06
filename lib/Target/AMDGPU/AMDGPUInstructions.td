@@ -179,6 +179,11 @@ class BitConvert <ValueType dt, ValueType st, RegisterClass rc> : Pat <
   (dt rc:$src0)
 >;
 
+class DwordAddrPat<ValueType vt, RegisterClass rc> : Pat <
+  (vt (AMDGPUdwordaddr (vt rc:$addr))),
+  (vt rc:$addr)
+>;
+
 include "R600Instructions.td"
 
 include "SIInstrInfo.td"

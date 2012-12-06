@@ -1117,7 +1117,6 @@ let Predicates = [isEGorCayman] in {
 //===----------------------------------------------------------------------===//
 // Memory read/write instructions
 //===----------------------------------------------------------------------===//
-
 let usesCustomInserter = 1 in {
 
 class RAT_WRITE_CACHELESS_eg <dag ins, bits<4> comp_mask, string name> : EG_CF_RAT <
@@ -1588,5 +1587,8 @@ def : BitConvert <i32, f32, R600_Reg32>;
 def : BitConvert <f32, i32, R600_Reg32>;
 def : BitConvert <v4f32, v4i32, R600_Reg128>;
 def : BitConvert <v4i32, v4f32, R600_Reg128>;
+
+// DWORDADDR pattern
+def : DwordAddrPat  <i32, R600_Reg32>;
 
 } // End isR600toCayman Predicate
