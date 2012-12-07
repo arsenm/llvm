@@ -56,6 +56,7 @@ class InstR600ISA <dag outs, dag ins, string asm, list<dag> pattern> :
 
 def MEMxi : Operand<iPTR> {
   let MIOperandInfo = (ops R600_TReg32_X:$ptr, i32imm:$index);
+  let PrintMethod = "printMemOperand";
 }
 
 def MEMrr : Operand<iPTR> {
@@ -1153,8 +1154,8 @@ def RAT_WRITE_CACHELESS_128_eg : RAT_WRITE_CACHELESS_eg <
   [(global_store (v4i32 R600_Reg128:$rw_gpr), R600_TReg32_X:$index_gpr)]
 >;
 
-class VTX_READ_eg <bits<8> buffer_id, dag outs, list<dag> pattern>
-    : InstR600ISA <outs, (ins MEMxi:$ptr), "VTX_READ_eg $dst, $ptr", pattern> {
+class VTX_READ_eg <string name, bits<8> buffer_id, dag outs, list<dag> pattern>
+    : InstR600ISA <outs, (ins MEMxi:$ptr), name#" $dst, $ptr", pattern> {
 
   // Operands
   bits<7> DST_GPR;
@@ -1236,7 +1237,8 @@ class VTX_READ_eg <bits<8> buffer_id, dag outs, list<dag> pattern>
 }
 
 class VTX_READ_8_eg <bits<8> buffer_id, list<dag> pattern>
-    : VTX_READ_eg <buffer_id, (outs R600_TReg32_X:$dst), pattern> {
+    : VTX_READ_eg <"VTX_READ_8", buffer_id, (outs R600_TReg32_X:$dst),
+                   pattern> {
 
   let MEGA_FETCH_COUNT = 1;
   let DST_SEL_X = 0;
@@ -1247,7 +1249,8 @@ class VTX_READ_8_eg <bits<8> buffer_id, list<dag> pattern>
 }
 
 class VTX_READ_32_eg <bits<8> buffer_id, list<dag> pattern>
-    : VTX_READ_eg <buffer_id, (outs R600_TReg32_X:$dst), pattern> {
+    : VTX_READ_eg <"VTX_READ_32", buffer_id, (outs R600_TReg32_X:$dst),
+                   pattern> {
 
   let MEGA_FETCH_COUNT = 4;
   let DST_SEL_X        = 0;
@@ -1267,7 +1270,8 @@ class VTX_READ_32_eg <bits<8> buffer_id, list<dag> pattern>
 }
 
 class VTX_READ_128_eg <bits<8> buffer_id, list<dag> pattern>
-    : VTX_READ_eg <buffer_id, (outs R600_Reg128:$dst), pattern> {
+    : VTX_READ_eg <"VTX_READ_128", buffer_id, (outs R600_Reg128:$dst),
+                   pattern> {
 
   let MEGA_FETCH_COUNT = 16;
   let DST_SEL_X        =  0;

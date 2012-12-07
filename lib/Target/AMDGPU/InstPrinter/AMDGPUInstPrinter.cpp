@@ -43,6 +43,8 @@ void AMDGPUInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
 void AMDGPUInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
                                         raw_ostream &O) {
   printOperand(MI, OpNo, O);
+  O  << ", ";
+  printOperand(MI, OpNo + 1, O);
 }
 
 void AMDGPUInstPrinter::printIfSet(const MCInst *MI, unsigned OpNo,
