@@ -383,16 +383,14 @@ class EG_CF_RAT <bits <8> cf_inst, bits <6> rat_inst, bits<4> rat_id, dag outs,
   let Inst{63}    = BARRIER;
 }
 
-def load_param : PatFrag<(ops node:$ptr),
-                         (load node:$ptr),
-                          [{
-                           const Value *Src = cast<LoadSDNode>(N)->getSrcValue();
-                           if (Src) {
-                                PointerType * PT = dyn_cast<PointerType>(Src->getType());
-                                return PT && PT->getAddressSpace() == AMDGPUAS::PARAM_I_ADDRESS;
-                           }
-                           return false;
-                          }]>;
+class LoadParamFrag <PatFrag load_type> : PatFrag <
+  (ops node:$ptr), (load_type node:$ptr),
+  [{ return isParamLoad(dyn_cast<LoadSDNode>(N)); }]
+>;
+
+def load_param : LoadParamFrag<load>;
+def load_param_zexti8 : LoadParamFrag<zextloadi8>;
+def load_param_zexti16 : LoadParamFrag<zextloadi16>;
 
 def isR600 : Predicate<"Subtarget.device()"
                             "->getGeneration() == AMDGPUDeviceInfo::HD4XXX">;
@@ -1248,6 +1246,18 @@ class VTX_READ_8_eg <bits<8> buffer_id, list<dag> pattern>
   let DATA_FORMAT = 1; // FMT_8
 }
 
+class VTX_READ_16_eg <bits<8> buffer_id, list<dag> pattern>
+    : VTX_READ_eg <"VTX_READ_16", buffer_id, (outs R600_TReg32_X:$dst),
+                    pattern> {
+  let MEGA_FETCH_COUNT = 2;
+  let DST_SEL_X = 0;
+  let DST_SEL_Y = 7;   // Masked
+  let DST_SEL_Z = 7;   // Masked
+  let DST_SEL_W = 7;   // Masked
+  let DATA_FORMAT = 5; // FMT_16
+
+}
+
 class VTX_READ_32_eg <bits<8> buffer_id, list<dag> pattern>
     : VTX_READ_eg <"VTX_READ_32", buffer_id, (outs R600_TReg32_X:$dst),
                    pattern> {
@@ -1289,6 +1299,14 @@ class VTX_READ_128_eg <bits<8> buffer_id, list<dag> pattern>
 //===----------------------------------------------------------------------===//
 // VTX Read from parameter memory space
 //===----------------------------------------------------------------------===//
+
+def VTX_READ_PARAM_8_eg : VTX_READ_8_eg <0,
+  [(set (i32 R600_TReg32_X:$dst), (load_param_zexti8 ADDRVTX_READ:$ptr))]
+>;
+
+def VTX_READ_PARAM_16_eg : VTX_READ_16_eg <0,
+  [(set (i32 R600_TReg32_X:$dst), (load_param_zexti16 ADDRVTX_READ:$ptr))]
+>;
 
 def VTX_READ_PARAM_32_eg : VTX_READ_32_eg <0,
   [(set (i32 R600_TReg32_X:$dst), (load_param ADDRVTX_READ:$ptr))]

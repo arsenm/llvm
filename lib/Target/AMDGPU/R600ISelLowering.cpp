@@ -17,6 +17,7 @@
 #include "R600InstrInfo.h"
 #include "R600MachineFunctionInfo.h"
 #include "llvm/Argument.h"
+#include "llvm/Function.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/SelectionDAG.h"
@@ -800,16 +801,30 @@ SDValue R600TargetLowering::LowerFormalArguments(
                                       DebugLoc DL, SelectionDAG &DAG,
                                       SmallVectorImpl<SDValue> &InVals) const {
   unsigned ParamOffsetBytes = 36;
-  for (unsigned i = 0, e = Ins.size(); i < e; ++i) {
+  Function::const_arg_iterator FuncArg =
+                            DAG.getMachineFunction().getFunction()->arg_begin();
+  for (unsigned i = 0, e = Ins.size(); i < e; ++i, ++FuncArg) {
     EVT VT = Ins[i].VT;
+    Type *ArgType = FuncArg->getType();
+    unsigned ArgSizeInBits = ArgType->isPointerTy() ?
+                             32 : ArgType->getPrimitiveSizeInBits();
+    unsigned ArgBytes = ArgSizeInBits >> 3;
+    EVT ArgVT;
+    if (ArgSizeInBits < VT.getSizeInBits()) {
+      assert(!ArgType->isFloatTy() &&
+             "Extending floating point arguments not supported yet");
+      ArgVT = MVT::getIntegerVT(ArgSizeInBits);
+    } else {
+      ArgVT = VT;
+    }
     PointerType *PtrTy = PointerType::get(VT.getTypeForEVT(*DAG.getContext()),
                                                     AMDGPUAS::PARAM_I_ADDRESS);
-    SDValue Arg = DAG.getLoad(VT, DL, DAG.getRoot(),
+    SDValue Arg = DAG.getExtLoad(ISD::ZEXTLOAD, DL, VT, DAG.getRoot(),
                                 DAG.getConstant(ParamOffsetBytes, MVT::i32),
-                                MachinePointerInfo(new Argument(PtrTy)),
-                                false, false, false, 4);
+                                       MachinePointerInfo(new Argument(PtrTy)),
+                                       ArgVT, false, false, ArgBytes);
     InVals.push_back(Arg);
-    ParamOffsetBytes += (VT.getStoreSize());
+    ParamOffsetBytes += ArgBytes;
   }
   return Chain;
 }

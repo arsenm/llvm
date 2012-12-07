@@ -62,6 +62,7 @@ private:
   static bool isCPLoad(const LoadSDNode *N);
   static bool isConstantLoad(const LoadSDNode *N, int cbID);
   static bool isGlobalLoad(const LoadSDNode *N);
+  static bool isParamLoad(const LoadSDNode *N);
   static bool isPrivateLoad(const LoadSDNode *N);
   static bool isLocalLoad(const LoadSDNode *N);
   static bool isRegionLoad(const LoadSDNode *N);
@@ -347,6 +348,10 @@ bool AMDGPUDAGToDAGISel::isConstantLoad(const LoadSDNode *N, int cbID) {
 
 bool AMDGPUDAGToDAGISel::isGlobalLoad(const LoadSDNode *N) {
   return checkType(N->getSrcValue(), AMDGPUAS::GLOBAL_ADDRESS);
+}
+
+bool AMDGPUDAGToDAGISel::isParamLoad(const LoadSDNode *N) {
+  return checkType(N->getSrcValue(), AMDGPUAS::PARAM_I_ADDRESS);
 }
 
 bool AMDGPUDAGToDAGISel::isLocalLoad(const  LoadSDNode *N) {
