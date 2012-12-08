@@ -455,7 +455,7 @@ def INTERP_LOAD_P0 : R600_1OP <0xE0, "INTERP_LOAD_P0", []>;
 // Export Instructions
 //===----------------------------------------------------------------------===//
 
-def ExportType : SDTypeProfile<0, 7, [SDTCisFP<0>, SDTCisInt<1>]>;
+def ExportType : SDTypeProfile<0, 5, [SDTCisFP<0>, SDTCisInt<1>]>;
 
 def EXPORT: SDNode<"AMDGPUISD::EXPORT", ExportType,
   [SDNPHasChain, SDNPSideEffect]>;
@@ -510,11 +510,10 @@ multiclass ExportPattern<Instruction ExportInst, bits<8> cf_inst> {
         (v4f32 (IMPLICIT_DEF)), 0, 0, 7, 7, 7, 7, cf_inst, 0)
   >;
 
-  def : Pat<(EXPORT (v4f32 R600_Reg128:$src),
-    (i32 imm:$type), (i32 imm:$arraybase),
-    (i32 imm:$sw_x), (i32 imm:$sw_y), (i32 imm:$sw_z), (i32 imm:$sw_w)),
+  def : Pat<(EXPORT (v4f32 R600_Reg128:$src), (i32 0),
+    (i32 imm:$type), (i32 imm:$arraybase), (i32 imm)),
         (ExportInst R600_Reg128:$src, imm:$type, imm:$arraybase,
-        imm:$sw_x, imm:$sw_y, imm:$sw_z, imm:$sw_w, cf_inst, 0)
+        0, 1, 2, 3, cf_inst, 0)
   >;
 }
 

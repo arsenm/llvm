@@ -300,6 +300,57 @@ MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
 using namespace llvm::Intrinsic;
 using namespace llvm::AMDGPUIntrinsic;
 
+static SDValue
+InsertScalarToRegisterExport(SelectionDAG &DAG, DebugLoc DL, SDNode **ExportMap,
+    unsigned Slot, unsigned Channel, unsigned Inst, unsigned Type,
+    SDValue Scalar, SDValue Chain) {
+  if (!ExportMap[Slot]) {
+    SDValue Vector = DAG.getNode(ISD::INSERT_VECTOR_ELT,
+      DL, MVT::v4f32,
+      DAG.getUNDEF(MVT::v4f32),
+      Scalar,
+      DAG.getConstant(Channel, MVT::i32));
+
+    unsigned Mask = 1 << Channel;
+
+    const SDValue Ops[] = {Chain, Vector, DAG.getConstant(Inst, MVT::i32),
+        DAG.getConstant(Type, MVT::i32), DAG.getConstant(Slot, MVT::i32),
+        DAG.getConstant(Mask, MVT::i32)};
+
+    SDValue Res =  DAG.getNode(
+        AMDGPUISD::EXPORT,
+        DL,
+        MVT::Other,
+        Ops, 6);
+     ExportMap[Slot] = Res.getNode();
+     return Res;
+  }
+
+  SDNode *ExportInstruction = (SDNode *) ExportMap[Slot] ;
+  SDValue PreviousVector = ExportInstruction->getOperand(1);
+  SDValue Vector = DAG.getNode(ISD::INSERT_VECTOR_ELT,
+      DL, MVT::v4f32,
+      PreviousVector,
+      Scalar,
+      DAG.getConstant(Channel, MVT::i32));
+
+  unsigned Mask = dyn_cast<ConstantSDNode>(ExportInstruction->getOperand(5))
+      ->getZExtValue();
+  Mask |= (1 << Channel);
+
+  const SDValue Ops[] = {ExportInstruction->getOperand(0), Vector,
+      DAG.getConstant(Inst, MVT::i32),
+      DAG.getConstant(Type, MVT::i32),
+      DAG.getConstant(Slot, MVT::i32),
+      DAG.getConstant(Mask, MVT::i32)};
+
+  DAG.UpdateNodeOperands(ExportInstruction,
+      Ops, 6);
+
+  return Chain;
+
+}
+
 SDValue R600TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   default: return AMDGPUTargetLowering::LowerOperation(Op, DAG);
@@ -329,48 +380,14 @@ SDValue R600TargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const 
       MachineFunction &MF = DAG.getMachineFunction();
       R600MachineFunctionInfo *MFI = MF.getInfo<R600MachineFunctionInfo>();
       int64_t RegIndex = cast<ConstantSDNode>(Op.getOperand(3))->getZExtValue();
-      unsigned Slot = RegIndex / 4;
 
       SDNode **OutputsMap = MFI->Outputs;
+      return InsertScalarToRegisterExport(DAG, Op.getDebugLoc(), OutputsMap,
+          RegIndex / 4, RegIndex % 4, 0, 0, Op.getOperand(2),
+          Chain);
 
-      if (!OutputsMap[Slot]) {
-        SDValue Vector = DAG.getNode(ISD::INSERT_VECTOR_ELT,
-          Op.getDebugLoc(), MVT::v4f32,
-          DAG.getUNDEF(MVT::v4f32),
-          Op.getOperand(2),
-          DAG.getConstant(RegIndex % 4, MVT::i32));
-
-        const SDValue Ops[8] = {Chain, Vector, DAG.getConstant(0, MVT::i32),
-            DAG.getConstant(Slot, MVT::i32), DAG.getConstant(0, MVT::i32),
-            DAG.getConstant(1, MVT::i32), DAG.getConstant(2, MVT::i32),
-            DAG.getConstant(3, MVT::i32)};
-
-        SDValue Res =  DAG.getNode(
-            AMDGPUISD::EXPORT,
-            Op.getDebugLoc(),
-            MVT::Other,
-            Ops, 8);
-         OutputsMap[Slot] = Res.getNode();
-         return Res;
       }
 
-      SDNode *ExportInstruction = (SDNode *) OutputsMap[Slot] ;
-      SDValue PreviousVector = ExportInstruction->getOperand(1);
-      SDValue Vector = DAG.getNode(ISD::INSERT_VECTOR_ELT,
-          Op.getDebugLoc(), MVT::v4f32,
-          PreviousVector,
-          Op.getOperand(2),
-          DAG.getConstant(RegIndex % 4, MVT::i32));
-
-      const SDValue Ops[8] = {ExportInstruction->getOperand(0), Vector, DAG.getConstant(0, MVT::i32),
-          DAG.getConstant(Slot, MVT::i32), DAG.getConstant(0, MVT::i32),
-          DAG.getConstant(1, MVT::i32), DAG.getConstant(2, MVT::i32),
-          DAG.getConstant(3, MVT::i32)};
-
-      DAG.UpdateNodeOperands(ExportInstruction,
-          Ops, 8);
-
-      return Chain;
     }
     // default for switch(IntrinsicID)
     default: break;
