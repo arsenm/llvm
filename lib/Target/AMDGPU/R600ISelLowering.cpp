@@ -269,12 +269,12 @@ MachineBasicBlock * R600TargetLowering::EmitInstrWithCustomInserter(
     return BB;
   }
 
-  case AMDGPU::EG_Export:
-  case AMDGPU::R600_Export: {
+  case AMDGPU::EG_ExportSwz:
+  case AMDGPU::R600_ExportSwz: {
     bool EOP = (llvm::next(I)->getOpcode() == AMDGPU::RETURN)? 1 : 0;
     if (!EOP)
       return BB;
-    unsigned CfInst = (MI->getOpcode() == AMDGPU::EG_Export)? 84 : 40;
+    unsigned CfInst = (MI->getOpcode() == AMDGPU::EG_ExportSwz)? 84 : 40;
     BuildMI(*BB, I, BB->findDebugLoc(I), TII->get(MI->getOpcode()))
             .addOperand(MI->getOperand(0))
             .addOperand(MI->getOperand(1))
