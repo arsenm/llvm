@@ -492,6 +492,18 @@ class ExportSwzWord1 {
   let Word1{11-9} = sw_w;
 }
 
+class ExportBufWord1 {
+  field bits<32> Word1;
+
+  bits<12> arraySize;
+  bits<4> compMask;
+  bits<1> eop;
+  bits<8> inst;
+
+  let Word1{11-0} = arraySize;
+  let Word1{15-12} = compMask;
+}
+
 multiclass ExportPattern<Instruction ExportInst, bits<8> cf_inst> {
   def : Pat<(int_R600_store_pixel_depth R600_Reg32:$reg),
     (ExportInst
@@ -517,6 +529,30 @@ multiclass ExportPattern<Instruction ExportInst, bits<8> cf_inst> {
   >;
 }
 
+multiclass SteamOutputExportPattern<Instruction ExportInst,
+    bits<8> buf0inst, bits<8> buf1inst, bits<8> buf2inst, bits<8> buf3inst> {
+// Stream0
+  def : Pat<(EXPORT (v4f32 R600_Reg128:$src), (i32 1),
+      (i32 imm:$type), (i32 imm:$arraybase), (i32 imm:$mask)),
+      (ExportInst R600_Reg128:$src, imm:$type, imm:$arraybase,
+      4095, imm:$mask, buf0inst, 0)>;
+// Stream1
+  def : Pat<(EXPORT (v4f32 R600_Reg128:$src), (i32 2),
+      (i32 imm:$type), (i32 imm:$arraybase), (i32 imm:$mask)),
+      (ExportInst R600_Reg128:$src, imm:$type, imm:$arraybase,
+      4095, imm:$mask, buf1inst, 0)>;
+// Stream2
+  def : Pat<(EXPORT (v4f32 R600_Reg128:$src), (i32 3),
+      (i32 imm:$type), (i32 imm:$arraybase), (i32 imm:$mask)),
+      (ExportInst R600_Reg128:$src, imm:$type, imm:$arraybase,
+      4095, imm:$mask, buf2inst, 0)>;
+// Stream3
+  def : Pat<(EXPORT (v4f32 R600_Reg128:$src), (i32 4),
+      (i32 imm:$type), (i32 imm:$arraybase), (i32 imm:$mask)),
+      (ExportInst R600_Reg128:$src, imm:$type, imm:$arraybase,
+      4095, imm:$mask, buf3inst, 0)>;
+}
+
 let isTerminator = 1, usesCustomInserter = 1 in {
 
 class ExportSwzInst : InstR600ISA<(
@@ -533,6 +569,16 @@ class ExportSwzInst : InstR600ISA<(
 
 } // End isTerminator = 1, usesCustomInserter = 1
 
+class ExportBufInst : InstR600ISA<(
+    outs),
+    (ins R600_Reg128:$gpr, i32imm:$type, i32imm:$arraybase,
+    i32imm:$arraySize, i32imm:$compMask, i32imm:$inst, i32imm:$eop),
+    !strconcat("EXPORT", " $gpr"),
+    []>, ExportWord0, ExportBufWord1 {
+  let elem_size = 0;
+  let Inst{31-0} = Word0;
+  let Inst{63-32} = Word1;
+}
 
 let Predicates = [isR600toCayman] in { 
 
@@ -983,6 +1029,15 @@ let Predicates = [isR600] in {
     let Word1{31} = 1; // BARRIER
   }
   defm : ExportPattern<R600_ExportSwz, 39>;
+
+  def R600_ExportBuf : ExportBufInst {
+    let Word1{20-17} = 1; // BURST_COUNT
+    let Word1{21} = eop;
+    let Word1{22} = 1; // VALID_PIXEL_MODE
+    let Word1{30-23} = inst;
+    let Word1{31} = 1; // BARRIER
+  }
+  defm : SteamOutputExportPattern<R600_ExportBuf, 0x20, 0x21, 0x22, 0x23>;
 }
 
 // Helper pattern for normalizing inputs to triginomic instructions for R700+
@@ -1122,6 +1177,16 @@ let Predicates = [isEGorCayman] in {
     let Word1{31} = 1; // BARRIER
   }
   defm : ExportPattern<EG_ExportSwz, 83>;
+
+  def EG_ExportBuf : ExportBufInst {
+    let Word1{19-16} = 1; // BURST_COUNT
+    let Word1{20} = 1; // VALID_PIXEL_MODE
+    let Word1{21} = eop;
+    let Word1{29-22} = inst;
+    let Word1{30} = 0; // MARK
+    let Word1{31} = 1; // BARRIER
+  }
+  defm : SteamOutputExportPattern<EG_ExportBuf, 0x40, 0x41, 0x42, 0x43>;
 
 //===----------------------------------------------------------------------===//
 // Memory read/write instructions
