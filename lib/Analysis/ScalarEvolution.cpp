@@ -6151,7 +6151,7 @@ bool ScalarEvolution::isImpliedCond(ICmpInst::Predicate Pred,
       return CmpInst::isTrueWhenEqual(Pred);
   if (SimplifyICmpOperands(FoundPred, FoundLHS, FoundRHS))
     if (FoundLHS == FoundRHS)
-      return CmpInst::isFalseWhenEqual(Pred);
+      return CmpInst::isFalseWhenEqual(FoundPred);
 
   // Check to see if we can make the LHS or RHS match.
   if (LHS == FoundRHS || RHS == FoundLHS) {
