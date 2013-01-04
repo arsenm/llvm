@@ -91,7 +91,7 @@ static MCStreamer *createMCStreamer(const Target &T, StringRef TT,
   return createPureStreamer(Ctx, MAB, _OS, _Emitter);
 }
 
-extern "C" void LLVMInitializeAMDGPUTargetMC() {
+extern "C" void LLVMInitializeR600TargetMC() {
 
   RegisterMCAsmInfo<AMDGPUMCAsmInfo> Y(TheAMDGPUTarget);
 

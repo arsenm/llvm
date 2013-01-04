@@ -5473,6 +5473,13 @@ fi
 
 if test ${enableval} != "disable"
 then
+  if test ${enableval} = "AMDGPU"
+  then
+    { { echo "$as_me:$LINENO: error: The AMDGPU target has been renamed to R600, please reconfigure with --enable-experimental-targets=R600" >&5
+echo "$as_me: error: The AMDGPU target has been renamed to R600, please reconfigure with --enable-experimental-targets=R600" >&2;}
+   { (exit 1); exit 1; }; }
+    enableval="R600"
+  fi
   TARGETS_TO_BUILD="$enableval $TARGETS_TO_BUILD"
 fi
 
@@ -10316,7 +10323,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10317 "configure"
+#line 10326 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H

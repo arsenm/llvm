@@ -1,5 +1,5 @@
 
-add_llvm_library(LLVMAMDGPUDesc
+add_llvm_library(LLVMR600Desc
   AMDGPUAsmBackend.cpp
   AMDGPUMCTargetDesc.cpp
   AMDGPUMCAsmInfo.cpp
@@ -7,4 +7,4 @@ add_llvm_library(LLVMAMDGPUDesc
   SIMCCodeEmitter.cpp
   )
 
-add_dependencies(LLVMAMDGPUDesc AMDGPUCommonTableGen)
+add_dependencies(LLVMR600Desc AMDGPUCommonTableGen)

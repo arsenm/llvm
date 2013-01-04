@@ -20,7 +20,7 @@ using namespace llvm;
 Target llvm::TheAMDGPUTarget;
 
 /// \brief Extern function to initialize the targets for the AMDGPU backend
-extern "C" void LLVMInitializeAMDGPUTargetInfo() {
+extern "C" void LLVMInitializeR600TargetInfo() {
   RegisterTarget<Triple::r600, false>
     R600(TheAMDGPUTarget, "r600", "AMD GPUs HD2XXX-HD6XXX");
 }

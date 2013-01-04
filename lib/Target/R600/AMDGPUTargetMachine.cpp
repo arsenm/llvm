@@ -34,7 +34,7 @@
 
 using namespace llvm;
 
-extern "C" void LLVMInitializeAMDGPUTarget() {
+extern "C" void LLVMInitializeR600Target() {
   // Register the target
   RegisterTargetMachine<AMDGPUTargetMachine> X(TheAMDGPUTarget);
 }

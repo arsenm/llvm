@@ -1,4 +1,4 @@
-##===- lib/Target/AMDGPU/TargetInfo/Makefile ----------------*- Makefile -*-===##
+##===- lib/Target/AMDGPU/TargetDesc/Makefile ----------------*- Makefile -*-===##
 #
 #                     The LLVM Compiler Infrastructure
 #
@@ -6,10 +6,11 @@
 # License. See LICENSE.TXT for details.
 #
 ##===----------------------------------------------------------------------===##
+
 LEVEL = ../../../..
-LIBRARYNAME = LLVMAMDGPUInfo
+LIBRARYNAME = LLVMR600Desc
 
 # Hack: we need to include 'main' target directory to grab private headers
-CPPFLAGS = -I$(PROJ_OBJ_DIR)/.. -I$(PROJ_SRC_DIR)/..
+CPP.Flags += -I$(PROJ_OBJ_DIR)/.. -I$(PROJ_SRC_DIR)/..
 
 include $(LEVEL)/Makefile.common

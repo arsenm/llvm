@@ -1,4 +1,4 @@
-#===- lib/Target/AMDGPU/AsmPrinter/Makefile ------------------*- Makefile -*-===##
+##===- lib/Target/AMDGPU/TargetInfo/Makefile ----------------*- Makefile -*-===##
 #
 #                     The LLVM Compiler Infrastructure
 #
@@ -7,9 +7,9 @@
 #
 ##===----------------------------------------------------------------------===##
 LEVEL = ../../../..
-LIBRARYNAME = LLVMAMDGPUAsmPrinter
+LIBRARYNAME = LLVMR600Info
 
-# Hack: we need to include 'main' x86 target directory to grab private headers
-CPP.Flags += -I$(PROJ_OBJ_DIR)/.. -I$(PROJ_SRC_DIR)/..
+# Hack: we need to include 'main' target directory to grab private headers
+CPPFLAGS = -I$(PROJ_OBJ_DIR)/.. -I$(PROJ_SRC_DIR)/..
 
 include $(LEVEL)/Makefile.common

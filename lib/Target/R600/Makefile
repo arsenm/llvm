@@ -1,4 +1,4 @@
-##===- lib/Target/AMDGPU/Makefile ---------------------------*- Makefile -*-===##
+##===- lib/Target/R600/Makefile ---------------------------*- Makefile -*-===##
 #
 #                     The LLVM Compiler Infrastructure
 #
@@ -8,7 +8,7 @@
 ##===----------------------------------------------------------------------===##
 
 LEVEL = ../../..
-LIBRARYNAME = LLVMAMDGPUCodeGen
+LIBRARYNAME = LLVMR600CodeGen
 TARGET = AMDGPU
 
 # Make sure that tblgen is run, first thing.

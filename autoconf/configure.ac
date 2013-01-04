@@ -751,6 +751,11 @@ AC_ARG_ENABLE([experimental-targets],AS_HELP_STRING([--enable-experimental-targe
 
 if test ${enableval} != "disable"
 then
+  if test ${enableval} = "AMDGPU"
+  then
+    AC_MSG_ERROR([The AMDGPU target has been renamed to R600, please reconfigure with --enable-experimental-targets=R600])
+    enableval="R600"
+  fi
   TARGETS_TO_BUILD="$enableval $TARGETS_TO_BUILD"
 fi
 

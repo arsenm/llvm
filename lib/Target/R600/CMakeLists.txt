@@ -47,7 +47,7 @@ add_llvm_target(AMDGPUCodeGen
   SIFixSGPRLiveness.cpp
   )
 
-add_dependencies(LLVMAMDGPUCodeGen intrinsics_gen)
+add_dependencies(LLVMR600CodeGen intrinsics_gen)
 
 add_subdirectory(InstPrinter)
 add_subdirectory(TargetInfo)
