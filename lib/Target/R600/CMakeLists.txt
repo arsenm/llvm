@@ -35,6 +35,7 @@ add_llvm_target(AMDGPUCodeGen
   R600ExpandSpecialInstrs.cpp
   R600InstrInfo.cpp
   R600ISelLowering.cpp
+  R600LowerConstCopy.cpp
   R600MachineFunctionInfo.cpp
   R600RegisterInfo.cpp
   SIAssignInterpRegs.cpp
