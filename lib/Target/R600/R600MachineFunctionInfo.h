@@ -13,6 +13,7 @@
 #ifndef R600MACHINEFUNCTIONINFO_H
 #define R600MACHINEFUNCTIONINFO_H
 
+#include "llvm/ADT/BitVector.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/SelectionDAG.h"
 #include <vector>
@@ -23,6 +24,7 @@ class R600MachineFunctionInfo : public MachineFunctionInfo {
 
 public:
   R600MachineFunctionInfo(const MachineFunction &MF);
+  std::vector<unsigned> IndirectRegs;
   SDNode *Outputs[16];
 };
 

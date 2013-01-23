@@ -56,6 +56,8 @@ struct AMDGPURegisterInfo : public AMDGPUGenRegisterInfo {
                            RegScavenger *RS) const;
   unsigned getFrameRegister(const MachineFunction &MF) const;
 
+  unsigned getIndirectSubReg(unsigned IndirectIndex) const;
+
 };
 
 } // End namespace llvm

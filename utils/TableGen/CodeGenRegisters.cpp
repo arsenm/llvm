@@ -1195,8 +1195,11 @@ void CodeGenRegBank::computeSubRegIndexLaneMasks() {
     CodeGenSubRegIndex *Idx = SubRegIndices[i];
     if (Idx->getComposites().empty()) {
       Idx->LaneMask = 1u << Bit;
-      // Share bit 31 in the unlikely case there are more than 32 leafs.
-      if (Bit < 31) ++Bit;
+      if (Bit > 31) {
+        PrintFatalError("Too many SubRegIndex values have been defined.  The "
+                        "maximum number allowed is 32.");
+      }
+      ++Bit;
     } else {
       Idx->LaneMask = 0;
     }

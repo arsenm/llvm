@@ -25,6 +25,7 @@ add_llvm_target(AMDGPUCodeGen
   AMDILPeepholeOptimizer.cpp
   AMDILSIDevice.cpp
   AMDGPUAsmPrinter.cpp
+  AMDGPUIndirectAddressing.cpp
   AMDGPUMCInstLower.cpp
   AMDGPUSubtarget.cpp
   AMDGPUTargetMachine.cpp
