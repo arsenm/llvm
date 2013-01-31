@@ -201,7 +201,7 @@ public:
 
 } // End llvm namespace
 
-#define AMDGPU_FLAG_REGISTER_LOAD  (1UL << 63)
-#define AMDGPU_FLAG_REGISTER_STORE (1UL << 62)
+#define AMDGPU_FLAG_REGISTER_LOAD  (UINT64_C(1) << 63)
+#define AMDGPU_FLAG_REGISTER_STORE (UINT64_C(1) << 62)
 
 #endif // AMDGPUINSTRINFO_H
