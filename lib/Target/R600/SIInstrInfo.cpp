@@ -69,9 +69,10 @@ SIInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 
 MachineInstr * SIInstrInfo::getMovImmInstr(MachineFunction *MF, unsigned DstReg,
                                            int64_t Imm) const {
-  MachineInstr * MI = MF->CreateMachineInstr(get(AMDGPU::V_MOV_IMM_I32), DebugLoc());
-  MachineInstrBuilder(MI).addReg(DstReg, RegState::Define);
-  MachineInstrBuilder(MI).addImm(Imm);
+  MachineInstr * MI = MF->CreateMachineInstr(get(AMDGPU::V_MOV_B32_e32), DebugLoc());
+  MachineInstrBuilder MIB(MI);
+  MIB.addReg(DstReg, RegState::Define);
+  MIB.addImm(Imm);
 
   return MI;
 
@@ -84,9 +85,6 @@ bool SIInstrInfo::isMov(unsigned Opcode) const {
   case AMDGPU::S_MOV_B64:
   case AMDGPU::V_MOV_B32_e32:
   case AMDGPU::V_MOV_B32_e64:
-  case AMDGPU::V_MOV_IMM_F32:
-  case AMDGPU::V_MOV_IMM_I32:
-  case AMDGPU::S_MOV_IMM_I32:
     return true;
   }
 }
