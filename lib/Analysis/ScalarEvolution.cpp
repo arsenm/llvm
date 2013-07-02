@@ -400,7 +400,7 @@ bool SCEVUnknown::isSizeOf(Type *&AllocTy) const {
 
 bool SCEVUnknown::isAlignOf(Type *&AllocTy) const {
   if (ConstantExpr *VCE = dyn_cast<ConstantExpr>(getValue()))
-    if (VCE->getOpcode() == Instruction::PtrToInt)
+    if (VCE->getOpcode() == Instruction::PtrToInt) {
       if (ConstantExpr *CE = dyn_cast<ConstantExpr>(VCE->getOperand(0)))
         if (CE->getOpcode() == Instruction::GetElementPtr &&
             CE->getOperand(0)->isNullValue()) {
@@ -419,6 +419,7 @@ bool SCEVUnknown::isAlignOf(Type *&AllocTy) const {
                 }
             }
         }
+    }
 
   return false;
 }
@@ -1214,10 +1215,11 @@ const SCEV *ScalarEvolution::getSignExtendExpr(const SCEV *Op,
 
       // If we have special knowledge that this addrec won't overflow,
       // we don't need to do any further analysis.
-      if (AR->getNoWrapFlags(SCEV::FlagNSW))
+      if (AR->getNoWrapFlags(SCEV::FlagNSW)) {
         return getAddRecExpr(getSignExtendAddRecStart(AR, Ty, this),
                              getSignExtendExpr(Step, Ty),
                              L, SCEV::FlagNSW);
+      }
 
       // Check whether the backedge-taken count is SCEVCouldNotCompute.
       // Note that this serves two purposes: It filters out loops that are
@@ -1637,10 +1639,12 @@ const SCEV *ScalarEvolution::getAddExpr(SmallVectorImpl<const SCEV *> &Ops,
       if (AccumulatedConstant != 0)
         Ops.push_back(getConstant(AccumulatedConstant));
       for (std::map<APInt, SmallVector<const SCEV *, 4>, APIntCompare>::iterator
-           I = MulOpLists.begin(), E = MulOpLists.end(); I != E; ++I)
-        if (I->first != 0)
+             I = MulOpLists.begin(), E = MulOpLists.end(); I != E; ++I) {
+        if (I->first != 0) {
           Ops.push_back(getMulExpr(getConstant(I->first),
                                    getAddExpr(I->second)));
+        }
+      }
       if (Ops.empty())
         return getConstant(Ty, 0);
       if (Ops.size() == 1)
@@ -1893,14 +1897,16 @@ const SCEV *ScalarEvolution::getMulExpr(SmallVectorImpl<const SCEV *> &Ops,
   // If there are any constants, fold them together.
   unsigned Idx = 0;
   if (const SCEVConstant *LHSC = dyn_cast<SCEVConstant>(Ops[0])) {
-
     // C1*(C2+V) -> C1*C2 + C1*V
-    if (Ops.size() == 2)
-      if (const SCEVAddExpr *Add = dyn_cast<SCEVAddExpr>(Ops[1]))
+    if (Ops.size() == 2) {
+      if (const SCEVAddExpr *Add = dyn_cast<SCEVAddExpr>(Ops[1])) {
         if (Add->getNumOperands() == 2 &&
-            isa<SCEVConstant>(Add->getOperand(0)))
+            isa<SCEVConstant>(Add->getOperand(0))) {
           return getAddExpr(getMulExpr(LHSC, Add->getOperand(0)),
                             getMulExpr(LHSC, Add->getOperand(1)));
+        }
+      }
+    }
 
     ++Idx;
     while (const SCEVConstant *RHSC = dyn_cast<SCEVConstant>(Ops[Idx])) {
