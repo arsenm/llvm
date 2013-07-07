@@ -259,7 +259,7 @@ bool CallAnalyzer::accumulateGEPOffset(GEPOperator &GEP, APInt &Offset) {
   if (!DL)
     return false;
 
-  unsigned IntPtrWidth = DL->getPointerSizeInBits();
+  unsigned IntPtrWidth = DL->getPointerTypeSizeInBits(GEP.getType());
   assert(IntPtrWidth == Offset.getBitWidth());
 
   for (gep_type_iterator GTI = gep_type_begin(GEP), GTE = gep_type_end(GEP);
@@ -400,24 +400,28 @@ bool CallAnalyzer::visitBitCast(BitCastInst &I) {
 
 bool CallAnalyzer::visitPtrToInt(PtrToIntInst &I) {
   const DataLayout *DL = I.getDataLayout();
+  Type *Ty = I.getType();
+  Value *Op = I.getOperand(0);
+
   // Propagate constants through ptrtoint.
-  Constant *COp = dyn_cast<Constant>(I.getOperand(0));
+  Constant *COp = dyn_cast<Constant>(Op);
   if (!COp)
-    COp = SimplifiedValues.lookup(I.getOperand(0));
+    COp = SimplifiedValues.lookup(Op);
   if (COp)
-    if (Constant *C = ConstantExpr::getPtrToInt(COp, I.getType())) {
+    if (Constant *C = ConstantExpr::getPtrToInt(COp, Ty)) {
       SimplifiedValues[&I] = C;
       return true;
     }
 
   // Track base/offset pairs when converted to a plain integer provided the
   // integer is large enough to represent the pointer.
-  unsigned IntegerSize = I.getType()->getScalarSizeInBits();
-  if (DL && IntegerSize == DL->getPointerSizeInBits()) {
-    std::pair<Value *, APInt> BaseAndOffset
-      = ConstantOffsetPtrs.lookup(I.getOperand(0));
-    if (BaseAndOffset.first)
+  unsigned IntegerSize = Ty->getScalarSizeInBits();
+  unsigned AS = Op->getType()->getPointerAddressSpace();
+  if (DL && IntegerSize == DL->getPointerSizeInBits(AS)) {
+    std::pair<Value *, APInt> BaseAndOffset = ConstantOffsetPtrs.lookup(Op);
+    if (BaseAndOffset.first) {
       ConstantOffsetPtrs[&I] = BaseAndOffset;
+    }
   }
 
   // This is really weird. Technically, ptrtoint will disable SROA. However,
@@ -429,7 +433,7 @@ bool CallAnalyzer::visitPtrToInt(PtrToIntInst &I) {
   // disable SROA (ext) w/o some later use that we would see and disable.
   Value *SROAArg;
   DenseMap<Value *, int>::iterator CostIt;
-  if (lookupSROAArgAndCost(I.getOperand(0), SROAArg, CostIt))
+  if (lookupSROAArgAndCost(Op, SROAArg, CostIt))
     SROAArgValues[&I] = SROAArg;
 
   return TargetTransformInfo::TCC_Free == TTI.getUserCost(&I);
@@ -451,7 +455,7 @@ bool CallAnalyzer::visitIntToPtr(IntToPtrInst &I) {
   // modifications provided the integer is not too large.
   Value *Op = I.getOperand(0);
   unsigned IntegerSize = Op->getType()->getScalarSizeInBits();
-  if (DL && IntegerSize == DL->getPointerSizeInBits()) {
+  if (DL && IntegerSize == DL->getPointerTypeSizeInBits(I.getType())) {
     std::pair<Value *, APInt> BaseAndOffset = ConstantOffsetPtrs.lookup(Op);
     if (BaseAndOffset.first)
       ConstantOffsetPtrs[&I] = BaseAndOffset;
@@ -936,7 +940,12 @@ ConstantInt *CallAnalyzer::stripAndComputeInBoundsConstantOffsets(Value *&V) {
   if (!DL || !V->getType()->isPointerTy())
     return 0;
 
+<<<<<<< HEAD
   unsigned IntPtrWidth = DL->getPointerSizeInBits();
+=======
+  unsigned AS = V->getType()->getPointerAddressSpace();
+  unsigned IntPtrWidth = TD->getPointerSizeInBits(AS);
+>>>>>>> Teach InlineCost about address spaces
   APInt Offset = APInt::getNullValue(IntPtrWidth);
 
   // Even though we don't look through PHI nodes, we could be called on an
@@ -960,7 +969,11 @@ ConstantInt *CallAnalyzer::stripAndComputeInBoundsConstantOffsets(Value *&V) {
     assert(V->getType()->isPointerTy() && "Unexpected operand type!");
   } while (Visited.insert(V));
 
+<<<<<<< HEAD
   Type *IntPtrTy = DL->getIntPtrType(V->getContext());
+=======
+  Type *IntPtrTy = TD->getIntPtrType(V->getContext(), AS);
+>>>>>>> Teach InlineCost about address spaces
   return cast<ConstantInt>(ConstantInt::get(IntPtrTy, Offset));
 }
 
@@ -999,8 +1012,14 @@ bool CallAnalyzer::analyzeCall(CallSite CS) {
       // We approximate the number of loads and stores needed by dividing the
       // size of the byval type by the target's pointer size.
       PointerType *PTy = cast<PointerType>(CS.getArgument(I)->getType());
+<<<<<<< HEAD
       unsigned TypeSize = DL->getTypeSizeInBits(PTy->getElementType());
       unsigned PointerSize = DL->getPointerSizeInBits();
+=======
+      unsigned TypeSize = TD->getTypeSizeInBits(PTy->getElementType());
+      unsigned AS = PTy->getAddressSpace();
+      unsigned PointerSize = TD->getPointerSizeInBits(AS);
+>>>>>>> Teach InlineCost about address spaces
       // Ceiling division.
       unsigned NumStores = (TypeSize + PointerSize - 1) / PointerSize;
 

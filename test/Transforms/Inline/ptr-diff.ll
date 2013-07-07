@@ -29,6 +29,33 @@ else:
   ret i32 %t
 }
 
+define i32 @outer1_as1(i32 addrspace(1)* %ptr) {
+; CHECK-LABEL: @outer1_as1(
+; CHECK: call
+; CHECK: ret i32
+  %ptr1 = getelementptr inbounds i32 addrspace(1)* %ptr, i32 0
+  %ptr2 = getelementptr inbounds i32 addrspace(1)* %ptr, i32 42
+  %result = call i32 @inner1_as1(i32 addrspace(1)* %ptr1, i32 addrspace(1)* %ptr2)
+  ret i32 %result
+}
+
+; Make sure that the address space's larger size makes the ptrtoints
+; not no-ops preventing inlining
+define i32 @inner1_as1(i32 addrspace(1)* %begin, i32 addrspace(1)* %end) {
+  %begin.i = ptrtoint i32 addrspace(1)* %begin to i32
+  %end.i = ptrtoint i32 addrspace(1)* %end to i32
+  %distance = sub i32 %end.i, %begin.i
+  %icmp = icmp sle i32 %distance, 42
+  br i1 %icmp, label %then, label %else
+
+then:
+  ret i32 3
+
+else:
+  %t = load i32 addrspace(1)* %begin
+  ret i32 %t
+}
+
 ; Make sure that assertion isn't hit when ptrtoint is used with an
 ; integer size different from the pointer size
 define i32 @outer1_ptrtoint_larger() {
