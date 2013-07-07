@@ -29,6 +29,36 @@ else:
   ret i32 %t
 }
 
+; Make sure that assertion isn't hit when ptrtoint is used with an
+; integer size different from the pointer size
+define i32 @outer1_ptrtoint_larger() {
+; CHECK: @outer1_ptrtoint_larger
+; CHECK: ret i32
+
+  %ptr = alloca i32
+  %ptr1 = getelementptr inbounds i32* %ptr, i64 0
+  %ptr2 = getelementptr inbounds i32* %ptr, i64 42
+  %result = call i32 @inner1_ptrtoint_larger(i32* %ptr1, i32* %ptr2)
+  ret i32 %result
+}
+
+; Copy of inner1 that uses a ptrtoint to an integer that is larger
+; than the pointer size
+define i32 @inner1_ptrtoint_larger(i32* %begin, i32* %end) {
+  %begin.i = ptrtoint i32* %begin to i64
+  %end.i = ptrtoint i32* %end to i64
+  %distance = sub i64 %end.i, %begin.i
+  %icmp = icmp sle i64 %distance, 42
+  br i1 %icmp, label %then, label %else
+
+then:
+  ret i32 3
+
+else:
+  %t = load i32* %begin
+  ret i32 %t
+}
+
 define i32 @outer2(i32* %ptr) {
 ; Test that an inbounds GEP disables this -- it isn't safe in general as
 ; wrapping changes the behavior of lessthan and greaterthan comparisons.
