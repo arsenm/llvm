@@ -217,7 +217,7 @@ Value *EmitGEPOffset(IRBuilderTy *Builder, const DataLayout &TD, User *GEP,
 
         if (Size)
           Result = Builder->CreateAdd(Result, ConstantInt::get(IntPtrTy, Size),
-                                      GEP->getName()+".offs");
+                                      GEP->getName() + ".offs");
         continue;
       }
 
@@ -225,21 +225,22 @@ Value *EmitGEPOffset(IRBuilderTy *Builder, const DataLayout &TD, User *GEP,
       Constant *OC = ConstantExpr::getIntegerCast(OpC, IntPtrTy, true /*SExt*/);
       Scale = ConstantExpr::getMul(OC, Scale, isInBounds/*NUW*/);
       // Emit an add instruction.
-      Result = Builder->CreateAdd(Result, Scale, GEP->getName()+".offs");
+      Result = Builder->CreateAdd(Result, Scale, GEP->getName() + ".offs");
       continue;
     }
     // Convert to correct type.
     if (Op->getType() != IntPtrTy)
-      Op = Builder->CreateIntCast(Op, IntPtrTy, true, Op->getName()+".c");
+      Op = Builder->CreateIntCast(Op, IntPtrTy, true, Op->getName() + ".c");
     if (Size != 1) {
       // We'll let instcombine(mul) convert this to a shl if possible.
       Op = Builder->CreateMul(Op, ConstantInt::get(IntPtrTy, Size),
-                              GEP->getName()+".idx", isInBounds /*NUW*/);
+                              GEP->getName() + ".idx", isInBounds /*NUW*/);
     }
 
     // Emit an add instruction.
-    Result = Builder->CreateAdd(Op, Result, GEP->getName()+".offs");
+    Result = Builder->CreateAdd(Op, Result, GEP->getName() + ".offs");
   }
+
   return Result;
 }
 
