@@ -2580,7 +2580,7 @@ bool CastInst::isCastable(Type *SrcTy, Type *DestTy) {
   // Run through the possibilities ...
   if (DestTy->isIntegerTy()) {               // Casting to integral
     if (SrcTy->isIntegerTy()) {                // Casting from integral
-        return true;
+      return true;
     } else if (SrcTy->isFloatingPointTy()) {   // Casting from floating pt
       return true;
     } else if (SrcTy->isVectorTy()) {          // Casting from vector
@@ -2600,9 +2600,11 @@ bool CastInst::isCastable(Type *SrcTy, Type *DestTy) {
     }
   } else if (DestTy->isVectorTy()) {         // Casting to vector
     return DestBits == SrcBits;
-  } else if (DestTy->isPointerTy()) {        // Casting to pointer
-    if (SrcTy->isPointerTy()) {                // Casting from pointer
-      return true;
+  } else if (PointerType *DestPtrTy = dyn_cast<PointerType>(DestTy)) {
+    if (PointerType *SrcPtrTy = dyn_cast<PointerType>(SrcTy)) {
+      // TODO: What about datalayout?  This also IS castable, it just requires 2
+      // instructions instead of 1
+      return (SrcPtrTy->getAddressSpace() == DestPtrTy->getAddressSpace());
     } else if (SrcTy->isIntegerTy()) {         // Casting from integral
       return true;
     } else {                                   // Casting from something else
