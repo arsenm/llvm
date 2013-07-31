@@ -4,6 +4,7 @@
 ; saves at least one register and avoids complex addressing and setup
 ; code.
 ;
+define i32 @simple(i32* %a, i32* %b, i32 %x) nounwind {
 ; A9: @simple
 ; no expensive address computation in the preheader
 ; A9: lsl
@@ -11,7 +12,7 @@
 ; A9: %loop
 ; no complex address modes
 ; A9-NOT: lsl
-define i32 @simple(i32* %a, i32* %b, i32 %x) nounwind {
+
 entry:
   br label %loop
 loop:
@@ -37,6 +38,7 @@ exit:
 
 ; @user is not currently chained because the IV is live across memory ops.
 ;
+define i32 @user(i32* %a, i32* %b, i32 %x) nounwind {
 ; A9: @user
 ; stride multiples computed in the preheader
 ; A9: lsl
@@ -45,7 +47,7 @@ exit:
 ; complex address modes
 ; A9: lsl
 ; A9: lsl
-define i32 @user(i32* %a, i32* %b, i32 %x) nounwind {
+
 entry:
   br label %loop
 loop:
@@ -75,6 +77,7 @@ exit:
 ; used to do, and exactly what we don't want to do. LSR's new IV
 ; chaining feature should now undo the damage.
 ;
+define void @extrastride(i8* nocapture %main, i32 %main_stride, i32* nocapture %res, i32 %x, i32 %y, i32 %z) nounwind {
 ; A9: extrastride:
 ; no spills
 ; A9-NOT: str
@@ -84,7 +87,7 @@ exit:
 ; A9: %for.body{{$}}
 ; no complex address modes or reloads
 ; A9-NOT: {{ldr .*[sp]|lsl}}
-define void @extrastride(i8* nocapture %main, i32 %main_stride, i32* nocapture %res, i32 %x, i32 %y, i32 %z) nounwind {
+
 entry:
   %cmp8 = icmp eq i32 %z, 0
   br i1 %cmp8, label %for.end, label %for.body.lr.ph
@@ -129,6 +132,66 @@ for.body:                                         ; preds = %for.body.lr.ph, %fo
 for.end:                                          ; preds = %for.body, %entry
   ret void
 }
+
+; Copy of extrastride with bitcasts between address spaces.  They are
+; the same size, so the code should be the same.  Just making sure we
+; don't hit an assertion about the address space bitcast.
+define void @extrastride_as_bitcast(i8* nocapture %main, i32 %main_stride, i32* nocapture %res, i32 %x, i32 %y, i32 %z) nounwind {
+; A9: extrastride_as_bitcast:
+; no spills
+; A9-NOT: str
+; only one stride multiple in the preheader
+; A9: lsl
+; A9-NOT: {{str r|lsl}}
+; A9: %for.body{{$}}
+; no complex address modes or reloads
+; A9-NOT: {{ldr .*[sp]|lsl}}
+
+entry:
+  %cmp8 = icmp eq i32 %z, 0
+  br i1 %cmp8, label %for.end, label %for.body.lr.ph
+
+for.body.lr.ph:                                   ; preds = %entry
+  %add.ptr.sum = shl i32 %main_stride, 1 ; s*2
+  %add.ptr1.sum = add i32 %add.ptr.sum, %main_stride ; s*3
+  %add.ptr2.sum = add i32 %x, %main_stride ; s + x
+  %add.ptr4.sum = shl i32 %main_stride, 2 ; s*4
+  %add.ptr3.sum = add i32 %add.ptr2.sum, %add.ptr4.sum ; total IV stride = s*5+x
+  br label %for.body
+
+for.body:                                         ; preds = %for.body.lr.ph, %for.body
+  %main.addr.011 = phi i8* [ %main, %for.body.lr.ph ], [ %add.ptr6, %for.body ]
+  %i.010 = phi i32 [ 0, %for.body.lr.ph ], [ %inc, %for.body ]
+  %res.addr.09 = phi i32* [ %res, %for.body.lr.ph ], [ %add.ptr7, %for.body ]
+  %0 = bitcast i8* %main.addr.011 to i32 addrspace(1)*
+  %1 = load i32 addrspace(1)* %0, align 4
+  %add.ptr = getelementptr inbounds i8* %main.addr.011, i32 %main_stride
+  %2 = bitcast i8* %add.ptr to i32 addrspace(1)*
+  %3 = load i32 addrspace(1)* %2, align 4
+  %add.ptr1 = getelementptr inbounds i8* %main.addr.011, i32 %add.ptr.sum
+  %4 = bitcast i8* %add.ptr1 to i32 addrspace(1)*
+  %5 = load i32 addrspace(1)* %4, align 4
+  %add.ptr2 = getelementptr inbounds i8* %main.addr.011, i32 %add.ptr1.sum
+  %6 = bitcast i8* %add.ptr2 to i32 addrspace(1)*
+  %7 = load i32 addrspace(1)* %6, align 4
+  %add.ptr3 = getelementptr inbounds i8* %main.addr.011, i32 %add.ptr4.sum
+  %8 = bitcast i8* %add.ptr3 to i32 addrspace(1)*
+  %9 = load i32 addrspace(1)* %8, align 4
+  %add = add i32 %3, %1
+  %add4 = add i32 %add, %5
+  %add5 = add i32 %add4, %7
+  %add6 = add i32 %add5, %9
+  store i32 %add6, i32* %res.addr.09, align 4
+  %add.ptr6 = getelementptr inbounds i8* %main.addr.011, i32 %add.ptr3.sum
+  %add.ptr7 = getelementptr inbounds i32* %res.addr.09, i32 %y
+  %inc = add i32 %i.010, 1
+  %cmp = icmp eq i32 %inc, %z
+  br i1 %cmp, label %for.end, label %for.body
+
+for.end:                                          ; preds = %for.body, %entry
+  ret void
+}
+
 
 ; @foldedidx is an unrolled variant of this loop:
 ;  for (unsigned long i = 0; i < len; i += s) {
