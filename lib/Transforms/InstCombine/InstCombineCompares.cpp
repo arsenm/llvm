@@ -576,7 +576,7 @@ static Value *EvaluateGEPOffsetExpression(User *GEP, InstCombiner &IC) {
 
   // Otherwise, there is an index.  The computation we will do will be modulo
   // the pointer size, so get it.
-  uint64_t PtrSizeMask = ~0ULL >> (64-IntPtrWidth);
+  uint64_t PtrSizeMask = ~0ULL >> (64 - IntPtrWidth);
 
   Offset &= PtrSizeMask;
   VariableScale &= PtrSizeMask;
@@ -586,13 +586,14 @@ static Value *EvaluateGEPOffsetExpression(User *GEP, InstCombiner &IC) {
   // but we can't evaluate "10 + 3*i" in terms of i.  Check that the offset is a
   // multiple of the variable scale.
   int64_t NewOffs = Offset / (int64_t)VariableScale;
-  if (Offset != NewOffs*(int64_t)VariableScale)
+  if (Offset != NewOffs * (int64_t)VariableScale)
     return 0;
 
   // Okay, we can do this evaluation.  Start by converting the index to intptr.
   if (VariableIdx->getType() != IntPtrTy)
     VariableIdx = IC.Builder->CreateIntCast(VariableIdx, IntPtrTy,
                                             true /*Signed*/);
+
   Constant *OffsetVal = ConstantInt::get(IntPtrTy, NewOffs);
   return IC.Builder->CreateAdd(VariableIdx, OffsetVal, "offset");
 }
