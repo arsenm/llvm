@@ -807,7 +807,7 @@ Type *InstCombiner::FindElementAtOffset(Type *PtrTy, int64_t Offset,
   // Index into the types.  If we fail, set OrigBase to null.
   while (Offset) {
     // Indexing into tail padding between struct/array elements.
-    if (uint64_t(Offset*8) >= DL->getTypeSizeInBits(Ty))
+    if (uint64_t(Offset * 8) >= DL->getTypeSizeInBits(Ty))
       return 0;
 
     if (StructType *STy = dyn_cast<StructType>(Ty)) {
@@ -824,7 +824,7 @@ Type *InstCombiner::FindElementAtOffset(Type *PtrTy, int64_t Offset,
     } else if (ArrayType *AT = dyn_cast<ArrayType>(Ty)) {
       uint64_t EltSize = DL->getTypeAllocSize(AT->getElementType());
       assert(EltSize && "Cannot index into a zero-sized array");
-      NewIndices.push_back(ConstantInt::get(IntPtrTy,Offset/EltSize));
+      NewIndices.push_back(ConstantInt::get(IntPtrTy, Offset / EltSize));
       Offset %= EltSize;
       Ty = AT->getElementType();
     } else {
