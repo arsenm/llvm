@@ -120,31 +120,43 @@ AMDGPUInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
 
 bool AMDGPUInstrInfo::expandPostRAPseudo (MachineBasicBlock::iterator MI) const {
   MachineBasicBlock *MBB = MI->getParent();
+   int OffsetOpIdx =
+       AMDGPU::getNamedOperandIdx(MI->getOpcode(), AMDGPU::OpName::addr);
+   // addr is a custom operand with multiple MI operands, and only the
+   // first MI operand is given a name.
+  int RegOpIdx = OffsetOpIdx + 1;
+  int ChanOpIdx =
+      AMDGPU::getNamedOperandIdx(MI->getOpcode(), AMDGPU::OpName::chan);
 
   switch(MI->getOpcode()) {
   default:
     if (isRegisterLoad(*MI)) {
-      unsigned RegIndex = MI->getOperand(2).getImm();
-      unsigned Channel = MI->getOperand(3).getImm();
+      int DstOpIdx =
+          AMDGPU::getNamedOperandIdx(MI->getOpcode(), AMDGPU::OpName::dst);
+      unsigned RegIndex = MI->getOperand(RegOpIdx).getImm();
+      unsigned Channel = MI->getOperand(ChanOpIdx).getImm();
       unsigned Address = calculateIndirectAddress(RegIndex, Channel);
-      unsigned OffsetReg = MI->getOperand(1).getReg();
+      unsigned OffsetReg = MI->getOperand(OffsetOpIdx).getReg();
       if (OffsetReg == AMDGPU::INDIRECT_BASE_ADDR) {
-        buildMovInstr(MBB, MI, MI->getOperand(0).getReg(),
+        buildMovInstr(MBB, MI, MI->getOperand(DstOpIdx).getReg(),
                       getIndirectAddrRegClass()->getRegister(Address));
       } else {
-        buildIndirectRead(MBB, MI, MI->getOperand(0).getReg(),
+        buildIndirectRead(MBB, MI, MI->getOperand(DstOpIdx).getReg(),
                           Address, OffsetReg);
       }
     } else if (isRegisterStore(*MI)) {
-      unsigned RegIndex = MI->getOperand(2).getImm();
-      unsigned Channel = MI->getOperand(3).getImm();
+      int ValOpIdx =
+          AMDGPU::getNamedOperandIdx(MI->getOpcode(), AMDGPU::OpName::val);
+      AMDGPU::getNamedOperandIdx(MI->getOpcode(), AMDGPU::OpName::dst);
+      unsigned RegIndex = MI->getOperand(RegOpIdx).getImm();
+      unsigned Channel = MI->getOperand(ChanOpIdx).getImm();
       unsigned Address = calculateIndirectAddress(RegIndex, Channel);
-      unsigned OffsetReg = MI->getOperand(1).getReg();
+      unsigned OffsetReg = MI->getOperand(OffsetOpIdx).getReg();
       if (OffsetReg == AMDGPU::INDIRECT_BASE_ADDR) {
         buildMovInstr(MBB, MI, getIndirectAddrRegClass()->getRegister(Address),
-                      MI->getOperand(0).getReg());
+                      MI->getOperand(ValOpIdx).getReg());
       } else {
-        buildIndirectWrite(MBB, MI, MI->getOperand(0).getReg(),
+        buildIndirectWrite(MBB, MI, MI->getOperand(ValOpIdx).getReg(),
                          calculateIndirectAddress(RegIndex, Channel),
                          OffsetReg);
       }
@@ -261,6 +273,52 @@ bool AMDGPUInstrInfo::isRegisterStore(const MachineInstr &MI) const {
 
 bool AMDGPUInstrInfo::isRegisterLoad(const MachineInstr &MI) const {
   return get(MI.getOpcode()).TSFlags & AMDGPU_FLAG_REGISTER_LOAD;
+}
+
+int AMDGPUInstrInfo::getIndirectIndexBegin(const MachineFunction &MF) const {
+  const MachineRegisterInfo &MRI = MF.getRegInfo();
+  const MachineFrameInfo *MFI = MF.getFrameInfo();
+  const AMDGPURegisterInfo *TRI = static_cast<const AMDGPURegisterInfo*>(
+                                MF.getTarget().getRegisterInfo());
+  int Offset = -1;
+
+  if (MFI->getNumObjects() == 0) {
+    return -1;
+  }
+
+  if (MRI.livein_empty()) {
+    return 0;
+  }
+
+  const TargetRegisterClass *IndirectRC = getIndirectAddrRegClass();
+  for (MachineRegisterInfo::livein_iterator LI = MRI.livein_begin(),
+                                            LE = MRI.livein_end();
+                                            LI != LE; ++LI) {
+    unsigned Reg = LI->first;
+    if (TargetRegisterInfo::isVirtualRegister(Reg) ||
+        !IndirectRC->contains(Reg))
+      continue;
+
+    Offset = std::max(Offset, (int)TRI->getHWRegIndex(Reg));
+  }
+
+  return Offset + 1;
+}
+
+int AMDGPUInstrInfo::getIndirectIndexEnd(const MachineFunction &MF) const {
+  int Offset = 0;
+  const MachineFrameInfo *MFI = MF.getFrameInfo();
+
+  // Variable sized objects are not supported
+  assert(!MFI->hasVarSizedObjects());
+
+  if (MFI->getNumObjects() == 0) {
+    return -1;
+  }
+
+  Offset = TM.getFrameLowering()->getFrameIndexOffset(MF, -1);
+
+  return getIndirectIndexBegin(MF) + Offset;
 }
 
 
