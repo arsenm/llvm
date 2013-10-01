@@ -328,7 +328,8 @@ static Value *HandleByValArgument(Value *Arg, Instruction *TheCall,
                                   const Function *CalledFunc,
                                   InlineFunctionInfo &IFI,
                                   unsigned ByValAlignment) {
-  Type *AggTy = cast<PointerType>(Arg->getType())->getElementType();
+  PointerType *ArgTy = cast<PointerType>(Arg->getType());
+  Type *AggTy = ArgTy->getElementType();
 
   // If the called function is readonly, then it could not mutate the caller's
   // copy of the byval'd memory.  In this case, it is safe to elide the copy and
@@ -352,8 +353,8 @@ static Value *HandleByValArgument(Value *Arg, Instruction *TheCall,
   
   LLVMContext &Context = Arg->getContext();
 
-  Type *VoidPtrTy = Type::getInt8PtrTy(Context);
-  
+  Type *VoidPtrTy = Type::getInt8PtrTy(Context, ArgTy->getAddressSpace());
+
   // Create the alloca.  If we have DataLayout, use nice alignment.
   unsigned Align = 1;
   if (IFI.DL)
@@ -418,8 +419,10 @@ static bool isUsedByLifetimeMarker(Value *V) {
 // hasLifetimeMarkers - Check whether the given alloca already has
 // lifetime.start or lifetime.end intrinsics.
 static bool hasLifetimeMarkers(AllocaInst *AI) {
-  Type *Int8PtrTy = Type::getInt8PtrTy(AI->getType()->getContext());
-  if (AI->getType() == Int8PtrTy)
+  Type *Ty = AI->getType();
+  Type *Int8PtrTy = Type::getInt8PtrTy(Ty->getContext(),
+                                       Ty->getPointerAddressSpace());
+  if (Ty == Int8PtrTy)
     return isUsedByLifetimeMarker(AI);
 
   // Do a scan to find all the casts to i8*.
