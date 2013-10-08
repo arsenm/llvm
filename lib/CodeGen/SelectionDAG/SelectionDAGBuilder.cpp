@@ -5352,8 +5352,9 @@ SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I, unsigned Intrinsic) {
     if (TM.getOptLevel() == CodeGenOpt::None)
       return 0;
 
+    Value *Op1 = I.getArgOperand(1);
     SmallVector<Value *, 4> Allocas;
-    GetUnderlyingObjects(I.getArgOperand(1), Allocas, DL);
+    GetUnderlyingObjects(Op1, Allocas, DL);
 
     for (SmallVectorImpl<Value*>::iterator Object = Allocas.begin(),
            E = Allocas.end(); Object != E; ++Object) {
@@ -5364,10 +5365,11 @@ SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I, unsigned Intrinsic) {
         continue;
 
       int FI = FuncInfo.StaticAllocaMap[LifetimeObject];
+      unsigned AS = Op1->getType()->getPointerAddressSpace();
 
       SDValue Ops[2];
       Ops[0] = getRoot();
-      Ops[1] = DAG.getFrameIndex(FI, TLI->getPointerTy(), true);
+      Ops[1] = DAG.getFrameIndex(FI, TLI->getPointerTy(AS), true);
       unsigned Opcode = (IsStart ? ISD::LIFETIME_START : ISD::LIFETIME_END);
 
       Res = DAG.getNode(Opcode, sdl, MVT::Other, Ops, 2);
@@ -5375,10 +5377,12 @@ SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I, unsigned Intrinsic) {
     }
     return 0;
   }
-  case Intrinsic::invariant_start:
+  case Intrinsic::invariant_start: {
     // Discard region information.
-    setValue(&I, DAG.getUNDEF(TLI->getPointerTy()));
+    unsigned AS = I.getOperand(1)->getType()->getPointerAddressSpace();
+    setValue(&I, DAG.getUNDEF(TLI->getPointerTy(AS)));
     return 0;
+  }
   case Intrinsic::invariant_end:
     // Discard region information.
     return 0;
