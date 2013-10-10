@@ -1596,9 +1596,10 @@ Instruction *InstCombiner::visitFree(CallInst &FI) {
 
   // free undef -> unreachable.
   if (isa<UndefValue>(Op)) {
+    unsigned AS = Op->getType()->getPointerAddressSpace();
+    Value *UndefVal = UndefValue::get(Type::getInt1PtrTy(FI.getContext(), AS));
     // Insert a new store to null because we cannot modify the CFG here.
-    Builder->CreateStore(ConstantInt::getTrue(FI.getContext()),
-                         UndefValue::get(Type::getInt1PtrTy(FI.getContext())));
+    Builder->CreateStore(ConstantInt::getTrue(FI.getContext()), UndefVal);
     return EraseInstFromFunction(FI);
   }
 
