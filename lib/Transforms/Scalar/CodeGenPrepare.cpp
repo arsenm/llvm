@@ -920,7 +920,8 @@ public:
     return Result;
   }
 private:
-  bool MatchScaledValue(Value *ScaleReg, int64_t Scale, unsigned Depth);
+  bool MatchScaledValue(Value *ScaleReg, int64_t Scale,
+                        unsigned Depth, unsigned AS);
   bool MatchAddr(Value *V, unsigned Depth);
   bool MatchOperationAddr(User *Operation, unsigned Opcode, unsigned Depth);
   bool IsProfitableToFoldIntoAddressingMode(Instruction *I,
@@ -933,7 +934,7 @@ private:
 /// Return true and update AddrMode if this addr mode is legal for the target,
 /// false if not.
 bool AddressingModeMatcher::MatchScaledValue(Value *ScaleReg, int64_t Scale,
-                                             unsigned Depth) {
+                                             unsigned Depth, unsigned AS) {
   // If Scale is 1, then this is the same as adding ScaleReg to the addressing
   // mode.  Just process that directly.
   if (Scale == 1)
@@ -956,7 +957,7 @@ bool AddressingModeMatcher::MatchScaledValue(Value *ScaleReg, int64_t Scale,
   TestAddrMode.ScaledReg = ScaleReg;
 
   // If the new address isn't legal, bail out.
-  if (!TLI.isLegalAddressingMode(TestAddrMode, AccessTy))
+  if (!TLI.isLegalAddressingMode(TestAddrMode, AccessTy, AS))
     return false;
 
   // It was legal, so commit it.
@@ -1076,8 +1077,8 @@ bool AddressingModeMatcher::MatchOperationAddr(User *AddrInst, unsigned Opcode,
     int64_t Scale = RHS->getSExtValue();
     if (Opcode == Instruction::Shl)
       Scale = 1LL << Scale;
-
-    return MatchScaledValue(AddrInst->getOperand(0), Scale, Depth);
+    unsigned AS = AddrInst->getType()->getPointerAddressSpace();
+    return MatchScaledValue(AddrInst->getOperand(0), Scale, Depth, AS);
   }
   case Instruction::GetElementPtr: {
     // Scan the GEP.  We check it if it contains constant offsets and at most
@@ -1113,8 +1114,10 @@ bool AddressingModeMatcher::MatchOperationAddr(User *AddrInst, unsigned Opcode,
     // A common case is for the GEP to only do a constant offset.  In this case,
     // just add it to the disp field and check validity.
     if (VariableOperand == -1) {
+      unsigned AS = AddrInst->getType()->getPointerAddressSpace();
       AddrMode.BaseOffs += ConstantOffset;
-      if (ConstantOffset == 0 || TLI.isLegalAddressingMode(AddrMode, AccessTy)){
+      if (ConstantOffset == 0 ||
+          TLI.isLegalAddressingMode(AddrMode, AccessTy, AS)) {
         // Check to see if we can fold the base pointer in too.
         if (MatchAddr(AddrInst->getOperand(0), Depth+1))
           return true;
@@ -1143,8 +1146,9 @@ bool AddressingModeMatcher::MatchOperationAddr(User *AddrInst, unsigned Opcode,
     }
 
     // Match the remaining variable portion of the GEP.
+    unsigned AS = AddrInst->getType()->getPointerAddressSpace();
     if (!MatchScaledValue(AddrInst->getOperand(VariableOperand), VariableScale,
-                          Depth)) {
+                          Depth, AS)) {
       // If it couldn't be matched, try stuffing the base into a register
       // instead of matching it, and retrying the match of the scale.
       AddrMode = BackupAddrMode;
@@ -1155,7 +1159,7 @@ bool AddressingModeMatcher::MatchOperationAddr(User *AddrInst, unsigned Opcode,
       AddrMode.BaseReg = AddrInst->getOperand(0);
       AddrMode.BaseOffs += ConstantOffset;
       if (!MatchScaledValue(AddrInst->getOperand(VariableOperand),
-                            VariableScale, Depth)) {
+                            VariableScale, Depth, AS)) {
         // If even that didn't work, bail.
         AddrMode = BackupAddrMode;
         AddrModeInsts.resize(OldSize);
@@ -1219,10 +1223,11 @@ bool AddressingModeMatcher::MatchAddr(Value *Addr, unsigned Depth) {
 
   // Worse case, the target should support [reg] addressing modes. :)
   if (!AddrMode.HasBaseReg) {
+    unsigned AS = Addr->getType()->getPointerAddressSpace();
     AddrMode.HasBaseReg = true;
     AddrMode.BaseReg = Addr;
     // Still check for legality in case the target supports [imm] but not [i+r].
-    if (TLI.isLegalAddressingMode(AddrMode, AccessTy))
+    if (TLI.isLegalAddressingMode(AddrMode, AccessTy, AS))
       return true;
     AddrMode.HasBaseReg = false;
     AddrMode.BaseReg = 0;
