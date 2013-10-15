@@ -446,6 +446,13 @@ void SIInstrInfo::legalizeOperands(MachineInstr *MI) const {
       }
       legalizeOpWithMove(MI, Src1Idx);
     }
+
+    // Replace writes to SCC with VCC.
+    for (unsigned I = 0, E = MI->getNumOperands(); I != E; ++I) {
+      MachineOperand &Op = MI->getOperand(I);
+      if (Op.isReg() && Op.isDef() && Op.getReg() == AMDGPU::SCC)
+        Op.setReg(AMDGPU::VCC);
+    }
   }
 
   // Legalize VOP3
@@ -461,6 +468,8 @@ void SIInstrInfo::legalizeOperands(MachineInstr *MI) const {
       if (MO.isReg()) {
         if (!RI.isSGPRClass(MRI.getRegClass(MO.getReg())))
           continue; // VGPRs are legal
+
+        assert(MO.getReg() != AMDGPU::SCC && "SCC operand to VOP3 instruction");
 
         if (SGPRReg == AMDGPU::NoRegister || SGPRReg == MO.getReg()) {
           SGPRReg = MO.getReg();
