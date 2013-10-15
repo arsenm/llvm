@@ -291,7 +291,8 @@ namespace llvm {
 
     /// isLegalAddressingMode - Return true if the addressing mode represented
     /// by AM is legal for this target, for a load/store of the specified type.
-    virtual bool isLegalAddressingMode(const AddrMode &AM, Type *Ty)const;
+    virtual bool isLegalAddressingMode(const AddrMode &AM,
+                                       Type *Ty, unsigned AS) const;
     bool isLegalT2ScaledAddressingMode(const AddrMode &AM, EVT VT) const;
 
     /// isLegalICmpImmediate - Return true if the specified immediate is legal

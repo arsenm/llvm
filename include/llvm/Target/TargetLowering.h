@@ -1118,12 +1118,13 @@ public:
   };
 
   /// Return true if the addressing mode represented by AM is legal for this
-  /// target, for a load/store of the specified type.
+  /// target, for a load/store of the specified type in the given address space.
   ///
   /// The type may be VoidTy, in which case only return true if the addressing
   /// mode is legal for a load/store of any legal type.  TODO: Handle
   /// pre/postinc as well.
-  virtual bool isLegalAddressingMode(const AddrMode &AM, Type *Ty) const;
+  virtual bool isLegalAddressingMode(const AddrMode &AM,
+                                     Type *Ty, unsigned AS = 0) const;
 
   /// \brief Return the cost of the scaling factor used in the addressing mode
   /// represented by AM for this target, for a load/store of the specified type.

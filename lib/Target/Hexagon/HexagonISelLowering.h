@@ -162,7 +162,8 @@ namespace llvm {
     /// The type may be VoidTy, in which case only return true if the addressing
     /// mode is legal for a load/store of any legal type.
     /// TODO: Handle pre/postinc as well.
-    virtual bool isLegalAddressingMode(const AddrMode &AM, Type *Ty) const;
+    virtual bool isLegalAddressingMode(const AddrMode &AM,
+                                       Type *Ty, unsigned AS) const;
     virtual bool isFPImmLegal(const APFloat &Imm, EVT VT) const;
 
     /// isLegalICmpImmediate - Return true if the specified immediate is legal

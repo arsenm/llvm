@@ -13797,7 +13797,7 @@ const char *X86TargetLowering::getTargetNodeName(unsigned Opcode) const {
 // isLegalAddressingMode - Return true if the addressing mode represented
 // by AM is legal for this target, for a load/store of the specified type.
 bool X86TargetLowering::isLegalAddressingMode(const AddrMode &AM,
-                                              Type *Ty) const {
+                                              Type *Ty, unsigned) const {
   // X86 supports extremely general addressing modes.
   CodeModel::Model M = getTargetMachine().getCodeModel();
   Reloc::Model R = getTargetMachine().getRelocationModel();

@@ -7754,7 +7754,7 @@ void PPCTargetLowering::LowerAsmOperandForConstraint(SDValue Op,
 // isLegalAddressingMode - Return true if the addressing mode represented
 // by AM is legal for this target, for a load/store of the specified type.
 bool PPCTargetLowering::isLegalAddressingMode(const AddrMode &AM,
-                                              Type *Ty) const {
+                                              Type *Ty, unsigned) const {
   // FIXME: PPC does not allow r+i addressing modes for vectors!
 
   // PPC allows a sign-extended 16-bit immediate field.

@@ -97,7 +97,8 @@ public:
   /// Used to guide target specific optimizations, like loop strength
   /// reduction (LoopStrengthReduce.cpp) and memory optimization for
   /// address mode (CodeGenPrepare.cpp)
-  virtual bool isLegalAddressingMode(const AddrMode &AM, Type *Ty) const;
+  virtual bool isLegalAddressingMode(const AddrMode &AM,
+                                     Type *Ty, unsigned AS) const;
 
   /// getFunctionAlignment - Return the Log2 alignment of this function.
   virtual unsigned getFunctionAlignment(const Function *F) const;

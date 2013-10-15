@@ -569,7 +569,8 @@ namespace llvm {
                                               std::vector<SDValue> &Ops,
                                               SelectionDAG &DAG) const;
 
-    virtual bool isLegalAddressingMode(const AddrMode &AM, Type *Ty) const;
+    virtual bool isLegalAddressingMode(const AddrMode &AM,
+                                       Type *Ty, unsigned AS) const;
 
     virtual bool isOffsetFoldingLegal(const GlobalAddressSDNode *GA) const;
 

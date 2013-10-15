@@ -313,9 +313,9 @@ bool SystemZTargetLowering::allowsUnalignedMemoryAccesses(EVT VT,
     *Fast = true;
   return true;
 }
-  
+
 bool SystemZTargetLowering::isLegalAddressingMode(const AddrMode &AM,
-                                                  Type *Ty) const {
+                                                  Type *Ty, unsigned) const {
   // Punt on globals for now, although they can be used in limited
   // RELATIVE LONG cases.
   if (AM.BaseGV)

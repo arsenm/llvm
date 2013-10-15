@@ -203,8 +203,8 @@ public:
   }
   virtual bool isFMAFasterThanFMulAndFAdd(EVT VT) const LLVM_OVERRIDE;
   virtual bool isFPImmLegal(const APFloat &Imm, EVT VT) const LLVM_OVERRIDE;
-  virtual bool isLegalAddressingMode(const AddrMode &AM, Type *Ty) const
-     LLVM_OVERRIDE;
+  virtual bool isLegalAddressingMode(const AddrMode &AM, Type *Ty,
+                                     unsigned AS) const LLVM_OVERRIDE;
   virtual bool allowsUnalignedMemoryAccesses(EVT VT, bool *Fast) const
     LLVM_OVERRIDE;
   virtual bool isTruncateFree(Type *, Type *) const LLVM_OVERRIDE;
