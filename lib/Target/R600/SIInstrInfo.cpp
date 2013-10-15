@@ -590,6 +590,9 @@ bool SIInstrInfo::moveToVALU(MachineInstr &MI) const {
     if (!canReadVGPR(UseMI, I.getOperandNo())) {
       moveToVALU(UseMI);
       legalizeOperands(&UseMI);
+
+      I = MRI.use_begin(NewDstReg);
+      Next = llvm::next(I);
     }
   }
 
