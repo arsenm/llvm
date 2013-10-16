@@ -61,7 +61,7 @@ SITargetLowering::SITargetLowering(TargetMachine &TM) :
   setOperationAction(ISD::VECTOR_SHUFFLE, MVT::v16i32, Expand);
   setOperationAction(ISD::VECTOR_SHUFFLE, MVT::v16f32, Expand);
 
-  setOperationAction(ISD::ADD, MVT::i64, Legal);
+  setOperationAction(ISD::ADD, MVT::i64, Custom);
   setOperationAction(ISD::ADD, MVT::i32, Legal);
   setOperationAction(ISD::ADDC, MVT::i32, Legal);
   setOperationAction(ISD::ADDE, MVT::i32, Legal);
