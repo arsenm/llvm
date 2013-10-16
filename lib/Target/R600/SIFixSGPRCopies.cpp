@@ -213,7 +213,6 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
         DEBUG(MI.print(dbgs()));
 
         TII->moveToVALU(MI);
-        TII->legalizeOperands(&MI);
         break;
       }
       }
