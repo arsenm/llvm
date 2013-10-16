@@ -447,10 +447,10 @@ void SIInstrInfo::legalizeOperands(MachineInstr *MI) const {
       legalizeOpWithMove(MI, Src1Idx);
     }
 
-    // Replace writes to SCC with VCC.
+    // Replace uses of SCC with VCC.
     for (unsigned I = 0, E = MI->getNumOperands(); I != E; ++I) {
       MachineOperand &Op = MI->getOperand(I);
-      if (Op.isReg() && Op.isDef() && Op.getReg() == AMDGPU::SCC)
+      if (Op.isReg() && Op.getReg() == AMDGPU::SCC)
         Op.setReg(AMDGPU::VCC);
     }
   }
