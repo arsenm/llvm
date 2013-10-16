@@ -532,71 +532,71 @@ void SIInstrInfo::legalizeOperands(MachineInstr *MI) const {
   }
 }
 
-bool SIInstrInfo::moveToVALU(MachineInstr &MI) const {
-  unsigned NewOpcode = getVALUOp(MI);
+void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
+  SmallVector<MachineInstr *, 128> Worklist;
+  Worklist.push_back(&TopInst);
 
-  if (NewOpcode == AMDGPU::INSTRUCTION_LIST_END)
-    return false;
+  while (!Worklist.empty()) {
+    MachineInstr *Inst = Worklist.pop_back_val();
+    unsigned NewOpcode = getVALUOp(*Inst);
+    if (NewOpcode == AMDGPU::INSTRUCTION_LIST_END)
+      continue;
 
-  MachineRegisterInfo &MRI = MI.getParent()->getParent()->getRegInfo();
+    MachineRegisterInfo &MRI = Inst->getParent()->getParent()->getRegInfo();
 
-  // Use the new VALU Opcode;
-  const MCInstrDesc &NewDesc = get(NewOpcode);
-  MI.setDesc(NewDesc);
+    // Use the new VALU Opcode.
+    const MCInstrDesc &NewDesc = get(NewOpcode);
+    Inst->setDesc(NewDesc);
 
-  // Add the implict and explicit register definitions
-  if (NewDesc.ImplicitUses) {
-    for (unsigned i = 0; NewDesc.ImplicitUses[i]; ++i) {
-      MI.addOperand(MachineOperand::CreateReg(NewDesc.ImplicitUses[i],
-                                              false, true));
+    // Add the implict and explicit register definitions.
+    if (NewDesc.ImplicitUses) {
+      for (unsigned i = 0; NewDesc.ImplicitUses[i]; ++i) {
+        Inst->addOperand(MachineOperand::CreateReg(NewDesc.ImplicitUses[i],
+                                                   false, true));
+      }
+    }
+
+    if (NewDesc.ImplicitDefs) {
+      for (unsigned i = 0; NewDesc.ImplicitDefs[i]; ++i) {
+        Inst->addOperand(MachineOperand::CreateReg(NewDesc.ImplicitDefs[i],
+                                                   true, true));
+      }
+    }
+
+    legalizeOperands(Inst);
+
+    // Update the destination register class.
+    const TargetRegisterClass *NewDstRC = getOpRegClass(*Inst, 0);
+
+    switch (Inst->getOpcode()) {
+      // For target instructions, getOpRegClass just returns the virtual
+      // register class associated with the operand, so we need to find an
+      // equivalent VGPR register class in order to move the instruction to the
+      // VALU.
+    case AMDGPU::COPY:
+    case AMDGPU::REG_SEQUENCE:
+      if (RI.hasVGPRs(NewDstRC))
+        continue;
+      NewDstRC = RI.getEquivalentVGPRClass(NewDstRC);
+      if (!NewDstRC)
+        continue;
+      break;
+    default:
+      break;
+    }
+
+    unsigned DstReg = Inst->getOperand(0).getReg();
+    unsigned NewDstReg = MRI.createVirtualRegister(NewDstRC);
+    MRI.replaceRegWith(DstReg, NewDstReg);
+
+    for (MachineRegisterInfo::use_iterator I = MRI.use_begin(NewDstReg),
+           E = MRI.use_end(); I != E; ++I) {
+      MachineInstr &UseMI = *I;
+      if (!canReadVGPR(UseMI, I.getOperandNo())) {
+        Worklist.push_back(&UseMI);
+      }
     }
   }
-
-  if (NewDesc.ImplicitDefs) {
-    for (unsigned i = 0; NewDesc.ImplicitDefs[i]; ++i) {
-      MI.addOperand(MachineOperand::CreateReg(NewDesc.ImplicitDefs[i],
-                                              true, true));
-    }
-  }
-
-  // Update the destination register class
-  const TargetRegisterClass *NewDstRC = getOpRegClass(MI, 0);
-
-  switch (MI.getOpcode()) {
-  // For target instructions, getOpRegClass just returns the virtual register
-  // class associated with the operand, so we need to find an equivalent
-  // VGPR register class in order to move the instruction to the VALU.
-  case AMDGPU::COPY:
-  case AMDGPU::REG_SEQUENCE:
-    if (RI.hasVGPRs(NewDstRC))
-      return false;
-    NewDstRC = RI.getEquivalentVGPRClass(NewDstRC);
-    if (!NewDstRC)
-      return false;
-    break;
-  default:
-    break;
-  }
-
-  unsigned DstReg = MI.getOperand(0).getReg();
-  unsigned NewDstReg = MRI.createVirtualRegister(NewDstRC);
-  MRI.replaceRegWith(DstReg, NewDstReg);
-
-  for (MachineRegisterInfo::use_iterator I = MRI.use_begin(NewDstReg),
-                                         Next = llvm::next(I);
-                                         I != MRI.use_end(); I = Next) {
-    Next = llvm::next(I);
-    MachineInstr &UseMI = *I;
-    if (!canReadVGPR(UseMI, I.getOperandNo())) {
-      moveToVALU(UseMI);
-      legalizeOperands(&UseMI);
-
-      I = MRI.use_begin(NewDstReg);
-      Next = llvm::next(I);
-    }
-  }
-
-  return true;
 }
 
 //===----------------------------------------------------------------------===//

@@ -101,8 +101,7 @@ public:
   /// \brief Replace this instruction's opcode with the equivalent VALU
   /// opcode.  This function will also move the users of \p MI to the
   /// VALU if necessary.
-  /// NOTE: This function does not update the operands of MI.
-  bool moveToVALU(MachineInstr &MI) const;
+  void moveToVALU(MachineInstr &MI) const;
 
   virtual unsigned calculateIndirectAddress(unsigned RegIndex,
                                             unsigned Channel) const;
