@@ -69,6 +69,12 @@ public:
 
   bool isSALUInstr(const MachineInstr &MI) const;
   static unsigned getVALUOp(const MachineInstr &MI);
+
+  /// \brief For a given register ID of scalar register operand, get the
+  /// appropriately sized vector register class to move it into. This is mostly
+  /// to replace VSrc operands with VReg. We don't want to move into a VSrc,
+  /// since that could later be replaced with an SGPR which we don't want.
+  static unsigned getVRegClassID(unsigned ScalarRCID);
   bool isSALUOpSupportedOnVALU(const MachineInstr &MI) const;
 
   /// \brief Return the correct register class for \p OpNo.  For target-specific

@@ -382,6 +382,38 @@ unsigned SIInstrInfo::getVALUOp(const MachineInstr &MI) {
   }
 }
 
+unsigned SIInstrInfo::getVRegClassID(unsigned ScalarRegClassID) {
+  switch (ScalarRegClassID) {
+  case AMDGPU::SCCRegRegClassID:
+    return AMDGPU::VCCRegRegClassID;
+
+  case AMDGPU::SReg_32RegClassID:
+  case AMDGPU::SSrc_32RegClassID:
+  case AMDGPU::SGPR_32RegClassID:
+  case AMDGPU::VReg_32RegClassID:
+  case AMDGPU::VSrc_32RegClassID:
+  case AMDGPU::VGPR_32RegClassID:
+    return AMDGPU::VReg_32RegClassID;
+
+  case AMDGPU::SReg_64RegClassID:
+  case AMDGPU::SSrc_64RegClassID:
+  case AMDGPU::SGPR_64RegClassID:
+  case AMDGPU::VReg_64RegClassID:
+  case AMDGPU::VSrc_64RegClassID:
+    return AMDGPU::VReg_64RegClassID;
+
+  case AMDGPU::SReg_128RegClassID:
+  case AMDGPU::VReg_128RegClassID:
+    return AMDGPU::VReg_128RegClassID;
+
+  case AMDGPU::SReg_256RegClassID:
+  case AMDGPU::VReg_256RegClassID:
+    return AMDGPU::VReg_256RegClassID;
+  default:
+    llvm_unreachable("Bad SI register class ID");
+  }
+}
+
 bool SIInstrInfo::isSALUOpSupportedOnVALU(const MachineInstr &MI) const {
   return getVALUOp(MI) != AMDGPU::INSTRUCTION_LIST_END;
 }
@@ -413,7 +445,6 @@ void SIInstrInfo::legalizeOpWithMove(MachineInstr *MI, unsigned OpIdx) const {
   MachineOperand &MO = MI->getOperand(OpIdx);
   MachineRegisterInfo &MRI = MI->getParent()->getParent()->getRegInfo();
   unsigned RCID = get(MI->getOpcode()).OpInfo[OpIdx].RegClass;
-  // XXX - This shouldn't be VSrc
   const TargetRegisterClass *RC = RI.getRegClass(RCID);
   unsigned Opcode = AMDGPU::V_MOV_B32_e32;
   if (MO.isReg()) {
@@ -422,7 +453,8 @@ void SIInstrInfo::legalizeOpWithMove(MachineInstr *MI, unsigned OpIdx) const {
     Opcode = AMDGPU::S_MOV_B32;
   }
 
-  unsigned Reg = MRI.createVirtualRegister(RI.getRegClass(RCID));
+  unsigned VRCID = getVRegClassID(RCID);
+  unsigned Reg = MRI.createVirtualRegister(RI.getRegClass(VRCID));
   BuildMI(*MI->getParent(), I, MI->getParent()->findDebugLoc(I), get(Opcode),
           Reg).addOperand(MO);
   MO.ChangeToRegister(Reg, false);
