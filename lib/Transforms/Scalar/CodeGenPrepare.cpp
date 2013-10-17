@@ -974,7 +974,7 @@ bool AddressingModeMatcher::MatchScaledValue(Value *ScaleReg, int64_t Scale,
 
     // If this addressing mode is legal, commit it and remember that we folded
     // this instruction.
-    if (TLI.isLegalAddressingMode(TestAddrMode, AccessTy)) {
+    if (TLI.isLegalAddressingMode(TestAddrMode, AccessTy, AS)) {
       AddrModeInsts.push_back(cast<Instruction>(ScaleReg));
       AddrMode = TestAddrMode;
       return true;
@@ -1182,14 +1182,16 @@ bool AddressingModeMatcher::MatchAddr(Value *Addr, unsigned Depth) {
   if (ConstantInt *CI = dyn_cast<ConstantInt>(Addr)) {
     // Fold in immediates if legal for the target.
     AddrMode.BaseOffs += CI->getSExtValue();
-    if (TLI.isLegalAddressingMode(AddrMode, AccessTy))
+    unsigned AS = Addr->getType()->getPointerAddressSpace();
+    if (TLI.isLegalAddressingMode(AddrMode, AccessTy, AS))
       return true;
     AddrMode.BaseOffs -= CI->getSExtValue();
   } else if (GlobalValue *GV = dyn_cast<GlobalValue>(Addr)) {
     // If this is a global variable, try to fold it into the addressing mode.
     if (AddrMode.BaseGV == 0) {
+      unsigned AS = GV->getType()->getAddressSpace();
       AddrMode.BaseGV = GV;
-      if (TLI.isLegalAddressingMode(AddrMode, AccessTy))
+      if (TLI.isLegalAddressingMode(AddrMode, AccessTy, AS))
         return true;
       AddrMode.BaseGV = 0;
     }
@@ -1235,9 +1237,10 @@ bool AddressingModeMatcher::MatchAddr(Value *Addr, unsigned Depth) {
 
   // If the base register is already taken, see if we can do [r+r].
   if (AddrMode.Scale == 0) {
+    unsigned AS = Addr->getType()->getPointerAddressSpace();
     AddrMode.Scale = 1;
     AddrMode.ScaledReg = Addr;
-    if (TLI.isLegalAddressingMode(AddrMode, AccessTy))
+    if (TLI.isLegalAddressingMode(AddrMode, AccessTy, AS))
       return true;
     AddrMode.Scale = 0;
     AddrMode.ScaledReg = 0;
