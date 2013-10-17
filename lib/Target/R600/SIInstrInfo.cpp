@@ -450,13 +450,6 @@ void SIInstrInfo::legalizeOperands(MachineInstr *MI) const {
       }
       legalizeOpWithMove(MI, Src1Idx);
     }
-
-    // Replace uses of SCC with VCC.
-    for (unsigned I = 0, E = MI->getNumOperands(); I != E; ++I) {
-      MachineOperand &Op = MI->getOperand(I);
-      if (Op.isReg() && Op.getReg() == AMDGPU::SCC)
-        Op.setReg(AMDGPU::VCC);
-    }
   }
 
   // Legalize VOP3
@@ -552,18 +545,27 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     const MCInstrDesc &NewDesc = get(NewOpcode);
     Inst->setDesc(NewDesc);
 
+    // Remove any references to SCC. Vector instructions can't read from it, and
+    // We're just about to add the implicit use / defs of VCC, and we don't want
+    // both.
+    for (unsigned i = Inst->getNumOperands() - 1; i > 0; --i) {
+      MachineOperand &Op = Inst->getOperand(i);
+      if (Op.isReg() && Op.getReg() == AMDGPU::SCC)
+        Inst->RemoveOperand(i);
+    }
+
     // Add the implict and explicit register definitions.
     if (NewDesc.ImplicitUses) {
       for (unsigned i = 0; NewDesc.ImplicitUses[i]; ++i) {
-        Inst->addOperand(MachineOperand::CreateReg(NewDesc.ImplicitUses[i],
-                                                   false, true));
+        unsigned Reg = NewDesc.ImplicitUses[i];
+        Inst->addOperand(MachineOperand::CreateReg(Reg, false, true));
       }
     }
 
     if (NewDesc.ImplicitDefs) {
       for (unsigned i = 0; NewDesc.ImplicitDefs[i]; ++i) {
-        Inst->addOperand(MachineOperand::CreateReg(NewDesc.ImplicitDefs[i],
-                                                   true, true));
+        unsigned Reg = NewDesc.ImplicitDefs[i];
+        Inst->addOperand(MachineOperand::CreateReg(Reg, true, true));
       }
     }
 
