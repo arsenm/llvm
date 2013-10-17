@@ -74,10 +74,10 @@ public:
   virtual bool isLegalICmpImmediate(int64_t imm) const;
   virtual bool isLegalAddressingMode(Type *Ty, GlobalValue *BaseGV,
                                      int64_t BaseOffset, bool HasBaseReg,
-                                     int64_t Scale) const;
+                                     int64_t Scale, unsigned AS) const;
   virtual int getScalingFactorCost(Type *Ty, GlobalValue *BaseGV,
                                    int64_t BaseOffset, bool HasBaseReg,
-                                   int64_t Scale) const;
+                                   int64_t Scale, unsigned AS) const;
   virtual bool isTruncateFree(Type *Ty1, Type *Ty2) const;
   virtual bool isTypeLegal(Type *Ty) const;
   virtual unsigned getJumpBufAlignment() const;
@@ -141,24 +141,24 @@ bool BasicTTI::isLegalICmpImmediate(int64_t imm) const {
 
 bool BasicTTI::isLegalAddressingMode(Type *Ty, GlobalValue *BaseGV,
                                      int64_t BaseOffset, bool HasBaseReg,
-                                     int64_t Scale) const {
+                                     int64_t Scale, unsigned AS) const {
   TargetLoweringBase::AddrMode AM;
   AM.BaseGV = BaseGV;
   AM.BaseOffs = BaseOffset;
   AM.HasBaseReg = HasBaseReg;
   AM.Scale = Scale;
-  return getTLI()->isLegalAddressingMode(AM, Ty);
+  return getTLI()->isLegalAddressingMode(AM, Ty, AS);
 }
 
 int BasicTTI::getScalingFactorCost(Type *Ty, GlobalValue *BaseGV,
                                    int64_t BaseOffset, bool HasBaseReg,
-                                   int64_t Scale) const {
+                                   int64_t Scale, unsigned AS) const {
   TargetLoweringBase::AddrMode AM;
   AM.BaseGV = BaseGV;
   AM.BaseOffs = BaseOffset;
   AM.HasBaseReg = HasBaseReg;
   AM.Scale = Scale;
-  return getTLI()->getScalingFactorCost(AM, Ty);
+  return getTLI()->getScalingFactorCost(AM, Ty, AS);
 }
 
 bool BasicTTI::isTruncateFree(Type *Ty1, Type *Ty2) const {

@@ -260,7 +260,7 @@ public:
   /// TODO: Handle pre/postinc as well.
   virtual bool isLegalAddressingMode(Type *Ty, GlobalValue *BaseGV,
                                      int64_t BaseOffset, bool HasBaseReg,
-                                     int64_t Scale) const;
+                                     int64_t Scale, unsigned AS = 0) const;
 
   /// \brief Return the cost of the scaling factor used in the addressing
   /// mode represented by AM for this target, for a load/store
@@ -270,7 +270,7 @@ public:
   /// TODO: Handle pre/postinc as well.
   virtual int getScalingFactorCost(Type *Ty, GlobalValue *BaseGV,
                                    int64_t BaseOffset, bool HasBaseReg,
-                                   int64_t Scale) const;
+                                   int64_t Scale, unsigned AS = 0) const;
 
   /// isTruncateFree - Return true if it's free to truncate a value of
   /// type Ty1 to type Ty2. e.g. On x86 it's free to truncate a i32 value in
