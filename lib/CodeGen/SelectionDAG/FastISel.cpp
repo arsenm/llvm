@@ -204,7 +204,7 @@ unsigned FastISel::materializeRegForValue(const Value *V, MVT VT) {
     if (!Reg) {
       // Try to emit the constant by using an integer constant with a cast.
       const APFloat &Flt = CF->getValueAPF();
-      EVT IntVT = TLI.getPointerTy();
+      EVT IntVT = TLI.getPointerTy(0);
 
       uint64_t x[2];
       uint32_t IntBitWidth = IntVT.getSizeInBits();
@@ -283,7 +283,8 @@ void FastISel::UpdateValueMap(const Value *I, unsigned Reg, unsigned NumRegs) {
   }
 }
 
-std::pair<unsigned, bool> FastISel::getRegForGEPIndex(const Value *Idx) {
+std::pair<unsigned, bool> FastISel::getRegForGEPIndex(MVT PtrVT,
+                                                      const Value *Idx) {
   unsigned IdxN = getRegForValue(Idx);
   if (IdxN == 0)
     // Unhandled operand. Halt "fast" selection and bail.
@@ -292,7 +293,6 @@ std::pair<unsigned, bool> FastISel::getRegForGEPIndex(const Value *Idx) {
   bool IdxNIsKill = hasTrivialKill(Idx);
 
   // If the index is smaller or larger than intptr_t, truncate or extend it.
-  MVT PtrVT = TLI.getPointerTy();
   EVT IdxVT = EVT::getEVT(Idx->getType(), /*HandleUnknown=*/false);
   if (IdxVT.bitsLT(PtrVT)) {
     IdxN = FastEmit_r(IdxVT.getSimpleVT(), PtrVT, ISD::SIGN_EXTEND,
@@ -476,7 +476,7 @@ bool FastISel::SelectGetElementPtr(const User *I) {
   // FIXME: What's a good SWAG number for MaxOffs?
   uint64_t MaxOffs = 2048;
   Type *Ty = I->getOperand(0)->getType();
-  MVT VT = TLI.getPointerTy();
+  MVT VT = TLI.getPointerTy(Ty->getPointerAddressSpace());
   for (GetElementPtrInst::const_op_iterator OI = I->op_begin()+1,
        E = I->op_end(); OI != E; ++OI) {
     const Value *Idx = *OI;
@@ -525,7 +525,7 @@ bool FastISel::SelectGetElementPtr(const User *I) {
 
       // N = N + Idx * ElementSize;
       uint64_t ElementSize = DL.getTypeAllocSize(Ty);
-      std::pair<unsigned, bool> Pair = getRegForGEPIndex(Idx);
+      std::pair<unsigned, bool> Pair = getRegForGEPIndex(VT, Idx);
       unsigned IdxN = Pair.first;
       bool IdxNIsKill = Pair.second;
       if (IdxN == 0)

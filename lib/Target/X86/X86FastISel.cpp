@@ -415,7 +415,8 @@ bool X86FastISel::handleConstantAddresses(const Value *V, X86AddressMode &AM) {
         // Prepare for inserting code in the local-value area.
         SavePoint SaveInsertPt = enterLocalValueArea();
 
-        if (TLI.getPointerTy() == MVT::i64) {
+        unsigned AS = GV->getType()->getPointerAddressSpace();
+        if (TLI.getPointerTy(AS) == MVT::i64) {
           Opc = X86::MOV64rm;
           RC  = &X86::GR64RegClass;
 
@@ -495,18 +496,20 @@ redo_gep:
     // Look past bitcasts.
     return X86SelectAddress(U->getOperand(0), AM);
 
-  case Instruction::IntToPtr:
+  case Instruction::IntToPtr: {
     // Look past no-op inttoptrs.
-    if (TLI.getValueType(U->getOperand(0)->getType()) == TLI.getPointerTy())
+    unsigned AS = U->getType()->getPointerAddressSpace();
+    if (TLI.getValueType(U->getOperand(0)->getType()) == TLI.getPointerTy(AS))
       return X86SelectAddress(U->getOperand(0), AM);
     break;
-
-  case Instruction::PtrToInt:
+  }
+  case Instruction::PtrToInt: {
     // Look past no-op ptrtoints.
-    if (TLI.getValueType(U->getType()) == TLI.getPointerTy())
+    unsigned AS = U->getOperand(0)->getType()->getPointerAddressSpace();
+    if (TLI.getValueType(U->getType()) == TLI.getPointerTy(AS))
       return X86SelectAddress(U->getOperand(0), AM);
     break;
-
+  }
   case Instruction::Alloca: {
     // Do static allocas.
     const AllocaInst *A = cast<AllocaInst>(V);
@@ -541,6 +544,7 @@ redo_gep:
     unsigned IndexReg = AM.IndexReg;
     unsigned Scale = AM.Scale;
     gep_type_iterator GTI = gep_type_begin(U);
+    MVT PtrTy = TLI.getPointerTy(U->getType()->getPointerAddressSpace());
     // Iterate through the indices, folding what we can. Constants can be
     // folded, and one dynamic index can be handled, if the scale is supported.
     for (User::const_op_iterator i = U->op_begin() + 1, e = U->op_end();
@@ -575,7 +579,7 @@ redo_gep:
             (S == 1 || S == 2 || S == 4 || S == 8)) {
           // Scaled-index addressing.
           Scale = S;
-          IndexReg = getRegForGEPIndex(Op).first;
+          IndexReg = getRegForGEPIndex(PtrTy, Op).first;
           if (IndexReg == 0)
             return false;
           break;
@@ -670,19 +674,26 @@ bool X86FastISel::X86SelectCallAddress(const Value *V, X86AddressMode &AM) {
       return X86SelectCallAddress(U->getOperand(0), AM);
     break;
 
-  case Instruction::IntToPtr:
+  case Instruction::IntToPtr: {
     // Look past no-op inttoptrs if its operand is in the same BB.
-    if (InMBB &&
-        TLI.getValueType(U->getOperand(0)->getType()) == TLI.getPointerTy())
-      return X86SelectCallAddress(U->getOperand(0), AM);
-    break;
+    if (!InMBB)
+      break;
 
-  case Instruction::PtrToInt:
-    // Look past no-op ptrtoints if its operand is in the same BB.
-    if (InMBB &&
-        TLI.getValueType(U->getType()) == TLI.getPointerTy())
+    unsigned AS = U->getType()->getPointerAddressSpace();
+    if (TLI.getValueType(U->getOperand(0)->getType()) == TLI.getPointerTy(AS))
       return X86SelectCallAddress(U->getOperand(0), AM);
     break;
+  }
+  case Instruction::PtrToInt: {
+    // Look past no-op ptrtoints if its operand is in the same BB.
+    if (!InMBB)
+      break;
+
+    unsigned AS = U->getOperand(0)->getType()->getPointerAddressSpace();
+    if (TLI.getValueType(U->getType()) == TLI.getPointerTy(AS))
+      return X86SelectCallAddress(U->getOperand(0), AM);
+    break;
+  }
   }
 
   // Handle constant address.
@@ -2440,7 +2451,8 @@ unsigned X86FastISel::TargetMaterializeConstant(const Constant *C) {
           AM.IndexReg == 0 && AM.Disp == 0 && AM.GV == 0)
         return AM.Base.Reg;
 
-      Opc = TLI.getPointerTy() == MVT::i32 ? X86::LEA32r : X86::LEA64r;
+      unsigned AS = C->getType()->getPointerAddressSpace();
+      Opc = TLI.getPointerTy(AS) == MVT::i32 ? X86::LEA32r : X86::LEA64r;
       unsigned ResultReg = createResultReg(RC);
       addFullAddress(BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc,
                              TII.get(Opc), ResultReg), AM);
@@ -2496,7 +2508,8 @@ unsigned X86FastISel::TargetMaterializeAlloca(const AllocaInst *C) {
   if (!X86SelectAddress(C, AM))
     return 0;
   unsigned Opc = Subtarget->is64Bit() ? X86::LEA64r : X86::LEA32r;
-  const TargetRegisterClass* RC = TLI.getRegClassFor(TLI.getPointerTy());
+  unsigned AS = C->getType()->getPointerAddressSpace();
+  const TargetRegisterClass *RC = TLI.getRegClassFor(TLI.getPointerTy(AS));
   unsigned ResultReg = createResultReg(RC);
   addFullAddress(BuildMI(*FuncInfo.MBB, FuncInfo.InsertPt, DbgLoc,
                          TII.get(Opc), ResultReg), AM);
