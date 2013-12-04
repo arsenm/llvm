@@ -23,6 +23,8 @@
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/SSAUpdater.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
 
@@ -81,7 +83,7 @@ class SIAnnotateControlFlow : public FunctionPass {
 
   void insertElse(BranchInst *Term);
 
-  void handleLoopCondition(Value *Cond);
+  void handleLoopCondition(BranchInst *Br, Value *Cond);
 
   void handleLoop(BranchInst *Term);
 
@@ -204,7 +206,7 @@ void SIAnnotateControlFlow::insertElse(BranchInst *Term) {
 }
 
 /// \brief Recursively handle the condition leading to a loop
-void SIAnnotateControlFlow::handleLoopCondition(Value *Cond) {
+void SIAnnotateControlFlow::handleLoopCondition(BranchInst *Br, Value *Cond) {
   if (PHINode *Phi = dyn_cast<PHINode>(Cond)) {
 
     // Handle all non-constant incoming values first
@@ -214,14 +216,13 @@ void SIAnnotateControlFlow::handleLoopCondition(Value *Cond) {
         continue;
 
       Phi->setIncomingValue(i, BoolFalse);
-      handleLoopCondition(Incoming);
+      handleLoopCondition(Br, Incoming);
     }
 
     BasicBlock *Parent = Phi->getParent();
     BasicBlock *IDom = DT->getNode(Parent)->getIDom()->getBlock();
 
     for (unsigned i = 0, e = Phi->getNumIncomingValues(); i != e; ++i) {
-
       Value *Incoming = Phi->getIncomingValue(i);
       if (Incoming != BoolTrue)
         continue;
@@ -246,14 +247,28 @@ void SIAnnotateControlFlow::handleLoopCondition(Value *Cond) {
       PhiInserter.AddAvailableValue(From, Ret);
     }
     eraseIfUnused(Phi);
-
   } else if (Instruction *Inst = dyn_cast<Instruction>(Cond)) {
     BasicBlock *Parent = Inst->getParent();
     TerminatorInst *Insert = Parent->getTerminator();
     Value *Args[] = { Cond, PhiInserter.GetValueAtEndOfBlock(Parent) };
     Value *Ret = CallInst::Create(IfBreak, Args, "", Insert);
     PhiInserter.AddAvailableValue(Parent, Ret);
+  } else if (Constant *Const = dyn_cast<Constant>(Cond)) {
+    dbgs() << "loop on constant\n";
 
+    if (Const->isZeroValue() || isa<UndefValue>(Const)) {
+      BasicBlock *Parent = Br->getParent();
+      Value *Args[] = { Cond, PhiInserter.GetValueAtEndOfBlock(Parent) };
+      Value *Ret = CallInst::Create(IfBreak, Args, "constant_branch", Br);
+      PhiInserter.AddAvailableValue(Br->getParent(), Ret);
+    } else {
+      // True branch.
+      dbgs() << "Just no branch\n";
+
+    }
+//    llvm_unreachable("Loop on constant");
+  } else if (Argument *Arg = dyn_cast<Argument>(Cond)) {
+    llvm_unreachable("Loop on arg");
   } else {
     llvm_unreachable("Unhandled loop condition!");
   }
@@ -269,7 +284,7 @@ void SIAnnotateControlFlow::handleLoop(BranchInst *Term) {
 
   Value *Cond = Term->getCondition();
   Term->setCondition(BoolTrue);
-  handleLoopCondition(Cond);
+  handleLoopCondition(Term, Cond);
 
   BasicBlock *BB = Term->getParent();
   Value *Arg = PhiInserter.GetValueAtEndOfBlock(BB);
@@ -288,6 +303,18 @@ void SIAnnotateControlFlow::closeControlFlow(BasicBlock *BB) {
   CallInst::Create(EndCf, popSaved(), "", BB->getFirstInsertionPt());
 }
 
+static bool branchIsUnconditional(const BranchInst *Br) {
+  if (Br->isUnconditional())
+    return true;
+
+  Constant *Cond = dyn_cast<Constant>(Br->getCondition());
+  if (!Cond)
+    return false;
+
+  // This interprets undef as true
+  return !Cond->isZeroValue();
+}
+
 /// \brief Annotate the control flow with intrinsics so the backend can
 /// recognize if/then/else and loops.
 bool SIAnnotateControlFlow::runOnFunction(Function &F) {
@@ -298,10 +325,17 @@ bool SIAnnotateControlFlow::runOnFunction(Function &F) {
 
     BranchInst *Term = dyn_cast<BranchInst>((*I)->getTerminator());
 
-    if (!Term || Term->isUnconditional()) {
+    if (!Term || branchIsUnconditional(Term)) {
+      DEBUG(dbgs() << "Term is uncond: " << *Term << '\n');
       if (isTopOfStack(*I))
         closeControlFlow(*I);
       continue;
+    } else {
+      if (Term) {
+        DEBUG(dbgs() << "Term is conditional: " << *Term << '\n');
+      } else {
+        DEBUG(dbgs() << "Term is null\n");
+      }
     }
 
     if (I.nodeVisited(Term->getSuccessor(1))) {
@@ -322,6 +356,11 @@ bool SIAnnotateControlFlow::runOnFunction(Function &F) {
     }
     openIf(Term);
   }
+
+  DEBUG(
+    dbgs() << "Final annotated:\n";
+    F.dump();
+  );
 
   assert(Stack.empty());
   return true;
