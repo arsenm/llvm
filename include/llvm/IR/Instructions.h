@@ -1425,6 +1425,18 @@ public:
     addAttribute(AttributeSet::FunctionIndex, Attribute::ReadNone);
   }
 
+  bool addrspaceIsUnfenced(unsigned AS) const {
+    return AttributeList.addrspaceIsUnfenced(AS);
+  }
+
+  bool getUnfencedAddrSpaces(std::set<unsigned> &Out) const {
+    return AttributeList.getUnfencedAddrSpaces(Out);
+  }
+
+  bool doesNotFenceMemory() const {
+    return AttributeList.doesNotFenceMemory();
+  }
+
   /// \brief Determine if the call does not access or only reads memory.
   bool onlyReadsMemory() const {
     return doesNotAccessMemory() || hasFnAttr(Attribute::ReadOnly);
@@ -3098,6 +3110,22 @@ public:
   }
   void setDoesNotAccessMemory() {
     addAttribute(AttributeSet::FunctionIndex, Attribute::ReadNone);
+  }
+
+  bool addrspaceIsUnfenced(unsigned AS) const {
+    return AttributeList.addrspaceIsUnfenced(AS);
+  }
+
+  bool doesNotFenceMemory() const {
+    return AttributeList.doesNotFenceMemory();
+  }
+
+  void setDoesNotFenceMemory() {
+    addAttribute(AttributeSet::FunctionIndex, Attribute::NoMemFence);
+  }
+
+  bool getUnfencedAddrSpaces(std::set<unsigned> &Out) const {
+    return AttributeList.getUnfencedAddrSpaces(Out);
   }
 
   /// \brief Determine if the call does not access or only reads memory.

@@ -609,6 +609,8 @@ static Attribute::AttrKind GetAttrFromCode(uint64_t Code) {
     return Attribute::NoCapture;
   case bitc::ATTR_KIND_NO_DUPLICATE:
     return Attribute::NoDuplicate;
+  case bitc::ATTR_KIND_NO_MEMFENCE:
+    return Attribute::NoMemFence;
   case bitc::ATTR_KIND_NO_IMPLICIT_FLOAT:
     return Attribute::NoImplicitFloat;
   case bitc::ATTR_KIND_NO_INLINE:
@@ -724,6 +726,8 @@ std::error_code BitcodeReader::ParseAttributeGroupBlock() {
             B.addStackAlignmentAttr(Record[++i]);
           else if (Kind == Attribute::Dereferenceable)
             B.addDereferenceableAttr(Record[++i]);
+          else if (Kind == Attribute::NoMemFence)
+            B.addNoMemFenceAttr(Record[++i]);
         } else {                     // String attribute
           assert((Record[i] == 3 || Record[i] == 4) &&
                  "Invalid attribute group entry");

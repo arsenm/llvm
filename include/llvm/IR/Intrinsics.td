@@ -73,6 +73,12 @@ def IntrNoReturn : IntrinsicProperty;
 // Parallels the noduplicate attribute on LLVM IR functions.
 def IntrNoDuplicate : IntrinsicProperty;
 
+class NoMemFence<list<int> ASes> : IntrinsicProperty {
+  list<int> AddrSpaces = ASes;
+}
+
+def NoMemFenceAll : NoMemFence<[4294967295]>;
+
 //===----------------------------------------------------------------------===//
 // Types used by intrinsics.
 //===----------------------------------------------------------------------===//
@@ -234,10 +240,12 @@ class MSBuiltin<string name> {
 //===--------------- Variable Argument Handling Intrinsics ----------------===//
 //
 
-def int_vastart : Intrinsic<[], [llvm_ptr_ty], [], "llvm.va_start">;
-def int_vacopy  : Intrinsic<[], [llvm_ptr_ty, llvm_ptr_ty], [],
-                            "llvm.va_copy">;
-def int_vaend   : Intrinsic<[], [llvm_ptr_ty], [], "llvm.va_end">;
+def int_vastart : Intrinsic<[], [llvm_ptr_ty],
+                            [NoMemFenceAll], "llvm.va_start">;
+def int_vacopy  : Intrinsic<[], [llvm_ptr_ty, llvm_ptr_ty],
+                            [NoMemFenceAll], "llvm.va_copy">;
+def int_vaend   : Intrinsic<[], [llvm_ptr_ty],
+                            [NoMemFenceAll], "llvm.va_end">;
 
 //===------------------- Garbage Collection Intrinsics --------------------===//
 //
@@ -257,13 +265,13 @@ def int_frameaddress  : Intrinsic<[llvm_ptr_ty], [llvm_i32_ty], [IntrNoMem]>;
 def int_read_register  : Intrinsic<[llvm_anyint_ty], [llvm_metadata_ty],
                                    [IntrNoMem], "llvm.read_register">;
 def int_write_register : Intrinsic<[], [llvm_metadata_ty, llvm_anyint_ty],
-                                   [], "llvm.write_register">;
+                                   [NoMemFenceAll], "llvm.write_register">;
 
 // Note: we treat stacksave/stackrestore as writemem because we don't otherwise
 // model their dependencies on allocas.
-def int_stacksave     : Intrinsic<[llvm_ptr_ty]>,
+def int_stacksave     : Intrinsic<[llvm_ptr_ty], [], [NoMemFenceAll]>,
                         GCCBuiltin<"__builtin_stack_save">;
-def int_stackrestore  : Intrinsic<[], [llvm_ptr_ty]>,
+def int_stackrestore  : Intrinsic<[], [llvm_ptr_ty], [NoMemFenceAll]>,
                         GCCBuiltin<"__builtin_stack_restore">;
 
 // IntrReadWriteArgMem is more pessimistic than strictly necessary for prefetch,
@@ -272,7 +280,8 @@ def int_stackrestore  : Intrinsic<[], [llvm_ptr_ty]>,
 def int_prefetch      : Intrinsic<[],
                                   [llvm_ptr_ty, llvm_i32_ty, llvm_i32_ty,
                                    llvm_i32_ty],
-                                  [IntrReadWriteArgMem, NoCapture<0>]>;
+                                  [IntrReadWriteArgMem, NoCapture<0>,
+                                   NoMemFenceAll]>;
 def int_pcmarker      : Intrinsic<[], [llvm_i32_ty]>;
 
 def int_readcyclecounter : Intrinsic<[llvm_i64_ty]>;
@@ -294,16 +303,17 @@ def int_memcpy  : Intrinsic<[],
                              [llvm_anyptr_ty, llvm_anyptr_ty, llvm_anyint_ty,
                               llvm_i32_ty, llvm_i1_ty],
                             [IntrReadWriteArgMem, NoCapture<0>, NoCapture<1>,
-                             ReadOnly<1>]>;
+                             ReadOnly<1>, NoMemFenceAll]>;
 def int_memmove : Intrinsic<[],
                             [llvm_anyptr_ty, llvm_anyptr_ty, llvm_anyint_ty,
                              llvm_i32_ty, llvm_i1_ty],
                             [IntrReadWriteArgMem, NoCapture<0>, NoCapture<1>,
-                             ReadOnly<1>]>;
+                             ReadOnly<1>, NoMemFenceAll]>;
 def int_memset  : Intrinsic<[],
                             [llvm_anyptr_ty, llvm_i8_ty, llvm_anyint_ty,
                              llvm_i32_ty, llvm_i1_ty],
-                            [IntrReadWriteArgMem, NoCapture<0>]>;
+                            [IntrReadWriteArgMem, NoCapture<0>,
+                            NoMemFenceAll]>;
 
 let Properties = [IntrNoMem] in {
   def int_fma  : Intrinsic<[llvm_anyfloat_ty],
@@ -460,17 +470,21 @@ def int_umul_with_overflow : Intrinsic<[llvm_anyint_ty, llvm_i1_ty],
 //
 def int_lifetime_start  : Intrinsic<[],
                                     [llvm_i64_ty, llvm_ptr_ty],
-                                    [IntrReadWriteArgMem, NoCapture<1>]>;
+                                    [IntrReadWriteArgMem, NoCapture<1>,
+                                     NoMemFenceAll]>;
 def int_lifetime_end    : Intrinsic<[],
                                     [llvm_i64_ty, llvm_ptr_ty],
-                                    [IntrReadWriteArgMem, NoCapture<1>]>;
+                                    [IntrReadWriteArgMem, NoCapture<1>,
+                                    NoMemFenceAll]>;
 def int_invariant_start : Intrinsic<[llvm_descriptor_ty],
                                     [llvm_i64_ty, llvm_ptr_ty],
-                                    [IntrReadWriteArgMem, NoCapture<1>]>;
+                                    [IntrReadWriteArgMem, NoCapture<1>,
+                                    NoMemFenceAll]>;
 def int_invariant_end   : Intrinsic<[],
                                     [llvm_descriptor_ty, llvm_i64_ty,
                                      llvm_ptr_ty],
-                                    [IntrReadWriteArgMem, NoCapture<2>]>;
+                                    [IntrReadWriteArgMem, NoCapture<2>,
+                                    NoMemFenceAll]>;
 
 //===------------------------ Stackmap Intrinsics -------------------------===//
 //

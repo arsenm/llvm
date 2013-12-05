@@ -100,6 +100,9 @@ enum AddressSpaces {
   PARAM_D_ADDRESS  = 6, ///< Address space for direct addressible parameter memory (CONST0)
   PARAM_I_ADDRESS  = 7, ///< Address space for indirect addressible parameter memory (VTX1)
 
+  // Be sure to keep these values in sync with the nomemfenced address spaces in
+  // the intrinsic definitions.
+
   // Do not re-order the CONSTANT_BUFFER_* enums.  Several places depend on this
   // order to be able to dynamically index a constant buffer, for example:
   //

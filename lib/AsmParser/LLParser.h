@@ -218,6 +218,7 @@ namespace llvm {
       return ParseOptionalToken(lltok::kw_unnamed_addr, UnnamedAddr);
     }
     bool ParseOptionalAddrSpace(unsigned &AddrSpace);
+    bool ParseOptionalNoMemFence(unsigned &AddrSpace);
     bool ParseOptionalParamAttrs(AttrBuilder &B);
     bool ParseOptionalReturnAttrs(AttrBuilder &B);
     bool ParseOptionalLinkage(unsigned &Linkage, bool &HasLinkage);

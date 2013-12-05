@@ -245,6 +245,20 @@ public:
     CALLSITE_DELEGATE_SETTER(setDoesNotAccessMemory());
   }
 
+  bool addrspaceIsUnfenced(unsigned AS) const {
+    if (const CallInst *CI = dyn_cast<CallInst>(getInstruction()))
+      return CI->addrspaceIsUnfenced(AS);
+
+    return cast<InvokeInst>(getInstruction())->addrspaceIsUnfenced(AS);
+  }
+
+  bool getUnfencedAddrSpaces(std::set<unsigned> &Out) const {
+    if (const CallInst *CI = dyn_cast<CallInst>(getInstruction()))
+      return CI->getUnfencedAddrSpaces(Out);
+
+    return cast<InvokeInst>(getInstruction())->getUnfencedAddrSpaces(Out);
+  }
+
   /// @brief Determine if the call does not access or only reads memory.
   bool onlyReadsMemory() const {
     CALLSITE_DELEGATE_GETTER(onlyReadsMemory());

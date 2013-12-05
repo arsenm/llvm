@@ -117,7 +117,7 @@ public:
       : EnumAttributeImpl(IntAttrEntry, Kind), Val(Val) {
     assert(
         (Kind == Attribute::Alignment || Kind == Attribute::StackAlignment ||
-         Kind == Attribute::Dereferenceable) &&
+         Kind == Attribute::Dereferenceable || Kind == Attribute::NoMemFence) &&
         "Wrong kind for int attribute!");
   }
 
@@ -166,6 +166,10 @@ public:
   unsigned getAlignment() const;
   unsigned getStackAlignment() const;
   uint64_t getDereferenceableBytes() const;
+  bool addrspaceIsUnfenced(unsigned AS) const;
+  bool getUnfencedAddrSpaces(AttributeSet::FenceSet &) const;
+  bool doesNotFenceMemory() const;
+  bool doesNotFenceSomeMemory() const;
   std::string getAsString(bool InAttrGrp) const;
 
   typedef const Attribute *iterator;

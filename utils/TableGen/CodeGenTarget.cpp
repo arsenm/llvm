@@ -581,7 +581,13 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
       isNoDuplicate = true;
     else if (Property->getName() == "IntrNoReturn")
       isNoReturn = true;
-    else if (Property->isSubClassOf("NoCapture")) {
+    else if (Property->isSubClassOf("NoMemFence")) {
+      const ListInit *AddrSpaces = Property->getValueAsListInit("AddrSpaces");
+      for (const Init *I : *AddrSpaces) {
+        unsigned AS = cast<IntInit>(I)->getValue();
+        UnfencedAddrSpaces.push_back(AS);
+      }
+    } else if (Property->isSubClassOf("NoCapture")) {
       unsigned ArgNo = Property->getValueAsInt("ArgNo");
       ArgumentAttributes.push_back(std::make_pair(ArgNo, NoCapture));
     } else if (Property->isSubClassOf("ReadOnly")) {

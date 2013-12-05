@@ -204,7 +204,7 @@ define void @f34()
 ; CHECK: define void @f34()
 {
         call void @nobuiltin() nobuiltin
-; CHECK: call void @nobuiltin() #25
+; CHECK: call void @nobuiltin() #29
         ret void;
 }
 
@@ -218,6 +218,7 @@ define void @f36(i8* inalloca) {
 ; CHECK: define void @f36(i8* inalloca) {
         ret void
 }
+
 
 define nonnull i8* @f37(i8* nonnull %a) {
 ; CHECK: define nonnull i8* @f37(i8* nonnull %a) {
@@ -245,6 +246,28 @@ define void @f41(i8* align 32, double* align 64) {
         ret void
 }
 
+define void @f42() nomemfence(1)
+; CHECK-LABEL: define void @f42() #25
+{
+  ret void
+}
+define void @f43() nomemfence(1) nomemfence(2)
+; CHECK-LABEL: define void @f43() #26
+{
+  ret void
+}
+
+define void @f44() nomemfence(0)
+; CHECK-LABEL: define void @f44() #27
+{
+  ret void
+}
+define void @f45() nomemfence
+; CHECK-LABEL: define void @f45() #28
+{
+  ret void
+}
+
 ; CHECK: attributes #0 = { noreturn }
 ; CHECK: attributes #1 = { nounwind }
 ; CHECK: attributes #2 = { readnone }
@@ -270,4 +293,8 @@ define void @f41(i8* align 32, double* align 64) {
 ; CHECK: attributes #22 = { minsize }
 ; CHECK: attributes #23 = { noinline optnone }
 ; CHECK: attributes #24 = { jumptable }
-; CHECK: attributes #25 = { nobuiltin }
+; CHECK: attributes #25 = { nomemfence=1 }
+; CHECK: attributes #26 = { nomemfence=1 nomemfence=2 }
+; CHECK: attributes #27 = { nomemfence=0 }
+; CHECK: attributes #28 = { nomemfence }
+; CHECK: attributes #29 = { nobuiltin }

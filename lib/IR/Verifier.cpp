@@ -616,9 +616,9 @@ void Verifier::visitComdat(const Comdat &C) {
 
 void Verifier::visitModuleIdents(const Module &M) {
   const NamedMDNode *Idents = M.getNamedMetadata("llvm.ident");
-  if (!Idents) 
+  if (!Idents)
     return;
-  
+
   // llvm.ident takes a list of metadata entry. Each entry has only one string.
   // Scan each llvm.ident entry and make sure that this requirement is met.
   for (unsigned i = 0, e = Idents->getNumOperands(); i != e; ++i) {
@@ -629,7 +629,7 @@ void Verifier::visitModuleIdents(const Module &M) {
             ("invalid value for llvm.ident metadata entry operand"
              "(the operand should be a string)"),
             N->getOperand(0));
-  } 
+  }
 }
 
 void Verifier::visitModuleFlags(const Module &M) {
@@ -770,6 +770,7 @@ void Verifier::VerifyAttributeTypes(AttributeSet Attrs, unsigned Idx,
         I->getKindAsEnum() == Attribute::SanitizeMemory ||
         I->getKindAsEnum() == Attribute::MinSize ||
         I->getKindAsEnum() == Attribute::NoDuplicate ||
+        I->getKindAsEnum() == Attribute::NoMemFence ||
         I->getKindAsEnum() == Attribute::Builtin ||
         I->getKindAsEnum() == Attribute::NoBuiltin ||
         I->getKindAsEnum() == Attribute::Cold ||
@@ -934,7 +935,7 @@ void Verifier::VerifyFunctionAttrs(FunctionType *FT, AttributeSet Attrs,
                                Attribute::AlwaysInline)),
           "Attributes 'noinline and alwaysinline' are incompatible!", V);
 
-  if (Attrs.hasAttribute(AttributeSet::FunctionIndex, 
+  if (Attrs.hasAttribute(AttributeSet::FunctionIndex,
                          Attribute::OptimizeNone)) {
     Assert1(Attrs.hasAttribute(AttributeSet::FunctionIndex,
                                Attribute::NoInline),
@@ -954,7 +955,12 @@ void Verifier::VerifyFunctionAttrs(FunctionType *FT, AttributeSet Attrs,
     const GlobalValue *GV = cast<GlobalValue>(V);
     Assert1(GV->hasUnnamedAddr(),
             "Attribute 'jumptable' requires 'unnamed_addr'", V);
+  }
 
+  if (Attrs.hasAttribute(AttributeSet::FunctionIndex,
+                         Attribute::NoMemFence)) {
+    Assert1(Attrs.doesNotFenceMemory() && Attrs.doesNotFenceSomeMemory(),
+            "'nomemfence' is incompatible with nomemfence(N)!", V);
   }
 }
 

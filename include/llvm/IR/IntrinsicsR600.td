@@ -17,6 +17,12 @@ class R600ReadPreloadRegisterIntrinsic<string name>
   : Intrinsic<[llvm_i32_ty], [], [IntrNoMem]>,
     GCCBuiltin<name>;
 
+// Fence on 1, 3
+def int_r600_barrier_global_local_new :
+  Intrinsic<[], [], [IntrReadMem, NoMemFence<[0, 2, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]>]>,
+  GCCBuiltin<"__builtin_r600_barrier_global_local">;
+
+
 multiclass R600ReadPreloadRegisterIntrinsic_xyz<string prefix> {
   def _x : R600ReadPreloadRegisterIntrinsic<!strconcat(prefix, "_x")>;
   def _y : R600ReadPreloadRegisterIntrinsic<!strconcat(prefix, "_y")>;

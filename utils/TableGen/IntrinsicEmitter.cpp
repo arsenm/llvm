@@ -523,6 +523,18 @@ struct AttributeComparator {
     ModRefKind RK = getModRefKind(*R);
     if (LK != RK) return (LK > RK);
 
+    unsigned LFences = L->UnfencedAddrSpaces.size();
+    unsigned RFences = R->UnfencedAddrSpaces.size();
+    if (LFences != RFences)
+      return (LFences > RFences);
+
+    for (SmallVectorImpl<unsigned>::const_iterator
+           I = L->UnfencedAddrSpaces.begin(), E = L->UnfencedAddrSpaces.end(),
+           J = R->UnfencedAddrSpaces.begin(); I != E; ++I, ++J) {
+      if (*I != *J)
+        return (*I > *J);
+    }
+
     // Order by argument attributes.
     // This is reliable because each side is already sorted internally.
     return (L->ArgumentAttributes < R->ArgumentAttributes);
@@ -628,9 +640,10 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
     }
 
     ModRefKind modRef = getModRefKind(intrinsic);
+    bool hasNoMemFences = !intrinsic.UnfencedAddrSpaces.empty();
 
     if (!intrinsic.canThrow || modRef || intrinsic.isNoReturn ||
-        intrinsic.isNoDuplicate) {
+        intrinsic.isNoDuplicate || hasNoMemFences) {
       OS << "      const Attribute::AttrKind Atts[] = {";
       bool addComma = false;
       if (!intrinsic.canThrow) {
@@ -664,8 +677,22 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
         break;
       }
       OS << "};\n";
-      OS << "      AS[" << numAttrs++ << "] = AttributeSet::get(C, "
-         << "AttributeSet::FunctionIndex, Atts);\n";
+
+      if (hasNoMemFences) {
+        OS << "      AttrBuilder B;\n";
+        for (unsigned AS : intrinsic.UnfencedAddrSpaces) {
+          OS << "      B.addNoMemFenceAttr(" << AS << ");\n";
+        }
+
+        OS << "      for (unsigned I = 0; I < array_lengthof(Atts); ++I)\n"
+          "        B.addAttribute(Atts[I]);\n";
+
+        OS << "      AS[" << numAttrs++ << "] = "
+          "AttributeSet::get(C, AttributeSet::FunctionIndex, B);\n";
+      } else {
+        OS << "      AS[" << numAttrs++ << "] = AttributeSet::get(C, "
+           << "AttributeSet::FunctionIndex, Atts);\n";
+      }
     }
 
     if (numAttrs) {

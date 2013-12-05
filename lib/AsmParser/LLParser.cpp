@@ -24,6 +24,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/ValueSymbolTable.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/SaveAndRestore.h"
 #include "llvm/Support/raw_ostream.h"
@@ -80,9 +81,12 @@ bool LLParser::ValidateEndOfModule() {
     std::vector<unsigned> &Vec = I->second;
     AttrBuilder B;
 
+    DEBUG(dbgs() << "Merge vector with size " << Vec.size() << '\n');
     for (std::vector<unsigned>::iterator VI = Vec.begin(), VE = Vec.end();
-         VI != VE; ++VI)
+         VI != VE; ++VI) {
+      DEBUG(dbgs() << "Merge NumberedAttrBuilders[" << *VI << "]\n");
       B.merge(NumberedAttrBuilders[*VI]);
+    }
 
     if (Function *Fn = dyn_cast<Function>(V)) {
       AttributeSet AS = Fn->getAttributes();
@@ -90,6 +94,9 @@ bool LLParser::ValidateEndOfModule() {
       AS = AS.removeAttributes(Context, AttributeSet::FunctionIndex,
                                AS.getFnAttributes());
 
+      DEBUG(dbgs() << "Merge B into fn attrs: " << Fn->getName() << '\n';
+            dbgs() << "Before: " << *Fn << '\n';
+        );
       FnAttrs.merge(B);
 
       // If the alignment was parsed as an attribute, move to the alignment
@@ -104,6 +111,9 @@ bool LLParser::ValidateEndOfModule() {
                                               AttributeSet::FunctionIndex,
                                               FnAttrs));
       Fn->setAttributes(AS);
+      DEBUG(dbgs() << "After: " << *Fn << '\n';
+            dbgs() << "----------------------------------------\n";
+        );
     } else if (CallInst *CI = dyn_cast<CallInst>(V)) {
       AttributeSet AS = CI->getAttributes();
       AttrBuilder FnAttrs(AS.getFnAttributes(), AttributeSet::FunctionIndex);
@@ -975,6 +985,24 @@ bool LLParser::ParseFnAttributeValuePairs(AttrBuilder &B,
     case lltok::kw_naked:             B.addAttribute(Attribute::Naked); break;
     case lltok::kw_nobuiltin:         B.addAttribute(Attribute::NoBuiltin); break;
     case lltok::kw_noduplicate:       B.addAttribute(Attribute::NoDuplicate); break;
+    case lltok::kw_nomemfence: {
+      unsigned AddrSpace = ~0U;
+      if (inAttrGrp) {
+        Lex.Lex();
+
+        bool AddrSpacePresent;
+        ParseOptionalToken(lltok::equal, AddrSpacePresent);
+        if (AddrSpacePresent) {
+          if (ParseUInt32(AddrSpace))
+            return true;
+        }
+      } else {
+        if (ParseOptionalNoMemFence(AddrSpace))
+          return true;
+      }
+      B.addNoMemFenceAttr(AddrSpace);
+      continue;
+    }
     case lltok::kw_noimplicitfloat:   B.addAttribute(Attribute::NoImplicitFloat); break;
     case lltok::kw_noinline:          B.addAttribute(Attribute::NoInline); break;
     case lltok::kw_nonlazybind:       B.addAttribute(Attribute::NonLazyBind); break;
@@ -1227,6 +1255,24 @@ bool LLParser::ParseOptionalAddrSpace(unsigned &AddrSpace) {
          ParseToken(lltok::rparen, "expected ')' in address space");
 }
 
+/// ParseOptionalNoMemFence
+///   := /*empty*/
+///   := 'nomemfence'
+///   := 'nomemfence' '(' uint32 ')'
+bool LLParser::ParseOptionalNoMemFence(unsigned &AddrSpace) {
+  if (!EatIfPresent(lltok::kw_nomemfence))
+    return false;
+
+  bool AddrSpaceSpecified;
+  ParseOptionalToken(lltok::lparen, AddrSpaceSpecified);
+  if (!AddrSpaceSpecified)
+    return false;
+
+  // The address space in parentheses is optional.
+  return ParseUInt32(AddrSpace) ||
+         ParseToken(lltok::rparen, "expected ')' in nomemfence");
+}
+
 /// ParseOptionalParamAttrs - Parse a potentially empty list of parameter attributes.
 bool LLParser::ParseOptionalParamAttrs(AttrBuilder &B) {
   bool HaveError = false;
@@ -1275,6 +1321,7 @@ bool LLParser::ParseOptionalParamAttrs(AttrBuilder &B) {
     case lltok::kw_naked:
     case lltok::kw_nobuiltin:
     case lltok::kw_noduplicate:
+    case lltok::kw_nomemfence:
     case lltok::kw_noimplicitfloat:
     case lltok::kw_noinline:
     case lltok::kw_nonlazybind:
@@ -1344,6 +1391,7 @@ bool LLParser::ParseOptionalReturnAttrs(AttrBuilder &B) {
     case lltok::kw_naked:
     case lltok::kw_nobuiltin:
     case lltok::kw_noduplicate:
+    case lltok::kw_nomemfence:
     case lltok::kw_noimplicitfloat:
     case lltok::kw_noinline:
     case lltok::kw_nonlazybind:

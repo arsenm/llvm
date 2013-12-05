@@ -49,7 +49,7 @@ def int_R600_interp_xy :
     Intrinsic<[llvm_v2f32_ty], [llvm_i32_ty, llvm_float_ty, llvm_float_ty], [IntrNoMem]>;
 def int_R600_interp_zw :
     Intrinsic<[llvm_v2f32_ty], [llvm_i32_ty, llvm_float_ty, llvm_float_ty], [IntrNoMem]>;
-  def int_R600_load_texbuf :
+def int_R600_load_texbuf :
     Intrinsic<[llvm_v4f32_ty], [llvm_i32_ty, llvm_i32_ty], [IntrNoMem]>;
   def int_R600_tex : TextureIntrinsicFloatInput;
   def int_R600_texc : TextureIntrinsicFloatInput;
@@ -63,13 +63,13 @@ def int_R600_interp_zw :
   def int_R600_ddx : TextureIntrinsicFloatInput;
   def int_R600_ddy : TextureIntrinsicFloatInput;
   def int_R600_store_swizzle :
-    Intrinsic<[], [llvm_v4f32_ty, llvm_i32_ty, llvm_i32_ty], []>;
+    Intrinsic<[], [llvm_v4f32_ty, llvm_i32_ty, llvm_i32_ty], [NoFences]>;
   def int_R600_store_stream_output :
-    Intrinsic<[], [llvm_v4f32_ty, llvm_i32_ty, llvm_i32_ty, llvm_i32_ty], []>;
+    Intrinsic<[], [llvm_v4f32_ty, llvm_i32_ty, llvm_i32_ty, llvm_i32_ty], [NoFences]>;
   def int_R600_store_pixel_depth :
-      Intrinsic<[], [llvm_float_ty], []>;
+      Intrinsic<[], [llvm_float_ty], [NoFences]>;
   def int_R600_store_pixel_stencil :
-      Intrinsic<[], [llvm_float_ty], []>;
+      Intrinsic<[], [llvm_float_ty], [NoFences]>;
   def int_R600_store_dummy :
-      Intrinsic<[], [llvm_i32_ty], []>;
+      Intrinsic<[], [llvm_i32_ty], [NoFences]>;
 }

@@ -617,6 +617,7 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(nobuiltin);
   KEYWORD(nocapture);
   KEYWORD(noduplicate);
+  KEYWORD(nomemfence);
   KEYWORD(noimplicitfloat);
   KEYWORD(noinline);
   KEYWORD(nonlazybind);

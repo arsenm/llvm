@@ -23,6 +23,7 @@
 #include <bitset>
 #include <cassert>
 #include <map>
+#include <set>
 #include <string>
 
 namespace llvm {
@@ -83,6 +84,8 @@ public:
     NoBuiltin,             ///< Callee isn't recognized as a builtin
     NoCapture,             ///< Function creates no aliases of pointer
     NoDuplicate,           ///< Call cannot be duplicated
+    NoMemFence,            ///< nomemfence(N) Writes to address space N may be <
+                           /// reordered around the call.
     NoImplicitFloat,       ///< Disable implicit floating point insts
     NoInline,              ///< inline=never
     NonLazyBind,           ///< Function is called early and/or
@@ -137,6 +140,7 @@ public:
   static Attribute getWithStackAlignment(LLVMContext &Context, uint64_t Align);
   static Attribute getWithDereferenceableBytes(LLVMContext &Context,
                                               uint64_t Bytes);
+  static Attribute getWithNoMemFence(LLVMContext &Context, unsigned AddrSpace);
 
   //===--------------------------------------------------------------------===//
   // Attribute Accessors
@@ -147,6 +151,9 @@ public:
 
   /// \brief Return true if the attribute is an integer attribute.
   bool isIntAttribute() const;
+
+  /// \brief Return true if the attribute is a nomemfence attribute.
+  bool isNoMemFenceAttribute() const;
 
   /// \brief Return true if the attribute is a string (target-dependent)
   /// attribute.
@@ -182,9 +189,13 @@ public:
   /// alignment value.
   unsigned getStackAlignment() const;
 
+
   /// \brief Returns the number of dereferenceable bytes from the
   /// dereferenceable attribute (or zero if unknown).
   uint64_t getDereferenceableBytes() const;
+
+  /// \brief Returns the address space field of an attribute.
+  unsigned getAddressSpace() const;
 
   /// \brief The Attribute is converted to a string of equivalent mnemonic. This
   /// is, presumably, for writing out the mnemonics for the assembly writer.
@@ -242,6 +253,8 @@ private:
 
   explicit AttributeSet(AttributeSetImpl *LI) : pImpl(LI) {}
 public:
+  typedef std::set<unsigned> FenceSet;
+
   AttributeSet() : pImpl(nullptr) {}
 
   //===--------------------------------------------------------------------===//
@@ -324,8 +337,24 @@ public:
   /// \brief Get the stack alignment.
   unsigned getStackAlignment(unsigned Index) const;
 
+
   /// \brief Get the number of dereferenceable bytes (or zero if unknown).
   uint64_t getDereferenceableBytes(unsigned Index) const;
+
+  /// \brief - Check if address space is nomemfence'd
+  bool addrspaceIsUnfenced(unsigned AS) const;
+
+  /// \brief Returns true if the call does not fence any address space, leaving
+  /// Out empty. Otherwise returns false and adds all address spaces specified
+  /// as nomemfence are added to Out.
+  bool getUnfencedAddrSpaces(FenceSet &) const;
+
+  /// \brief Return true if the call does not fence any address space.
+  bool doesNotFenceMemory() const;
+
+  /// \brief Return true if the function does not fence 1 or more address
+  /// spaces.
+  bool doesNotFenceSomeMemory() const;
 
   /// \brief Return the attributes at the index as a string.
   std::string getAsString(unsigned Index, bool InAttrGrp = false) const;
@@ -402,21 +431,37 @@ template<> struct DenseMapInfo<AttributeSet> {
 /// value, however, is not. So this can be used as a quick way to test for
 /// equality, presence of attributes, etc.
 class AttrBuilder {
+public:
+  typedef std::set<unsigned> FenceSet;
+  typedef FenceSet::const_iterator nomemfence_iterator;
+
+private:
   std::bitset<Attribute::EndAttrKinds> Attrs;
   std::map<std::string, std::string> TargetDepAttrs;
+
+
+  // Set of address spaces specified by memfences.
+  FenceSet UnfencedAddrSpaces;
   uint64_t Alignment;
   uint64_t StackAlignment;
   uint64_t DerefBytes;
+  bool NoMemFenceAll;
+
 public:
-  AttrBuilder() : Attrs(0), Alignment(0), StackAlignment(0), DerefBytes(0) {}
+  AttrBuilder() : Attrs(0), Alignment(0), StackAlignment(0), DerefBytes(0),
+                  NoMemFenceAll(false) {}
+
   explicit AttrBuilder(uint64_t Val)
-    : Attrs(0), Alignment(0), StackAlignment(0), DerefBytes(0) {
+    : Attrs(0), Alignment(0), StackAlignment(0), DerefBytes(0),
+      NoMemFenceAll(false) {
     addRawValue(Val);
   }
   AttrBuilder(const Attribute &A)
-    : Attrs(0), Alignment(0), StackAlignment(0), DerefBytes(0) {
+    : Attrs(0), Alignment(0), StackAlignment(0), DerefBytes(0),
+      NoMemFenceAll(false) {
     addAttribute(A);
   }
+
   AttrBuilder(AttributeSet AS, unsigned Idx);
 
   void clear();
@@ -472,6 +517,29 @@ public:
   /// attribute exists (zero is returned otherwise).
   uint64_t getDereferenceableBytes() const { return DerefBytes; }
 
+  bool getNoMemFenceAll() const {
+    return NoMemFenceAll;
+  }
+
+  bool hasNoMemFenceAttr() const {
+    return NoMemFenceAll || !UnfencedAddrSpaces.empty();
+  }
+
+  nomemfence_iterator nomemfence_begin() const {
+    return UnfencedAddrSpaces.begin();
+  }
+
+  nomemfence_iterator nomemfence_end() const {
+    return UnfencedAddrSpaces.end();
+  }
+
+  bool addrspaceIsUnfenced(unsigned AS) const {
+    if (NoMemFenceAll)
+      return true;
+
+    return UnfencedAddrSpaces.count(AS);
+  }
+
   /// \brief This turns an int alignment (which must be a power of 2) into the
   /// form used internally in Attribute.
   AttrBuilder &addAlignmentAttr(unsigned Align);
@@ -483,6 +551,10 @@ public:
   /// \brief This turns the number of dereferenceable bytes into the form used
   /// internally in Attribute.
   AttrBuilder &addDereferenceableAttr(uint64_t Bytes);
+
+  /// \brief This turns an int address space ID into the form used internally in
+  /// Attribute.
+  AttrBuilder &addNoMemFenceAttr(unsigned AS);
 
   /// \brief Return true if the builder contains no target-independent
   /// attributes.

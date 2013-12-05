@@ -16,6 +16,7 @@
 #include "llvm/IR/Attributes.h"
 #include "AttributeImpl.h"
 #include "LLVMContextImpl.h"
+#include "llvm/ADT/SetOperations.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/IR/Type.h"
@@ -110,6 +111,11 @@ Attribute Attribute::getWithDereferenceableBytes(LLVMContext &Context,
   return get(Context, Dereferenceable, Bytes);
 }
 
+Attribute Attribute::getWithNoMemFence(LLVMContext &Context,
+                                       unsigned AddrSpace) {
+  return get(Context, NoMemFence, AddrSpace);
+}
+
 //===----------------------------------------------------------------------===//
 // Attribute Accessor Methods
 //===----------------------------------------------------------------------===//
@@ -184,6 +190,29 @@ uint64_t Attribute::getDereferenceableBytes() const {
          "Trying to get dereferenceable bytes from "
          "non-dereferenceable attribute!");
   return pImpl->getValueAsInt();
+}
+
+unsigned Attribute::getAddressSpace() const {
+  assert(hasAttribute(Attribute::NoMemFence) &&
+         "Trying to get address space from non-nomemfence attribute!");
+  return pImpl->getValueAsInt();
+}
+
+static std::string getIntValueAttrString(const char *Name,
+                                         uint64_t Val,
+                                         bool InAttrGrp) {
+  std::string Result(Name);
+
+  if (InAttrGrp) {
+    Result += '=';
+    Result += utostr(Val);
+  } else {
+    Result += '(';
+    Result += utostr(Val);
+    Result += ')';
+  }
+
+  return Result;
 }
 
 std::string Attribute::getAsString(bool InAttrGrp) const {
@@ -274,38 +303,24 @@ std::string Attribute::getAsString(bool InAttrGrp) const {
   if (hasAttribute(Attribute::Alignment)) {
     std::string Result;
     Result += "align";
-    Result += (InAttrGrp) ? "=" : " ";
+    Result += InAttrGrp ? "=" : " ";
     Result += utostr(getValueAsInt());
     return Result;
   }
 
-  if (hasAttribute(Attribute::StackAlignment)) {
-    std::string Result;
-    Result += "alignstack";
-    if (InAttrGrp) {
-      Result += "=";
-      Result += utostr(getValueAsInt());
-    } else {
-      Result += "(";
-      Result += utostr(getValueAsInt());
-      Result += ")";
-    }
-    return Result;
+  if (hasAttribute(Attribute::StackAlignment))
+    return getIntValueAttrString("alignstack", getValueAsInt(), InAttrGrp);
+
+  if (hasAttribute(Attribute::NoMemFence)) {
+    uint64_t Val = getValueAsInt();
+    if (Val == ~0U)
+      return "nomemfence";
+
+    return getIntValueAttrString("nomemfence", Val, InAttrGrp);
   }
 
-  if (hasAttribute(Attribute::Dereferenceable)) {
-    std::string Result;
-    Result += "dereferenceable";
-    if (InAttrGrp) {
-      Result += "=";
-      Result += utostr(getValueAsInt());
-    } else {
-      Result += "(";
-      Result += utostr(getValueAsInt());
-      Result += ")";
-    }
-    return Result;
-  }
+  if (hasAttribute(Attribute::Dereferenceable))
+    return getIntValueAttrString("dereferenceable", getValueAsInt(), InAttrGrp);
 
   // Convert target-dependent attributes to strings of the form:
   //
@@ -444,6 +459,7 @@ uint64_t AttributeImpl::getAttrMask(Attribute::AttrKind Val) {
   case Attribute::JumpTable:       return 1ULL << 45;
   case Attribute::Dereferenceable:
     llvm_unreachable("dereferenceable attribute not supported in raw format");
+  case Attribute::NoMemFence:      return 1ULL << 46;
   }
   llvm_unreachable("Unsupported attribute type");
 }
@@ -535,6 +551,52 @@ uint64_t AttributeSetNode::getDereferenceableBytes() const {
   return 0;
 }
 
+bool AttributeSetNode::addrspaceIsUnfenced(unsigned AS) const {
+  for (const Attribute &Attr : *this) {
+    if (Attr.hasAttribute(Attribute::NoMemFence)) {
+      unsigned Unfenced = Attr.getAddressSpace();
+      if (Unfenced == ~0U || Unfenced == AS)
+        return true;
+    }
+  }
+
+  return false;
+}
+
+bool AttributeSetNode::getUnfencedAddrSpaces(AttributeSet::FenceSet &Out) const {
+  for (const Attribute &Attr : *this) {
+    if (Attr.hasAttribute(Attribute::NoMemFence)) {
+      unsigned Unfenced = Attr.getAddressSpace();
+      if (Unfenced == ~0U) // If full nomemfence
+        return true;
+
+      Out.insert(Unfenced);
+    }
+  }
+
+  return false;
+}
+
+bool AttributeSetNode::doesNotFenceMemory() const {
+  for (const Attribute &Attr : *this) {
+    if (Attr.hasAttribute(Attribute::NoMemFence))
+      return (Attr.getAddressSpace() == ~0U);
+  }
+
+  return false;
+}
+
+bool AttributeSetNode::doesNotFenceSomeMemory() const {
+  for (const Attribute &Attr : *this) {
+    if (Attr.hasAttribute(Attribute::NoMemFence)) {
+      if (Attr.getAddressSpace() != ~0U)
+        return true;
+    }
+  }
+
+  return false;
+}
+
 std::string AttributeSetNode::getAsString(bool InAttrGrp) const {
   std::string Str;
   for (iterator I = begin(), E = end(); I != E; ++I) {
@@ -570,8 +632,12 @@ uint64_t AttributeSetImpl::Raw(unsigned Index) const {
         Mask |= (Log2_32(ASN->getStackAlignment()) + 1) << 26;
       else if (Kind == Attribute::Dereferenceable)
         llvm_unreachable("dereferenceable not supported in bit mask");
+      else if (Kind == Attribute::NoMemFence)
+        llvm_unreachable("nomemfence not supported in bit mask");
       else
         Mask |= AttributeImpl::getAttrMask(Kind);
+
+      assert(Kind != Attribute::NoMemFence && "What is this?");
     }
 
     return Mask;
@@ -679,7 +745,20 @@ AttributeSet AttributeSet::get(LLVMContext &C, unsigned Index,
       Attrs.push_back(std::make_pair(Index,
                                      Attribute::getWithDereferenceableBytes(C,
                                        B.getDereferenceableBytes())));
-    else
+    else if (Kind == Attribute::NoMemFence) {
+      if (B.getNoMemFenceAll()) {
+        Attrs.push_back(std::make_pair(Index,
+                                       Attribute::getWithNoMemFence(C, ~0U)));
+      }
+
+      // nomemfence all is incompatible with these
+      for (AttrBuilder::nomemfence_iterator I = B.nomemfence_begin(),
+             E = B.nomemfence_end(); I != E; ++I) {
+        Attrs.push_back(std::make_pair(Index,
+                                       Attribute::getWithNoMemFence(C, *I)));
+      }
+
+    } else
       Attrs.push_back(std::make_pair(Index, Attribute::get(C, Kind)));
   }
 
@@ -941,6 +1020,35 @@ uint64_t AttributeSet::getDereferenceableBytes(unsigned Index) const {
   return ASN ? ASN->getDereferenceableBytes() : 0;
 }
 
+bool AttributeSet::addrspaceIsUnfenced(unsigned AS) const {
+  const AttributeSetNode *ASN = getAttributes(FunctionIndex);
+  return ASN ? ASN->addrspaceIsUnfenced(AS) : false;
+}
+
+bool AttributeSet::getUnfencedAddrSpaces(FenceSet &Out) const {
+  const AttributeSetNode *ASN = getAttributes(FunctionIndex);
+  if (ASN)
+    return ASN->getUnfencedAddrSpaces(Out);
+
+  return false;
+}
+
+bool AttributeSet::doesNotFenceMemory() const {
+  const AttributeSetNode *ASN = getAttributes(FunctionIndex);
+  if (ASN)
+    return ASN->doesNotFenceMemory();
+
+  return false;
+}
+
+bool AttributeSet::doesNotFenceSomeMemory() const {
+  const AttributeSetNode *ASN = getAttributes(FunctionIndex);
+  if (ASN)
+    return ASN->doesNotFenceSomeMemory();
+
+  return false;
+}
+
 std::string AttributeSet::getAsString(unsigned Index,
                                       bool InAttrGrp) const {
   AttributeSetNode *ASN = getAttributes(Index);
@@ -1020,7 +1128,8 @@ void AttributeSet::dump() const {
 //===----------------------------------------------------------------------===//
 
 AttrBuilder::AttrBuilder(AttributeSet AS, unsigned Index)
-  : Attrs(0), Alignment(0), StackAlignment(0), DerefBytes(0) {
+  : Attrs(0), Alignment(0), StackAlignment(0), DerefBytes(0),
+    NoMemFenceAll(false) {
   AttributeSetImpl *pImpl = AS.pImpl;
   if (!pImpl) return;
 
@@ -1038,6 +1147,8 @@ AttrBuilder::AttrBuilder(AttributeSet AS, unsigned Index)
 void AttrBuilder::clear() {
   Attrs.reset();
   Alignment = StackAlignment = DerefBytes = 0;
+  UnfencedAddrSpaces.clear();
+  NoMemFenceAll = false;
 }
 
 AttrBuilder &AttrBuilder::addAttribute(Attribute::AttrKind Val) {
@@ -1064,6 +1175,14 @@ AttrBuilder &AttrBuilder::addAttribute(Attribute Attr) {
     StackAlignment = Attr.getStackAlignment();
   else if (Kind == Attribute::Dereferenceable)
     DerefBytes = Attr.getDereferenceableBytes();
+  else if (Kind == Attribute::NoMemFence) {
+    unsigned AS = Attr.getAddressSpace();
+    if (AS == ~0U)
+      NoMemFenceAll = true;
+    else
+      UnfencedAddrSpaces.insert(AS);
+  }
+
   return *this;
 }
 
@@ -1082,6 +1201,10 @@ AttrBuilder &AttrBuilder::removeAttribute(Attribute::AttrKind Val) {
     StackAlignment = 0;
   else if (Val == Attribute::Dereferenceable)
     DerefBytes = 0;
+  else if (Val == Attribute::NoMemFence) {
+    UnfencedAddrSpaces.clear();
+    NoMemFenceAll = false;
+  }
 
   return *this;
 }
@@ -1098,7 +1221,7 @@ AttrBuilder &AttrBuilder::removeAttributes(AttributeSet A, uint64_t Index) {
 
   for (AttributeSet::iterator I = A.begin(Slot), E = A.end(Slot); I != E; ++I) {
     Attribute Attr = *I;
-    if (Attr.isEnumAttribute() || Attr.isIntAttribute()) {
+    if (!Attr.isStringAttribute()) {
       Attribute::AttrKind Kind = I->getKindAsEnum();
       Attrs[Kind] = false;
 
@@ -1108,8 +1231,11 @@ AttrBuilder &AttrBuilder::removeAttributes(AttributeSet A, uint64_t Index) {
         StackAlignment = 0;
       else if (Kind == Attribute::Dereferenceable)
         DerefBytes = 0;
+      else if (Kind == Attribute::NoMemFence) {
+        UnfencedAddrSpaces.clear();
+        NoMemFenceAll = false;
+      }
     } else {
-      assert(Attr.isStringAttribute() && "Invalid attribute type!");
       std::map<std::string, std::string>::iterator
         Iter = TargetDepAttrs.find(Attr.getKindAsString());
       if (Iter != TargetDepAttrs.end())
@@ -1158,6 +1284,15 @@ AttrBuilder &AttrBuilder::addDereferenceableAttr(uint64_t Bytes) {
   return *this;
 }
 
+AttrBuilder &AttrBuilder::addNoMemFenceAttr(unsigned AddrSpace) {
+  Attrs[Attribute::NoMemFence] = true;
+  if (AddrSpace == ~0U)
+    NoMemFenceAll = true;
+  else
+    UnfencedAddrSpaces.insert(AddrSpace);
+  return *this;
+}
+
 AttrBuilder &AttrBuilder::merge(const AttrBuilder &B) {
   // FIXME: What if both have alignments, but they don't match?!
   if (!Alignment)
@@ -1168,6 +1303,11 @@ AttrBuilder &AttrBuilder::merge(const AttrBuilder &B) {
 
   if (!DerefBytes)
     DerefBytes = B.DerefBytes;
+
+  if (!NoMemFenceAll)
+    NoMemFenceAll = B.NoMemFenceAll;
+
+  set_union(UnfencedAddrSpaces, B.UnfencedAddrSpaces);
 
   Attrs |= B.Attrs;
 
@@ -1199,11 +1339,10 @@ bool AttrBuilder::hasAttributes(AttributeSet A, uint64_t Index) const {
   for (AttributeSet::iterator I = A.begin(Slot), E = A.end(Slot);
        I != E; ++I) {
     Attribute Attr = *I;
-    if (Attr.isEnumAttribute() || Attr.isIntAttribute()) {
+    if (!Attr.isStringAttribute()) {
       if (Attrs[I->getKindAsEnum()])
         return true;
     } else {
-      assert(Attr.isStringAttribute() && "Invalid attribute kind!");
       return TargetDepAttrs.find(Attr.getKindAsString())!=TargetDepAttrs.end();
     }
   }
@@ -1219,13 +1358,32 @@ bool AttrBuilder::operator==(const AttrBuilder &B) {
   if (Attrs != B.Attrs)
     return false;
 
+  if (Alignment != B.Alignment || StackAlignment != B.StackAlignment)
+    return false;
+
+  if (DerefBytes != B.DerefBytes)
+    return false;
+
   for (td_const_iterator I = TargetDepAttrs.begin(),
-         E = TargetDepAttrs.end(); I != E; ++I)
+         E = TargetDepAttrs.end(); I != E; ++I) {
     if (B.TargetDepAttrs.find(I->first) == B.TargetDepAttrs.end())
       return false;
+  }
 
-  return Alignment == B.Alignment && StackAlignment == B.StackAlignment &&
-         DerefBytes == B.DerefBytes;
+  if (NoMemFenceAll != B.NoMemFenceAll)
+    return false;
+
+  if (!NoMemFenceAll) {
+    if (UnfencedAddrSpaces.size() != B.UnfencedAddrSpaces.size())
+      return false;
+
+    for (unsigned AS : UnfencedAddrSpaces) {
+      if (!B.UnfencedAddrSpaces.count(AS))
+        return false;
+    }
+  }
+
+  return true;
 }
 
 AttrBuilder &AttrBuilder::addRawValue(uint64_t Val) {
@@ -1238,14 +1396,16 @@ AttrBuilder &AttrBuilder::addRawValue(uint64_t Val) {
       continue;
     if (uint64_t A = (Val & AttributeImpl::getAttrMask(I))) {
       Attrs[I] = true;
- 
+
       if (I == Attribute::Alignment)
         Alignment = 1ULL << ((A >> 16) - 1);
       else if (I == Attribute::StackAlignment)
         StackAlignment = 1ULL << ((A >> 26)-1);
+
+      assert(I != Attribute::NoMemFence && "What is this?");
     }
   }
- 
+
   return *this;
 }
 
