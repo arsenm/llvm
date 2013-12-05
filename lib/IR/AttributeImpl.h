@@ -40,6 +40,7 @@ protected:
   enum AttrEntryKind {
     EnumAttrEntry,
     AlignAttrEntry,
+    MemFenceAttrEntry,
     StringAttrEntry
   };
 
@@ -50,6 +51,7 @@ public:
 
   bool isEnumAttribute() const { return KindID == EnumAttrEntry; }
   bool isAlignAttribute() const { return KindID == AlignAttrEntry; }
+  bool isMemFenceAttribute() const { return KindID == MemFenceAttrEntry; }
   bool isStringAttribute() const { return KindID == StringAttrEntry; }
 
   bool hasAttribute(Attribute::AttrKind A) const;
@@ -67,7 +69,7 @@ public:
   void Profile(FoldingSetNodeID &ID) const {
     if (isEnumAttribute())
       Profile(ID, getKindAsEnum(), 0);
-    else if (isAlignAttribute())
+    else if (isAlignAttribute() || isMemFenceAttribute())
       Profile(ID, getKindAsEnum(), getValueAsInt());
     else
       Profile(ID, getKindAsString(), getValueAsString());
@@ -123,6 +125,19 @@ public:
   unsigned getAlignment() const { return Align; }
 };
 
+class MemFenceAttributeImpl : public EnumAttributeImpl {
+  virtual void anchor();
+  unsigned AddrSpace;
+
+public:
+  MemFenceAttributeImpl(unsigned AS)
+    : EnumAttributeImpl(MemFenceAttrEntry, Attribute::MemFence),
+      AddrSpace(AS) {
+  }
+
+  unsigned getAddressSpace() const { return AddrSpace; }
+};
+
 class StringAttributeImpl : public AttributeImpl {
   virtual void anchor();
   std::string Kind;
@@ -164,6 +179,7 @@ public:
 
   unsigned getAlignment() const;
   unsigned getStackAlignment() const;
+  bool addrspaceIsFenced(unsigned AS) const;
   std::string getAsString(bool InAttrGrp) const;
 
   typedef const Attribute *iterator;

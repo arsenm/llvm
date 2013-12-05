@@ -544,6 +544,8 @@ static Attribute::AttrKind GetAttrFromCode(uint64_t Code) {
     return Attribute::NoCapture;
   case bitc::ATTR_KIND_NO_DUPLICATE:
     return Attribute::NoDuplicate;
+  case bitc::ATTR_KIND_MEMFENCE:
+    return Attribute::MemFence;
   case bitc::ATTR_KIND_NO_IMPLICIT_FLOAT:
     return Attribute::NoImplicitFloat;
   case bitc::ATTR_KIND_NO_INLINE:
@@ -645,14 +647,16 @@ error_code BitcodeReader::ParseAttributeGroupBlock() {
             return EC;
 
           B.addAttribute(Kind);
-        } else if (Record[i] == 1) { // Align attribute
+        } else if (Record[i] == 1) { // Align attribute // XXX - What is this number?
           Attribute::AttrKind Kind;
           if (error_code EC = ParseAttrKind(Record[++i], &Kind))
             return EC;
           if (Kind == Attribute::Alignment)
             B.addAlignmentAttr(Record[++i]);
-          else
+          else if (Kind == Attribute::StackAlignment)
             B.addStackAlignmentAttr(Record[++i]);
+          else if (Kind == Attribute::MemFence)
+            B.addMemFenceAttr(Record[++i]);
         } else {                     // String attribute
           assert((Record[i] == 3 || Record[i] == 4) &&
                  "Invalid attribute group entry");

@@ -916,6 +916,20 @@ bool LLParser::ParseFnAttributeValuePairs(AttrBuilder &B,
     case lltok::kw_naked:             B.addAttribute(Attribute::Naked); break;
     case lltok::kw_nobuiltin:         B.addAttribute(Attribute::NoBuiltin); break;
     case lltok::kw_noduplicate:       B.addAttribute(Attribute::NoDuplicate); break;
+    case lltok::kw_memfence: {
+      unsigned AddrSpace;
+      if (inAttrGrp) {
+        Lex.Lex();
+        if (ParseToken(lltok::equal, "expected '=' here") ||
+            ParseUInt32(AddrSpace))
+          return true;
+      } else {
+        if (ParseOptionalMemFence(AddrSpace))
+          return true;
+      }
+      B.addMemFenceAttr(AddrSpace);
+      continue;
+    }
     case lltok::kw_noimplicitfloat:   B.addAttribute(Attribute::NoImplicitFloat); break;
     case lltok::kw_noinline:          B.addAttribute(Attribute::NoInline); break;
     case lltok::kw_nonlazybind:       B.addAttribute(Attribute::NonLazyBind); break;
@@ -1138,6 +1152,18 @@ bool LLParser::ParseOptionalAddrSpace(unsigned &AddrSpace) {
          ParseToken(lltok::rparen, "expected ')' in address space");
 }
 
+/// ParseOptionalMemFence
+///   := /*empty*/
+///   := 'memfence' '(' uint32 ')'
+bool LLParser::ParseOptionalMemFence(unsigned &AddrSpace) {
+  AddrSpace = 0;
+  if (!EatIfPresent(lltok::kw_memfence))
+    return false;
+  return ParseToken(lltok::lparen, "expected '(' in memfence") ||
+         ParseUInt32(AddrSpace) ||
+         ParseToken(lltok::rparen, "expected ')' in memfence");
+}
+
 /// ParseOptionalParamAttrs - Parse a potentially empty list of parameter attributes.
 bool LLParser::ParseOptionalParamAttrs(AttrBuilder &B) {
   bool HaveError = false;
@@ -1177,6 +1203,7 @@ bool LLParser::ParseOptionalParamAttrs(AttrBuilder &B) {
     case lltok::kw_naked:
     case lltok::kw_nobuiltin:
     case lltok::kw_noduplicate:
+    case lltok::kw_memfence:
     case lltok::kw_noimplicitfloat:
     case lltok::kw_noinline:
     case lltok::kw_nonlazybind:
@@ -1237,6 +1264,7 @@ bool LLParser::ParseOptionalReturnAttrs(AttrBuilder &B) {
     case lltok::kw_naked:
     case lltok::kw_nobuiltin:
     case lltok::kw_noduplicate:
+    case lltok::kw_memfence:
     case lltok::kw_noimplicitfloat:
     case lltok::kw_noinline:
     case lltok::kw_nonlazybind:

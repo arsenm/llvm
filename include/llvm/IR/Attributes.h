@@ -17,6 +17,7 @@
 #define LLVM_IR_ATTRIBUTES_H
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/FoldingSet.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/PointerLikeTypeTraits.h"
@@ -82,6 +83,8 @@ public:
     NoBuiltin,             ///< Callee isn't recognized as a builtin
     NoCapture,             ///< Function creates no aliases of pointer
     NoDuplicate,           ///< Call cannot be duplicated
+    MemFence,              ///< memfence(N) Writes to address space N may not be
+                           ///< reordered around the call.
     NoImplicitFloat,       ///< Disable implicit floating point insts
     NoInline,              ///< inline=never
     NonLazyBind,           ///< Function is called early and/or
@@ -131,6 +134,7 @@ public:
   /// alignment set.
   static Attribute getWithAlignment(LLVMContext &Context, uint64_t Align);
   static Attribute getWithStackAlignment(LLVMContext &Context, uint64_t Align);
+  static Attribute getWithMemFence(LLVMContext &Context, uint64_t AddrSpace);
 
   //===--------------------------------------------------------------------===//
   // Attribute Accessors
@@ -141,6 +145,9 @@ public:
 
   /// \brief Return true if the attribute is an alignment attribute.
   bool isAlignAttribute() const;
+
+  /// \brief Return true if the attribute is a memfence attribute.
+  bool isMemFenceAttribute() const;
 
   /// \brief Return true if the attribute is a string (target-dependent)
   /// attribute.
@@ -175,6 +182,9 @@ public:
   /// \brief Returns the stack alignment field of an attribute as a byte
   /// alignment value.
   unsigned getStackAlignment() const;
+
+  /// \brief Returns the address space field of an attribute.
+  unsigned getAddressSpace() const;
 
   /// \brief The Attribute is converted to a string of equivalent mnemonic. This
   /// is, presumably, for writing out the mnemonics for the assembly writer.
@@ -264,13 +274,13 @@ public:
   /// \brief Remove the specified attribute at the specified index from this
   /// attribute list. Since attribute lists are immutable, this returns the new
   /// list.
-  AttributeSet removeAttribute(LLVMContext &C, unsigned Index, 
+  AttributeSet removeAttribute(LLVMContext &C, unsigned Index,
                                Attribute::AttrKind Attr) const;
 
   /// \brief Remove the specified attributes at the specified index from this
   /// attribute list. Since attribute lists are immutable, this returns the new
   /// list.
-  AttributeSet removeAttributes(LLVMContext &C, unsigned Index, 
+  AttributeSet removeAttributes(LLVMContext &C, unsigned Index,
                                 AttributeSet Attrs) const;
 
   //===--------------------------------------------------------------------===//
@@ -313,6 +323,9 @@ public:
 
   /// \brief Get the stack alignment.
   unsigned getStackAlignment(unsigned Index) const;
+
+  /// \brief - Check if address space is fenced.
+  bool addrspaceIsFenced(unsigned AS) const;
 
   /// \brief Return the attributes at the index as a string.
   std::string getAsString(unsigned Index, bool InAttrGrp = false) const;
@@ -391,9 +404,15 @@ template<> struct DenseMapInfo<AttributeSet> {
 class AttrBuilder {
   std::bitset<Attribute::EndAttrKinds> Attrs;
   std::map<std::string, std::string> TargetDepAttrs;
+
+  // Set of address spaces specified by memfences.
+  DenseSet<unsigned> FencedAddrSpaces;
   uint64_t Alignment;
   uint64_t StackAlignment;
+
 public:
+  typedef DenseSet<unsigned>::const_iterator as_iterator;
+
   AttrBuilder() : Attrs(0), Alignment(0), StackAlignment(0) {}
   explicit AttrBuilder(uint64_t Val)
     : Attrs(0), Alignment(0), StackAlignment(0) {
@@ -457,6 +476,22 @@ public:
   /// \brief Retrieve the stack alignment attribute, if it exists.
   uint64_t getStackAlignment() const { return StackAlignment; }
 
+  bool hasMemFenceAttr() const {
+    return !FencedAddrSpaces.empty();
+  }
+
+  bool addrspaceIsFenced(unsigned AS) const {
+    return FencedAddrSpaces.count(AS);
+  }
+
+  as_iterator memfence_begin() const {
+    return FencedAddrSpaces.begin();
+  }
+
+  as_iterator memfence_end() const {
+    return FencedAddrSpaces.end();
+  }
+
   /// \brief This turns an int alignment (which must be a power of 2) into the
   /// form used internally in Attribute.
   AttrBuilder &addAlignmentAttr(unsigned Align);
@@ -464,6 +499,10 @@ public:
   /// \brief This turns an int stack alignment (which must be a power of 2) into
   /// the form used internally in Attribute.
   AttrBuilder &addStackAlignmentAttr(unsigned Align);
+
+  /// \brief This turns an int address space ID into the form used internally in
+  /// Attribute.
+  AttrBuilder &addMemFenceAttr(unsigned AS);
 
   /// \brief Return true if the builder contains no target-independent
   /// attributes.

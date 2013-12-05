@@ -191,6 +191,8 @@ static uint64_t getAttrKindEncoding(Attribute::AttrKind Kind) {
     return bitc::ATTR_KIND_NO_CAPTURE;
   case Attribute::NoDuplicate:
     return bitc::ATTR_KIND_NO_DUPLICATE;
+  case Attribute::MemFence:
+    return bitc::ATTR_KIND_MEMFENCE;
   case Attribute::NoImplicitFloat:
     return bitc::ATTR_KIND_NO_IMPLICIT_FLOAT;
   case Attribute::NoInline:
@@ -268,7 +270,7 @@ static void WriteAttributeGroupTable(const ValueEnumerator &VE,
         if (Attr.isEnumAttribute()) {
           Record.push_back(0);
           Record.push_back(getAttrKindEncoding(Attr.getKindAsEnum()));
-        } else if (Attr.isAlignAttribute()) {
+        } else if (Attr.isAlignAttribute() || Attr.isMemFenceAttribute()) {
           Record.push_back(1);
           Record.push_back(getAttrKindEncoding(Attr.getKindAsEnum()));
           Record.push_back(Attr.getValueAsInt());

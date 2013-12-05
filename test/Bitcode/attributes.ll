@@ -203,7 +203,7 @@ define void @f34()
 ; CHECK: define void @f34()
 {
         call void @nobuiltin() nobuiltin
-; CHECK: call void @nobuiltin() #24
+; CHECK: call void @nobuiltin() #26
         ret void;
 }
 
@@ -216,6 +216,23 @@ define void @f35() optnone noinline
 define void @f36(i8* inalloca) {
 ; CHECK: define void @f36(i8* inalloca) {
         ret void
+}
+
+define void @f37() memfence(1)
+; CHECK-LABEL: define void @f37()
+{
+  ret void
+}
+define void @f38() memfence(1) memfence(2)
+; CHECK-LABEL: define void @f38()
+{
+  ret void
+}
+
+define void @f39() memfence(0)
+; CHECK-LABEL: define void @f39()
+{
+  ret void
 }
 
 ; CHECK: attributes #0 = { noreturn }
@@ -242,5 +259,7 @@ define void @f36(i8* inalloca) {
 ; CHECK: attributes #21 = { sspstrong }
 ; CHECK: attributes #22 = { minsize }
 ; CHECK: attributes #23 = { noinline optnone }
-; CHECK: attributes #24 = { nobuiltin }
-
+; CHECK: attributes #24 = { memfence=1 }
+; CHECK: attributes #25 = { memfence=1 memfence=2 }
+; CHECK: attributes #26 = { nobuiltin }
+; CHECK: attributes #26 = { memfence=0 }

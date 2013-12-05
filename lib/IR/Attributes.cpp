@@ -43,7 +43,9 @@ Attribute Attribute::get(LLVMContext &Context, Attribute::AttrKind Kind,
   if (!PA) {
     // If we didn't find any existing attributes of the same shape then create a
     // new one and insert it.
-    if (!Val)
+    if (Kind == Attribute::MemFence)
+      PA = new MemFenceAttributeImpl(Val);
+    else if (!Val)
       PA = new EnumAttributeImpl(Kind);
     else
       PA = new AlignAttributeImpl(Kind, Val);
@@ -87,6 +89,11 @@ Attribute Attribute::getWithStackAlignment(LLVMContext &Context,
   return get(Context, StackAlignment, Align);
 }
 
+Attribute Attribute::getWithMemFence(LLVMContext &Context,
+                                     uint64_t AddrSpace) {
+  return get(Context, MemFence, AddrSpace);
+}
+
 //===----------------------------------------------------------------------===//
 // Attribute Accessor Methods
 //===----------------------------------------------------------------------===//
@@ -99,21 +106,25 @@ bool Attribute::isAlignAttribute() const {
   return pImpl && pImpl->isAlignAttribute();
 }
 
+bool Attribute::isMemFenceAttribute() const {
+  return pImpl && pImpl->isMemFenceAttribute();
+}
+
 bool Attribute::isStringAttribute() const {
   return pImpl && pImpl->isStringAttribute();
 }
 
 Attribute::AttrKind Attribute::getKindAsEnum() const {
   if (!pImpl) return None;
-  assert((isEnumAttribute() || isAlignAttribute()) &&
+  assert(!isStringAttribute() &&
          "Invalid attribute type to get the kind as an enum!");
   return pImpl ? pImpl->getKindAsEnum() : None;
 }
 
 uint64_t Attribute::getValueAsInt() const {
   if (!pImpl) return 0;
-  assert(isAlignAttribute() &&
-         "Expected the attribute to be an alignment attribute!");
+  assert((isAlignAttribute() || isMemFenceAttribute()) &&
+         "Expected the attribute to be an alignment or memfence attribute!");
   return pImpl ? pImpl->getValueAsInt() : 0;
 }
 
@@ -153,6 +164,29 @@ unsigned Attribute::getStackAlignment() const {
   assert(hasAttribute(Attribute::StackAlignment) &&
          "Trying to get alignment from non-alignment attribute!");
   return pImpl->getValueAsInt();
+}
+
+unsigned Attribute::getAddressSpace() const {
+  assert(hasAttribute(Attribute::MemFence) &&
+         "Trying to get address space from non-memfence attribute!");
+  return pImpl->getValueAsInt();
+}
+
+static std::string getIntValueAttrString(const char *Name,
+                                         uint64_t Val,
+                                         bool InAttrGrp) {
+  std::string Result(Name);
+
+  if (InAttrGrp) {
+    Result += '=';
+    Result += utostr(Val);
+  } else {
+    Result += '(';
+    Result += utostr(Val);
+    Result += ')';
+  }
+
+  return Result;
 }
 
 std::string Attribute::getAsString(bool InAttrGrp) const {
@@ -239,24 +273,16 @@ std::string Attribute::getAsString(bool InAttrGrp) const {
   if (hasAttribute(Attribute::Alignment)) {
     std::string Result;
     Result += "align";
-    Result += (InAttrGrp) ? "=" : " ";
+    Result += InAttrGrp ? "=" : " ";
     Result += utostr(getValueAsInt());
     return Result;
   }
 
-  if (hasAttribute(Attribute::StackAlignment)) {
-    std::string Result;
-    Result += "alignstack";
-    if (InAttrGrp) {
-      Result += "=";
-      Result += utostr(getValueAsInt());
-    } else {
-      Result += "(";
-      Result += utostr(getValueAsInt());
-      Result += ")";
-    }
-    return Result;
-  }
+  if (hasAttribute(Attribute::StackAlignment))
+    return getIntValueAttrString("alignstack", getValueAsInt(), InAttrGrp);
+
+  if (hasAttribute(Attribute::MemFence))
+    return getIntValueAttrString("memfence", getValueAsInt(), InAttrGrp);
 
   // Convert target-dependent attributes to strings of the form:
   //
@@ -292,6 +318,7 @@ bool Attribute::operator<(Attribute A) const {
 AttributeImpl::~AttributeImpl() {}
 void EnumAttributeImpl::anchor() {}
 void AlignAttributeImpl::anchor() {}
+void MemFenceAttributeImpl::anchor() {}
 void StringAttributeImpl::anchor() {}
 
 bool AttributeImpl::hasAttribute(Attribute::AttrKind A) const {
@@ -305,13 +332,17 @@ bool AttributeImpl::hasAttribute(StringRef Kind) const {
 }
 
 Attribute::AttrKind AttributeImpl::getKindAsEnum() const {
-  assert(isEnumAttribute() || isAlignAttribute());
+  assert(isEnumAttribute() || isAlignAttribute() || isMemFenceAttribute());
   return static_cast<const EnumAttributeImpl *>(this)->getEnumKind();
 }
 
 uint64_t AttributeImpl::getValueAsInt() const {
-  assert(isAlignAttribute());
-  return static_cast<const AlignAttributeImpl *>(this)->getAlignment();
+  assert(isAlignAttribute() || isMemFenceAttribute());
+
+  if (isAlignAttribute())
+    return static_cast<const AlignAttributeImpl *>(this)->getAlignment();
+
+  return static_cast<const MemFenceAttributeImpl *>(this)->getAddressSpace();
 }
 
 StringRef AttributeImpl::getKindAsString() const {
@@ -330,17 +361,27 @@ bool AttributeImpl::operator<(const AttributeImpl &AI) const {
   if (isEnumAttribute()) {
     if (AI.isEnumAttribute()) return getKindAsEnum() < AI.getKindAsEnum();
     if (AI.isAlignAttribute()) return true;
+    if (AI.isMemFenceAttribute()) return true;
     if (AI.isStringAttribute()) return true;
   }
 
   if (isAlignAttribute()) {
     if (AI.isEnumAttribute()) return false;
     if (AI.isAlignAttribute()) return getValueAsInt() < AI.getValueAsInt();
+    if (AI.isMemFenceAttribute()) return true;
+    if (AI.isStringAttribute()) return true;
+  }
+
+  if (AI.isMemFenceAttribute()) {
+    if (AI.isEnumAttribute()) return false;
+    if (AI.isAlignAttribute()) return false;
+    if (AI.isMemFenceAttribute()) return getValueAsInt() < AI.getValueAsInt();
     if (AI.isStringAttribute()) return true;
   }
 
   if (AI.isEnumAttribute()) return false;
   if (AI.isAlignAttribute()) return false;
+  if (AI.isMemFenceAttribute()) return false;
   if (getKindAsString() == AI.getKindAsString())
     return getValueAsString() < AI.getValueAsString();
   return getKindAsString() < AI.getKindAsString();
@@ -391,6 +432,7 @@ uint64_t AttributeImpl::getAttrMask(Attribute::AttrKind Val) {
   case Attribute::Builtin:         return 1ULL << 41;
   case Attribute::OptimizeNone:    return 1ULL << 42;
   case Attribute::InAlloca:        return 1ULL << 43;
+  case Attribute::MemFence:        return 1ULL << 44;
   }
   llvm_unreachable("Unsupported attribute type");
 }
@@ -473,6 +515,17 @@ unsigned AttributeSetNode::getStackAlignment() const {
     if (I->hasAttribute(Attribute::StackAlignment))
       return I->getStackAlignment();
   return 0;
+}
+
+bool AttributeSetNode::addrspaceIsFenced(unsigned AS) const {
+  for (iterator I = begin(), E = end(); I != E; ++I) {
+    if (I->hasAttribute(Attribute::MemFence)) {
+      if (I->getAddressSpace() == AS)
+        return true;
+    }
+  }
+
+  return false;
 }
 
 std::string AttributeSetNode::getAsString(bool InAttrGrp) const {
@@ -612,7 +665,13 @@ AttributeSet AttributeSet::get(LLVMContext &C, unsigned Index, AttrBuilder &B) {
     else if (Kind == Attribute::StackAlignment)
       Attrs.push_back(std::make_pair(Index, Attribute::
                               getWithStackAlignment(C, B.getStackAlignment())));
-    else
+    else if (Kind == Attribute::MemFence) {
+      for (AttrBuilder::as_iterator I = B.memfence_begin(),
+             E = B.memfence_end(); I != E; ++I) {
+        Attrs.push_back(std::make_pair(Index,
+                                       Attribute::getWithMemFence(C, *I)));
+      }
+    } else
       Attrs.push_back(std::make_pair(Index, Attribute::get(C, Kind)));
   }
 
@@ -869,6 +928,11 @@ unsigned AttributeSet::getStackAlignment(unsigned Index) const {
   return ASN ? ASN->getStackAlignment() : 0;
 }
 
+bool AttributeSet::addrspaceIsFenced(unsigned AS) const {
+  const AttributeSetNode *ASN = getAttributes(FunctionIndex);
+  return ASN ? ASN->addrspaceIsFenced(AS) : false;
+}
+
 std::string AttributeSet::getAsString(unsigned Index,
                                       bool InAttrGrp) const {
   AttributeSetNode *ASN = getAttributes(Index);
@@ -966,6 +1030,7 @@ AttrBuilder::AttrBuilder(AttributeSet AS, unsigned Index)
 void AttrBuilder::clear() {
   Attrs.reset();
   Alignment = StackAlignment = 0;
+  FencedAddrSpaces.clear();
 }
 
 AttrBuilder &AttrBuilder::addAttribute(Attribute::AttrKind Val) {
@@ -989,6 +1054,9 @@ AttrBuilder &AttrBuilder::addAttribute(Attribute Attr) {
     Alignment = Attr.getAlignment();
   else if (Kind == Attribute::StackAlignment)
     StackAlignment = Attr.getStackAlignment();
+  else if (Kind == Attribute::MemFence)
+    FencedAddrSpaces.insert(Attr.getAddressSpace());
+
   return *this;
 }
 
@@ -1005,6 +1073,8 @@ AttrBuilder &AttrBuilder::removeAttribute(Attribute::AttrKind Val) {
     Alignment = 0;
   else if (Val == Attribute::StackAlignment)
     StackAlignment = 0;
+  else if (Val == Attribute::MemFence)
+    FencedAddrSpaces.clear();
 
   return *this;
 }
@@ -1021,7 +1091,7 @@ AttrBuilder &AttrBuilder::removeAttributes(AttributeSet A, uint64_t Index) {
 
   for (AttributeSet::iterator I = A.begin(Slot), E = A.end(Slot); I != E; ++I) {
     Attribute Attr = *I;
-    if (Attr.isEnumAttribute() || Attr.isAlignAttribute()) {
+    if (!Attr.isStringAttribute()) {
       Attribute::AttrKind Kind = I->getKindAsEnum();
       Attrs[Kind] = false;
 
@@ -1029,8 +1099,9 @@ AttrBuilder &AttrBuilder::removeAttributes(AttributeSet A, uint64_t Index) {
         Alignment = 0;
       else if (Kind == Attribute::StackAlignment)
         StackAlignment = 0;
+      else if (Kind == Attribute::MemFence)
+        FencedAddrSpaces.clear();
     } else {
-      assert(Attr.isStringAttribute() && "Invalid attribute type!");
       std::map<std::string, std::string>::iterator
         Iter = TargetDepAttrs.find(Attr.getKindAsString());
       if (Iter != TargetDepAttrs.end())
@@ -1071,6 +1142,12 @@ AttrBuilder &AttrBuilder::addStackAlignmentAttr(unsigned Align) {
   return *this;
 }
 
+AttrBuilder &AttrBuilder::addMemFenceAttr(unsigned AddrSpace) {
+  Attrs[Attribute::MemFence] = true;
+  FencedAddrSpaces.insert(AddrSpace);
+  return *this;
+}
+
 AttrBuilder &AttrBuilder::merge(const AttrBuilder &B) {
   // FIXME: What if both have alignments, but they don't match?!
   if (!Alignment)
@@ -1078,6 +1155,11 @@ AttrBuilder &AttrBuilder::merge(const AttrBuilder &B) {
 
   if (!StackAlignment)
     StackAlignment = B.StackAlignment;
+
+
+  // Union all the memfences.
+  for (as_iterator I = B.memfence_begin(), E = B.memfence_end(); I != E; ++I)
+    addMemFenceAttr(*I);
 
   Attrs |= B.Attrs;
 
@@ -1109,11 +1191,10 @@ bool AttrBuilder::hasAttributes(AttributeSet A, uint64_t Index) const {
   for (AttributeSet::iterator I = A.begin(Slot), E = A.end(Slot);
        I != E; ++I) {
     Attribute Attr = *I;
-    if (Attr.isEnumAttribute() || Attr.isAlignAttribute()) {
+    if (!Attr.isStringAttribute()) {
       if (Attrs[I->getKindAsEnum()])
         return true;
     } else {
-      assert(Attr.isStringAttribute() && "Invalid attribute kind!");
       return TargetDepAttrs.find(Attr.getKindAsString())!=TargetDepAttrs.end();
     }
   }
@@ -1145,14 +1226,14 @@ AttrBuilder &AttrBuilder::addRawValue(uint64_t Val) {
        I = Attribute::AttrKind(I + 1)) {
     if (uint64_t A = (Val & AttributeImpl::getAttrMask(I))) {
       Attrs[I] = true;
- 
+
       if (I == Attribute::Alignment)
         Alignment = 1ULL << ((A >> 16) - 1);
       else if (I == Attribute::StackAlignment)
         StackAlignment = 1ULL << ((A >> 26)-1);
     }
   }
- 
+
   return *this;
 }
 
