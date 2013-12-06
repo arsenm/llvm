@@ -14,6 +14,7 @@
 #ifndef CODEGEN_INTRINSIC_H
 #define CODEGEN_INTRINSIC_H
 
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/CodeGen/ValueTypes.h"
 #include <string>
 #include <vector>
@@ -57,6 +58,8 @@ namespace llvm {
     };
 
     IntrinsicSignature IS;
+
+    DenseSet<unsigned> FencedAddrSpaces;
 
     // Memory mod/ref behavior of this intrinsic.
     enum {

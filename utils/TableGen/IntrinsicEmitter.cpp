@@ -628,8 +628,9 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
     }
 
     ModRefKind modRef = getModRefKind(intrinsic);
+    bool haveFences = !intrinsic.FencedAddrSpaces.empty();
 
-    if (!intrinsic.canThrow || modRef || intrinsic.isNoReturn) {
+    if (!intrinsic.canThrow || modRef || intrinsic.isNoReturn || haveFences) {
       OS << "      const Attribute::AttrKind Atts[] = {";
       bool addComma = false;
       if (!intrinsic.canThrow) {
@@ -640,6 +641,28 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
         if (addComma)
           OS << ",";
         OS << "Attribute::NoReturn";
+        addComma = true;
+      }
+
+      if (haveFences) {
+        if (addComma)
+          OS << ',';
+        OS << "Attribute::MemFence(";
+      }
+
+      for (DenseSet<unsigned>::const_iterator
+             I = intrinsic.FencedAddrSpaces.begin(),
+             E = intrinsic.FencedAddrSpaces.end(); I != E;) {
+        unsigned AS = *I;
+        OS << AS;
+
+        ++I;
+        if (I != E)
+          OS << ',';
+      }
+
+      if (haveFences) {
+        OS << ')';
         addComma = true;
       }
 

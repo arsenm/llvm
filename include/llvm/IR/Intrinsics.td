@@ -69,6 +69,10 @@ class ReadNone<int argNo> : IntrinsicProperty {
 
 def IntrNoReturn : IntrinsicProperty;
 
+class MemFence<int AS> : IntrinsicProperty {
+  int AddrSpace = AS;
+}
+
 //===----------------------------------------------------------------------===//
 // Types used by intrinsics.
 //===----------------------------------------------------------------------===//
