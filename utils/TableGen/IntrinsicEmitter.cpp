@@ -523,6 +523,18 @@ struct AttributeComparator {
     ModRefKind RK = getModRefKind(*R);
     if (LK != RK) return (LK > RK);
 
+    unsigned LFences = L->FencedAddrSpaces.size();
+    unsigned RFences = R->FencedAddrSpaces.size();
+    if (LFences != RFences)
+      return (LFences > RFences);
+
+    for (DenseSet<unsigned>::const_iterator
+           I = L->FencedAddrSpaces.begin(), E = L->FencedAddrSpaces.end(),
+           J = R->FencedAddrSpaces.begin(); I != E; ++I, ++J) {
+      if (*I != *J)
+        return (*I > *J);
+    }
+
     // Order by argument attributes.
     // This is reliable because each side is already sorted internally.
     return (L->ArgumentAttributes < R->ArgumentAttributes);
@@ -628,9 +640,9 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
     }
 
     ModRefKind modRef = getModRefKind(intrinsic);
-    bool haveFences = !intrinsic.FencedAddrSpaces.empty();
+    bool hasMemFences = !intrinsic.FencedAddrSpaces.empty();
 
-    if (!intrinsic.canThrow || modRef || intrinsic.isNoReturn || haveFences) {
+    if (!intrinsic.canThrow || modRef || intrinsic.isNoReturn || hasMemFences) {
       OS << "      const Attribute::AttrKind Atts[] = {";
       bool addComma = false;
       if (!intrinsic.canThrow) {
@@ -641,28 +653,6 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
         if (addComma)
           OS << ",";
         OS << "Attribute::NoReturn";
-        addComma = true;
-      }
-
-      if (haveFences) {
-        if (addComma)
-          OS << ',';
-        OS << "Attribute::MemFence(";
-      }
-
-      for (DenseSet<unsigned>::const_iterator
-             I = intrinsic.FencedAddrSpaces.begin(),
-             E = intrinsic.FencedAddrSpaces.end(); I != E;) {
-        unsigned AS = *I;
-        OS << AS;
-
-        ++I;
-        if (I != E)
-          OS << ',';
-      }
-
-      if (haveFences) {
-        OS << ')';
         addComma = true;
       }
 
@@ -680,8 +670,24 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
         break;
       }
       OS << "};\n";
-      OS << "      AS[" << numAttrs++ << "] = AttributeSet::get(C, "
-         << "AttributeSet::FunctionIndex, Atts);\n";
+
+      if (hasMemFences) {
+        OS << "      AttrBuilder B;\n";
+        for (DenseSet<unsigned>::const_iterator
+               I = intrinsic.FencedAddrSpaces.begin(),
+               E = intrinsic.FencedAddrSpaces.end(); I != E; ++I) {
+          OS << "      B.addMemFenceAttr(" << *I << ");\n";
+        }
+
+        OS << "      for (unsigned I = 0; I < array_lengthof(Atts); ++I)\n"
+          "        B.addAttribute(Atts[I]);\n";
+
+        OS << "      AS[" << numAttrs++ << "] = "
+          "AttributeSet::get(C, AttributeSet::FunctionIndex, B);\n";
+      } else {
+        OS << "      AS[" << numAttrs++ << "] = AttributeSet::get(C, "
+           << "AttributeSet::FunctionIndex, Atts);\n";
+      }
     }
 
     if (numAttrs) {

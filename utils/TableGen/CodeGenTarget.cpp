@@ -596,9 +596,14 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
       canThrow = true;
     else if (Property->getName() == "IntrNoReturn")
       isNoReturn = true;
-    else if (Property->isSubClassOf("MemFence"))
-      FencedAddrSpaces.insert(Property->getValueAsInt("AddrSpace"));
-    else if (Property->isSubClassOf("NoCapture")) {
+    else if (Property->isSubClassOf("MemFence")) {
+      ListInit *AddrSpaces = Property->getValueAsListInit("AddrSpaces");
+      for (ListInit::const_iterator
+             I = AddrSpaces->begin(), E = AddrSpaces->end(); I != E; ++I)  {
+        unsigned AS = cast<IntInit>(*I)->getValue();
+        FencedAddrSpaces.insert(AS);
+      }
+    } else if (Property->isSubClassOf("NoCapture")) {
       unsigned ArgNo = Property->getValueAsInt("ArgNo");
       ArgumentAttributes.push_back(std::make_pair(ArgNo, NoCapture));
     } else if (Property->isSubClassOf("ReadOnly")) {
