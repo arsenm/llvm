@@ -320,23 +320,38 @@ static bool branchIsUnconditional(const BranchInst *Br) {
 bool SIAnnotateControlFlow::runOnFunction(Function &F) {
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
+  DEBUG(dbgs() << "Annotate:\n"; F.dump(););
+
   for (df_iterator<BasicBlock *> I = df_begin(&F.getEntryBlock()),
        E = df_end(&F.getEntryBlock()); I != E; ++I) {
 
     BranchInst *Term = dyn_cast<BranchInst>((*I)->getTerminator());
-
-    if (!Term || branchIsUnconditional(Term)) {
-      DEBUG(dbgs() << "Term is uncond: " << *Term << '\n');
-      if (isTopOfStack(*I))
+    if (!Term || Term->isUnconditional()) {
+      DEBUG(dbgs() << "No branch or true unconditional: " << *Term << '\n');
+      if (isTopOfStack(*I)) {
+        DEBUG(dbgs() << "Close control flow at " << **I << '\n');
         closeControlFlow(*I);
+      }
       continue;
-    } else {
-      if (Term) {
-        DEBUG(dbgs() << "Term is conditional: " << *Term << '\n');
+    }
+
+    // Check if this is a branch on a constant. This isn't removed at -O0.
+    if (Constant *Cond = dyn_cast<Constant>(Term->getCondition())) {
+      if (isa<UndefValue>(Cond) || Cond->isZeroValue()) {
+        DEBUG(dbgs() << "Branch on false / undef constant: " << *Term << '\n');
+        // Unconditionally false.
+
       } else {
-        DEBUG(dbgs() << "Term is null\n");
+        DEBUG(dbgs() << "Branch on true constant: " << *Term << '\n');
+        // Unconditionally true.
+        if (isTopOfStack(*I)) {
+          DEBUG(dbgs() << "Close control flow at " << **I << '\n');
+          closeControlFlow(*I);
+        }
+        continue;
       }
     }
+
 
     if (I.nodeVisited(Term->getSuccessor(1))) {
       if (isTopOfStack(*I))

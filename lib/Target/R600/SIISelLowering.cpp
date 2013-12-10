@@ -654,6 +654,12 @@ SDValue SITargetLowering::LowerBRCOND(SDValue BRCOND,
     Target = BR->getOperand(1);
   }
 
+#if 0
+  if (ConstantSDNode *Const = cast<ConstantSDNode>(Intr)) {
+
+  }
+#endif
+
   assert(Intr->getOpcode() == ISD::INTRINSIC_W_CHAIN);
 
   // Build the result and
