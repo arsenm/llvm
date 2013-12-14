@@ -1098,6 +1098,16 @@ void DAGCombiner::Run(CombineLevel AtLevel) {
           RV.getNode()->dump(&DAG);
           dbgs() << '\n');
 
+    if (LoadSDNode *Replacement = dyn_cast<LoadSDNode>(RV.getNode())) {
+      dbgs() << "  Dest AS = " << Replacement->getAddressSpace() << "\n";
+
+      if (LoadSDNode *Orig = dyn_cast<LoadSDNode>(N->getOperand(0))) {
+        dbgs() << "  Orig operand AS: " << Orig->getAddressSpace() << "\n";
+      } else {
+        dbgs() << "Not replacing load?\n";
+      }
+    }
+
     // Transfer debug value.
     DAG.TransferDbgValues(SDValue(N, 0), RV);
     WorkListRemover DeadNodes(*this);

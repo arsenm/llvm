@@ -54,8 +54,6 @@ SITargetLowering::SITargetLowering(TargetMachine &TM) :
   addRegisterClass(MVT::v16i32, &AMDGPU::VReg_512RegClass);
   addRegisterClass(MVT::v16f32, &AMDGPU::VReg_512RegClass);
 
-  computeRegisterProperties();
-
   // Condition Codes
   setCondCodeAction(ISD::SETONE, MVT::f32, Expand);
   setCondCodeAction(ISD::SETUEQ, MVT::f32, Expand);
@@ -92,6 +90,9 @@ SITargetLowering::SITargetLowering(TargetMachine &TM) :
   setOperationAction(ISD::STORE, MVT::v8i32, Custom);
   setOperationAction(ISD::STORE, MVT::v16i32, Custom);
 
+
+  setOperationAction(ISD::LOAD, MVT::v2i16, Custom);
+
   // We need to custom lower loads/stores from private memory
   setOperationAction(ISD::LOAD, MVT::i32, Custom);
   setOperationAction(ISD::LOAD, MVT::i64, Custom);
@@ -124,6 +125,12 @@ SITargetLowering::SITargetLowering(TargetMachine &TM) :
 
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
 
+//  setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v2i16, Promote);
+//  AddPromotedToType(ISD::INSERT_VECTOR_ELT, MVT::v2i16, MVT::v2i32);
+
+//  setOperationAction(ISD::LOAD, MVT::v2i16, Promote);
+//  AddPromotedToType(ISD::LOAD, MVT::v2i16, MVT::i32);
+
   setLoadExtAction(ISD::SEXTLOAD, MVT::i32, Expand);
   setLoadExtAction(ISD::SEXTLOAD, MVT::i8, Custom);
   setLoadExtAction(ISD::SEXTLOAD, MVT::i16, Custom);
@@ -151,6 +158,8 @@ SITargetLowering::SITargetLowering(TargetMachine &TM) :
   setTargetDAGCombine(ISD::SETCC);
 
   setSchedulingPreference(Sched::RegPressure);
+
+  computeRegisterProperties();
 }
 
 //===----------------------------------------------------------------------===//
@@ -167,6 +176,7 @@ bool SITargetLowering::allowsUnalignedMemoryAccesses(EVT  VT,
 }
 
 bool SITargetLowering::shouldSplitVectorElementType(EVT VT) const {
+  return false;
   return VT.bitsLE(MVT::i16);
 }
 
@@ -702,6 +712,19 @@ SDValue SITargetLowering::LowerBRCOND(SDValue BRCOND,
     Intr->getOperand(0));
 
   return Chain;
+}
+
+static unsigned getExtOpcode(ISD::LoadExtType ExtTy) {
+  switch (ExtTy) {
+  case ISD::SEXTLOAD:
+    return ISD::SIGN_EXTEND;
+  case ISD::EXTLOAD:
+  case ISD::ZEXTLOAD:
+    return ISD::ZERO_EXTEND;
+
+  default:
+    llvm_unreachable("Should only get extloads");
+  }
 }
 
 SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {

@@ -1912,6 +1912,29 @@ multiclass SMRD_Pattern <SMRD Instr_IMM, SMRD Instr_SGPR, ValueType vt> {
   >;
 }
 
+multiclass SMRD_Pattern_Ext <SMRD Instr_IMM, SMRD Instr_SGPR, ValueType vt, ValueType extvt> {
+
+  // 1. Offset as 8bit DWORD immediate
+  def : Pat <
+    (!cast<PatFrag>(az_extload#vt#_constant) (SIadd64bit32bit i64:$sbase, IMM8bitDWORD:$offset)),
+    (extvt (Instr_IMM $sbase, IMM8bitDWORD:$offset))
+  >;
+
+  // 2. Offset loaded in an 32bit SGPR
+  def : Pat <
+    (!cast<PatFrag>(az_extload#vt#_constant) (SIadd64bit32bit i64:$sbase, imm:$offset)),
+    (extvt (Instr_SGPR $sbase, (S_MOV_B32 imm:$offset)))
+  >;
+
+  // 3. No offset at all
+  def : Pat <
+    (!cast<PatFrag>(az_extload#vt#_constant) i64:$sbase),
+    (extvt (Instr_IMM $sbase, 0))
+  >;
+}
+
+//defm : SMRD_Pattern_Ext <S_LOAD_DWORD_IMM, S_LOAD_DWORD_SGPR, i16, i32>;
+
 defm : SMRD_Pattern <S_LOAD_DWORD_IMM, S_LOAD_DWORD_SGPR, f32>;
 defm : SMRD_Pattern <S_LOAD_DWORD_IMM, S_LOAD_DWORD_SGPR, i32>;
 defm : SMRD_Pattern <S_LOAD_DWORDX2_IMM, S_LOAD_DWORDX2_SGPR, i64>;
