@@ -207,6 +207,11 @@ bool SITargetLowering::allowsUnalignedMemoryAccesses(EVT  VT,
   // the alignment values we specify in the DataLayout.
   if (!VT.isSimple() || VT == MVT::Other)
     return false;
+
+  if (AddrSpace == AMDGPUAS::LOCAL_ADDRESS ||
+      AddrSpace == AMDGPUAS::CONSTANT_ADDRESS)
+    return false;
+
   return VT.bitsGT(MVT::i32);
 }
 
