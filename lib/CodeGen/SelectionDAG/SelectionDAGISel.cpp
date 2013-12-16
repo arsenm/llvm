@@ -848,6 +848,9 @@ void SelectionDAGISel::DoInstructionSelection() {
       if (Node->use_empty())
         continue;
 
+      DEBUG(dbgs() << "Try selecting: ";
+            Node->dump(););
+
       SDNode *ResNode = Select(Node);
 
       // FIXME: This is pretty gross.  'Select' should be changed to not return

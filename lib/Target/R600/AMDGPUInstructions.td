@@ -326,7 +326,7 @@ class POW_Common <AMDGPUInst log_ieee, AMDGPUInst exp_ieee, AMDGPUInst mul>
 /* --------------------- */
 
 /* Extract element pattern */
-class Extract_Element <ValueType sub_type, ValueType vec_type, int sub_idx, 
+class Extract_Element <ValueType sub_type, ValueType vec_type, int sub_idx,
                        SubRegIndex sub_reg>
   : Pat<
   (sub_type (vector_extract vec_type:$src, sub_idx)),
@@ -339,6 +339,14 @@ class Insert_Element <ValueType elem_type, ValueType vec_type,
   : Pat <
   (vector_insert vec_type:$vec, elem_type:$elem, sub_idx),
   (INSERT_SUBREG $vec, $elem, sub_reg)
+>;
+
+// Insert element for 64-bit elements.
+class Insert_Element_64 <ValueType elem_type, ValueType vec_type,
+                         int sub_idx, SubRegIndex sub_reg0, SubRegIndex sub_reg1>
+  : Pat <
+  (vector_insert vec_type:$vec, elem_type:$elem, sub_idx),
+  (INSERT_SUBREG (INSERT_SUBREG $vec, (EXTRACT_SUBREG $elem, sub0), sub_reg0), (EXTRACT_SUBREG $elem, sub1), sub_reg1)
 >;
 
 class Vector4_Build <ValueType vecType, ValueType elemType> : Pat <

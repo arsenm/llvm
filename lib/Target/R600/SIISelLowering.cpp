@@ -91,7 +91,7 @@ SITargetLowering::SITargetLowering(TargetMachine &TM) :
   setOperationAction(ISD::STORE, MVT::v16i32, Custom);
 
 
-  setOperationAction(ISD::LOAD, MVT::v2i16, Custom);
+//  setOperationAction(ISD::LOAD, MVT::v2i16, Custom);
 
   // We need to custom lower loads/stores from private memory
   setOperationAction(ISD::LOAD, MVT::i32, Custom);
@@ -176,7 +176,7 @@ bool SITargetLowering::allowsUnalignedMemoryAccesses(EVT  VT,
 }
 
 bool SITargetLowering::shouldSplitVectorElementType(EVT VT) const {
-  return false;
+//  return false;
   return VT.bitsLE(MVT::i16);
 }
 

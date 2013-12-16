@@ -1587,6 +1587,10 @@ foreach Index = 0-2 in {
   def Insert_Element_v2f32_#Index : Insert_Element <
     f32, v2f32, Index, !cast<SubRegIndex>(sub#Index)
   >;
+
+//  def Insert_Element_v2f64_#Index : Insert_Element_64 <
+//    f64, v2f64, Index, !cast<SubRegIndex>(sub#Index), !cast<SubRegIndex>(sub#!add(Index, 1))
+//  >;
 }
 
 foreach Index = 0-3 in {
@@ -1940,6 +1944,7 @@ defm : SMRD_Pattern <S_LOAD_DWORD_IMM, S_LOAD_DWORD_SGPR, i32>;
 defm : SMRD_Pattern <S_LOAD_DWORDX2_IMM, S_LOAD_DWORDX2_SGPR, i64>;
 defm : SMRD_Pattern <S_LOAD_DWORDX2_IMM, S_LOAD_DWORDX2_SGPR, v2i32>;
 defm : SMRD_Pattern <S_LOAD_DWORDX4_IMM, S_LOAD_DWORDX4_SGPR, i128>;
+defm : SMRD_Pattern <S_LOAD_DWORDX4_IMM, S_LOAD_DWORDX4_SGPR, v2i64>;
 defm : SMRD_Pattern <S_LOAD_DWORDX4_IMM, S_LOAD_DWORDX4_SGPR, v4i32>;
 defm : SMRD_Pattern <S_LOAD_DWORDX8_IMM, S_LOAD_DWORDX8_SGPR, v32i8>;
 defm : SMRD_Pattern <S_LOAD_DWORDX8_IMM, S_LOAD_DWORDX8_SGPR, v8i32>;
