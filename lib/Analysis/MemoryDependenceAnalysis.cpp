@@ -488,6 +488,12 @@ getPointerDependencyFrom(const AliasAnalysis::Location &MemLoc, bool isLoad,
       return MemDepResult::getClobber(Inst);
     }
 
+    if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
+      unsigned AS = MemLoc.Ptr->getType()->getPointerAddressSpace();
+      if (CI->getAttributes().addrspaceIsFenced(AS))
+        return MemDepResult::getClobber(Inst);
+    }
+
     // If this is an allocation, and if we know that the accessed pointer is to
     // the allocation, return Def.  This means that there is no dependence and
     // the access can be optimized based on that.  For example, a load could
