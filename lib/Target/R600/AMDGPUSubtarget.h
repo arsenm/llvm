@@ -49,6 +49,7 @@ private:
   enum Generation Gen;
   bool FP64;
   bool CaymanISA;
+  bool FlatAddressSpace;
   bool EnableIRStructurizer;
   bool EnableIfCvt;
   unsigned WavefrontSize;
@@ -68,6 +69,9 @@ public:
   enum Generation getGeneration() const;
   bool hasHWFP64() const;
   bool hasCaymanISA() const;
+  bool hasFlatAddressSpace() const {
+    return FlatAddressSpace;
+  }
   bool IsIRStructurizerEnabled() const;
   bool isIfCvtEnabled() const;
   unsigned getWavefrontSize() const;

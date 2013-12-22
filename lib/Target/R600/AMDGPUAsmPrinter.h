@@ -24,15 +24,19 @@ namespace llvm {
 class AMDGPUAsmPrinter : public AsmPrinter {
 private:
   struct SIProgramInfo {
-    SIProgramInfo() : NumSGPR(0), NumVGPR(0) {}
+    SIProgramInfo() : NumSGPR(0),
+                      NumVGPR(0),
+                      VCCUsed(false),
+                      FlatUsed(false) {}
     unsigned NumSGPR;
     unsigned NumVGPR;
+    bool VCCUsed;
+    bool FlatUsed;
   };
 
   void getSIProgramInfo(SIProgramInfo &Out, MachineFunction &MF) const;
-  void findNumUsedRegistersSI(MachineFunction &MF,
-                              unsigned &NumSGPR,
-                              unsigned &NumVGPR) const;
+  void findUsedRegistersSI(MachineFunction &MF,
+                           SIProgramInfo &Out) const;
 
   /// \brief Emit register usage information so that the GPU driver
   /// can correctly setup the GPU state.

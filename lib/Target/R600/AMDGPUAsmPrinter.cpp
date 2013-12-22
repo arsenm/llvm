@@ -64,7 +64,7 @@ bool AMDGPUAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   const AMDGPUSubtarget &STM = TM.getSubtarget<AMDGPUSubtarget>();
   SIProgramInfo KernelInfo;
   if (STM.getGeneration() > AMDGPUSubtarget::NORTHERN_ISLANDS) {
-    findNumUsedRegistersSI(MF, KernelInfo.NumSGPR, KernelInfo.NumVGPR);
+    findUsedRegistersSI(MF, KernelInfo);
     EmitProgramInfoSI(MF, KernelInfo);
   } else {
     EmitProgramInfoR600(MF);
@@ -184,14 +184,14 @@ void AMDGPUAsmPrinter::EmitProgramInfoR600(MachineFunction &MF) {
   }
 }
 
-void AMDGPUAsmPrinter::findNumUsedRegistersSI(MachineFunction &MF,
-                                              unsigned &NumSGPR,
-                                              unsigned &NumVGPR) const {
+void AMDGPUAsmPrinter::findUsedRegistersSI(MachineFunction &MF,
+                                           SIProgramInfo &Out) const {
   unsigned MaxSGPR = 0;
   unsigned MaxVGPR = 0;
   bool VCCUsed = false;
-  const SIRegisterInfo * RI =
-                static_cast<const SIRegisterInfo*>(TM.getRegisterInfo());
+  bool FlatUsed = false;
+  const SIRegisterInfo *RI
+    = static_cast<const SIRegisterInfo*>(TM.getRegisterInfo());
 
   for (MachineFunction::iterator BB = MF.begin(), BB_E = MF.end();
                                                   BB != BB_E; ++BB) {
@@ -212,6 +212,10 @@ void AMDGPUAsmPrinter::findNumUsedRegistersSI(MachineFunction &MF,
         unsigned reg = MO.getReg();
         if (reg == AMDGPU::VCC) {
           VCCUsed = true;
+          continue;
+        } else if (reg == AMDGPU::FLAT_SCRATCH_SIZE ||
+                   reg == AMDGPU::FLAT_SCRATCH_OFFSET) {
+          FlatUsed = true;
           continue;
         }
 
@@ -273,13 +277,18 @@ void AMDGPUAsmPrinter::findNumUsedRegistersSI(MachineFunction &MF,
   if (VCCUsed)
     MaxSGPR += 2;
 
-  NumSGPR = MaxSGPR;
-  NumVGPR = MaxVGPR;
+  if (FlatUsed)
+    MaxSGPR += 2;
+
+  Out.NumSGPR = MaxSGPR;
+  Out.NumVGPR = MaxVGPR;
+  Out.VCCUsed = VCCUsed;
+  Out.FlatUsed = FlatUsed;
 }
 
 void AMDGPUAsmPrinter::getSIProgramInfo(SIProgramInfo &Out,
                                         MachineFunction &MF) const {
-  findNumUsedRegistersSI(MF, Out.NumSGPR, Out.NumVGPR);
+  findUsedRegistersSI(MF, Out);
 }
 
 void AMDGPUAsmPrinter::EmitProgramInfoSI(MachineFunction &MF,
@@ -314,6 +323,7 @@ void AMDGPUAsmPrinter::EmitProgramInfoSI(MachineFunction &MF,
   if (MFI->ShaderType == ShaderType::COMPUTE) {
     OutStreamer.EmitIntValue(R_00B84C_COMPUTE_PGM_RSRC2, 4);
     OutStreamer.EmitIntValue(S_00B84C_LDS_SIZE(LDSBlocks), 4);
+    // TODO: Should probably note flat usage somewhere
   }
   if (MFI->ShaderType == ShaderType::PIXEL) {
     OutStreamer.EmitIntValue(R_00B02C_SPI_SHADER_PGM_RSRC2_PS, 4);

@@ -36,6 +36,7 @@ AMDGPUSubtarget::AMDGPUSubtarget(StringRef TT, StringRef CPU, StringRef FS) :
   Gen = AMDGPUSubtarget::R600;
   FP64 = false;
   CaymanISA = false;
+  FlatAddressSpace = false;
   EnableIRStructurizer = true;
   EnableIfCvt = true;
   WavefrontSize = 0;

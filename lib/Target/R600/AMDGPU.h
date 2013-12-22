@@ -76,33 +76,34 @@ enum AddressSpaces {
   GLOBAL_ADDRESS   = 1, ///< Address space for global memory (RAT0, VTX0).
   CONSTANT_ADDRESS = 2, ///< Address space for constant memory
   LOCAL_ADDRESS    = 3, ///< Address space for local memory.
-  REGION_ADDRESS   = 4, ///< Address space for region memory.
-  ADDRESS_NONE     = 5, ///< Address space for unknown memory.
-  PARAM_D_ADDRESS  = 6, ///< Address space for direct addressible parameter memory (CONST0)
-  PARAM_I_ADDRESS  = 7, ///< Address space for indirect addressible parameter memory (VTX1)
+  FLAT_ADDRESS     = 4, ///< Address space for flat accesses to local, private or global.
+  REGION_ADDRESS   = 5, ///< Address space for region memory.
+  ADDRESS_NONE     = 6, ///< Address space for unknown memory.
+  PARAM_D_ADDRESS  = 7, ///< Address space for direct addressible parameter memory (CONST0)
+  PARAM_I_ADDRESS  = 8, ///< Address space for indirect addressible parameter memory (VTX1)
 
   // Do not re-order the CONSTANT_BUFFER_* enums.  Several places depend on this
   // order to be able to dynamically index a constant buffer, for example:
   //
   // ConstantBufferAS = CONSTANT_BUFFER_0 + CBIdx
 
-  CONSTANT_BUFFER_0 = 8,
-  CONSTANT_BUFFER_1 = 9,
-  CONSTANT_BUFFER_2 = 10,
-  CONSTANT_BUFFER_3 = 11,
-  CONSTANT_BUFFER_4 = 12,
-  CONSTANT_BUFFER_5 = 13,
-  CONSTANT_BUFFER_6 = 14,
-  CONSTANT_BUFFER_7 = 15,
-  CONSTANT_BUFFER_8 = 16,
-  CONSTANT_BUFFER_9 = 17,
-  CONSTANT_BUFFER_10 = 18,
-  CONSTANT_BUFFER_11 = 19,
-  CONSTANT_BUFFER_12 = 20,
-  CONSTANT_BUFFER_13 = 21,
-  CONSTANT_BUFFER_14 = 22,
-  CONSTANT_BUFFER_15 = 23,
-  LAST_ADDRESS     = 24
+  CONSTANT_BUFFER_0 = 9,
+  CONSTANT_BUFFER_1 = 10,
+  CONSTANT_BUFFER_2 = 11,
+  CONSTANT_BUFFER_3 = 12,
+  CONSTANT_BUFFER_4 = 13,
+  CONSTANT_BUFFER_5 = 14,
+  CONSTANT_BUFFER_6 = 15,
+  CONSTANT_BUFFER_7 = 16,
+  CONSTANT_BUFFER_8 = 17,
+  CONSTANT_BUFFER_9 = 18,
+  CONSTANT_BUFFER_10 = 19,
+  CONSTANT_BUFFER_11 = 20,
+  CONSTANT_BUFFER_12 = 21,
+  CONSTANT_BUFFER_13 = 22,
+  CONSTANT_BUFFER_14 = 23,
+  CONSTANT_BUFFER_15 = 24,
+  LAST_ADDRESS = 25
 };
 
 } // namespace AMDGPUAS

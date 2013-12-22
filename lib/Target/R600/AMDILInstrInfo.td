@@ -74,12 +74,22 @@ def global_store : PatFrag<(ops node:$val, node:$ptr),
         return isGlobalStore(dyn_cast<StoreSDNode>(N));
 }]>;
 
+def flat_store : PatFrag<(ops node:$val, node:$ptr),
+    (store node:$val, node:$ptr), [{
+        return isFlatStore(dyn_cast<StoreSDNode>(N));
+}]>;
+
+
 //===----------------------------------------------------------------------===//
 // Load pattern fragments
 //===----------------------------------------------------------------------===//
 // Global address space loads
 def global_load : PatFrag<(ops node:$ptr), (load node:$ptr), [{
     return isGlobalLoad(dyn_cast<LoadSDNode>(N));
+}]>;
+// Flat address space loads
+def flat_load : PatFrag<(ops node:$ptr), (load node:$ptr), [{
+    return isFlatLoad(dyn_cast<LoadSDNode>(N));
 }]>;
 // Constant address space loads
 def constant_load : PatFrag<(ops node:$ptr), (load node:$ptr), [{

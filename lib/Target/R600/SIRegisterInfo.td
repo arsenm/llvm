@@ -17,10 +17,19 @@ class SIReg <string n, bits<16> encoding = 0> : Register<n> {
 }
 
 // Special Registers
+
+// Pair to indicate location of scratch space for flat accesses.
+// Offset is in units of 256-bytes,
+def FLAT_SCRATCH_OFFSET : SIReg <"FLAT_SCRATCH_OFFSET", 104>;
+
+// Size is the per-thread scratch size, in bytes.
+def FLAT_SCRATCH_SIZE : SIReg <"FLAT_SCRATCH_SIZE", 105>;
+
 def VCC : SIReg<"VCC", 106>;
 def EXEC : SIReg<"EXEC", 126>;
 def SCC : SIReg<"SCC", 253>;
 def M0 : SIReg <"M0", 124>;
+
 
 // SGPR registers
 foreach Index = 0-101 in {

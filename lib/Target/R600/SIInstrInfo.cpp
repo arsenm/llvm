@@ -395,6 +395,11 @@ bool SIInstrInfo::verifyInstruction(const MachineInstr *MI,
         if (!MO.isImplicit() && MO.getReg() == AMDGPU::EXEC)
           ++ConstantBusCount;
 
+        // XXX - I'm sort of guessing about this.
+        if (!MO.isImplicit() && (MO.getReg() == AMDGPU::FLAT_SCRATCH_SIZE ||
+                                 MO.getReg() == AMDGPU::FLAT_SCRATCH_OFFSET))
+          ++ConstantBusCount;
+
         // SGPRs use the constant bus
         if (MO.getReg() == AMDGPU::M0 || MO.getReg() == AMDGPU::VCC ||
             (!MO.isImplicit() &&

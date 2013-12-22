@@ -28,6 +28,8 @@ public:
   std::map<const GlobalValue *, unsigned> LocalMemoryObjects;
   /// Number of bytes in the LDS that are being used.
   unsigned LDSSize;
+  unsigned ScratchSize;
+  bool IsKernel;
 };
 
 }

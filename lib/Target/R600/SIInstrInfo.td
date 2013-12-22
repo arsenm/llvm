@@ -140,6 +140,8 @@ def FRAMEri32 : Operand<iPTR> {
 def SIOperand {
   int ZERO = 0x80;
   int VCC = 0x6A;
+  int FLAT_SCRATCH_OFFSET = 0x68;
+  int FLAT_SCRATCH_SIZE = 0x69;
 }
 
 include "SIInstrFormats.td"
@@ -496,6 +498,31 @@ class MUBUF_Store_Helper <bits<7> op, string name, RegisterClass vdataClass> :
   let slc = 0;
   let tfe = 0;
   let soffset = 128; // ZERO
+}
+
+class FLAT_Load_Helper <bits<7> op, string asm, RegisterClass regClass> :
+      FLAT <op, (outs regClass:$data),
+                (ins VReg_64:$addr),
+            asm#" $data, $addr, [M0, FLAT_SCRATCH_OFFSET, FLAT_SCRATCH_SIZE]", []> {
+  let glc = 0;
+  let slc = 0;
+  let tfe = 0;
+  let mayLoad = 1;
+  let Uses = [EXEC, M0, FLAT_SCRATCH_OFFSET, FLAT_SCRATCH_SIZE];
+}
+
+class FLAT_Store_Helper <bits<7> op, string name, RegisterClass vdataClass> :
+      FLAT <op, (outs), (ins vdataClass:$data, VReg_64:$addr),
+          name#" $data, $addr, [M0, FLAT_SCRATCH_OFFSET, FLAT_SCRATCH_SIZE]",
+         []> {
+
+  let mayLoad = 0;
+  let mayStore = 1;
+
+  // Encoding
+  let glc = 0;
+  let slc = 0;
+  let tfe = 0;
 }
 
 class MTBUF_Load_Helper <bits<3> op, string asm, RegisterClass regClass> : MTBUF <

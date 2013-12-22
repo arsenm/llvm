@@ -446,6 +446,36 @@ class MIMG <bits<7> op, dag outs, dag ins, string asm, list<dag> pattern> :
   let MIMG = 1;
 }
 
+class FLAT <bits<7> op, dag outs, dag ins, string asm, list<dag> pattern> :
+    Enc64<outs, ins, asm, pattern> {
+  bits<8> addr;
+  bits<8> data;
+  bits<8> vdst;
+  bits<1> slc;
+  bits<1> glc;
+  bits<1> tfe;
+
+  // 15-0 is reserved.
+  let Inst{16} = glc;
+  let Inst{17} = slc;
+  let Inst{24-18} = op;
+  let Inst{31-26} = 0x37; // Encoding.
+  let Inst{39-32} = addr;
+  let Inst{47-40} = data;
+  // 54-48 is reserved.
+  let Inst{55} = tfe;
+  let Inst{63-56} = vdst;
+
+  // Internally, FLAT instruction are executed as both an LDS and a
+  // Buffer instruction; so, they increment both VM_CNT and LGKM_CNT
+  // and are not considered done until both have been decremented.
+  let VM_CNT = 1;
+  let EXP_CNT = 1; // XXX - Need this?
+  let LGKM_CNT = 1;
+
+  let neverHasSideEffects = 1;
+}
+
 def EXP : Enc64<
   (outs),
   (ins i32imm:$en, i32imm:$tgt, i32imm:$compr, i32imm:$done, i32imm:$vm,

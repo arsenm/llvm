@@ -61,10 +61,12 @@ private:
   SDValue SimplifyI24(SDValue &Op);
   bool SelectI24(SDValue Addr, SDValue &Op);
   bool SelectU24(SDValue Addr, SDValue &Op);
+  SDNode *SelectAddrSpaceCast(SDNode *N);
 
   static bool checkType(const Value *ptr, unsigned int addrspace);
 
   static bool isGlobalStore(const StoreSDNode *N);
+  static bool isFlatStore(const StoreSDNode *N);
   static bool isPrivateStore(const StoreSDNode *N);
   static bool isLocalStore(const StoreSDNode *N);
   static bool isRegionStore(const StoreSDNode *N);
@@ -72,6 +74,7 @@ private:
   bool isCPLoad(const LoadSDNode *N) const;
   bool isConstantLoad(const LoadSDNode *N, int cbID) const;
   bool isGlobalLoad(const LoadSDNode *N) const;
+  bool isFlatLoad(const LoadSDNode *N) const;
   bool isParamLoad(const LoadSDNode *N) const;
   bool isPrivateLoad(const LoadSDNode *N) const;
   bool isLocalLoad(const LoadSDNode *N) const;
@@ -391,6 +394,9 @@ SDNode *AMDGPUDAGToDAGISel::Select(SDNode *N) {
                                         CurDAG->getVTList(MVT::Other),
                                         Ops);
   }
+
+  case ISD::ADDRSPACECAST:
+    return SelectAddrSpaceCast(N);
   }
   return SelectCode(N);
 }
@@ -416,6 +422,10 @@ bool AMDGPUDAGToDAGISel::isPrivateStore(const StoreSDNode *N) {
 
 bool AMDGPUDAGToDAGISel::isLocalStore(const StoreSDNode *N) {
   return checkType(N->getSrcValue(), AMDGPUAS::LOCAL_ADDRESS);
+}
+
+bool AMDGPUDAGToDAGISel::isFlatStore(const StoreSDNode *N) {
+  return checkType(N->getSrcValue(), AMDGPUAS::FLAT_ADDRESS);
 }
 
 bool AMDGPUDAGToDAGISel::isRegionStore(const StoreSDNode *N) {
@@ -448,6 +458,10 @@ bool AMDGPUDAGToDAGISel::isLocalLoad(const  LoadSDNode *N) const {
   return checkType(N->getSrcValue(), AMDGPUAS::LOCAL_ADDRESS);
 }
 
+bool AMDGPUDAGToDAGISel::isFlatLoad(const  LoadSDNode *N) const {
+  return checkType(N->getSrcValue(), AMDGPUAS::FLAT_ADDRESS);
+}
+
 bool AMDGPUDAGToDAGISel::isRegionLoad(const  LoadSDNode *N) const {
   return checkType(N->getSrcValue(), AMDGPUAS::REGION_ADDRESS);
 }
@@ -476,6 +490,7 @@ bool AMDGPUDAGToDAGISel::isPrivateLoad(const LoadSDNode *N) const {
   }
   if (!checkType(N->getSrcValue(), AMDGPUAS::LOCAL_ADDRESS)
       && !checkType(N->getSrcValue(), AMDGPUAS::GLOBAL_ADDRESS)
+      && !checkType(N->getSrcValue(), AMDGPUAS::FLAT_ADDRESS)
       && !checkType(N->getSrcValue(), AMDGPUAS::REGION_ADDRESS)
       && !checkType(N->getSrcValue(), AMDGPUAS::CONSTANT_ADDRESS)
       && !checkType(N->getSrcValue(), AMDGPUAS::PARAM_D_ADDRESS)
@@ -604,6 +619,58 @@ bool AMDGPUDAGToDAGISel::SelectU24(SDValue Op, SDValue &U24) {
     return true;
   }
   return false;
+}
+
+SDNode *AMDGPUDAGToDAGISel::SelectAddrSpaceCast(SDNode *N) {
+  AddrSpaceCastSDNode *ASC = cast<AddrSpaceCastSDNode>(N);
+  SDLoc DL(N);
+
+  assert(Subtarget.hasFlatAddressSpace() &&
+         "addrspacecast only supported with flat address space!");
+
+  assert((ASC->getSrcAddressSpace() != AMDGPUAS::CONSTANT_ADDRESS &&
+          ASC->getDestAddressSpace() != AMDGPUAS::CONSTANT_ADDRESS) &&
+         "Cannot cast address space to / from constant address!");
+
+  assert((ASC->getSrcAddressSpace() == AMDGPUAS::FLAT_ADDRESS ||
+          ASC->getDestAddressSpace() == AMDGPUAS::FLAT_ADDRESS) &&
+         "Can only cast to / from flat address space!");
+
+  // The flat instructions read the address as the index of the VGPR holding the
+  // address, so casting should just be reinterpreting the base VGPR, so just
+  // insert trunc / bitcast / zext.
+
+  SDValue Src = ASC->getOperand(0);
+  EVT DestVT = ASC->getValueType(0);
+  EVT SrcVT = Src.getValueType();
+
+  unsigned SrcSize = SrcVT.getSizeInBits();
+  unsigned DestSize = DestVT.getSizeInBits();
+
+  if (SrcSize > DestSize) {
+    assert(SrcSize == 64 && DestSize == 32);
+    return CurDAG->getMachineNode(
+      TargetOpcode::EXTRACT_SUBREG,
+      DL,
+      DestVT,
+      Src,
+      CurDAG->getTargetConstant(AMDGPU::sub0, MVT::i32));
+  }
+
+
+  if (DestSize > SrcSize) {
+    assert(SrcSize == 32 && DestSize == 64);
+    return CurDAG->getMachineNode(
+      TargetOpcode::SUBREG_TO_REG,
+      DL,
+      DestVT,
+      CurDAG->getTargetConstant(0, MVT::i32),
+      Src,
+      CurDAG->getTargetConstant(AMDGPU::sub1, MVT::i32));
+  }
+
+  assert(SrcSize == 64 && DestSize == 64);
+  return CurDAG->getNode(ISD::BITCAST, DL, DestVT, Src).getNode();
 }
 
 void AMDGPUDAGToDAGISel::PostprocessISelDAG() {
