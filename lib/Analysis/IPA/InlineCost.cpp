@@ -940,12 +940,8 @@ ConstantInt *CallAnalyzer::stripAndComputeInBoundsConstantOffsets(Value *&V) {
   if (!DL || !V->getType()->isPointerTy())
     return 0;
 
-<<<<<<< HEAD
-  unsigned IntPtrWidth = DL->getPointerSizeInBits();
-=======
   unsigned AS = V->getType()->getPointerAddressSpace();
-  unsigned IntPtrWidth = TD->getPointerSizeInBits(AS);
->>>>>>> Teach InlineCost about address spaces
+  unsigned IntPtrWidth = DL->getPointerSizeInBits(AS);
   APInt Offset = APInt::getNullValue(IntPtrWidth);
 
   // Even though we don't look through PHI nodes, we could be called on an
@@ -969,11 +965,7 @@ ConstantInt *CallAnalyzer::stripAndComputeInBoundsConstantOffsets(Value *&V) {
     assert(V->getType()->isPointerTy() && "Unexpected operand type!");
   } while (Visited.insert(V));
 
-<<<<<<< HEAD
-  Type *IntPtrTy = DL->getIntPtrType(V->getContext());
-=======
-  Type *IntPtrTy = TD->getIntPtrType(V->getContext(), AS);
->>>>>>> Teach InlineCost about address spaces
+  Type *IntPtrTy = DL->getIntPtrType(V->getContext(), AS);
   return cast<ConstantInt>(ConstantInt::get(IntPtrTy, Offset));
 }
 
@@ -1010,18 +1002,13 @@ bool CallAnalyzer::analyzeCall(CallSite CS) {
   for (unsigned I = 0, E = CS.arg_size(); I != E; ++I) {
     if (DL && CS.isByValArgument(I)) {
       // We approximate the number of loads and stores needed by dividing the
-      // size of the byval type by the target's pointer size.
+      // size of the byval type by the target's largest legal integer size.
       PointerType *PTy = cast<PointerType>(CS.getArgument(I)->getType());
-<<<<<<< HEAD
       unsigned TypeSize = DL->getTypeSizeInBits(PTy->getElementType());
-      unsigned PointerSize = DL->getPointerSizeInBits();
-=======
-      unsigned TypeSize = TD->getTypeSizeInBits(PTy->getElementType());
-      unsigned AS = PTy->getAddressSpace();
-      unsigned PointerSize = TD->getPointerSizeInBits(AS);
->>>>>>> Teach InlineCost about address spaces
+      unsigned LargestIntSize = DL->getLargestLegalIntTypeSize();
+
       // Ceiling division.
-      unsigned NumStores = (TypeSize + PointerSize - 1) / PointerSize;
+      unsigned NumStores = (TypeSize + LargestIntSize - 1) / LargestIntSize;
 
       // If it generates more than 8 stores it is likely to be expanded as an
       // inline memcpy so we take that as an upper bound. Otherwise we assume
