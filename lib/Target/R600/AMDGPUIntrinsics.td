@@ -11,25 +11,29 @@
 //
 //===----------------------------------------------------------------------===//
 
-def GlobalMemFence : MemFence<[1]>;
-def LDSMemFence : MemFence<[3]>;
-def GDSMemFence : MemFence<[4]>;
-def GlobalLDSMemFence : MemFence<[1, 3]>;
+def NoFences : NoMemFence<[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]>;
+def GlobalMemFence : NoMemFence<[0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]>;
+def LDSMemFence : NoMemFence<[0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]>;
+def GDSMemFence : NoMemFence<[0, 1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]>;
+def GlobalLDSMemFence : NoMemFence<[0, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]>;
+
+// Fence on global, LDS and GDS.
+def FullMemFence : NoMemFence<[0, 2, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]>;
 
 let TargetPrefix = "AMDGPU", isTarget = 1 in {
 
   def int_AMDGPU_load_const : Intrinsic<[llvm_float_ty], [llvm_i32_ty], [IntrNoMem]>;
   def int_AMDGPU_load_imm : Intrinsic<[llvm_v4f32_ty], [llvm_i32_ty], [IntrNoMem]>;
   def int_AMDGPU_reserve_reg : Intrinsic<[], [llvm_i32_ty], [IntrNoMem]>;
-  def int_AMDGPU_store_output : Intrinsic<[], [llvm_float_ty, llvm_i32_ty], []>;
+  def int_AMDGPU_store_output : Intrinsic<[], [llvm_float_ty, llvm_i32_ty], [NoFences]>;
   def int_AMDGPU_swizzle : Intrinsic<[llvm_v4f32_ty], [llvm_v4f32_ty, llvm_i32_ty], [IntrNoMem]>;
 
   def int_AMDGPU_arl : Intrinsic<[llvm_i32_ty], [llvm_float_ty], [IntrNoMem]>;
   def int_AMDGPU_cndlt : Intrinsic<[llvm_float_ty], [llvm_float_ty, llvm_float_ty, llvm_float_ty], [IntrNoMem]>;
   def int_AMDGPU_div : Intrinsic<[llvm_float_ty], [llvm_float_ty, llvm_float_ty], [IntrNoMem]>;
   def int_AMDGPU_dp4 : Intrinsic<[llvm_float_ty], [llvm_v4f32_ty, llvm_v4f32_ty], [IntrNoMem]>;
-  def int_AMDGPU_kill : Intrinsic<[], [llvm_float_ty], []>;
-  def int_AMDGPU_kilp : Intrinsic<[], [], []>;
+  def int_AMDGPU_kill : Intrinsic<[], [llvm_float_ty], [NoFences]>;
+  def int_AMDGPU_kilp : Intrinsic<[], [], [NoFences]>;
   def int_AMDGPU_lrp : Intrinsic<[llvm_float_ty], [llvm_float_ty, llvm_float_ty, llvm_float_ty], [IntrNoMem]>;
   def int_AMDGPU_mul : Intrinsic<[llvm_float_ty], [llvm_float_ty, llvm_float_ty], [IntrNoMem]>;
   def int_AMDGPU_pow : Intrinsic<[llvm_float_ty], [llvm_float_ty, llvm_float_ty], [IntrNoMem]>;

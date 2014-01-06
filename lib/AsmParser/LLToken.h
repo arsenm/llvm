@@ -110,7 +110,7 @@ namespace lltok {
     kw_nobuiltin,
     kw_nocapture,
     kw_noduplicate,
-    kw_memfence,
+    kw_nomemfence,
     kw_noimplicitfloat,
     kw_noinline,
     kw_nonlazybind,

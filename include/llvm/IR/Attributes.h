@@ -83,8 +83,8 @@ public:
     NoBuiltin,             ///< Callee isn't recognized as a builtin
     NoCapture,             ///< Function creates no aliases of pointer
     NoDuplicate,           ///< Call cannot be duplicated
-    MemFence,              ///< memfence(N) Writes to address space N may not be
-                           ///< reordered around the call.
+    NoMemFence,            ///< nomemfence(N) Writes to address space N may be <
+                           /// reordered around the call.
     NoImplicitFloat,       ///< Disable implicit floating point insts
     NoInline,              ///< inline=never
     NonLazyBind,           ///< Function is called early and/or
@@ -134,7 +134,7 @@ public:
   /// alignment set.
   static Attribute getWithAlignment(LLVMContext &Context, uint64_t Align);
   static Attribute getWithStackAlignment(LLVMContext &Context, uint64_t Align);
-  static Attribute getWithMemFence(LLVMContext &Context, uint64_t AddrSpace);
+  static Attribute getWithNoMemFence(LLVMContext &Context, unsigned AddrSpace);
 
   //===--------------------------------------------------------------------===//
   // Attribute Accessors
@@ -146,8 +146,8 @@ public:
   /// \brief Return true if the attribute is an alignment attribute.
   bool isAlignAttribute() const;
 
-  /// \brief Return true if the attribute is a memfence attribute.
-  bool isMemFenceAttribute() const;
+  /// \brief Return true if the attribute is a nomemfence attribute.
+  bool isNoMemFenceAttribute() const;
 
   /// \brief Return true if the attribute is a string (target-dependent)
   /// attribute.
@@ -406,7 +406,7 @@ class AttrBuilder {
   std::map<std::string, std::string> TargetDepAttrs;
 
   // Set of address spaces specified by memfences.
-  DenseSet<unsigned> FencedAddrSpaces;
+  DenseSet<unsigned> UnfencedAddrSpaces;
   uint64_t Alignment;
   uint64_t StackAlignment;
 
@@ -476,20 +476,20 @@ public:
   /// \brief Retrieve the stack alignment attribute, if it exists.
   uint64_t getStackAlignment() const { return StackAlignment; }
 
-  bool hasMemFenceAttr() const {
-    return !FencedAddrSpaces.empty();
+  bool hasNoMemFenceAttr() const {
+    return !UnfencedAddrSpaces.empty();
   }
 
-  bool addrspaceIsFenced(unsigned AS) const {
-    return FencedAddrSpaces.count(AS);
+  bool addrspaceIsUnfenced(unsigned AS) const {
+    return UnfencedAddrSpaces.count(AS);
   }
 
-  as_iterator memfence_begin() const {
-    return FencedAddrSpaces.begin();
+  as_iterator nomemfence_begin() const {
+    return UnfencedAddrSpaces.begin();
   }
 
-  as_iterator memfence_end() const {
-    return FencedAddrSpaces.end();
+  as_iterator nomemfence_end() const {
+    return UnfencedAddrSpaces.end();
   }
 
   /// \brief This turns an int alignment (which must be a power of 2) into the
@@ -502,7 +502,7 @@ public:
 
   /// \brief This turns an int address space ID into the form used internally in
   /// Attribute.
-  AttrBuilder &addMemFenceAttr(unsigned AS);
+  AttrBuilder &addNoMemFenceAttr(unsigned AS);
 
   /// \brief Return true if the builder contains no target-independent
   /// attributes.

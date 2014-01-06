@@ -69,7 +69,7 @@ class ReadNone<int argNo> : IntrinsicProperty {
 
 def IntrNoReturn : IntrinsicProperty;
 
-class MemFence<list<int> ASes> : IntrinsicProperty {
+class NoMemFence<list<int> ASes> : IntrinsicProperty {
   list<int> AddrSpaces = ASes;
 }
 

@@ -523,14 +523,14 @@ struct AttributeComparator {
     ModRefKind RK = getModRefKind(*R);
     if (LK != RK) return (LK > RK);
 
-    unsigned LFences = L->FencedAddrSpaces.size();
-    unsigned RFences = R->FencedAddrSpaces.size();
+    unsigned LFences = L->UnfencedAddrSpaces.size();
+    unsigned RFences = R->UnfencedAddrSpaces.size();
     if (LFences != RFences)
       return (LFences > RFences);
 
     for (DenseSet<unsigned>::const_iterator
-           I = L->FencedAddrSpaces.begin(), E = L->FencedAddrSpaces.end(),
-           J = R->FencedAddrSpaces.begin(); I != E; ++I, ++J) {
+           I = L->UnfencedAddrSpaces.begin(), E = L->UnfencedAddrSpaces.end(),
+           J = R->UnfencedAddrSpaces.begin(); I != E; ++I, ++J) {
       if (*I != *J)
         return (*I > *J);
     }
@@ -640,9 +640,9 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
     }
 
     ModRefKind modRef = getModRefKind(intrinsic);
-    bool hasMemFences = !intrinsic.FencedAddrSpaces.empty();
+    bool hasNoMemFences = !intrinsic.UnfencedAddrSpaces.empty();
 
-    if (!intrinsic.canThrow || modRef || intrinsic.isNoReturn || hasMemFences) {
+    if (!intrinsic.canThrow || modRef || intrinsic.isNoReturn || hasNoMemFences) {
       OS << "      const Attribute::AttrKind Atts[] = {";
       bool addComma = false;
       if (!intrinsic.canThrow) {
@@ -671,12 +671,12 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
       }
       OS << "};\n";
 
-      if (hasMemFences) {
+      if (hasNoMemFences) {
         OS << "      AttrBuilder B;\n";
         for (DenseSet<unsigned>::const_iterator
-               I = intrinsic.FencedAddrSpaces.begin(),
-               E = intrinsic.FencedAddrSpaces.end(); I != E; ++I) {
-          OS << "      B.addMemFenceAttr(" << *I << ");\n";
+               I = intrinsic.UnfencedAddrSpaces.begin(),
+               E = intrinsic.UnfencedAddrSpaces.end(); I != E; ++I) {
+          OS << "      B.addNoMemFenceAttr(" << *I << ");\n";
         }
 
         OS << "      for (unsigned I = 0; I < array_lengthof(Atts); ++I)\n"

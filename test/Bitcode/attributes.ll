@@ -218,18 +218,18 @@ define void @f36(i8* inalloca) {
         ret void
 }
 
-define void @f37() memfence(1)
+define void @f37() nomemfence(1)
 ; CHECK-LABEL: define void @f37()
 {
   ret void
 }
-define void @f38() memfence(1) memfence(2)
+define void @f38() nomemfence(1) nomemfence(2)
 ; CHECK-LABEL: define void @f38()
 {
   ret void
 }
 
-define void @f39() memfence(0)
+define void @f39() nomemfence(0)
 ; CHECK-LABEL: define void @f39()
 {
   ret void
@@ -259,7 +259,7 @@ define void @f39() memfence(0)
 ; CHECK: attributes #21 = { sspstrong }
 ; CHECK: attributes #22 = { minsize }
 ; CHECK: attributes #23 = { noinline optnone }
-; CHECK: attributes #24 = { memfence=1 }
-; CHECK: attributes #25 = { memfence=1 memfence=2 }
+; CHECK: attributes #24 = { nomemfence=1 }
+; CHECK: attributes #25 = { nomemfence=1 nomemfence=2 }
 ; CHECK: attributes #26 = { nobuiltin }
-; CHECK: attributes #26 = { memfence=0 }
+; CHECK: attributes #26 = { nomemfence=0 }

@@ -73,7 +73,7 @@ if.end:                                           ; preds = %if.then, %entry
   ret void
 }
 
-attributes #0 = { noduplicate nounwind memfence=3}
+attributes #0 = { noduplicate nounwind nomemfence=0 nomemfence=1 nomemfence=2 }
 attributes #1 = { nounwind readnone }
 attributes #2 = { nounwind }
-attributes #3 = { noduplicate nounwind memfence=1 }
+attributes #3 = { noduplicate nounwind nomemfence=0 nomemfence=2 nomemfence=3 }

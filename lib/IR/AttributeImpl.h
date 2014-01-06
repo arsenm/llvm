@@ -40,7 +40,7 @@ protected:
   enum AttrEntryKind {
     EnumAttrEntry,
     AlignAttrEntry,
-    MemFenceAttrEntry,
+    NoMemFenceAttrEntry,
     StringAttrEntry
   };
 
@@ -51,7 +51,7 @@ public:
 
   bool isEnumAttribute() const { return KindID == EnumAttrEntry; }
   bool isAlignAttribute() const { return KindID == AlignAttrEntry; }
-  bool isMemFenceAttribute() const { return KindID == MemFenceAttrEntry; }
+  bool isNoMemFenceAttribute() const { return KindID == NoMemFenceAttrEntry; }
   bool isStringAttribute() const { return KindID == StringAttrEntry; }
 
   bool hasAttribute(Attribute::AttrKind A) const;
@@ -69,7 +69,7 @@ public:
   void Profile(FoldingSetNodeID &ID) const {
     if (isEnumAttribute())
       Profile(ID, getKindAsEnum(), 0);
-    else if (isAlignAttribute() || isMemFenceAttribute())
+    else if (isAlignAttribute() || isNoMemFenceAttribute())
       Profile(ID, getKindAsEnum(), getValueAsInt());
     else
       Profile(ID, getKindAsString(), getValueAsString());
@@ -125,13 +125,13 @@ public:
   unsigned getAlignment() const { return Align; }
 };
 
-class MemFenceAttributeImpl : public EnumAttributeImpl {
+class NoMemFenceAttributeImpl : public EnumAttributeImpl {
   virtual void anchor();
   unsigned AddrSpace;
 
 public:
-  MemFenceAttributeImpl(unsigned AS)
-    : EnumAttributeImpl(MemFenceAttrEntry, Attribute::MemFence),
+  NoMemFenceAttributeImpl(unsigned AS)
+    : EnumAttributeImpl(NoMemFenceAttrEntry, Attribute::NoMemFence),
       AddrSpace(AS) {
   }
 

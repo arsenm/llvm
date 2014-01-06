@@ -596,12 +596,12 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
       canThrow = true;
     else if (Property->getName() == "IntrNoReturn")
       isNoReturn = true;
-    else if (Property->isSubClassOf("MemFence")) {
+    else if (Property->isSubClassOf("NoMemFence")) {
       ListInit *AddrSpaces = Property->getValueAsListInit("AddrSpaces");
       for (ListInit::const_iterator
              I = AddrSpaces->begin(), E = AddrSpaces->end(); I != E; ++I)  {
         unsigned AS = cast<IntInit>(*I)->getValue();
-        FencedAddrSpaces.insert(AS);
+        UnfencedAddrSpaces.insert(AS);
       }
     } else if (Property->isSubClassOf("NoCapture")) {
       unsigned ArgNo = Property->getValueAsInt("ArgNo");

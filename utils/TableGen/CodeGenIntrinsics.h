@@ -59,7 +59,7 @@ namespace llvm {
 
     IntrinsicSignature IS;
 
-    DenseSet<unsigned> FencedAddrSpaces;
+    DenseSet<unsigned> UnfencedAddrSpaces;
 
     // Memory mod/ref behavior of this intrinsic.
     enum {
