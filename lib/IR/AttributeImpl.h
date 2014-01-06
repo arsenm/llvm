@@ -179,7 +179,7 @@ public:
 
   unsigned getAlignment() const;
   unsigned getStackAlignment() const;
-  bool addrspaceIsFenced(unsigned AS) const;
+  bool addrspaceIsUnfenced(unsigned AS) const;
   std::string getAsString(bool InAttrGrp) const;
 
   typedef const Attribute *iterator;

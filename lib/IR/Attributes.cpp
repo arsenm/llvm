@@ -517,7 +517,7 @@ unsigned AttributeSetNode::getStackAlignment() const {
   return 0;
 }
 
-bool AttributeSetNode::addrspaceIsFenced(unsigned AS) const {
+bool AttributeSetNode::addrspaceIsUnfenced(unsigned AS) const {
   for (iterator I = begin(), E = end(); I != E; ++I) {
     if (I->hasAttribute(Attribute::NoMemFence)) {
       if (I->getAddressSpace() == AS)
@@ -928,9 +928,9 @@ unsigned AttributeSet::getStackAlignment(unsigned Index) const {
   return ASN ? ASN->getStackAlignment() : 0;
 }
 
-bool AttributeSet::addrspaceIsFenced(unsigned AS) const {
+bool AttributeSet::addrspaceIsUnfenced(unsigned AS) const {
   const AttributeSetNode *ASN = getAttributes(FunctionIndex);
-  return ASN ? ASN->addrspaceIsFenced(AS) : false;
+  return ASN ? ASN->addrspaceIsUnfenced(AS) : false;
 }
 
 std::string AttributeSet::getAsString(unsigned Index,

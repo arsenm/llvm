@@ -252,6 +252,10 @@ public:
     addFnAttr(Attribute::ReadOnly);
   }
 
+  bool addrspaceIsUnfenced(unsigned AS) const {
+    return AttributeSets.addrspaceIsUnfenced(AS);
+  }
+
   /// @brief Determine if the function cannot return.
   bool doesNotReturn() const {
     return AttributeSets.hasAttribute(AttributeSet::FunctionIndex,

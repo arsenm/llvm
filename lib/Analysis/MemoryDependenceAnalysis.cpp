@@ -490,7 +490,7 @@ getPointerDependencyFrom(const AliasAnalysis::Location &MemLoc, bool isLoad,
 
     if (CallInst *CI = dyn_cast<CallInst>(Inst)) {
       unsigned AS = MemLoc.Ptr->getType()->getPointerAddressSpace();
-      if (CI->getAttributes().addrspaceIsFenced(AS))
+      if (!CI->getAttributes().addrspaceIsUnfenced(AS))
         return MemDepResult::getClobber(Inst);
     }
 

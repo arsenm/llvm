@@ -324,8 +324,8 @@ public:
   /// \brief Get the stack alignment.
   unsigned getStackAlignment(unsigned Index) const;
 
-  /// \brief - Check if address space is fenced.
-  bool addrspaceIsFenced(unsigned AS) const;
+  /// \brief - Check if address space is nomemfence'd
+  bool addrspaceIsUnfenced(unsigned AS) const;
 
   /// \brief Return the attributes at the index as a string.
   std::string getAsString(unsigned Index, bool InAttrGrp = false) const;
