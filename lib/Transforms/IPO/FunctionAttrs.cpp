@@ -37,6 +37,7 @@ using namespace llvm;
 
 STATISTIC(NumReadNone, "Number of functions marked readnone");
 STATISTIC(NumReadOnly, "Number of functions marked readonly");
+STATISTIC(NumNoMemFence, "Number of functions marked nomemfence");
 STATISTIC(NumNoCapture, "Number of arguments marked nocapture");
 STATISTIC(NumReadNoneArg, "Number of arguments marked readnone");
 STATISTIC(NumReadOnlyArg, "Number of arguments marked readonly");
@@ -55,6 +56,9 @@ namespace {
 
     // AddReadAttrs - Deduce readonly/readnone attributes for the SCC.
     bool AddReadAttrs(const CallGraphSCC &SCC);
+
+    // AddNoMemFenceAttrs - Deduce nomemfence attributes for the SCC.
+    bool AddNoMemfenceAttrs(const CallGraphSCC &SCC);
 
     // AddArgumentAttrs - Deduce nocapture attributes for the SCC.
     bool AddArgumentAttrs(const CallGraphSCC &SCC);
@@ -289,6 +293,71 @@ bool FunctionAttrs::AddReadAttrs(const CallGraphSCC &SCC) {
       ++NumReadOnly;
     else
       ++NumReadNone;
+  }
+
+  return MadeChange;
+}
+
+bool FunctionAttrs::AddNoMemfenceAttrs(const CallGraphSCC &SCC) {
+  SmallPtrSet<const Function*, 8> SCCNodes;
+
+  // Fill SCCNodes with the elements of the SCC.  Used for quickly
+  // looking up whether a given CallGraphNode is in this SCC.
+  for (CallGraphSCC::iterator I = SCC.begin(), E = SCC.end(); I != E; ++I)
+    SCCNodes.insert((*I)->getFunction());
+
+  DenseSet<unsigned> UnfencedAddrSpaces;
+
+  // Check if any of the functions in the SCC could potentially fence memory.
+  for (CallGraphSCC::iterator I = SCC.begin(), E = SCC.end(); I != E; ++I) {
+    Function *F = (*I)->getFunction();
+    if (!F) // External node - may write memory. Just give up.
+      return false;
+
+    // Scan the function body for instructions that may fence memory.
+    for (inst_iterator II = inst_begin(F), E = inst_end(F); II != E; ++II) {
+      Instruction *I = &*II;
+
+      CallSite CS(cast<Value>(I));
+      if (CS) {
+        // readnone and readonly functions cannot fence.
+        if (CS.doesNotAccessMemory() || CS.onlyReadsMemory())
+          continue;
+
+        // Ignore calls to functions in the same SCC.
+        const Function *Called = CS.getCalledFunction();
+        if (Called && SCCNodes.count(Called))
+          continue;
+      } else if (isa<FenceInst>(I)) {
+        // The fence doesn't specify an address space, so unknown memfence.
+        return false;
+      }
+    }
+  }
+
+  // Success! Functions in this SCC do not fence some address spaces. Give them
+  // the appropriate attribute.
+  bool MadeChange = false;
+  for (CallGraphSCC::iterator I = SCC.begin(), E = SCC.end(); I != E; ++I) {
+    Function *F = (*I)->getFunction();
+    if (F->doesNotAccessMemory() || F->onlyReadsMemory())
+      continue;
+
+    MadeChange = true;
+
+    // Clear out any existing attributes.
+    AttrBuilder B;
+    B.addAttribute(Attribute::NoMemFence);
+    F->removeAttributes(AttributeSet::FunctionIndex,
+                        AttributeSet::get(F->getContext(),
+                                          AttributeSet::FunctionIndex, B));
+
+    // Add in the new attribute.
+    B.addNoMemFenceAttr(0);
+    F->addAttributes(AttributeSet::FunctionIndex,
+                     AttributeSet::get(F->getContext(),
+                                       AttributeSet::FunctionIndex, B));
+    ++NumNoMemFence;
   }
 
   return MadeChange;
@@ -1682,5 +1751,6 @@ bool FunctionAttrs::runOnSCC(CallGraphSCC &SCC) {
   Changed |= AddReadAttrs(SCC);
   Changed |= AddArgumentAttrs(SCC);
   Changed |= AddNoAliasAttrs(SCC);
+  Changed |= AddNoMemfenceAttrs(SCC);
   return Changed;
 }
