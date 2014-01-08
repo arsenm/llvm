@@ -180,6 +180,7 @@ public:
   unsigned getAlignment() const;
   unsigned getStackAlignment() const;
   bool addrspaceIsUnfenced(unsigned AS) const;
+  void getUnfencedAddrSpaces(SmallVectorImpl<unsigned> &) const;
   std::string getAsString(bool InAttrGrp) const;
 
   typedef const Attribute *iterator;

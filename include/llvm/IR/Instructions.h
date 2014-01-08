@@ -1317,6 +1317,10 @@ public:
     return AttributeList.addrspaceIsUnfenced(AS);
   }
 
+  void getUnfencedAddrSpaces(SmallVectorImpl<unsigned> &Out) const {
+    return AttributeList.getUnfencedAddrSpaces(Out);
+  }
+
   /// \brief Determine if the call does not access or only reads memory.
   bool onlyReadsMemory() const {
     return doesNotAccessMemory() || hasFnAttr(Attribute::ReadOnly);
@@ -2956,6 +2960,10 @@ public:
 
   bool addrspaceIsUnfenced(unsigned AS) const {
     return AttributeList.addrspaceIsUnfenced(AS);
+  }
+
+  void getUnfencedAddrSpaces(SmallVectorImpl<unsigned> &Out) const {
+    return AttributeList.getUnfencedAddrSpaces(Out);
   }
 
   /// \brief Determine if the call does not access or only reads memory.

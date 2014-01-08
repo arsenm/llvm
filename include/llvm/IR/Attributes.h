@@ -327,6 +327,8 @@ public:
   /// \brief - Check if address space is nomemfence'd
   bool addrspaceIsUnfenced(unsigned AS) const;
 
+  void getUnfencedAddrSpaces(SmallVectorImpl<unsigned> &) const;
+
   /// \brief Return the attributes at the index as a string.
   std::string getAsString(unsigned Index, bool InAttrGrp = false) const;
 
@@ -411,8 +413,6 @@ class AttrBuilder {
   uint64_t StackAlignment;
 
 public:
-  typedef DenseSet<unsigned>::const_iterator as_iterator;
-
   AttrBuilder() : Attrs(0), Alignment(0), StackAlignment(0) {}
   explicit AttrBuilder(uint64_t Val)
     : Attrs(0), Alignment(0), StackAlignment(0) {
@@ -480,16 +480,18 @@ public:
     return !UnfencedAddrSpaces.empty();
   }
 
-  bool addrspaceIsUnfenced(unsigned AS) const {
-    return UnfencedAddrSpaces.count(AS);
-  }
+  typedef DenseSet<unsigned>::const_iterator nomemfence_iterator;
 
-  as_iterator nomemfence_begin() const {
+  nomemfence_iterator nomemfence_begin() const {
     return UnfencedAddrSpaces.begin();
   }
 
-  as_iterator nomemfence_end() const {
+  nomemfence_iterator nomemfence_end() const {
     return UnfencedAddrSpaces.end();
+  }
+
+  bool addrspaceIsUnfenced(unsigned AS) const {
+    return UnfencedAddrSpaces.count(AS);
   }
 
   /// \brief This turns an int alignment (which must be a power of 2) into the

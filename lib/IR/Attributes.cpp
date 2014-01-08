@@ -528,6 +528,14 @@ bool AttributeSetNode::addrspaceIsUnfenced(unsigned AS) const {
   return false;
 }
 
+void AttributeSetNode::getUnfencedAddrSpaces(
+  SmallVectorImpl<unsigned> &Out) const {
+  for (iterator I = begin(), E = end(); I != E; ++I) {
+    if (I->hasAttribute(Attribute::NoMemFence))
+      Out.push_back(I->getAddressSpace());
+  }
+}
+
 std::string AttributeSetNode::getAsString(bool InAttrGrp) const {
   std::string Str;
   for (iterator I = begin(), E = end(); I != E; ++I) {
@@ -666,7 +674,7 @@ AttributeSet AttributeSet::get(LLVMContext &C, unsigned Index, AttrBuilder &B) {
       Attrs.push_back(std::make_pair(Index, Attribute::
                               getWithStackAlignment(C, B.getStackAlignment())));
     else if (Kind == Attribute::NoMemFence) {
-      for (AttrBuilder::as_iterator I = B.nomemfence_begin(),
+      for (AttrBuilder::nomemfence_iterator I = B.nomemfence_begin(),
              E = B.nomemfence_end(); I != E; ++I) {
         Attrs.push_back(std::make_pair(Index,
                                        Attribute::getWithNoMemFence(C, *I)));
@@ -933,6 +941,12 @@ bool AttributeSet::addrspaceIsUnfenced(unsigned AS) const {
   return ASN ? ASN->addrspaceIsUnfenced(AS) : false;
 }
 
+void AttributeSet::getUnfencedAddrSpaces(SmallVectorImpl<unsigned> &Out) const {
+  const AttributeSetNode *ASN = getAttributes(FunctionIndex);
+  if (ASN)
+    ASN->getUnfencedAddrSpaces(Out);
+}
+
 std::string AttributeSet::getAsString(unsigned Index,
                                       bool InAttrGrp) const {
   AttributeSetNode *ASN = getAttributes(Index);
@@ -1158,7 +1172,7 @@ AttrBuilder &AttrBuilder::merge(const AttrBuilder &B) {
 
 
   // Union all the nomemfences.
-  for (as_iterator I = B.nomemfence_begin(), E = B.nomemfence_end(); I != E; ++I)
+  for (nomemfence_iterator I = B.nomemfence_begin(), E = B.nomemfence_end(); I != E; ++I)
     addNoMemFenceAttr(*I);
 
   Attrs |= B.Attrs;
