@@ -1231,6 +1231,8 @@ AttrBuilder &AttrBuilder::addRawValue(uint64_t Val) {
         Alignment = 1ULL << ((A >> 16) - 1);
       else if (I == Attribute::StackAlignment)
         StackAlignment = 1ULL << ((A >> 26)-1);
+
+      assert(I != Attribute::NoMemFence && "What is this?");
     }
   }
 
