@@ -1110,7 +1110,8 @@ to std::set, but for pointers it uses something far better, :ref:`SmallPtrSet
 The magic of this class is that it handles small sets extremely efficiently, but
 gracefully handles extremely large sets without loss of efficiency.  The
 drawback is that the interface is quite small: it supports insertion, queries
-and erasing, but does not support iteration.
+and erasing. It may be iterated, but insertion and removal of elements
+invalidate the iterators.
 
 .. _dss_smallptrset:
 

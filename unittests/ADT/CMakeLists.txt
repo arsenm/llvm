@@ -28,6 +28,7 @@ set(ADTSources
   PointerUnionTest.cpp
   SCCIteratorTest.cpp
   SmallPtrSetTest.cpp
+  SmallSetTest.cpp
   SmallStringTest.cpp
   SmallVectorTest.cpp
   SparseBitVectorTest.cpp

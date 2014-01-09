@@ -25,8 +25,8 @@ namespace llvm {
 /// maintained with no mallocs.  If the set gets large, we expand to using an
 /// std::set to maintain reasonable lookup times.
 ///
-/// Note that this set does not provide a way to iterate over members in the
-/// set.
+/// Note that the iterators should be assumed to be invalidated on any insert or
+/// removal.
 template <typename T, unsigned N,  typename C = std::less<T> >
 class SmallSet {
   /// Use a SmallVector to hold the elements here (even though it will never
@@ -58,6 +58,81 @@ public:
     }
   }
 
+  class iterator {
+    friend class SmallSet;
+
+  private:
+    union {
+      typename SmallVector<T, N>::iterator SmallIterator;
+      typename std::set<T, C>::iterator LargeIterator;
+    };
+    bool IsSmall;
+
+    iterator(typename SmallVector<T, N>::iterator I)
+      : IsSmall(true) {
+      SmallIterator = I;
+    }
+
+    iterator(typename std::set<T, C>::iterator I)
+      : IsSmall(false) {
+      LargeIterator = I;
+    }
+
+  public:
+    const T &operator*() const {
+      if (IsSmall)
+        return *SmallIterator;
+
+      return *LargeIterator;
+    }
+
+    iterator &operator++() {
+      if (IsSmall)
+        ++SmallIterator;
+      else
+        ++LargeIterator;
+
+      return *this;
+    }
+
+    iterator operator++(int X) {
+      iterator Tmp = *this;
+      if (IsSmall)
+        ++SmallIterator;
+      else
+        ++LargeIterator;
+      return Tmp;
+    }
+
+    bool operator==(const iterator& Other) const {
+      assert(IsSmall == Other.IsSmall &&
+             "Comparing iterator from different sized sets");
+
+      if (IsSmall)
+        return SmallIterator == Other.SmallIterator;
+
+      return LargeIterator == Other.LargeIterator;
+    }
+
+    bool operator!=(const iterator& Other) const {
+      return !(*this == Other);
+    }
+  };
+
+  iterator begin() {
+    if (isSmall())
+      return iterator(Vector.begin());
+
+    return iterator(Set.begin());
+  }
+
+  iterator end() {
+    if (isSmall())
+      return iterator(Vector.end());
+
+    return iterator(Set.end());
+  }
+
   /// insert - Insert an element into the set if it isn't already there.
   /// Returns true if the element is inserted (it was not in the set before).
   bool insert(const T &V) {
@@ -86,7 +161,7 @@ public:
     for (; I != E; ++I)
       insert(*I);
   }
-  
+
   bool erase(const T &V) {
     if (!isSmall())
       return Set.erase(V);
