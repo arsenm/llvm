@@ -129,3 +129,31 @@ define void @test8() {
   call void (...)* @use(i32* %x)
   ret void
 }
+
+
+@const_array = constant [8 x i32] [ i32 1, i32 2, i32 3, i32 4, i32 5, i32 6, i32 7, i32 8 ], align 4
+
+declare void @foo(i8* readonly nocapture) nounwind
+declare void @bar(i8* readonly nocapture, i8* nocapture) nounwind
+
+; The alloca shoudl be eliminated since the call uses it only as readonly arg.
+define void @alloca_copy_constant_readonly_arg(i32* %p) nounwind {
+; CHECK-LABEL: @alloca_copy_constant_readonly_arg(
+; CHECK-NOT: alloca
+; CHECK: ret
+  %alloca = alloca i8, i32 32, align 4
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* %alloca, i8* bitcast ([8 x i32]* @const_array to i8*), i32 8, i32 4, i1 false) nounwind
+  call void @foo(i8* readonly nocapture %alloca) nounwind
+  ret void
+}
+
+; alloca also passed to second, nonreadonly argument.
+define void @alloca_copy_constant_readonly_nonreadonly_arg(i32* %p) nounwind {
+; CHECK-LABEL @alloca_copy_constant_readonly_nonreadonly_arg(
+; CHECK: alloca
+; CHECK: ret
+  %alloca = alloca i8, i32 32, align 4
+  call void @llvm.memcpy.p0i8.p0i8.i32(i8* %alloca, i8* bitcast ([8 x i32]* @const_array to i8*), i32 8, i32 4, i1 false) nounwind
+  call void @bar(i8* readonly nocapture %alloca, i8* nocapture %alloca) nounwind
+  ret void
+}

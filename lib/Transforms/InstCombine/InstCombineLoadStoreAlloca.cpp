@@ -89,7 +89,9 @@ isOnlyCopiedFromConstantGlobal(Value *V, MemTransferInst *&TheCopy,
       // If this is a readonly/readnone call site, then we know it is just a
       // load (but one that potentially returns the value itself), so we can
       // ignore it if we know that the value isn't captured.
-      if (CS.onlyReadsMemory() &&
+      // XXX - Do we need to check if the value also be passed as another
+      // argument that isn't readonly?
+      if ((CS.onlyReadsMemory() || CS.onlyReadsMemory(ArgNo)) &&
           (CS.getInstruction()->use_empty() || CS.doesNotCapture(ArgNo)))
         continue;
 
