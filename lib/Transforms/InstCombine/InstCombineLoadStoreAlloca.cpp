@@ -63,9 +63,9 @@ isOnlyCopiedFromConstantGlobal(Value *V, MemTransferInst *&TheCopy,
       continue;
     }
 
-    if (BitCastInst *BCI = dyn_cast<BitCastInst>(I)) {
+    if (isa<BitCastInst>(I) || isa<AddrSpaceCastInst>(I)) {
       // If uses of the bitcast are ok, we are ok.
-      if (!isOnlyCopiedFromConstantGlobal(BCI, TheCopy, ToDelete, IsOffset))
+      if (!isOnlyCopiedFromConstantGlobal(U, TheCopy, ToDelete, IsOffset))
         return false;
       continue;
     }

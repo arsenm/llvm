@@ -37,7 +37,9 @@ entry:
 }
 
 declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture, i64, i32, i1) nounwind
+declare void @llvm.memcpy.p1i8.p0i8.i64(i8 addrspace(1)* nocapture, i8* nocapture, i64, i32, i1) nounwind
 declare void @llvm.memcpy.p0i8.p1i8.i64(i8* nocapture, i8 addrspace(1)* nocapture, i64, i32, i1) nounwind
+declare void @llvm.memcpy.p1i8.p1i8.i64(i8 addrspace(1)* nocapture, i8 addrspace(1)* nocapture, i64, i32, i1) nounwind
 
 %T = type { i8, [123 x i8] }
 %U = type { i32, i32, i32, i32, i32 }
@@ -65,7 +67,28 @@ define void @test2() {
   ret void
 }
 
+define void @test2_addrspacecast() {
+  %A = alloca %T
+  %B = alloca %T
+  %a = addrspacecast %T* %A to i8 addrspace(1)*
+  %b = addrspacecast %T* %B to i8 addrspace(1)*
+
+; CHECK-LABEL: @test2_addrspacecast(
+
+; %A alloca is deleted
+; CHECK-NEXT: alloca [124 x i8]
+; CHECK-NEXT: getelementptr inbounds [124 x i8]*
+
+; use @G instead of %A
+; CHECK-NEXT: call void @llvm.memcpy.p1i8.p1i8.i64(i8* %{{.*}}, i8* getelementptr inbounds (%T* @G, i64 0, i32 0)
+  call void @llvm.memcpy.p1i8.p0i8.i64(i8 addrspace(1)* %a, i8* bitcast (%T* @G to i8*), i64 124, i32 4, i1 false)
+  call void @llvm.memcpy.p1i8.p1i8.i64(i8 addrspace(1)* %b, i8 addrspace(1)* %a, i64 124, i32 4, i1 false)
+  call void @bar_as1(i8 addrspace(1)* %b)
+  ret void
+}
+
 declare void @bar(i8*)
+declare void @bar_as1(i8 addrspace(1)*)
 
 
 ;; Should be able to eliminate the alloca.
