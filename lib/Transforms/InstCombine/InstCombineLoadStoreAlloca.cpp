@@ -29,10 +29,13 @@ STATISTIC(NumGlobalCopies, "Number of allocas copied from constant global");
 static bool pointsToConstantGlobal(Value *V) {
   if (GlobalVariable *GV = dyn_cast<GlobalVariable>(V))
     return GV->isConstant();
-  if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V))
+
+  if (ConstantExpr *CE = dyn_cast<ConstantExpr>(V)) {
     if (CE->getOpcode() == Instruction::BitCast ||
+        CE->getOpcode() == Instruction::AddrSpaceCast ||
         CE->getOpcode() == Instruction::GetElementPtr)
       return pointsToConstantGlobal(CE->getOperand(0));
+  }
   return false;
 }
 
