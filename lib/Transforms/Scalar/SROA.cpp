@@ -640,7 +640,7 @@ private:
         if (!GEP->hasAllZeroIndices())
           return GEP;
       } else if (!isa<BitCastInst>(I) && !isa<PHINode>(I) &&
-                 !isa<SelectInst>(I)) {
+                 !isa<SelectInst>(I) && !isa<AddrSpaceCastInst>(I)) {
         return I;
       }
 
