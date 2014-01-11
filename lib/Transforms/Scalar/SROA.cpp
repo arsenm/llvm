@@ -393,6 +393,13 @@ private:
     return Base::visitBitCastInst(BC);
   }
 
+  void visitAddrSpaceCastInst(AddrSpaceCastInst &ASC) {
+    if (ASC.use_empty())
+      return markAsDead(ASC);
+
+    return Base::visitAddrSpaceCastInst(ASC);
+  }
+
   void visitGetElementPtrInst(GetElementPtrInst &GEPI) {
     if (GEPI.use_empty())
       return markAsDead(GEPI);
@@ -853,6 +860,8 @@ public:
         Ptr = BCI->getOperand(0);
       else if (GetElementPtrInst *GEPI = dyn_cast<GetElementPtrInst>(Ptr))
         Ptr = GEPI->getPointerOperand();
+      else if (AddrSpaceCastInst *ASC = dyn_cast<AddrSpaceCastInst>(Ptr))
+        Ptr = ASC->getOperand(0);
       else
         return false;
 
@@ -2923,6 +2932,11 @@ private:
 
   bool visitBitCastInst(BitCastInst &BC) {
     enqueueUsers(BC);
+    return false;
+  }
+
+  bool visitAddrSpaceCastInst(AddrSpaceCastInst &ASC) {
+    enqueueUsers(ASC);
     return false;
   }
 

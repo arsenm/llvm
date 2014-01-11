@@ -65,6 +65,22 @@ L2:
   ret i64 %Z
 }
 
+define i64 @test2_addrspacecast(i64 %X) {
+; CHECK-LABEL: @test2_addrspacecast(
+; CHECK-NOT: alloca
+; CHECK: ret i64 %X
+
+entry:
+  %A = alloca [8 x i8]
+  %B = addrspacecast [8 x i8]* %A to i64 addrspace(1)*
+  store i64 %X, i64 addrspace(1)* %B
+  br label %L2
+
+L2:
+  %Z = load i64 addrspace(1)* %B
+  ret i64 %Z
+}
+
 define void @test3(i8* %dst, i8* %src) {
 ; CHECK-LABEL: @test3(
 
