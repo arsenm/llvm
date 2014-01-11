@@ -1498,7 +1498,8 @@ static Value *getAdjustedPtr(IRBuilderTy &IRB, const DataLayout &DL, Value *Ptr,
     }
 
     // Peel off a layer of the pointer and update the offset appropriately.
-    if (Operator::getOpcode(Ptr) == Instruction::BitCast) {
+    unsigned Opc = Operator::getOpcode(Ptr);
+    if (Opc == Instruction::BitCast || Opc == Instruction::AddrSpaceCast) {
       Ptr = cast<Operator>(Ptr)->getOperand(0);
     } else if (GlobalAlias *GA = dyn_cast<GlobalAlias>(Ptr)) {
       if (GA->mayBeOverridden())
@@ -1525,8 +1526,10 @@ static Value *getAdjustedPtr(IRBuilderTy &IRB, const DataLayout &DL, Value *Ptr,
   Ptr = OffsetPtr;
 
   // On the off chance we were targeting i8*, guard the bitcast here.
-  if (Ptr->getType() != PointerTy)
-    Ptr = IRB.CreateBitCast(Ptr, PointerTy, NamePrefix + "sroa_cast");
+  if (Ptr->getType() != PointerTy) {
+    Ptr = IRB.CreatePointerBitCastOrAddrSpaceCast(Ptr, PointerTy,
+                                                  NamePrefix + "sroa_cast");
+  }
 
   return Ptr;
 }

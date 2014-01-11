@@ -841,6 +841,27 @@ entry:
   ret i32 undef
 }
 
+declare void @llvm.memcpy.p0i8.p1i8.i32(i8* nocapture, i8 addrspace(1)* nocapture, i32, i32, i1) nounwind
+
+define i32 @test19_addrspacecast(%opaque* %x) {
+; This input will cause us to try to compute a natural GEP when rewriting
+; pointers in such a way that we try to GEP through the opaque type. Previously,
+; a check for an unsized type was missing and this crashed. Ensure it behaves
+; reasonably now.
+; CHECK-LABEL: @test19_addrspacecast(
+; CHECK-NOT: alloca
+; CHECK: ret i32 undef
+
+entry:
+  %a = alloca { i64, i8* }
+  %cast1 = addrspacecast %opaque* %x to i8 addrspace(1)*
+  %cast2 = bitcast { i64, i8* }* %a to i8*
+  call void @llvm.memcpy.p0i8.p1i8.i32(i8* %cast2, i8 addrspace(1)* %cast1, i32 16, i32 1, i1 false)
+  %gep = getelementptr inbounds { i64, i8* }* %a, i32 0, i32 0
+  %val = load i64* %gep
+  ret i32 undef
+}
+
 define i32 @test20() {
 ; Ensure we can track negative offsets (before the beginning of the alloca) and
 ; negative relative offsets from offsets starting past the end of the alloca.
