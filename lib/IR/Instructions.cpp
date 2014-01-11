@@ -2511,7 +2511,33 @@ CastInst *CastInst::CreatePointerCast(Value *S, Type *Ty,
   return Create(Instruction::BitCast, S, Ty, Name, InsertBefore);
 }
 
-CastInst *CastInst::CreateIntegerCast(Value *C, Type *Ty, 
+CastInst *CastInst::CreatePointerBitCastOrAddrSpaceCast(
+  Value *S, Type *Ty,
+  const Twine &Name,
+  BasicBlock *InsertAtEnd) {
+  assert(S->getType()->isPtrOrPtrVectorTy() && "Invalid cast");
+  assert(Ty->isPtrOrPtrVectorTy() && "Invalid cast");
+
+  if (S->getType()->getPointerAddressSpace() != Ty->getPointerAddressSpace())
+    return Create(Instruction::AddrSpaceCast, S, Ty, Name, InsertAtEnd);
+
+  return Create(Instruction::BitCast, S, Ty, Name, InsertAtEnd);
+}
+
+CastInst *CastInst::CreatePointerBitCastOrAddrSpaceCast(
+  Value *S, Type *Ty,
+  const Twine &Name,
+  Instruction *InsertBefore) {
+  assert(S->getType()->isPtrOrPtrVectorTy() && "Invalid cast");
+  assert(Ty->isPtrOrPtrVectorTy() && "Invalid cast");
+
+  if (S->getType()->getPointerAddressSpace() != Ty->getPointerAddressSpace())
+    return Create(Instruction::AddrSpaceCast, S, Ty, Name, InsertBefore);
+
+  return Create(Instruction::BitCast, S, Ty, Name, InsertBefore);
+}
+
+CastInst *CastInst::CreateIntegerCast(Value *C, Type *Ty,
                                       bool isSigned, const Twine &Name,
                                       Instruction *InsertBefore) {
   assert(C->getType()->isIntOrIntVectorTy() && Ty->isIntOrIntVectorTy() &&
