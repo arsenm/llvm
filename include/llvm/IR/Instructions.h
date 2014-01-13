@@ -3716,13 +3716,22 @@ public:
 
 /// \brief Wrapper class to help dealing with places where either a bitcast or
 /// an addrspacecast is acceptable.
-class BitCastOrAddrSpaceCast {
+class PtrPtrCast {
 private:
   Instruction *Inst;
 
+  static bool isPtrPtrBitcast(Value *V) {
+    if (const BitCastInst *BCI = dyn_cast<BitCastInst>(V)) {
+      return BCI->getType()->isPtrOrPtrVectorTy() &&
+             BCI->getOperand(0)->getType()->isPtrOrPtrVectorTy();
+    }
+
+    return false;
+  }
+
 public:
-  BitCastOrAddrSpaceCast(Value *V)
-    : Inst((isa<BitCastInst>(V) || isa<AddrSpaceCastInst>(V)) ?
+  PtrPtrCast(Value *V)
+    : Inst((isPtrPtrBitcast(V) || isa<AddrSpaceCastInst>(V)) ?
              cast<Instruction>(V) : 0) { }
 
   inline Instruction *operator->() const {
