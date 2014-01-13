@@ -70,3 +70,34 @@ define i1 @test7(i8* %A) {
 ; CHECK: %C = icmp eq i8* %A, null
 ; CHECK: ret i1 %C
 }
+
+define i1 @test8(i8* %A, i8* %B) {
+; CHECK-LABEL: @test8(
+; CHECK-NEXT: %E = icmp eq i8* %A, %B
+; CHECK-NEXT: ret i1 %E
+  %C = bitcast i8* %A to i32*
+  %D = bitcast i8* %B to i32*
+  %E = icmp eq i32* %C, %D
+  ret i1 %E
+}
+
+define i1 @test9(i8* %A) {
+; CHECK-LABEL: @test9(
+; CHECK: %C = icmp eq i8* %A, null
+; CHECK: ret i1 %C
+
+  %B = addrspacecast i8* %A to i32 addrspace(1)*
+  %C = icmp eq i32 addrspace(1)* %B, null
+  ret i1 %C
+}
+
+define i1 @test10(i8* %A, i8* %B) {
+; CHECK-LABEL: @test10(
+; CHECK-NEXT: %E = icmp eq i8* %A, %B
+; CHECK-NEXT: ret i1 %E
+
+  %C = addrspacecast i8* %A to i32 addrspace(1)*
+  %D = addrspacecast i8* %B to i32 addrspace(1)*
+  %E = icmp eq i32 addrspace(1)* %C, %D
+  ret i1 %E
+}

@@ -2581,25 +2581,29 @@ Instruction *InstCombiner::visitICmpInst(ICmpInst &I) {
   // Test to see if the operands of the icmp are casted versions of other
   // values.  If the ptr->ptr cast can be stripped off both arguments, we do so
   // now.
-  if (BitCastInst *CI = dyn_cast<BitCastInst>(Op0)) {
+  if (BitCastOrAddrSpaceCast CI = BitCastOrAddrSpaceCast(Op0)) {
     if (Op0->getType()->isPointerTy() &&
-        (isa<Constant>(Op1) || isa<BitCastInst>(Op1))) {
+        (isa<Constant>(Op1) ||
+         isa<BitCastInst>(Op1) ||
+         isa<AddrSpaceCastInst>(Op1))) {
       // We keep moving the cast from the left operand over to the right
       // operand, where it can often be eliminated completely.
       Op0 = CI->getOperand(0);
 
       // If operand #1 is a bitcast instruction, it must also be a ptr->ptr cast
       // so eliminate it as well.
-      if (BitCastInst *CI2 = dyn_cast<BitCastInst>(Op1))
+      if (BitCastOrAddrSpaceCast CI2 = BitCastOrAddrSpaceCast(Op1))
         Op1 = CI2->getOperand(0);
 
       // If Op1 is a constant, we can fold the cast into the constant.
       if (Op0->getType() != Op1->getType()) {
         if (Constant *Op1C = dyn_cast<Constant>(Op1)) {
-          Op1 = ConstantExpr::getBitCast(Op1C, Op0->getType());
+          Op1 = ConstantExpr::getPointerBitCastOrAddrSpaceCast(Op1C,
+                                                               Op0->getType());
         } else {
           // Otherwise, cast the RHS right before the icmp
-          Op1 = Builder->CreateBitCast(Op1, Op0->getType());
+          Op1 = Builder->CreatePointerBitCastOrAddrSpaceCast(Op1,
+                                                             Op0->getType());
         }
       }
       return new ICmpInst(I.getPredicate(), Op0, Op1);
