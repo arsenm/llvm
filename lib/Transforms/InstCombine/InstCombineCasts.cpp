@@ -1784,11 +1784,6 @@ Instruction *InstCombiner::visitBitCast(BitCastInst &CI) {
   if (DestTy == Src->getType())
     return ReplaceInstUsesWith(CI, Src);
 
-  // Don't touch bitcasts of addrspacecasts. This undoes the work we did to
-  // split them up, and you end up with extra instructions.
-  if (isa<AddrSpaceCastInst>(Src))
-    return 0;
-
   if (PointerType *DstPTy = dyn_cast<PointerType>(DestTy)) {
     PointerType *SrcPTy = cast<PointerType>(SrcTy);
     Type *DstElTy = DstPTy->getElementType();
