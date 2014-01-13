@@ -1906,22 +1906,5 @@ Instruction *InstCombiner::visitBitCast(BitCastInst &CI) {
 }
 
 Instruction *InstCombiner::visitAddrSpaceCast(AddrSpaceCastInst &CI) {
-  // If the destination pointer element type is not the the same as the source's
-  // do the addrspacecast to the same type, and then the bitcast in the new
-  // address space. This allows the cast to be exposed to other transforms.
-  Value *Src = CI.getOperand(0);
-  PointerType *SrcTy = cast<PointerType>(Src->getType()->getScalarType());
-  PointerType *DestTy = cast<PointerType>(CI.getType()->getScalarType());
-
-  Type *SrcElemTy = SrcTy->getElementType();
-  if (SrcElemTy != DestTy->getElementType()) {
-    Type *MidTy = PointerType::get(SrcElemTy, DestTy->getAddressSpace());
-    if (CI.getType()->isVectorTy()) // Handle vectors of pointers.
-      MidTy = VectorType::get(MidTy, CI.getType()->getVectorNumElements());
-
-    Value *NewASCast = Builder->CreateAddrSpaceCast(Src, MidTy);
-    return new BitCastInst(NewASCast, CI.getType());
-  }
-
   return commonPointerCastTransforms(CI);
 }
