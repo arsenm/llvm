@@ -2311,38 +2311,25 @@ unsigned CastInst::isEliminableCastPair(
       return 0;
     }
     case 12: {
-      // addrspacecast, addrspacecast -> bitcast,       if SrcAS == DstAS
       // addrspacecast, addrspacecast -> addrspacecast, if SrcAS != DstAS
       if (SrcTy->getPointerAddressSpace() != DstTy->getPointerAddressSpace())
         return Instruction::AddrSpaceCast;
-      return Instruction::BitCast;
+      return 0;
     }
     case 13:
-      // FIXME: this state can be merged with (1), but the following assert
-      // is useful to check the correcteness of the sequence due to semantic
-      // change of bitcast.
-      assert(
-        SrcTy->isPtrOrPtrVectorTy() &&
-        MidTy->isPtrOrPtrVectorTy() &&
-        DstTy->isPtrOrPtrVectorTy() &&
-        SrcTy->getPointerAddressSpace() != MidTy->getPointerAddressSpace() &&
-        MidTy->getPointerAddressSpace() == DstTy->getPointerAddressSpace() &&
-        "Illegal addrspacecast, bitcast sequence!");
-      // Allowed, use first cast's opcode
-      return firstOp;
+      // addrspacecast, bitcast -> addrspacecast if the pointer element types
+      // are the same.
+      if (SrcTy->getPointerElementType() == DstTy->getPointerElementType())
+        return Instruction::AddrSpaceCast;
+      return 0;
+
     case 14:
-      // FIXME: this state can be merged with (2), but the following assert
-      // is useful to check the correcteness of the sequence due to semantic
-      // change of bitcast.
-      assert(
-        SrcTy->isPtrOrPtrVectorTy() &&
-        MidTy->isPtrOrPtrVectorTy() &&
-        DstTy->isPtrOrPtrVectorTy() &&
-        SrcTy->getPointerAddressSpace() == MidTy->getPointerAddressSpace() &&
-        MidTy->getPointerAddressSpace() != DstTy->getPointerAddressSpace() &&
-        "Illegal bitcast, addrspacecast sequence!");
-      // Allowed, use second cast's opcode
-      return secondOp;
+      // bitcast, addrspacecast -> addrspacecast if the pointer element types
+      // are the same.
+      if (MidTy->getPointerElementType() == DstTy->getPointerElementType())
+        return Instruction::AddrSpaceCast;
+      return 0;
+
     case 15:
       // FIXME: this state can be merged with (1), but the following assert
       // is useful to check the correcteness of the sequence due to semantic
