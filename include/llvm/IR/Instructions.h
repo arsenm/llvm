@@ -3714,6 +3714,46 @@ public:
   }
 };
 
+/// \brief Wrapper class to help dealing with places where either a bitcast or
+/// an addrspacecast is acceptable.
+class BitCastOrAddrSpaceCast {
+private:
+  Instruction *Inst;
+
+public:
+  BitCastOrAddrSpaceCast(Value *V)
+    : Inst((isa<BitCastInst>(V) || isa<AddrSpaceCastInst>(V)) ?
+             cast<Instruction>(V) : 0) { }
+
+  inline Instruction *operator->() const {
+    return Inst;
+  }
+
+  Instruction *get() const {
+    return Inst;
+  }
+
+  operator bool() const {
+    return (Inst != 0);
+  }
+
+  bool isBitcast() const {
+    return isa<BitCastInst>(Inst);
+  }
+
+  bool isAddrSpaceCast() const {
+    return isa<AddrSpaceCastInst>(Inst);
+  }
+
+  BitCastInst *getBitCast() {
+    return dyn_cast<BitCastInst>(Inst);
+  }
+
+  AddrSpaceCastInst *getAddrSpaceCast() {
+    return dyn_cast<AddrSpaceCastInst>(Inst);
+  }
+};
+
 } // End llvm namespace
 
 #endif
