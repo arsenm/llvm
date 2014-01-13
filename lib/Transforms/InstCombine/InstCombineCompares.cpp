@@ -2581,18 +2581,17 @@ Instruction *InstCombiner::visitICmpInst(ICmpInst &I) {
   // Test to see if the operands of the icmp are casted versions of other
   // values.  If the ptr->ptr cast can be stripped off both arguments, we do so
   // now.
-  if (BitCastOrAddrSpaceCast CI = BitCastOrAddrSpaceCast(Op0)) {
-    if (Op0->getType()->isPointerTy() &&
-        (isa<Constant>(Op1) ||
-         isa<BitCastInst>(Op1) ||
-         isa<AddrSpaceCastInst>(Op1))) {
+  if (PtrPtrCast CI = PtrPtrCast(Op0)) {
+    if (isa<Constant>(Op1) ||
+        isa<BitCastInst>(Op1) ||
+        isa<AddrSpaceCastInst>(Op1)) {
       // We keep moving the cast from the left operand over to the right
       // operand, where it can often be eliminated completely.
       Op0 = CI->getOperand(0);
 
       // If operand #1 is a bitcast instruction, it must also be a ptr->ptr cast
       // so eliminate it as well.
-      if (BitCastOrAddrSpaceCast CI2 = BitCastOrAddrSpaceCast(Op1))
+      if (PtrPtrCast CI2 = PtrPtrCast(Op1))
         Op1 = CI2->getOperand(0);
 
       // If Op1 is a constant, we can fold the cast into the constant.
