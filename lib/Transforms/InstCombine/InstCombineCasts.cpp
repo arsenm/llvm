@@ -76,7 +76,7 @@ static Value *DecomposeSimpleLinearExpr(Value *Val, unsigned &Scale,
 
 /// PromoteCastOfAllocation - If we find a cast of an allocation instruction,
 /// try to eliminate the cast by moving the type information into the alloc.
-Instruction *InstCombiner::PromoteCastOfAllocation(BitCastInst &CI,
+Instruction *InstCombiner::PromoteCastOfAllocation(CastInst &CI,
                                                    AllocaInst &AI) {
   // This requires DataLayout to get the alloca alignment and size information.
   if (!DL) return 0;
@@ -151,6 +151,14 @@ Instruction *InstCombiner::PromoteCastOfAllocation(BitCastInst &CI,
     Value *NewCast = AllocaBuilder.CreateBitCast(New, AI.getType(), "tmpcast");
     ReplaceInstUsesWith(AI, NewCast);
   }
+
+  // If this is an addrspacecast, we still need to insert an addrspacecast and
+  // can't just replace with the alloca, since the type changes.
+  if (isa<AddrSpaceCastInst>(CI)) {
+    Value *Cast = AllocaBuilder.CreateAddrSpaceCast(New, CI.getType());
+    return ReplaceInstUsesWith(CI, Cast);
+  }
+
   return ReplaceInstUsesWith(CI, New);
 }
 
@@ -1772,6 +1780,21 @@ static Instruction *OptimizeIntToFloatBitCast(BitCastInst &CI,InstCombiner &IC){
   return 0;
 }
 
+Instruction *InstCombiner::visitBitCastAndAddrSpaceCastCommon(CastInst &CI) {
+  Value *Src = CI.getOperand(0);
+
+  // If we are casting a alloca to a pointer to a type of the same
+  // size, rewrite the allocation instruction to allocate the "right" type.
+  // There is no need to modify malloc calls because it is their bitcast that
+  // needs to be cleaned up.
+  if (AllocaInst *AI = dyn_cast<AllocaInst>(Src)) {
+    if (Instruction *V = PromoteCastOfAllocation(CI, *AI))
+      return V;
+  }
+
+  return 0;
+}
+
 Instruction *InstCombiner::visitBitCast(BitCastInst &CI) {
   // If the operands are integer typed then apply the integer transforms,
   // otherwise just apply the common ones.
@@ -1784,18 +1807,13 @@ Instruction *InstCombiner::visitBitCast(BitCastInst &CI) {
   if (DestTy == Src->getType())
     return ReplaceInstUsesWith(CI, Src);
 
-  if (PointerType *DstPTy = dyn_cast<PointerType>(DestTy)) {
-    PointerType *SrcPTy = cast<PointerType>(SrcTy);
-    Type *DstElTy = DstPTy->getElementType();
-    Type *SrcElTy = SrcPTy->getElementType();
+  if (PointerType *SrcPTy = dyn_cast<PointerType>(SrcTy)) {
+    if (Instruction *I = visitBitCastAndAddrSpaceCastCommon(CI))
+      return I;
 
-    // If we are casting a alloca to a pointer to a type of the same
-    // size, rewrite the allocation instruction to allocate the "right" type.
-    // There is no need to modify malloc calls because it is their bitcast that
-    // needs to be cleaned up.
-    if (AllocaInst *AI = dyn_cast<AllocaInst>(Src))
-      if (Instruction *V = PromoteCastOfAllocation(CI, *AI))
-        return V;
+      PointerType *DestPTy = cast<PointerType>(CI.getType());
+      Type *DstElTy = DestPTy->getElementType();
+      Type *SrcElTy = SrcPTy->getElementType();
 
     // If the source and destination are pointers, and this cast is equivalent
     // to a getelementptr X, 0, 0, 0...  turn it into the appropriate gep.
@@ -1812,7 +1830,7 @@ Instruction *InstCombiner::visitBitCast(BitCastInst &CI) {
 
     // If we found a path from the src to dest, create the getelementptr now.
     if (SrcElTy == DstElTy) {
-      SmallVector<Value*, 8> Idxs(NumZeros+1, ZeroUInt);
+      SmallVector<Value*, 8> Idxs(NumZeros + 1, ZeroUInt);
       return GetElementPtrInst::CreateInBounds(Src, Idxs);
     }
   }
@@ -1901,5 +1919,8 @@ Instruction *InstCombiner::visitBitCast(BitCastInst &CI) {
 }
 
 Instruction *InstCombiner::visitAddrSpaceCast(AddrSpaceCastInst &CI) {
+  if (Instruction *I = visitBitCastAndAddrSpaceCastCommon(CI))
+      return I;
+
   return commonPointerCastTransforms(CI);
 }
