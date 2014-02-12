@@ -50,6 +50,23 @@ public:
 
   virtual const AMDGPURegisterInfo &getRegisterInfo() const = 0;
 
+  bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumCycles,
+                           unsigned ExtraPredCycles,
+                           const BranchProbability &Probability) const override;
+
+  bool isProfitableToIfCvt(
+    MachineBasicBlock &TMBB,
+    unsigned NumTCycles, unsigned ExtraTCycles,
+    MachineBasicBlock &FMBB,
+    unsigned NumFCycles, unsigned ExtraFCycles,
+    const BranchProbability &Probability) const override;
+
+  bool isProfitableToDupForIfCvt(MachineBasicBlock &, unsigned,
+                                 const BranchProbability &) const override;
+
+  bool isProfitableToUnpredicate(MachineBasicBlock &,
+                                 MachineBasicBlock &) const override;
+
   bool isCoalescableExtInstr(const MachineInstr &MI, unsigned &SrcReg,
                              unsigned &DstReg, unsigned &SubIdx) const override;
 

@@ -170,29 +170,11 @@ namespace llvm {
 
   bool isPredicable(MachineInstr *MI) const override;
 
-  bool
-   isProfitableToDupForIfCvt(MachineBasicBlock &MBB, unsigned NumCyles,
-                             const BranchProbability &Probability) const override;
-
-  bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumCyles,
-                           unsigned ExtraPredCycles,
-                           const BranchProbability &Probability) const override ;
-
-  bool
-   isProfitableToIfCvt(MachineBasicBlock &TMBB,
-                       unsigned NumTCycles, unsigned ExtraTCycles,
-                       MachineBasicBlock &FMBB,
-                       unsigned NumFCycles, unsigned ExtraFCycles,
-                       const BranchProbability &Probability) const override;
-
   bool DefinesPredicate(MachineInstr *MI,
                                   std::vector<MachineOperand> &Pred) const override;
 
   bool SubsumesPredicate(const SmallVectorImpl<MachineOperand> &Pred1,
                          const SmallVectorImpl<MachineOperand> &Pred2) const override;
-
-  bool isProfitableToUnpredicate(MachineBasicBlock &TMBB,
-                                          MachineBasicBlock &FMBB) const override;
 
   bool PredicateInstruction(MachineInstr *MI,
                         const SmallVectorImpl<MachineOperand> &Pred) const override;

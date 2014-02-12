@@ -928,41 +928,6 @@ R600InstrInfo::isPredicable(MachineInstr *MI) const {
   }
 }
 
-
-bool
-R600InstrInfo::isProfitableToIfCvt(MachineBasicBlock &MBB,
-                                   unsigned NumCyles,
-                                   unsigned ExtraPredCycles,
-                                   const BranchProbability &Probability) const{
-  return true;
-}
-
-bool
-R600InstrInfo::isProfitableToIfCvt(MachineBasicBlock &TMBB,
-                                   unsigned NumTCycles,
-                                   unsigned ExtraTCycles,
-                                   MachineBasicBlock &FMBB,
-                                   unsigned NumFCycles,
-                                   unsigned ExtraFCycles,
-                                   const BranchProbability &Probability) const {
-  return true;
-}
-
-bool
-R600InstrInfo::isProfitableToDupForIfCvt(MachineBasicBlock &MBB,
-                                         unsigned NumCyles,
-                                         const BranchProbability &Probability)
-                                         const {
-  return true;
-}
-
-bool
-R600InstrInfo::isProfitableToUnpredicate(MachineBasicBlock &TMBB,
-                                         MachineBasicBlock &FMBB) const {
-  return false;
-}
-
-
 bool
 R600InstrInfo::ReverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const {
   MachineOperand &MO = Cond[1];

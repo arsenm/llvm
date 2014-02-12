@@ -37,6 +37,31 @@ const AMDGPURegisterInfo &AMDGPUInstrInfo::getRegisterInfo() const {
   return RI;
 }
 
+bool AMDGPUInstrInfo::isProfitableToIfCvt(MachineBasicBlock &,
+                                          unsigned, unsigned,
+                                          const BranchProbability &) const {
+  return true;
+}
+
+bool AMDGPUInstrInfo::isProfitableToIfCvt(MachineBasicBlock &,
+                                          unsigned, unsigned,
+                                          MachineBasicBlock &,
+                                          unsigned, unsigned,
+                                          const BranchProbability &) const {
+  return true;
+}
+
+bool AMDGPUInstrInfo::isProfitableToDupForIfCvt(
+  MachineBasicBlock &, unsigned,
+  const BranchProbability &) const {
+  return true;
+}
+
+bool AMDGPUInstrInfo::isProfitableToUnpredicate(MachineBasicBlock &,
+                                                MachineBasicBlock &) const {
+  return true;
+}
+
 bool AMDGPUInstrInfo::isCoalescableExtInstr(const MachineInstr &MI,
                                            unsigned &SrcReg, unsigned &DstReg,
                                            unsigned &SubIdx) const {
