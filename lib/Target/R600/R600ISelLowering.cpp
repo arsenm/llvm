@@ -1228,10 +1228,11 @@ SDValue R600TargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const
     return DAG.getMergeValues(MergedValues, 2, DL);
   }
 
+  ISD::LoadExtType ExtTy = LoadNode->getExtensionType();
+
   int ConstantBlock = ConstantAddressBlock(LoadNode->getAddressSpace());
-  if (ConstantBlock > -1 &&
-      ((LoadNode->getExtensionType() == ISD::NON_EXTLOAD) ||
-       (LoadNode->getExtensionType() == ISD::ZEXTLOAD))) {
+  if (ConstantBlock > -1) {
+    int64_t Offset = LoadNode->getSrcValueOffset();
     SDValue Result;
     if (isa<ConstantExpr>(LoadNode->getSrcValue()) ||
         isa<Constant>(LoadNode->getSrcValue()) ||
@@ -1263,9 +1264,33 @@ SDValue R600TargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const
           );
     }
 
+    // We are loading a component from something that is larger than a single
+    // 32-bit element, e.g. v4i16,we need to figure out what component of the
+    // vector with 32-bit elements we want.
+    unsigned EltIdx = Offset / 4;
+    unsigned EltOffset = Offset % 4;
+
     if (!VT.isVector()) {
       Result = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, DL, MVT::i32, Result,
-          DAG.getConstant(0, MVT::i32));
+          DAG.getConstant(EltIdx, MVT::i32));
+    }
+
+    if (ExtTy != ISD::NON_EXTLOAD) {
+      EVT MemVT = LoadNode->getMemoryVT();
+      assert(!MemVT.isVector() &&
+             MemVT.isInteger() &&
+             MemVT.getSizeInBits() < 32);
+
+      if (EltOffset != 0) {
+        Result = DAG.getNode(ISD::SRL, DL, MVT::i32, Result,
+                             DAG.getConstant(8 * EltOffset, MVT::i32));
+      }
+
+      if (ExtTy == ISD::SEXTLOAD) {
+        Result = DAG.getNode(ISD::SIGN_EXTEND_INREG, DL, MVT::i32,
+                             Result, DAG.getValueType(MemVT));
+      } else if (ExtTy == ISD::ZEXTLOAD)
+        Result = DAG.getZeroExtendInReg(Result, DL, MemVT);
     }
 
     SDValue MergedValues[2] = {
@@ -1395,10 +1420,7 @@ SDValue R600TargetLowering::LowerFormalArguments(
     // The first 36 bytes of the input buffer contains information about
     // thread group and global sizes.
 
-    // FIXME: This should really check the extload type, but the handling of
-    // extload vecto parameters seems to be broken.
-    //ISD::LoadExtType Ext = Ins[i].Flags.isSExt() ? ISD::SEXTLOAD : ISD::ZEXTLOAD;
-    ISD::LoadExtType Ext = ISD::SEXTLOAD;
+    ISD::LoadExtType Ext = Ins[i].Flags.isSExt() ? ISD::SEXTLOAD : ISD::ZEXTLOAD;
     SDValue Arg = DAG.getExtLoad(Ext, DL, VT, Chain,
                                  DAG.getConstant(36 + VA.getLocMemOffset(), MVT::i32),
                                  MachinePointerInfo(UndefValue::get(PtrTy)),

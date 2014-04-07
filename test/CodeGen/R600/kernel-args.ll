@@ -3,7 +3,8 @@
 ; RUN: llc < %s -march=r600 -mcpu=SI -verify-machineinstrs | FileCheck %s --check-prefix=SI-CHECK
 
 ; EG-CHECK-LABEL: @i8_arg
-; EG-CHECK: MOV {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.x
+; EG-CHECK: 255(3.573311e-43),
 ; SI-CHECK-LABEL: @i8_arg
 ; SI-CHECK: BUFFER_LOAD_UBYTE
 
@@ -39,7 +40,8 @@ entry:
 }
 
 ; EG-CHECK-LABEL: @i16_arg
-; EG-CHECK: MOV {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.x
+; EG-CHECK: 65535(
 ; SI-CHECK-LABEL: @i16_arg
 ; SI-CHECK: BUFFER_LOAD_USHORT
 
@@ -95,8 +97,11 @@ entry:
 }
 
 ; EG-CHECK-LABEL: @v2i8_arg
-; EG-CHECK: VTX_READ_8
-; EG-CHECK: VTX_READ_8
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.
+; EG-CHECK: 255(
+; EG-CHECK: 65280(
+; EG-CHECK: OR_INT
 ; SI-CHECK-LABEL: @v2i8_arg
 ; SI-CHECK: BUFFER_LOAD_UBYTE
 ; SI-CHECK: BUFFER_LOAD_UBYTE
@@ -107,8 +112,11 @@ entry:
 }
 
 ; EG-CHECK-LABEL: @v2i16_arg
-; EG-CHECK: VTX_READ_16
-; EG-CHECK: VTX_READ_16
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.
+; EG-CHECK: 65535(
+; EG-CHECK: -65536(
+; EG-CHECK: OR_INT
 ; SI-CHECK-LABEL: @v2i16_arg
 ; SI-CHECK-DAG: BUFFER_LOAD_USHORT
 ; SI-CHECK-DAG: BUFFER_LOAD_USHORT
@@ -186,10 +194,16 @@ entry:
 }
 
 ; EG-CHECK-LABEL: @v4i8_arg
-; EG-CHECK: VTX_READ_8
-; EG-CHECK: VTX_READ_8
-; EG-CHECK: VTX_READ_8
-; EG-CHECK: VTX_READ_8
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.x
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.y
+; EG-CHECK: 255(3.573311e-43), 65280(9.147676e-41)
+; EG-CHECK: OR_INT
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.x
+; EG-CHECK: 16711680(
+; EG-CHECK: OR_INT
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[2].Z, literal.x
+; EG-CHECK: -16777216(
+; EG-CHECK: OR_INT
 ; SI-CHECK-LABEL: @v4i8_arg
 ; SI-CHECK: BUFFER_LOAD_UBYTE
 ; SI-CHECK: BUFFER_LOAD_UBYTE
@@ -202,10 +216,17 @@ entry:
 }
 
 ; EG-CHECK-LABEL: @v4i16_arg
-; EG-CHECK: VTX_READ_16
-; EG-CHECK: VTX_READ_16
-; EG-CHECK: VTX_READ_16
-; EG-CHECK: VTX_READ_16
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[3].X, literal.
+; EG-CHECK: 65535(
+
+
+; EG-CHECK: AND_INT {{[ *]*}}T{{[0-9]+\.[XYZW]}}, KC0[3].X, literal.
+; EG-CHECK: 65535(
+
+; EG-CHECK: KC0[2].Y
+; EG-CHECK: KC0[2].Y
+
+
 ; SI-CHECK-LABEL: @v4i16_arg
 ; SI-CHECK: BUFFER_LOAD_USHORT
 ; SI-CHECK: BUFFER_LOAD_USHORT
