@@ -145,6 +145,11 @@ AMDGPUPassConfig::addPreISel() {
   if (ST.getGeneration() >= AMDGPUSubtarget::SOUTHERN_ISLANDS) {
     addPass(createSinkingPass());
     addPass(createSITypeRewriter());
+
+    // Run SimplifyCFG to make sure we have no branches on constants and other
+    // edge cases to deal with before annotating control flow. These seem to
+    // survive here on occasion.
+    addPass(createCFGSimplificationPass());
     addPass(createSIAnnotateControlFlowPass());
   } else {
     addPass(createR600TextureIntrinsicsReplacer());
