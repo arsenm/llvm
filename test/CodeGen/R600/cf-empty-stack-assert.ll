@@ -5,7 +5,9 @@
 ; SI-LABEL: @loop_arg_1
 define void @loop_arg_1(float addrspace(3)* %ptr, i32 %n, i1 %cond) nounwind {
 entry:
-  br i1 %cond, label %for.body, label %for.exit
+  %cmp0 = icmp ne i32 %n, -1
+;  br i1 %cond, label %for.body, label %for.exit
+  br i1 %cmp0, label %for.body, label %for.exit
 
 for.exit:
   ret void
@@ -21,3 +23,6 @@ for.body:
   %cmp = icmp eq i32 %inc, 10000
   br i1 %cmp, label %for.body, label %for.exit
 }
+
+
+; The exit block is not dominated by the loop.

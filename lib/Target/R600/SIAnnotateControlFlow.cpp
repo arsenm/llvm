@@ -23,6 +23,9 @@
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/SSAUpdater.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/Verifier.h"
 
 using namespace llvm;
 
@@ -161,6 +164,7 @@ Value *SIAnnotateControlFlow::popSaved() {
 
 /// \brief Push a BB and saved value to the control flow stack
 void SIAnnotateControlFlow::push(BasicBlock *BB, Value *Saved) {
+  DEBUG(dbgs() << "Push BB " << BB->getName() << " and value " << *Saved << '\n');
   Stack.push_back(std::make_pair(BB, Saved));
 }
 
@@ -185,7 +189,7 @@ bool SIAnnotateControlFlow::isElse(PHINode *Phi) {
 
 // \brief Erase "Phi" if it is not used any more
 void SIAnnotateControlFlow::eraseIfUnused(PHINode *Phi) {
-  if (!Phi->hasNUsesOrMore(1))
+  if (!Phi->hasNUsesOrMore(1)) // XXX - use_empty()
     Phi->eraseFromParent();
 }
 
@@ -293,35 +297,73 @@ void SIAnnotateControlFlow::closeControlFlow(BasicBlock *BB) {
 bool SIAnnotateControlFlow::runOnFunction(Function &F) {
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 
+  DEBUG(
+    dbgs() << "Annotate:\n";
+    F.dump();
+    dbgs() << '\n';
+  );
+
   for (df_iterator<BasicBlock *> I = df_begin(&F.getEntryBlock()),
        E = df_end(&F.getEntryBlock()); I != E; ++I) {
+    BasicBlock *BB = *I;
+    DEBUG(dbgs() << "Visit block: " << BB->getName() << '\n');
 
-    BranchInst *Term = dyn_cast<BranchInst>((*I)->getTerminator());
-
+    BranchInst *Term = dyn_cast<BranchInst>(BB->getTerminator());
     if (!Term || Term->isUnconditional()) {
-      if (isTopOfStack(*I))
-        closeControlFlow(*I);
+      DEBUG(
+        if (!Term) {
+          dbgs() << "Terminator is not a branch\n";
+        } else {
+          dbgs() << "Terminator is unconditional: " << *Term << '\n';
+        }
+      );
+
+      if (isTopOfStack(BB)) {
+        DEBUG(dbgs() << "Block " << BB->getName() << " is top of stack\n");
+        closeControlFlow(BB);
+      }
       continue;
     }
 
     if (I.nodeVisited(Term->getSuccessor(1))) {
-      if (isTopOfStack(*I))
-        closeControlFlow(*I);
+      DEBUG(dbgs() << "Successor 1 is visited\n");
+      if (isTopOfStack(BB)) {
+        DEBUG(dbgs() << "Close CF\n");
+        closeControlFlow(BB);
+      }
+
+      DEBUG(dbgs() << "Handle loop\n");
       handleLoop(Term);
       continue;
     }
 
-    if (isTopOfStack(*I)) {
+    if (isTopOfStack(BB)) {
+      DEBUG(dbgs() << "Is top of stack: " << BB->getName() << '\n');
       PHINode *Phi = dyn_cast<PHINode>(Term->getCondition());
       if (Phi && Phi->getParent() == *I && isElse(Phi)) {
+        DEBUG(dbgs() << "Insert else\n");
         insertElse(Term);
         eraseIfUnused(Phi);
         continue;
       }
-      closeControlFlow(*I);
+
+      DEBUG(dbgs() << "Close CF: " << BB->getName() << '\n');
+      closeControlFlow(BB);
     }
+
+    DEBUG(dbgs() << "openIf: " << *Term << '\n');
     openIf(Term);
   }
+
+  DEBUG(
+    dbgs() << "Remaining stack: " << Stack.size() << '\n';
+    for (auto i : Stack) {
+      dbgs() << "Stack: " << *i.first << " : " << *i.second << '\n';
+    }
+  );
+
+
+  assert(!verifyFunction(F, &dbgs()));
 
   assert(Stack.empty());
   return true;
