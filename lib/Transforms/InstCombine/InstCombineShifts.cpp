@@ -340,17 +340,6 @@ Instruction *InstCombiner::FoldShiftByConstant(Value *Op0, Constant *Op1,
   // purpose is to compute bits we don't care about.
   uint32_t TypeBits = Op0->getType()->getScalarSizeInBits();
 
-  // shl i32 X, 32 = 0 and srl i8 Y, 9 = 0, ... just don't eliminate
-  // a signed shift.
-  //
-  if (COp1->uge(TypeBits)) {
-    if (I.getOpcode() != Instruction::AShr)
-      return ReplaceInstUsesWith(I, Constant::getNullValue(Op0->getType()));
-    // ashr i32 X, 32 --> ashr i32 X, 31
-    I.setOperand(1, ConstantInt::get(I.getType(), TypeBits-1));
-    return &I;
-  }
-
   // ((X*C1) << C2) == (X * (C1 << C2))
   if (BinaryOperator *BO = dyn_cast<BinaryOperator>(Op0))
     if (BO->getOpcode() == Instruction::Mul && isLeftShift)
