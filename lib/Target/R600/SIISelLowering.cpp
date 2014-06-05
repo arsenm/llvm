@@ -675,8 +675,25 @@ MachineBasicBlock * SITargetLowering::EmitInstrWithCustomInserter(
 
     BuildMI(*BB, I, DL, TII->get(AMDGPU::V_MOV_B32_e32), Reg)
       .addImm(0x80000000);
+<<<<<<< HEAD
     BuildMI(*BB, I, DL, TII->get(AMDGPU::V_XOR_B32_e32), DestReg)
       .addReg(MI->getOperand(1).getReg())
+=======
+
+    const TargetRegisterClass *OpRC = &AMDGPU::VReg_64RegClass;
+    const TargetRegisterClass *OpSubRC = &AMDGPU::VReg_32RegClass;
+
+    // XXX - Why can't we just use vop3 mov with neg modifier?
+
+    unsigned LoHalf, HiHalf;
+    std::tie(LoHalf, HiHalf)
+      = TII->buildExtractSubRegPair(MI, MRI, MI->getOperand(1), OpRC, OpSubRC);
+
+    // We just need to do a regular fneg on the low half.
+    unsigned XorReg = MRI.createVirtualRegister(&AMDGPU::VReg_32RegClass);
+    BuildMI(*BB, I, DL, TII->get(AMDGPU::V_XOR_B32_e32), XorReg)
+      .addReg(LoHalf)
+>>>>>>> XXX - Work on folding vop3 operands
       .addReg(Reg);
     MI->eraseFromParent();
     break;
@@ -1650,7 +1667,7 @@ void SITargetLowering::ensureSRegLimit(SelectionDAG &DAG, SDValue &Operand,
 
 /// \returns true if \p Node's operands are different from the SDValue list
 /// \p Ops
-static bool isNodeChanged(const SDNode *Node, const std::vector<SDValue> &Ops) {
+static bool isNodeChanged(const SDNode *Node, ArrayRef<SDValue> Ops) {
   for (unsigned i = 0, e = Node->getNumOperands(); i < e; ++i) {
     if (Ops[i].getNode() != Node->getOperand(i).getNode()) {
       return true;
@@ -1662,6 +1679,9 @@ static bool isNodeChanged(const SDNode *Node, const std::vector<SDValue> &Ops) {
 /// \brief Try to fold the Nodes operands into the Node
 SDNode *SITargetLowering::foldOperands(MachineSDNode *Node,
                                        SelectionDAG &DAG) const {
+
+  dbgs() << "\n\nfoldOperands on ";
+  Node->dump(&DAG);
 
   // Original encoding (either e32 or e64)
   int Opcode = Node->getMachineOpcode();
@@ -1686,7 +1706,8 @@ SDNode *SITargetLowering::foldOperands(MachineSDNode *Node,
 
   assert(!DescE64 || DescE64->getNumDefs() == NumDefs);
 
-  int32_t Immediate = Desc->getSize() == 4 ? 0 : -1;
+  // XXX - What is this for?
+  int32_t Immediate = (Desc->getSize() == 4 || Desc->getSize() == 8) ? 0 : -1;
   bool HaveVSrc = false, HaveSSrc = false;
 
   // First figure out what we already have in this instruction.
@@ -1708,6 +1729,66 @@ SDNode *SITargetLowering::foldOperands(MachineSDNode *Node,
     }
   }
 
+  // Is already a 64-bit op.
+  bool IsVOP3 = TII->isVOP3(Opcode);
+
+  // Most of the complexity here is due to possibly promoting to the 64-bit
+  // encoding version of the instruction. If we're already a 64-bit encoding, it
+  // is much simpler.
+  if (TII->isVOP3(Opcode)) {
+    SmallVector<SDValue, 8> Ops(Node->op_begin(), Node->op_end());
+
+
+
+    int Src0Idx = AMDGPU::getNamedOperandIdx(Opcode, AMDGPU::OpName::src0);
+    int Src1Idx = AMDGPU::getNamedOperandIdx(Opcode, AMDGPU::OpName::src1);
+    int Src2Idx = AMDGPU::getNamedOperandIdx(Opcode, AMDGPU::OpName::src2);
+
+    if (Src0Idx != -1) {
+      // getNamedOperandIdx considers the results to be the first operands, so
+      // subtract NumDefs.
+      SDValue Op0 = Node->getOperand(Src0Idx - NumDefs);
+      if (!isa<ConstantSDNode>(Op0.getNode()) &&
+          !isa<ConstantFPSDNode>(Op0.getNode())) {
+        if (Op0.getMachineOpcode() == AMDGPU::FNEG64_SI) {
+          // The source modifiers are the operand before the real operand.
+          int Src0ModIdx = AMDGPU::getNamedOperandIdx(Opcode, AMDGPU::OpName::src0_modifiers);
+          Ops[Src0Idx - NumDefs] = Op0.getOperand(0);
+          Ops[Src0ModIdx - NumDefs] = DAG.getTargetConstant(1, MVT::i32);
+
+        }
+
+      }
+    }
+
+    if (Src1Idx != -1) {
+      // getNamedOperandIdx considers the results to be the first operands, so
+      // subtract NumDefs.
+      SDValue Op1 = Node->getOperand(Src1Idx - NumDefs);
+      if (!isa<ConstantSDNode>(Op1.getNode()) &&
+          !isa<ConstantFPSDNode>(Op1.getNode())) {
+        if (Op1.getMachineOpcode() == AMDGPU::FNEG64_SI) {
+          // The source modifiers are the operand before the real operand.
+          int Src1ModIdx = AMDGPU::getNamedOperandIdx(Opcode, AMDGPU::OpName::src1_modifiers);
+          Ops[Src1Idx - NumDefs] = Op1.getOperand(0);
+          Ops[Src1ModIdx - NumDefs] = DAG.getTargetConstant(1, MVT::i32);
+        }
+      }
+    }
+
+
+    // Nodes that have a glue result are not CSE'd by getMachineNode(), so in
+    // this case a brand new node is always be created, even if the operands
+    // are the same as before.  So, manually check if anything has been changed.
+    if (Desc->Opcode == Opcode && !isNodeChanged(Node, Ops)) {
+      dbgs() << "Nothing changed, return Node: ";
+      Node->dump(&DAG);
+      return Node;
+    }
+
+    return DAG.getMachineNode(Desc->Opcode, SDLoc(Node), Node->getVTList(), Ops);
+  }
+
   // If we neither have VSrc nor SSrc, it makes no sense to continue.
   if (!HaveVSrc && !HaveSSrc)
     return Node;
@@ -1722,6 +1803,9 @@ SDNode *SITargetLowering::foldOperands(MachineSDNode *Node,
        i != e && Op < NumOps; ++i, ++Op) {
 
     const SDValue &Operand = Node->getOperand(i);
+    dbgs() << "Inspecting operand: ";
+    Operand->dump(&DAG);
+
     Ops.push_back(Operand);
 
     // Already folded immediate?
@@ -1736,6 +1820,8 @@ SDNode *SITargetLowering::foldOperands(MachineSDNode *Node,
       if (!foldImm(Ops[i], Immediate, ScalarSlotUsed)) {
         // Folding didn't work, make sure we don't hit the SReg limit.
         ensureSRegLimit(DAG, Ops[i], RegClass, ScalarSlotUsed);
+      } else {
+        continue;
       }
       continue;
     } else {
@@ -1770,6 +1856,21 @@ SDNode *SITargetLowering::foldOperands(MachineSDNode *Node,
     if (Immediate)
       continue;
 
+    // Most of the complexity here is due to possibly promoting to the 64-bit
+    // encoding version of the instruction. If we're already a 64-bit encoding, it
+    // is much simpler.
+    if (TII->isVOP3(Opcode)) {
+      assert(!DescE64 && !Promote2e64 &&
+             "Can't promote instruction that's already VOP3");
+
+      if (Operand.getMachineOpcode() == AMDGPU::FNEG64_SI) {
+        // The source modifiers are the operand before the real operand.
+        Ops[i - 1] = DAG.getTargetConstant(1, MVT::i32);
+      }
+
+      continue;
+    }
+
     if (DescE64) {
       // Test if it makes sense to switch to e64 encoding
       unsigned OtherRegClass = DescE64->OpInfo[Op].RegClass;
@@ -1788,6 +1889,7 @@ SDNode *SITargetLowering::foldOperands(MachineSDNode *Node,
         DescE64 = nullptr;
       }
     }
+
 
     if (!DescE64 && !Promote2e64)
       continue;
@@ -1813,18 +1915,31 @@ SDNode *SITargetLowering::foldOperands(MachineSDNode *Node,
   }
 
   // Add optional chain and glue
-  for (unsigned i = NumOps - NumDefs, e = Node->getNumOperands(); i < e; ++i)
+  for (unsigned i = NumOps - NumDefs, e = Node->getNumOperands(); i < e; ++i) {
+    dbgs() << "Add opt chain and glue\n";
     Ops.push_back(Node->getOperand(i));
+  }
 
   // Nodes that have a glue result are not CSE'd by getMachineNode(), so in
   // this case a brand new node is always be created, even if the operands
   // are the same as before.  So, manually check if anything has been changed.
   if (Desc->Opcode == Opcode && !isNodeChanged(Node, Ops)) {
+    dbgs() << "Nothing changed, return Node: ";
+    Node->dump(&DAG);
     return Node;
   }
 
+  dbgs() << "New Ops:\n";
+  for (auto bots : Ops) {
+    bots->dump(&DAG);
+  }
+
   // Create a complete new instruction
-  return DAG.getMachineNode(Desc->Opcode, SDLoc(Node), Node->getVTList(), Ops);
+  auto arst = DAG.getMachineNode(Desc->Opcode, SDLoc(Node), Node->getVTList(), Ops);
+
+  dbgs() << "Created new node: ";
+  arst->dump(&DAG);
+  return arst;
 }
 
 /// \brief Helper function for adjustWritemask

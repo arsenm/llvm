@@ -21,6 +21,7 @@
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/MC/MCInstrDesc.h"
+#include "llvm/Support/Debug.h"
 
 using namespace llvm;
 
