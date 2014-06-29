@@ -163,6 +163,14 @@ public:
     return (getGeneration() >= EVERGREEN);
   }
 
+  bool hasMadI64_I32() const {
+    return (getGeneration() >= SEA_ISLANDS);
+  }
+
+  bool hasMadU64_U32() const {
+    return (getGeneration() >= SEA_ISLANDS);
+  }
+
   bool IsIRStructurizerEnabled() const {
     return EnableIRStructurizer;
   }

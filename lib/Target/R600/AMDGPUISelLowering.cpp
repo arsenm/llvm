@@ -886,6 +886,31 @@ SDValue AMDGPUTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
       return DAG.getNode(AMDGPUISD::MAD_I24, DL, VT,
                          Op.getOperand(1), Op.getOperand(2), Op.getOperand(3));
 
+    case AMDGPUIntrinsic::AMDGPU_umad32: {
+      if (Subtarget->hasMadU64_U32()) {
+        return DAG.getNode(AMDGPUISD::MAD_U64_U32, DL, VT,
+                           Op.getOperand(1), Op.getOperand(2), Op.getOperand(3));
+      }
+
+      SDValue Ext0 = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i64,
+                                 Op.getOperand(1));
+      SDValue Ext1 = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i64,
+                                 Op.getOperand(2));
+      return DAG.getNode(ISD::MUL, DL, MVT::i64, Ext0, Ext1, Op.getOperand(3));
+    }
+    case AMDGPUIntrinsic::AMDGPU_imad32: {
+      if (Subtarget->hasMadI64_I32()) {
+        return DAG.getNode(AMDGPUISD::MAD_I64_I32, DL, VT,
+                           Op.getOperand(1), Op.getOperand(2), Op.getOperand(3));
+      }
+
+      SDValue Ext0 = DAG.getNode(ISD::SIGN_EXTEND, DL, MVT::i64,
+                                 Op.getOperand(1));
+      SDValue Ext1 = DAG.getNode(ISD::SIGN_EXTEND, DL, MVT::i64,
+                                 Op.getOperand(2));
+      return DAG.getNode(ISD::MUL, DL, MVT::i64, Ext0, Ext1, Op.getOperand(3));
+
+    }
     case AMDGPUIntrinsic::AMDGPU_cvt_f32_ubyte0:
       return DAG.getNode(AMDGPUISD::CVT_F32_UBYTE0, DL, VT, Op.getOperand(1));
 
@@ -2183,6 +2208,8 @@ const char* AMDGPUTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(MUL_I24)
   NODE_NAME_CASE(MAD_U24)
   NODE_NAME_CASE(MAD_I24)
+  NODE_NAME_CASE(MAD_U64_U32)
+  NODE_NAME_CASE(MAD_I64_I32)
   NODE_NAME_CASE(EXPORT)
   NODE_NAME_CASE(CONST_ADDRESS)
   NODE_NAME_CASE(REGISTER_LOAD)

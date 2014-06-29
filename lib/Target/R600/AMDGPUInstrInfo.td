@@ -167,6 +167,13 @@ def AMDGPUmad_i24 : SDNode<"AMDGPUISD::MAD_I24", AMDGPUDTIntTernaryOp,
   []
 >;
 
+def AMDGPUmad_u64_u32 : SDNode<"AMDGPUISD::MAD_U64_U32",
+  AMDGPUDTIntTernaryOp, []
+>;
+def AMDGPUmad_i64_i32 : SDNode<"AMDGPUISD::MAD_I64_I32",
+  AMDGPUDTIntTernaryOp, []
+>;
+
 //===----------------------------------------------------------------------===//
 // Flow Control Profile Types
 //===----------------------------------------------------------------------===//
