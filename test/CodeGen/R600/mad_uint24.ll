@@ -36,6 +36,15 @@ entry:
   ret void
 }
 
+; FUNC-LABEL: @i16_mad24_shl
+define void @i16_mad24_shl(i32 addrspace(1)* %out, i16 %a, i16 %c) {
+  %mul = shl i16 %a, 4
+  %add = add i16 %mul, %c
+  %ext = sext i16 %add to i32
+  store i32 %ext, i32 addrspace(1)* %out
+  ret void
+}
+
 ; FUNC-LABEL: @i8_mad24
 ; EG: MULADD_UINT24 {{[* ]*}}T{{[0-9]}}.[[MAD_CHAN:[XYZW]]]
 ; The result must be sign-extended
