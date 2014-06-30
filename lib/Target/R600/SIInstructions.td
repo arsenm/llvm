@@ -2788,14 +2788,17 @@ defm V_MQSAD_U16_U8 : VOP3Inst <0x000000172, "V_MQSAD_U16_U8",
 defm V_MQSAD_U32_U8 : VOP3Inst <0x00000175, "V_MQSAD_U32_U8",
   VOP_I32_I32_I32
 >;
+
+let Defs = [VCC] in {
 defm V_MAD_U64_U32 : VOP3Inst <0x00000176, "V_MAD_U64_U32",
-  VOP_I64_I32_I32_I64
+  VOP_I64_I32_I32_I64, AMDGPUmad_u64_u32
 >;
 
 // XXX - Does this set VCC?
 defm V_MAD_I64_I32 : VOP3Inst <0x00000177, "V_MAD_I64_I32",
-  VOP_I64_I32_I32_I64
+  VOP_I64_I32_I32_I64, AMDGPUmad_i64_i32
 >;
+} // End Defs = [VCC]
 
 // Remaining instructions:
 // FLAT_*

@@ -31,6 +31,11 @@ def AMDGPUDivScaleOp : SDTypeProfile<2, 3,
   [SDTCisFP<0>, SDTCisInt<1>, SDTCisSameAs<0, 2>, SDTCisSameAs<0, 3>, SDTCisSameAs<0, 4>]
 >;
 
+def AMDGPUMad64Op : SDTypeProfile<1, 3,
+  [SDTCisInt<0>, SDTCisInt<1>, SDTCisOpSmallerThanOp<1, 0>,
+   SDTCisSameAs<2, 1>, SDTCisSameAs<3, 0>]
+>;
+
 //===----------------------------------------------------------------------===//
 // AMDGPU DAG Nodes
 //
@@ -167,11 +172,13 @@ def AMDGPUmad_i24 : SDNode<"AMDGPUISD::MAD_I24", AMDGPUDTIntTernaryOp,
   []
 >;
 
+
+
 def AMDGPUmad_u64_u32 : SDNode<"AMDGPUISD::MAD_U64_U32",
-  AMDGPUDTIntTernaryOp, []
+  AMDGPUMad64Op, []
 >;
 def AMDGPUmad_i64_i32 : SDNode<"AMDGPUISD::MAD_I64_I32",
-  AMDGPUDTIntTernaryOp, []
+  AMDGPUMad64Op, []
 >;
 
 //===----------------------------------------------------------------------===//
