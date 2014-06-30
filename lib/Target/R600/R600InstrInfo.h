@@ -257,6 +257,8 @@ namespace llvm {
                               MachineBasicBlock::iterator I,
                               unsigned DstReg, unsigned SrcReg) const override;
 
+  bool isInlineConstant(const APInt &Imm) const final;
+
   /// \brief Get the index of Op in the MachineInstr.
   ///
   /// \returns -1 if the Instruction does not contain the specified \p Op.

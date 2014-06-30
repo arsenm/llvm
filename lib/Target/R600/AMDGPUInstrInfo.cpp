@@ -342,6 +342,22 @@ int AMDGPUInstrInfo::getIndirectIndexEnd(const MachineFunction &MF) const {
   return getIndirectIndexBegin(MF) + Offset;
 }
 
+bool AMDGPUInstrInfo::isInlineConstant(const MachineOperand &MO) const {
+  if (MO.isImm())
+    return isInlineConstant(APInt(32, MO.getImm(), true));
+
+  if (MO.isFPImm()) {
+    APFloat FpImm = MO.getFPImm()->getValueAPF();
+    return isInlineConstant(FpImm.bitcastToAPInt());
+  }
+
+  return false;
+}
+
+bool AMDGPUInstrInfo::isLiteralConstant(const MachineOperand &MO) const {
+  return (MO.isImm() || MO.isFPImm()) && !isInlineConstant(MO);
+}
+
 int AMDGPUInstrInfo::getMaskedMIMGOp(uint16_t Opcode, unsigned Channels) const {
   switch (Channels) {
   default: return Opcode;

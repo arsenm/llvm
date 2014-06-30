@@ -1320,6 +1320,10 @@ MachineInstr *R600InstrInfo::buildMovImm(MachineBasicBlock &BB,
   return MovImm;
 }
 
+bool R600InstrInfo::isInlineConstant(const APInt &Imm) const {
+  return false;
+}
+
 MachineInstr *R600InstrInfo::buildMovInstr(MachineBasicBlock *MBB,
                                        MachineBasicBlock::iterator I,
                                        unsigned DstReg, unsigned SrcReg) const {

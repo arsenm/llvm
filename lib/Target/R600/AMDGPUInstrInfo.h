@@ -183,6 +183,11 @@ public:
                                       MachineBasicBlock::iterator I,
                                       unsigned DstReg, unsigned SrcReg) const = 0;
 
+
+  virtual bool isInlineConstant(const APInt &Imm) const = 0;
+  bool isInlineConstant(const MachineOperand &MO) const;
+  bool isLiteralConstant(const MachineOperand &MO) const;
+
   /// \brief Given a MIMG \p Opcode that writes all 4 channels, return the
   /// equivalent opcode that writes \p Channels Channels.
   int getMaskedMIMGOp(uint16_t Opcode, unsigned Channels) const;

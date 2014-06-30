@@ -756,22 +756,6 @@ bool SIInstrInfo::isInlineConstant(const APInt &Imm) const {
          (APInt::floatToBits(-4.0f) == Imm);
 }
 
-bool SIInstrInfo::isInlineConstant(const MachineOperand &MO) const {
-  if (MO.isImm())
-    return isInlineConstant(APInt(32, MO.getImm(), true));
-
-  if (MO.isFPImm()) {
-    APFloat FpImm = MO.getFPImm()->getValueAPF();
-    return isInlineConstant(FpImm.bitcastToAPInt());
-  }
-
-  return false;
-}
-
-bool SIInstrInfo::isLiteralConstant(const MachineOperand &MO) const {
-  return (MO.isImm() || MO.isFPImm()) && !isInlineConstant(MO);
-}
-
 static bool compareMachineOp(const MachineOperand &Op0,
                              const MachineOperand &Op1) {
   if (Op0.getType() != Op1.getType())
