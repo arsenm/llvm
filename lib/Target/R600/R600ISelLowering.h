@@ -39,6 +39,8 @@ public:
                               SDLoc DL, SelectionDAG &DAG,
                               SmallVectorImpl<SDValue> &InVals) const override;
   EVT getSetCCResultType(LLVMContext &, EVT VT) const override;
+
+  int32_t analyzeImmediate(const SDNode *N) const final;
 private:
   unsigned Gen;
   /// Each OpenCL kernel has nine implicit parameters that are stored in the

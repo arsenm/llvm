@@ -1765,6 +1765,37 @@ EVT R600TargetLowering::getSetCCResultType(LLVMContext &, EVT VT) const {
    return VT.changeVectorElementTypeToInteger();
 }
 
+// Special registers are available for 0.0, 1.0, -1.0, 1
+//
+// XXX: Can the floating point constants be reinterpreted as integers like on
+// SI?
+int32_t R600TargetLowering::analyzeImmediate(const SDNode *N) const {
+  if (const ConstantSDNode *Node = dyn_cast<ConstantSDNode>(N)) {
+    if (Node->getZExtValue() >> 32)
+      return -1;
+
+    int32_t Val = Node->getSExtValue();
+    if (Val == -1)
+      return 0;
+    return -1;
+  }
+
+  if (const ConstantFPSDNode *Node = dyn_cast<ConstantFPSDNode>(N)) {
+    if (N->getValueType(0) != MVT::f32)
+      return -1;
+
+    if (Node->isExactlyValue(0.0f) ||
+        Node->isExactlyValue(1.0f) ||
+        Node->isExactlyValue(-1.0f) ||
+        Node->isExactlyValue(0.5f) ||
+        Node->isExactlyValue(-0.5f)) {
+      return 0;
+    }
+  }
+
+  return -1;
+}
+
 static SDValue CompactSwizzlableVector(
   SelectionDAG &DAG, SDValue VectorEntry,
   DenseMap<unsigned, unsigned> &RemapSwizzle) {

@@ -99,7 +99,7 @@ public:
   void AdjustInstrPostInstrSelection(MachineInstr *MI,
                                      SDNode *Node) const override;
 
-  int32_t analyzeImmediate(const SDNode *N) const;
+  int32_t analyzeImmediate(const SDNode *N) const final;
   SDValue CreateLiveInRegister(SelectionDAG &DAG, const TargetRegisterClass *RC,
                                unsigned Reg, EVT VT) const override;
 };

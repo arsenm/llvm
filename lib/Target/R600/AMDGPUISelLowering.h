@@ -118,6 +118,7 @@ public:
   bool isSelectSupported(SelectSupportKind) const override;
 
   bool isFPImmLegal(const APFloat &Imm, EVT VT) const override;
+  virtual int32_t analyzeImmediate(const SDNode *N) const = 0;
   bool ShouldShrinkFPConstant(EVT VT) const override;
 
   bool isLoadBitCastBeneficial(EVT, EVT) const override;
