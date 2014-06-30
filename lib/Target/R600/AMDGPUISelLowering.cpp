@@ -29,6 +29,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
+#include "llvm/Support/Debug.h"
 
 using namespace llvm;
 
@@ -1868,12 +1869,28 @@ SDValue AMDGPUTargetLowering::LowerSIGN_EXTEND_INREG(SDValue Op,
 // Custom DAG optimizations
 //===----------------------------------------------------------------------===//
 
+static bool isU32(unsigned TypeSize, const APInt &KnownZero) {
+  return (TypeSize - KnownZero.countLeadingOnes()) <= 32;
+}
+
+static bool isU24(unsigned TypeSize, const APInt &KnownZero) {
+  return (TypeSize - KnownZero.countLeadingOnes()) <= 24;
+}
+
 static bool isU24(SDValue Op, SelectionDAG &DAG) {
   APInt KnownZero, KnownOne;
   EVT VT = Op.getValueType();
   DAG.computeKnownBits(Op, KnownZero, KnownOne);
 
   return (VT.getSizeInBits() - KnownZero.countLeadingOnes()) <= 24;
+}
+
+static bool isI24(unsigned Size, unsigned NumSignBits) {
+  // In order for this to be a signed 24-bit value, bit 23, must
+  // be a sign bit.
+  return Size >= 24 && // Types less than 24-bit should be treated
+                       // as unsigned 24-bit values.
+         (Size - NumSignBits) < 24;
 }
 
 static bool isI24(SDValue Op, SelectionDAG &DAG) {
@@ -1884,6 +1901,17 @@ static bool isI24(SDValue Op, SelectionDAG &DAG) {
   return VT.getSizeInBits() >= 24 && // Types less than 24-bit should be treated
                                      // as unsigned 24-bit values.
          (VT.getSizeInBits() - DAG.ComputeNumSignBits(Op)) < 24;
+}
+
+static bool isI32(SDValue Op, SelectionDAG &DAG) {
+  EVT VT = Op.getValueType();
+  return VT.getSizeInBits() >= 32 &&
+         (VT.getSizeInBits() - DAG.ComputeNumSignBits(Op)) < 32;
+}
+
+static bool isI32(unsigned Size, unsigned NumSignBits) {
+  return Size >= 32 &&
+         (Size - NumSignBits) < 32;
 }
 
 static void simplifyI24(SDValue Op, TargetLowering::DAGCombinerInfo &DCI) {
@@ -1969,6 +1997,123 @@ SDValue AMDGPUTargetLowering::performAddCombine(SDNode *N,
   SelectionDAG &DAG = DCI.DAG;
   SDLoc SL(N);
   SDValue N0 = N->getOperand(0);
+
+  // Look through sign / zero extension for a mul. I believe this is OK as long
+  // as we know the mul does not overflow.
+  if (N0.getOpcode() == ISD::SIGN_EXTEND) {
+    // i64 add (sext (i32 mul a, b)), c -> mad_i64_i32 a, b, c
+    SDValue UnExt = N0.getOperand(0);
+    EVT OrigVT = UnExt.getValueType();
+
+    BinaryWithFlagsSDNode *Mul = dyn_cast<BinaryWithFlagsSDNode>(UnExt);
+    if (Mul && Mul->getOpcode() == ISD::MUL && Mul->hasNoSignedWrap() &&
+        OrigVT == MVT::i32) {
+      SDValue Src0 = UnExt.getOperand(0);
+      SDValue Src1 = UnExt.getOperand(1);
+      SDValue Src2 = N->getOperand(1);
+
+      return DAG.getNode(AMDGPUISD::MAD_I64_I32, SL, VT, Src0, Src1, Src2);
+    }
+  }
+
+  if (N0.getOpcode() == ISD::ZERO_EXTEND) {
+    // i64 add (zext (i32 mul a, b)), c -> mad_u64_u32 a, b, c
+    SDValue UnExt = N0.getOperand(0);
+    EVT OrigVT = UnExt.getValueType();
+
+    BinaryWithFlagsSDNode *Mul = dyn_cast<BinaryWithFlagsSDNode>(UnExt);
+    if (Mul && Mul->getOpcode() == ISD::MUL && Mul->hasNoUnsignedWrap() &&
+        OrigVT == MVT::i32) {
+      SDValue Src0 = UnExt.getOperand(0);
+      SDValue Src1 = UnExt.getOperand(1);
+      SDValue Src2 = N->getOperand(1);
+
+      return DAG.getNode(AMDGPUISD::MAD_U64_U32, SL, VT, Src0, Src1, Src2);
+    }
+
+    return SDValue();
+  }
+
+  // XXX - Shl
+  if (N0.getOpcode() == ISD::SHL) {
+    if (const ConstantSDNode *C = dyn_cast<ConstantSDNode>(N0.getOperand(1))) {
+      // Only fold the shift into a multiply by a constant if that constant is
+      // an inline immediate.
+
+      unsigned MulConstVal = 1 << C->getZExtValue();
+
+      if (analyzeImmediate(MulConstVal) == 0) {
+        APInt KnownZeroSrc1, KnownOneSrc1;
+        DAG.computeKnownBits(Src1, KnownZeroSrc1, KnownOneSrc1);
+
+        if (VT == MVT::i64 && isU32(Size, KnownZeroSrc1)) {
+          SDValue Src0 = DAG.getConstant(MulConstVal, MVT::i32);
+          SDValue Src1 = DAG.getNode(ISD::TRUNCATE, SL, MVT::i32,
+                                     N0.getOperand(1));
+          SDValue Src2 = N->getOperand(2);
+
+          return DAG.getNode(AMDGPUISD::MAD_U64_U32, SL, MVT::i64,
+                             Src0, Src1, Src2);
+        }
+      }
+    }
+
+    return SDValue();
+  }
+
+  if (N0.getOpcode() == ISD::MUL) {
+    SDValue Src0 = N0.getOperand(0);
+    SDValue Src1 = N0.getOperand(1);
+    SDValue Src2 = N->getOperand(1);
+
+    APInt KnownZeroSrc0, KnownOneSrc0;
+    DAG.computeKnownBits(Src0, KnownZeroSrc0, KnownOneSrc0);
+
+    unsigned Size = VT.getSizeInBits();
+
+    if (isU24(Size, KnownZeroSrc0)) {
+      APInt KnownZeroSrc1, KnownOneSrc1;
+      DAG.computeKnownBits(Src1, KnownZeroSrc1, KnownOneSrc1);
+
+      if (isU24(Size, KnownZeroSrc1)) {
+        dbgs() << "u24 happens\n";
+      }
+    }
+
+    if (VT == MVT::i64 && isU32(Size, KnownZeroSrc0)) {
+      APInt KnownZeroSrc1, KnownOneSrc1;
+      DAG.computeKnownBits(Src1, KnownZeroSrc1, KnownOneSrc1);
+
+      if (isU32(Size, KnownZeroSrc1)) {
+        Src0 = DAG.getNode(ISD::TRUNCATE, SL, MVT::i32, Src0);
+        Src1 = DAG.getNode(ISD::TRUNCATE, SL, MVT::i32, Src1);
+        return DAG.getNode(AMDGPUISD::MAD_U64_U32, SL, MVT::i64,
+                           Src0, Src1, Src2);
+      }
+
+      return SDValue();
+    }
+
+    unsigned Src0SignBits = DAG.ComputeNumSignBits(Src0);
+    if (isI24(Size, Src0SignBits)) {
+      if (isI24(Size, DAG.ComputeNumSignBits(Src1))) {
+        dbgs() << "i24 happens\n";
+        return SDValue();
+      }
+    }
+
+
+    if (VT == MVT::i64 && isI32(Size, Src0SignBits)) {
+      if (isI32(Size, DAG.ComputeNumSignBits(Src1))) {
+        dbgs() << "i32 happens\n";
+        Src0 = DAG.getNode(ISD::TRUNCATE, SL, MVT::i32, Src0);
+        Src1 = DAG.getNode(ISD::TRUNCATE, SL, MVT::i32, Src1);
+        return DAG.getNode(AMDGPUISD::MAD_I64_I32, SL, MVT::i64,
+                           Src0, Src1, Src2);
+      }
+    }
+  }
+
 
   if (N0.getOpcode() == AMDGPUISD::MUL_I24) {
     return DAG.getNode(AMDGPUISD::MAD_I24, SL, VT,
