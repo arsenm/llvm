@@ -368,6 +368,7 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(TargetMachine &TM) :
   setOperationAction(ISD::FNEARBYINT, MVT::f32, Custom);
   setOperationAction(ISD::FNEARBYINT, MVT::f64, Custom);
 
+  setTargetDAGCombine(ISD::ADD);
   setTargetDAGCombine(ISD::MUL);
   setTargetDAGCombine(ISD::SELECT_CC);
   setTargetDAGCombine(ISD::STORE);
@@ -1959,6 +1960,30 @@ SDValue AMDGPUTargetLowering::performStoreCombine(SDNode *N,
                       SN->getBasePtr(), SN->getMemOperand());
 }
 
+SDValue AMDGPUTargetLowering::performAddCombine(SDNode *N,
+                                                DAGCombinerInfo &DCI) const {
+  EVT VT = N->getValueType(0);
+  if (VT.isVector())
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  SDLoc SL(N);
+  SDValue N0 = N->getOperand(0);
+
+  if (N0.getOpcode() == AMDGPUISD::MUL_I24) {
+    return DAG.getNode(AMDGPUISD::MAD_I24, SL, VT,
+                       N0.getOperand(0), N0.getOperand(1), N->getOperand(1));
+
+  }
+
+  if (N0.getOpcode() == AMDGPUISD::MUL_U24) {
+    return DAG.getNode(AMDGPUISD::MAD_U24, SL, VT,
+                       N0.getOperand(0), N0.getOperand(1), N->getOperand(1));
+  }
+
+  return SDValue();
+}
+
 SDValue AMDGPUTargetLowering::performMulCombine(SDNode *N,
                                                 DAGCombinerInfo &DCI) const {
   EVT VT = N->getValueType(0);
@@ -1997,6 +2022,8 @@ SDValue AMDGPUTargetLowering::PerformDAGCombine(SDNode *N,
 
   switch(N->getOpcode()) {
     default: break;
+    case ISD::ADD:
+      return performAddCombine(N, DCI);
     case ISD::MUL:
       return performMulCombine(N, DCI);
     case AMDGPUISD::MUL_I24:
