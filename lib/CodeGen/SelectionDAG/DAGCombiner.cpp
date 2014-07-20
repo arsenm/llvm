@@ -652,9 +652,7 @@ bool DAGCombiner::isSetCCEquivalent(SDValue N, SDValue &LHS, SDValue &RHS,
 /// it is profitable to do so.
 bool DAGCombiner::isOneUseSetCC(SDValue N) const {
   SDValue N0, N1, N2;
-  if (isSetCCEquivalent(N, N0, N1, N2) && N.getNode()->hasOneUse())
-    return true;
-  return false;
+  return (N.getNode()->hasOneUse() && isSetCCEquivalent(N, N0, N1, N2));
 }
 
 /// Returns true if N is a BUILD_VECTOR node whose
