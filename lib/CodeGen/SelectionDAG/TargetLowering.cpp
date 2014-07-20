@@ -1201,6 +1201,32 @@ bool TargetLowering::isConstFalseVal(const SDNode *N) const {
   return CN->isNullValue();
 }
 
+// setcc (setcc), [0|1], [eq|ne]  -> setcc
+static SDValue nestedSetCCCombine(const TargetLowering *TLI,
+                                  TargetLowering::DAGCombinerInfo &DCI,
+                                  SDLoc dl,
+                                  SDValue N0, const ConstantSDNode *N1C,
+                                  ISD::CondCode Cond) {
+  SelectionDAG &DAG = DCI.DAG;
+  EVT VT = N0.getValueType();
+
+  if (!TLI->isTypeLegal(VT) || !VT.bitsLE(N0.getValueType()))
+    return SDValue();
+
+  bool TrueWhenTrue = (Cond == ISD::SETEQ) ^ (N1C->getAPIntValue() != 1);
+  if (TrueWhenTrue)
+    return DAG.getNode(ISD::TRUNCATE, dl, VT, N0);
+
+  // Invert the condition.
+  ISD::CondCode CC = cast<CondCodeSDNode>(N0.getOperand(2))->get();
+  CC = ISD::getSetCCInverse(CC, N0.getOperand(0).getValueType().isInteger());
+  if (DCI.isBeforeLegalizeOps() ||
+      TLI->isCondCodeLegal(CC, N0.getOperand(0).getSimpleValueType()))
+    return DAG.getSetCC(dl, VT, N0.getOperand(0), N0.getOperand(1), CC);
+
+  return SDValue();
+}
+
 /// SimplifySetCC - Try to simplify a setcc built with the specified operands
 /// and cc. If it is unable to simplify it, return a null SDValue.
 SDValue
@@ -1463,19 +1489,19 @@ TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
                           Cond);
     } else if ((N1C->isNullValue() || N1C->getAPIntValue() == 1) &&
                 (Cond == ISD::SETEQ || Cond == ISD::SETNE)) {
-      // SETCC (SETCC), [0|1], [EQ|NE]  -> SETCC
-      if (N0.getOpcode() == ISD::SETCC &&
-          isTypeLegal(VT) && VT.bitsLE(N0.getValueType())) {
-        bool TrueWhenTrue = (Cond == ISD::SETEQ) ^ (N1C->getAPIntValue() != 1);
-        if (TrueWhenTrue)
-          return DAG.getNode(ISD::TRUNCATE, dl, VT, N0);
-        // Invert the condition.
-        ISD::CondCode CC = cast<CondCodeSDNode>(N0.getOperand(2))->get();
-        CC = ISD::getSetCCInverse(CC,
-                                  N0.getOperand(0).getValueType().isInteger());
-        if (DCI.isBeforeLegalizeOps() ||
-            isCondCodeLegal(CC, N0.getOperand(0).getSimpleValueType()))
-          return DAG.getSetCC(dl, VT, N0.getOperand(0), N0.getOperand(1), CC);
+      if (N0.getOpcode() == ISD::SETCC) {
+        // setcc (setcc), [0|1], [eq|ne]  -> setcc
+        SDValue Ret = nestedSetCCCombine(this, DCI, dl, N0, N1C, Cond);
+        if (Ret)
+          return Ret;
+      } else if (N0.getOpcode() == ISD::SIGN_EXTEND) {
+        // setcc (sext (setcc)), [0|1], [eq|ne]  -> setcc
+        SDValue N00 = N0.getOperand(0);
+        if (N00.getOpcode() == ISD::SETCC) {
+          SDValue Ret = nestedSetCCCombine(this, DCI, dl, N00, N1C, Cond);
+          if (Ret)
+            return Ret;
+        }
       }
 
       if ((N0.getOpcode() == ISD::XOR ||

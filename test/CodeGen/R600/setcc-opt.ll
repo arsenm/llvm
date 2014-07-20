@@ -13,3 +13,17 @@ define void @sext_bool_icmp_ne(i1 addrspace(1)* %out, i32 %a, i32 %b) nounwind {
   store i1 %icmp1, i1 addrspace(1)* %out
   ret void
 }
+
+; SI-LABEL: @sext_bool_icmp_eq
+; SI: V_CMP_EQ_I32
+; SI-NEXT: V_CNDMASK_B32
+; SI-NOT: CMP
+; SI-NOT: CNDMASK
+; SI: S_ENDPGM
+define void @sext_bool_icmp_eq(i1 addrspace(1)* %out, i32 %a, i32 %b) nounwind {
+  %icmp0 = icmp eq i32 %a, %b
+  %ext = sext i1 %icmp0 to i32
+  %icmp1 = icmp eq i32 %ext, 1
+  store i1 %icmp1, i1 addrspace(1)* %out
+  ret void
+}
