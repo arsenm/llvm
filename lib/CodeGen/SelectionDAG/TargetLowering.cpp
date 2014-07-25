@@ -1346,6 +1346,38 @@ TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
       }
     }
 
+#if 1
+    // (sext x) == C --> x == (trunc C)
+    if (DCI.isBeforeLegalize() && N0->hasOneUse() &&
+        (Cond == ISD::SETEQ || Cond == ISD::SETNE)) {
+      unsigned MinBits = N0.getValueSizeInBits();
+      SDValue PreSExt;
+      if (N0->getOpcode() == ISD::SIGN_EXTEND) {
+        // SExt
+        MinBits = N0->getOperand(0).getValueSizeInBits();
+        PreSExt = N0->getOperand(0);
+      } else if (LoadSDNode *LN0 = dyn_cast<LoadSDNode>(N0)) {
+        // SEXTLOAD
+        if (LN0->getExtensionType() == ISD::SEXTLOAD) {
+          MinBits = LN0->getMemoryVT().getSizeInBits();
+          PreSExt = N0;
+        }
+      }
+
+      // Make sure we're not losing bits from the constant.
+      if (MinBits > 0 &&
+          MinBits < C1.getBitWidth() && MinBits >= C1.getActiveBits()) {
+        EVT MinVT = EVT::getIntegerVT(*DAG.getContext(), MinBits);
+        if (isTypeDesirableForOp(ISD::SETCC, MinVT)) {
+          // Will get folded away.
+          SDValue Trunc = DAG.getNode(ISD::TRUNCATE, dl, MinVT, PreSExt);
+          SDValue C = DAG.getConstant(C1.trunc(MinBits), MinVT);
+          return DAG.getSetCC(dl, VT, Trunc, C, Cond);
+        }
+      }
+    }
+#endif
+
     // If the LHS is '(and load, const)', the RHS is 0,
     // the test is for equality or unsigned, and all 1 bits of the const are
     // in the same partial word, see if we can shorten the load.
@@ -1501,6 +1533,8 @@ TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
 #else
       } else if (N0.getOpcode() == ISD::SIGN_EXTEND) {
 #endif
+
+#if 0
         // setcc ([s|z|a]ext (setcc)), [0|1], [eq|ne]  -> setcc
         SDValue N00 = N0.getOperand(0);
         if (N00.getOpcode() == ISD::SETCC) {
@@ -1508,6 +1542,7 @@ TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
           if (Ret)
             return Ret;
         }
+#endif
       }
 
       if ((N0.getOpcode() == ISD::XOR ||
