@@ -6876,6 +6876,15 @@ SDValue DAGCombiner::visitFMUL(SDNode *N) {
   if (N1CFP && N1CFP->isExactlyValue(1.0))
     return N0;
 
+  // If allowed, fold (fmul (fmul x, c1), c2) -> (fmul x, (fmul c1, c2))
+  if (DAG.getTarget().Options.UnsafeFPMath &&
+      N1CFP && N0.getOpcode() == ISD::FMUL &&
+      N0.getNode()->hasOneUse() && isConstOrConstSplatFP(N0.getOperand(1))) {
+    return DAG.getNode(ISD::FMUL, SDLoc(N), VT, N0.getOperand(0),
+                       DAG.getNode(ISD::FMUL, SDLoc(N), VT,
+                                   N0.getOperand(1), N1));
+  }
+
   // fold (fmul X, 2.0) -> (fadd X, X)
   if (N1CFP && N1CFP->isExactlyValue(+2.0))
     return DAG.getNode(ISD::FADD, SDLoc(N), VT, N0, N0);
@@ -6896,15 +6905,6 @@ SDValue DAGCombiner::visitFMUL(SDNode *N) {
                            GetNegatedExpression(N0, DAG, LegalOperations),
                            GetNegatedExpression(N1, DAG, LegalOperations));
     }
-  }
-
-  // If allowed, fold (fmul (fmul x, c1), c2) -> (fmul x, (fmul c1, c2))
-  if (DAG.getTarget().Options.UnsafeFPMath &&
-      N1CFP && N0.getOpcode() == ISD::FMUL &&
-      N0.getNode()->hasOneUse() && isConstOrConstSplatFP(N0.getOperand(1))) {
-    return DAG.getNode(ISD::FMUL, SDLoc(N), VT, N0.getOperand(0),
-                       DAG.getNode(ISD::FMUL, SDLoc(N), VT,
-                                   N0.getOperand(1), N1));
   }
 
   return SDValue();
