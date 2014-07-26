@@ -18,10 +18,8 @@ declare void @llvm.AMDGPU.barrier.local() #1
 ; SI-DAG: V_ADD_I32_e32 [[VADDR0x100:v[0-9]+]], 0x100, [[VADDR]]
 ; SI-DAG: DS_READ_B32 v{{[0-9]+}}, [[VADDR0x100]], 0x0
 
-; CI-DAG: DS_READ_B32 v{{[0-9]+}}, [[VADDR]], 0x0
-; CI-DAG: DS_READ_B32 v{{[0-9]+}}, [[VADDR]], 0x4
-; CI-DAG: DS_READ_B32 v{{[0-9]+}}, [[VADDR]], 0x80
-; CI-DAG: DS_READ_B32 v{{[0-9]+}}, [[VADDR]], 0x84
+; CI-DAG: DS_READ2_B32 v{{\[[0-9]+:[0-9]+\]}}, [[VADDR]], 0x0, 0x1
+; CI-DAG: DS_READ2_B32 v{{\[[0-9]+:[0-9]+\]}}, [[VADDR]], 0x20, 0x21
 ; CI-DAG: DS_READ_B32 v{{[0-9]+}}, [[VADDR]], 0x100
 ; CHECK: S_ENDPGM
 define void @signed_ds_offset_addressing_loop(float addrspace(1)* noalias nocapture %out, float addrspace(3)* noalias nocapture readonly %lptr, i32 %n) #2 {
