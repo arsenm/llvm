@@ -105,7 +105,7 @@ public:
 
   bool expandPostRAPseudo(MachineBasicBlock::iterator MI) const override;
 
-  unsigned commuteOpcode(unsigned Opcode) const;
+  unsigned commuteOpcode(unsigned Opcode) const LLVM_READONLY;
 
   MachineInstr *commuteInstruction(MachineInstr *MI,
                                    bool NewMI = false) const override;
@@ -114,30 +114,31 @@ public:
                              unsigned &SrcOpIdx2) const override;
 
   bool isTriviallyReMaterializable(const MachineInstr *MI,
-                                   AliasAnalysis *AA = nullptr) const;
+                                   AliasAnalysis *AA = nullptr) const LLVM_READONLY;
 
   MachineInstr *buildMovInstr(MachineBasicBlock *MBB,
                               MachineBasicBlock::iterator I,
                               unsigned DstReg, unsigned SrcReg) const override;
-  bool isMov(unsigned Opcode) const override;
+
+  bool isMov(unsigned Opcode) const override LLVM_READONLY;
 
   bool isSafeToMoveRegClassDefs(const TargetRegisterClass *RC) const override;
-  bool isDS(uint16_t Opcode) const;
-  bool isMIMG(uint16_t Opcode) const;
-  bool isSMRD(uint16_t Opcode) const;
-  bool isMUBUF(uint16_t Opcode) const;
-  bool isMTBUF(uint16_t Opcode) const;
-  bool isFLAT(uint16_t Opcode) const;
-  bool isVOP1(uint16_t Opcode) const;
-  bool isVOP2(uint16_t Opcode) const;
-  bool isVOP3(uint16_t Opcode) const;
-  bool isVOPC(uint16_t Opcode) const;
-  bool isInlineConstant(const APInt &Imm) const;
-  bool isInlineConstant(const MachineOperand &MO) const;
-  bool isLiteralConstant(const MachineOperand &MO) const;
+  bool isDS(uint16_t Opcode) const LLVM_READONLY;
+  bool isMIMG(uint16_t Opcode) const LLVM_READONLY;
+  bool isSMRD(uint16_t Opcode) const LLVM_READONLY;
+  bool isMUBUF(uint16_t Opcode) const LLVM_READONLY;
+  bool isMTBUF(uint16_t Opcode) const LLVM_READONLY;
+  bool isFLAT(uint16_t Opcode) const LLVM_READONLY;
+  bool isVOP1(uint16_t Opcode) const LLVM_READONLY;
+  bool isVOP2(uint16_t Opcode) const LLVM_READONLY;
+  bool isVOP3(uint16_t Opcode) const LLVM_READONLY;
+  bool isVOPC(uint16_t Opcode) const LLVM_READONLY;
+  bool isInlineConstant(const APInt &Imm) const LLVM_READONLY;
+  bool isInlineConstant(const MachineOperand &MO) const LLVM_READONLY;
+  bool isLiteralConstant(const MachineOperand &MO) const LLVM_READONLY;
 
   bool isImmOperandLegal(const MachineInstr *MI, unsigned OpNo,
-                         const MachineOperand &MO) const;
+                         const MachineOperand &MO) const LLVM_READONLY;
 
   /// \brief Return true if the given offset Size in bytes can be folded into
   /// the immediate offsets of a memory instruction for the given address space.
@@ -157,10 +158,10 @@ public:
   bool verifyInstruction(const MachineInstr *MI,
                          StringRef &ErrInfo) const override;
 
-  bool isSALUInstr(const MachineInstr &MI) const;
-  static unsigned getVALUOp(const MachineInstr &MI);
+  bool isSALUInstr(const MachineInstr &MI) const LLVM_READONLY;
+  static unsigned getVALUOp(const MachineInstr &MI) LLVM_READONLY;
 
-  bool isSALUOpSupportedOnVALU(const MachineInstr &MI) const;
+  bool isSALUOpSupportedOnVALU(const MachineInstr &MI) const LLVM_READONLY;
 
   /// \brief Return the correct register class for \p OpNo.  For target-specific
   /// instructions, this will return the register class that has been defined
@@ -172,7 +173,7 @@ public:
 
   /// \returns true if it is legal for the operand at index \p OpNo
   /// to read a VGPR.
-  bool canReadVGPR(const MachineInstr &MI, unsigned OpNo) const;
+  bool canReadVGPR(const MachineInstr &MI, unsigned OpNo) const LLVM_READONLY;
 
   /// \brief Legalize the \p OpIndex operand of this instruction by inserting
   /// a MOV.  For example:
