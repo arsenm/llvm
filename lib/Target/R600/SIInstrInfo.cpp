@@ -262,6 +262,7 @@ bool SIInstrInfo::getLdStBaseRegImmOfs(MachineInstr *LdSt,
   return false;
 }
 
+
 bool SIInstrInfo::shouldClusterLoads(MachineInstr *FirstLdSt,
                                      MachineInstr *SecondLdSt,
                                      unsigned NumLoads) const {
@@ -280,6 +281,21 @@ bool SIInstrInfo::shouldClusterLoads(MachineInstr *FirstLdSt,
 
   if ((isMUBUF(Opc0) || isMTBUF(Opc0)) && (isMUBUF(Opc1) || isMTBUF(Opc1)))
     return true;
+
+  return false;
+}
+
+bool SIInstrInfo::shouldScheduleAdjacent(MachineInstr *Inst0,
+                                         MachineInstr *Inst1) const {
+  if (isDS(Inst0->getOpcode()) && isDS(Inst1->getOpcode())) {
+    unsigned Reg0, Reg1;
+    unsigned Offset0, Offset1;
+
+    if (getLdStBaseRegImmOfs(Inst0, Reg0, Offset0, &RI) &&
+        getLdStBaseRegImmOfs(Inst1, Reg1, Offset1, &RI)) {
+      return (Reg0 == Reg1 && isUInt<8>(Offset0) && isUInt<8>(Offset1));
+    }
+  }
 
   return false;
 }

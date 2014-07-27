@@ -76,6 +76,9 @@ public:
                           MachineInstr *SecondLdSt,
                           unsigned NumLoads) const final;
 
+  bool shouldScheduleAdjacent(MachineInstr* First,
+                              MachineInstr *Second) const final;
+
   void copyPhysReg(MachineBasicBlock &MBB,
                    MachineBasicBlock::iterator MI, DebugLoc DL,
                    unsigned DestReg, unsigned SrcReg,
