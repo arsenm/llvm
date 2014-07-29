@@ -63,6 +63,7 @@ private:
   unsigned WavefrontSize;
   bool CFALUBug;
   int LocalMemorySize;
+  int NumLDSBanks;
 
   const DataLayout DL;
   AMDGPUFrameLowering FrameLowering;
@@ -193,6 +194,12 @@ public:
 
   int getLocalMemorySize() const {
     return LocalMemorySize;
+  }
+
+  // FIXME: This is currently hardcoded to 32. According to the CI manual, there
+  // are 16 or 32-banks depending on the GPU type. Which ones?
+  int getNumLDSBanks() const {
+    return NumLDSBanks;
   }
 
   bool enableMachineScheduler() const override {
