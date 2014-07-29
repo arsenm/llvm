@@ -279,8 +279,7 @@ void ScheduleDAGSDNodes::ClusterNeighboringLoads(SDNode *Node) {
     bool OutGlue = I < E - 1;
     SDNode *Load = Loads[I];
 
-    // If AddGlue fails, we could leave an unsused glue value. This should not
-    // cause any
+    // If AddGlue fails, we could leave an unused glue value.
     if (AddGlue(Load, InGlue, OutGlue, DAG)) {
       if (OutGlue)
         InGlue = SDValue(Load, Load->getNumValues() - 1);
