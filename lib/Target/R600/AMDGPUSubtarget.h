@@ -203,7 +203,7 @@ public:
   }
 
   bool enableMachineScheduler() const override {
-    return getGeneration() <= NORTHERN_ISLANDS;
+    return true;
   }
 
   // Helper functions to simplify if statements
