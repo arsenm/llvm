@@ -79,6 +79,9 @@ public:
   bool shouldScheduleAdjacent(MachineInstr* First,
                               MachineInstr *Second) const final;
 
+  void insertNoop(MachineBasicBlock &MBB,
+                  MachineBasicBlock::iterator MI) const final;
+
   void copyPhysReg(MachineBasicBlock &MBB,
                    MachineBasicBlock::iterator MI, DebugLoc DL,
                    unsigned DestReg, unsigned SrcReg,

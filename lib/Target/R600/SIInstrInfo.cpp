@@ -300,6 +300,13 @@ bool SIInstrInfo::shouldScheduleAdjacent(MachineInstr *Inst0,
   return false;
 }
 
+void SIInstrInfo::insertNoop(MachineBasicBlock &MBB,
+                             MachineBasicBlock::iterator MI) const {
+  DebugLoc DL;
+  BuildMI(MBB, MI, DL, get(AMDGPU::S_NOP))
+    .addImm(0); // 1 nop
+}
+
 void
 SIInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                          MachineBasicBlock::iterator MI, DebugLoc DL,

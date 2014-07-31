@@ -123,8 +123,6 @@ public:
 
   bool
   ReverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;
-  void insertNoop(MachineBasicBlock &MBB,
-                  MachineBasicBlock::iterator MI) const override;
   bool isPredicated(const MachineInstr *MI) const override;
   bool SubsumesPredicate(const SmallVectorImpl<MachineOperand> &Pred1,
                    const SmallVectorImpl<MachineOperand> &Pred2) const override;

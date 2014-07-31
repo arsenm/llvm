@@ -246,11 +246,6 @@ AMDGPUInstrInfo::ReverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond)
   // TODO: Implement this function
   return true;
 }
-void AMDGPUInstrInfo::insertNoop(MachineBasicBlock &MBB,
-                                MachineBasicBlock::iterator MI) const {
-  // TODO: Implement this function
-}
-
 bool AMDGPUInstrInfo::isPredicated(const MachineInstr *MI) const {
   // TODO: Implement this function
   return false;
