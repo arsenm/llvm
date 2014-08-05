@@ -149,8 +149,8 @@ bool AMDGPUPassConfig::addPreRegAlloc() {
     // so we need to run MachineCSE afterwards.
     addPass(&MachineCSEID);
     addPass(createSIShrinkInstructionsPass());
-    initializeSIFixSGPRLiveRangesPass(*PassRegistry::getPassRegistry());
-    insertPass(&RegisterCoalescerID, &SIFixSGPRLiveRangesID);
+//    initializeSIFixSGPRLiveRangesPass(*PassRegistry::getPassRegistry());
+//    insertPass(&RegisterCoalescerID, &SIFixSGPRLiveRangesID);
   }
   return false;
 }
