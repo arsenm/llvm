@@ -593,7 +593,7 @@ bool MachineSinking::SinkInstruction(MachineInstr *MI, bool &SawStore) {
     return false;
 
   // Check if it's safe to move the instruction.
-  if (!MI->isSafeToMove(TII, AA, SawStore))
+  if (!MI->isSafeToMove(TII, AA, SawStore) || !TII->shouldSinkInst(*MI))
     return false;
 
   // FIXME: This should include support for sinking instructions within the

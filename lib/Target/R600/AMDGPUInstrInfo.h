@@ -137,6 +137,7 @@ public:
                         std::vector<MachineOperand> &Pred) const override;
   bool isPredicable(MachineInstr *MI) const override;
   bool isSafeToMoveRegClassDefs(const TargetRegisterClass *RC) const override;
+  bool shouldSinkInst(const MachineInstr &MI) const override;
 
   // Helper functions that check the opcode for status information
   bool isRegisterStore(const MachineInstr &MI) const;

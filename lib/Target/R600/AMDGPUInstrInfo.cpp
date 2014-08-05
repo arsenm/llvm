@@ -269,6 +269,10 @@ AMDGPUInstrInfo::isSafeToMoveRegClassDefs(const TargetRegisterClass *RC) const {
   return true;
 }
 
+bool AMDGPUInstrInfo::shouldSinkInst(const MachineInstr &MI) const {
+  return !MI.mayLoad();
+}
+
 bool AMDGPUInstrInfo::isRegisterStore(const MachineInstr &MI) const {
   return get(MI.getOpcode()).TSFlags & AMDGPU_FLAG_REGISTER_STORE;
 }

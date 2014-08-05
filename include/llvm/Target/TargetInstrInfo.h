@@ -776,6 +776,10 @@ public:
     return true;
   }
 
+  virtual bool shouldSinkInst(const MachineInstr &) const {
+    return true;
+  }
+
   /// isSchedulingBoundary - Test if the given instruction should be
   /// considered a scheduling boundary. This primarily includes labels and
   /// terminators.
