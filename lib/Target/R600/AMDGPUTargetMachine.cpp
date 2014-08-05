@@ -82,6 +82,7 @@ public:
 
   virtual void addCodeGenPrepare();
   bool addPreISel() override;
+  void addMachineSSAOptimization() override;
   bool addInstSelector() override;
   bool addPreRegAlloc() override;
   bool addPostRegAlloc() override;
@@ -130,6 +131,11 @@ AMDGPUPassConfig::addPreISel() {
     addPass(createR600TextureIntrinsicsReplacer());
   }
   return false;
+}
+
+void AMDGPUPassConfig::addMachineSSAOptimization() {
+  disablePass(&MachineSinkingID);
+  TargetPassConfig::addMachineSSAOptimization();
 }
 
 bool AMDGPUPassConfig::addInstSelector() {
