@@ -87,7 +87,7 @@ defm S_BUFFER_LOAD_DWORDX16 : SMRD_Helper <
 // SOP1 Instructions
 //===----------------------------------------------------------------------===//
 
-let isMoveImm = 1 in {
+let isMoveImm = 1, isAsCheapAsAMove = 1 in {
 def S_MOV_B32 : SOP1_32 <0x00000003, "S_MOV_B32", []>;
 def S_MOV_B64 : SOP1_64 <0x00000004, "S_MOV_B64", []>;
 def S_CMOV_B32 : SOP1_32 <0x00000005, "S_CMOV_B32", []>;
@@ -1127,7 +1127,7 @@ def FLAT_STORE_DWORDX3 : FLAT_Store_Helper <
 
 //def V_NOP : VOP1_ <0x00000000, "V_NOP", []>;
 
-let isMoveImm = 1 in {
+let isMoveImm = 1, isAsCheapAsAMove = 1 in {
 defm V_MOV_B32 : VOP1Inst <0x00000001, "V_MOV_B32", VOP_I32_I32>;
 } // End isMoveImm = 1
 
