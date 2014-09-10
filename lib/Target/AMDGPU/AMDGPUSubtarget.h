@@ -262,6 +262,9 @@ public:
   void overrideSchedPolicy(MachineSchedPolicy &Policy,
                            MachineInstr *begin, MachineInstr *end,
                            unsigned NumRegionInstrs) const override;
+  bool useAA() const override {
+    return true;
+  }
 
   // Helper functions to simplify if statements
   bool isTargetELF() const {
