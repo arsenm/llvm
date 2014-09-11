@@ -580,7 +580,9 @@ bool AttributeSetNode::getUnfencedAddrSpaces(AttributeSet::FenceSet &Out) const 
 bool AttributeSetNode::doesNotFenceMemory() const {
   for (const Attribute &Attr : *this) {
     if (Attr.hasAttribute(Attribute::NoMemFence))
-      return (Attr.getAddressSpace() == ~0U);
+//      return (Attr.getAddressSpace() == ~0U);
+      if (Attr.getAddressSpace() == ~0U)
+        return true;
   }
 
   return false;
