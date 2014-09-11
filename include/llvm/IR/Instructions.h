@@ -1425,17 +1425,11 @@ public:
     addAttribute(AttributeSet::FunctionIndex, Attribute::ReadNone);
   }
 
-  bool addrspaceIsUnfenced(unsigned AS) const {
-    return AttributeList.addrspaceIsUnfenced(AS);
-  }
+  bool addrspaceIsUnfenced(unsigned AS) const;
 
-  bool getUnfencedAddrSpaces(std::set<unsigned> &Out) const {
-    return AttributeList.getUnfencedAddrSpaces(Out);
-  }
+  bool getUnfencedAddrSpaces(std::set<unsigned> &Out) const;
 
-  bool doesNotFenceMemory() const {
-    return AttributeList.doesNotFenceMemory();
-  }
+  bool doesNotFenceMemory() const;
 
   /// \brief Determine if the call does not access or only reads memory.
   bool onlyReadsMemory() const {

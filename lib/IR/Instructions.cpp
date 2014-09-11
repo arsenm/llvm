@@ -362,6 +362,36 @@ bool CallInst::paramHasAttr(unsigned i, Attribute::AttrKind A) const {
   return false;
 }
 
+bool CallInst::addrspaceIsUnfenced(unsigned AS) const {
+  if (AttributeList.addrspaceIsUnfenced(AS))
+    return true;
+
+  if (const Function *F = getCalledFunction())
+    return F->getAttributes().addrspaceIsUnfenced(AS);
+
+  return false;
+}
+
+bool CallInst::getUnfencedAddrSpaces(std::set<unsigned> &Out) const {
+  if (AttributeList.getUnfencedAddrSpaces(Out))
+    return true;
+
+  // Get set union of address spaces.
+  if (const Function *F = getCalledFunction())
+    return F->getAttributes().getUnfencedAddrSpaces(Out);
+  return false;
+}
+
+bool CallInst::doesNotFenceMemory() const {
+  if (AttributeList.doesNotFenceMemory())
+    return true;
+
+  if (const Function *F = getCalledFunction())
+    return F->getAttributes().doesNotFenceMemory();
+
+  return false;
+}
+
 /// IsConstantOne - Return true only if val is constant int 1
 static bool IsConstantOne(Value *val) {
   assert(val && "IsConstantOne does not work with NULL val");
