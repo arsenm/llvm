@@ -959,7 +959,12 @@ void Verifier::VerifyFunctionAttrs(FunctionType *FT, AttributeSet Attrs,
 
   if (Attrs.hasAttribute(AttributeSet::FunctionIndex,
                          Attribute::NoMemFence)) {
-    Assert1(Attrs.doesNotFenceMemory() && Attrs.doesNotFenceSomeMemory(),
+    bool DoesNotFenceMemory = Attrs.doesNotFenceMemory();
+    bool DoesNotFenceSomeMemory = Attrs.doesNotFenceSomeMemory();
+
+    Assert1((DoesNotFenceMemory && !DoesNotFenceSomeMemory) ||
+            (!DoesNotFenceMemory && DoesNotFenceMemory) ||
+            (!DoesNotFenceMemory && !DoesNotFenceSomeMemory),
             "'nomemfence' is incompatible with nomemfence(N)!", V);
   }
 }
