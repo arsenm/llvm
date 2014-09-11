@@ -11,11 +11,11 @@ target triple = "x86_64-apple-macosx10.7"
 define i32 @test() nounwind uwtable ssp {
 entry:
   store i32 1, i32* @z
-  tail call void @memset_pattern16(i8* bitcast (i32* @y to i8*), i8* bitcast (i32* @x to i8*), i64 4) nounwind
+  tail call void @memset_pattern16(i8* bitcast (i32* @y to i8*), i8* bitcast (i32* @x to i8*), i64 4) nounwind nomemfence
 ; CHECK-NOT: load
   %l = load i32* @z
 ; CHECK: ret i32 1
   ret i32 %l
 }
 
-declare void @memset_pattern16(i8*, i8*, i64)
+declare void @memset_pattern16(i8*, i8*, i64) nounwind nomemfence

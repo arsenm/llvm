@@ -45,7 +45,7 @@ out:
         ret i32 %X
 }
 
-declare void @external()
+declare void @external() nomemfence
 
 ; CHECK:      define i32 @test3()
 ; CHECK-NEXT:   call void @external()
@@ -54,7 +54,7 @@ declare void @external()
 define i32 @test3() {
 	%X = alloca i32
 	store i32 7, i32* %X
-	call void @external()
+	call void @external() nomemfence
 	%V = load i32* %X
 	ret i32 %V
 }
