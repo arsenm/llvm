@@ -181,6 +181,11 @@ SILoadStoreOptimizer::findMatchingDSInst(MachineBasicBlock::iterator I,
   if (MBBI->hasOrderedMemoryRef())
     return E;
 
+  // Don't combine an LDS and a GDS load.
+  int GDSIdx = AMDGPU::getNamedOperandIdx(I->getOpcode(), AMDGPU::OpName::gds);
+  if (I->getOperand(GDSIdx).getImm() != MBBI->getOperand(GDSIdx).getImm())
+    return E;
+
   int AddrIdx = AMDGPU::getNamedOperandIdx(I->getOpcode(), AMDGPU::OpName::addr);
   const MachineOperand &AddrReg0 = I->getOperand(AddrIdx);
   const MachineOperand &AddrReg1 = MBBI->getOperand(AddrIdx);

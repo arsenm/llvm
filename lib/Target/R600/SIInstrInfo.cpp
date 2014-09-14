@@ -94,6 +94,10 @@ bool SIInstrInfo::areLoadsFromSameBasePtr(SDNode *Load0, SDNode *Load1,
     if (Load0->getOperand(1) != Load1->getOperand(1))
       return false;
 
+    // Check GDS bit.
+    if (Load0->getOperand(0) != Load1->getOperand(0))
+      return false;
+
     // Check chain.
     if (findChainOperand(Load0) != findChainOperand(Load1))
       return false;
@@ -273,8 +277,14 @@ bool SIInstrInfo::shouldClusterLoads(MachineInstr *FirstLdSt,
   if (NumLoads > 4)
     return false;
 
-  if (isDS(Opc0) && isDS(Opc1))
+  if (isDS(Opc0) && isDS(Opc1)) {
+    int GDSIdx = AMDGPU::getNamedOperandIdx(Opc0, AMDGPU::OpName::gds);
+    if (FirstLdSt->getOperand(GDSIdx).getImm() !=
+        SecondLdSt->getOperand(GDSIdx).getImm())
+      return false;
+
     return true;
+  }
 
   if (isSMRD(Opc0) && isSMRD(Opc1))
     return true;
@@ -290,6 +300,12 @@ bool SIInstrInfo::shouldScheduleAdjacent(MachineInstr *Inst0,
   if (isDS(Inst0->getOpcode()) && isDS(Inst1->getOpcode())) {
     unsigned Reg0, Reg1;
     unsigned Offset0, Offset1;
+
+    int GDSIdx = AMDGPU::getNamedOperandIdx(Inst0->getOpcode(),
+                                            AMDGPU::OpName::gds);
+    if (Inst0->getOperand(GDSIdx).getImm() !=
+        Inst1->getOperand(GDSIdx).getImm())
+      return false;
 
     if (getLdStBaseRegImmOfs(Inst0, Reg0, Offset0, &RI) &&
         getLdStBaseRegImmOfs(Inst1, Reg1, Offset1, &RI)) {
