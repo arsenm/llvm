@@ -830,6 +830,12 @@ BasicAliasAnalysis::getModRefInfo(ImmutableCallSite CS,
   // as an argument, and itself doesn't capture it.
   if (!isa<Constant>(Object) && CS.getInstruction() != Object &&
       isNonEscapingLocalObject(Object)) {
+
+    if (!CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace())) {
+
+      return ModRef;
+    }
+
     bool PassedAsArg = false;
     unsigned ArgNo = 0;
     for (ImmutableCallSite::arg_iterator CI = CS.arg_begin(), CE = CS.arg_end();
@@ -860,6 +866,13 @@ BasicAliasAnalysis::getModRefInfo(ImmutableCallSite CS,
   // particular memory location.
   if (isAssumeIntrinsic(CS))
     return NoModRef;
+
+  if (!CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace())) {
+
+    return ModRef;
+  }
+
+
 
   // The AliasAnalysis base class has some smarts, lets use them.
   return AliasAnalysis::getModRefInfo(CS, Loc);

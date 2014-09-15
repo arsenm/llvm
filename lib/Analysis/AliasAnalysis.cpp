@@ -416,7 +416,8 @@ AliasAnalysis::callCapturesBefore(const Instruction *I,
     return AliasAnalysis::ModRef;
 
   ImmutableCallSite CS(I);
-  if (!CS.getInstruction() || CS.getInstruction() == Object)
+  if (!CS.getInstruction() || CS.getInstruction() == Object ||
+      !CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace()))
     return AliasAnalysis::ModRef;
 
   if (llvm::PointerMayBeCapturedBefore(Object, /* ReturnCaptures */ true,

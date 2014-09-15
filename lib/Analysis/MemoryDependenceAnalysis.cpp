@@ -580,13 +580,6 @@ getPointerDependencyFrom(const AliasAnalysis::Location &MemLoc, bool isLoad,
       return MemDepResult::getClobber(Inst);
     }
 
-    CallSite CS(Inst);
-    if (CS) {
-      unsigned AS = MemLoc.Ptr->getType()->getPointerAddressSpace();
-      if (!CS.addrspaceIsUnfenced(AS))
-        return MemDepResult::getClobber(Inst);
-    }
-
     // If this is an allocation, and if we know that the accessed pointer is to
     // the allocation, return Def.  This means that there is no dependence and
     // the access can be optimized based on that.  For example, a load could
@@ -611,11 +604,22 @@ getPointerDependencyFrom(const AliasAnalysis::Location &MemLoc, bool isLoad,
         continue;
     }
 
+#if 0
+    CallSite CS(Inst);
+    if (CS) {
+      unsigned AS = MemLoc.Ptr->getType()->getPointerAddressSpace();
+      if (!CS.addrspaceIsUnfenced(AS))
+        return MemDepResult::getClobber(Inst);
+    }
+#endif
+
     // See if this instruction (e.g. a call or vaarg) mod/ref's the pointer.
     AliasAnalysis::ModRefResult MR = AA->getModRefInfo(Inst, MemLoc);
     // If necessary, perform additional analysis.
-    if (MR == AliasAnalysis::ModRef)
+    if (MR == AliasAnalysis::ModRef) {
+
       MR = AA->callCapturesBefore(Inst, MemLoc, DT);
+    }
     switch (MR) {
     case AliasAnalysis::NoModRef:
       // If the call has no effect on the queried pointer, just ignore it.
