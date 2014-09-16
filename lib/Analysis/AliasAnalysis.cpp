@@ -429,9 +429,9 @@ AliasAnalysis::callCapturesBefore(const Instruction *I,
   AliasAnalysis::ModRefResult R = AliasAnalysis::NoModRef;
   for (ImmutableCallSite::arg_iterator CI = CS.arg_begin(), CE = CS.arg_end();
        CI != CE; ++CI, ++ArgNo) {
-    // Only look at the no-capture or byval pointer arguments.  If this
-    // pointer were passed to arguments that were neither of these, then it
-    // couldn't be no-capture.
+    // Only look at the no-capture or byval pointer arguments. If this pointer
+    // was passed to an argument that was neither of these, then it couldn't be
+    // no-capture.
     if (!(*CI)->getType()->isPointerTy() ||
         (!CS.doesNotCapture(ArgNo) && !CS.isByValArgument(ArgNo)))
       continue;
