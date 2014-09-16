@@ -20,4 +20,4 @@ entry:
 }
 
 ; CHECK: attributes #0 = { readnone ssp uwtable }
-; CHECK: attributes #1 = { ssp uwtable }
+; CHECK: attributes #1 = { ssp uwtable nomemfence }
