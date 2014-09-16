@@ -15,3 +15,16 @@ define i8 @test() {
 ; CHECK: call void @use(i8* %a)
 ; CHECK-NEXT: ret i8 1
 }
+
+declare void @use_nomemfence(i8* readonly nocapture) nomemfence
+
+define i8 @test_nomemfence() {
+  %a = alloca i8
+  store i8 1, i8* %a
+  call void @use_nomemfence(i8* %a)
+  %b = load i8* %a
+  ret i8 %b
+; CHECK-LABEL: define i8 @test_nomemfence(
+; CHECK: call void @use_nomemfence(i8* %a)
+; CHECK-NEXT: ret i8 1
+}

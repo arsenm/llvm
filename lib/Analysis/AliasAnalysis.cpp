@@ -416,9 +416,15 @@ AliasAnalysis::callCapturesBefore(const Instruction *I,
     return AliasAnalysis::ModRef;
 
   ImmutableCallSite CS(I);
-  if (!CS.getInstruction() || CS.getInstruction() == Object ||
-      !CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace()))
+  if (!CS.getInstruction() || CS.getInstruction() == Object)
     return AliasAnalysis::ModRef;
+
+  // !isIdentifiedFUnctionLocal except arguments
+  if (!isa<AllocaInst>(Object) && !isNoAliasCall(Object)) {
+    if (!CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace()))
+      return AliasAnalysis::ModRef;
+  }
+
 
   if (llvm::PointerMayBeCapturedBefore(Object, /* ReturnCaptures */ true,
                                        /* StoreCaptures */ true, I, DT,
