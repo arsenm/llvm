@@ -42,52 +42,52 @@ define void @crash1() {
 ;; i32 -> f32 forwarding.
 define float @coerce_mustalias1(i32 %V, i32* %P) {
   store i32 %V, i32* %P
-   
+
   %P2 = bitcast i32* %P to float*
 
   %A = load float* %P2
   ret float %A
 ; CHECK-LABEL: @coerce_mustalias1(
 ; CHECK-NOT: load
-; CHECK: ret float 
+; CHECK: ret float
 }
 
 ;; i32* -> float forwarding.
 define float @coerce_mustalias2(i32* %V, i32** %P) {
   store i32* %V, i32** %P
-   
+
   %P2 = bitcast i32** %P to float*
 
   %A = load float* %P2
   ret float %A
 ; CHECK-LABEL: @coerce_mustalias2(
 ; CHECK-NOT: load
-; CHECK: ret float 
+; CHECK: ret float
 }
 
 ;; float -> i32* forwarding.
 define i32* @coerce_mustalias3(float %V, float* %P) {
   store float %V, float* %P
-   
+
   %P2 = bitcast float* %P to i32**
 
   %A = load i32** %P2
   ret i32* %A
 ; CHECK-LABEL: @coerce_mustalias3(
 ; CHECK-NOT: load
-; CHECK: ret i32* 
+; CHECK: ret i32*
 }
 
 ;; i32 -> f32 load forwarding.
 define float @coerce_mustalias4(i32* %P, i1 %cond) {
   %A = load i32* %P
-  
+
   %P2 = bitcast i32* %P to float*
   %B = load float* %P2
   br i1 %cond, label %T, label %F
 T:
   ret float %B
-  
+
 F:
   %X = bitcast i32 %A to float
   ret float %X
@@ -102,7 +102,7 @@ F:
 ;; i32 -> i8 forwarding
 define i8 @coerce_mustalias5(i32 %V, i32* %P) {
   store i32 %V, i32* %P
-   
+
   %P2 = bitcast i32* %P to i8*
 
   %A = load i8* %P2
@@ -115,7 +115,7 @@ define i8 @coerce_mustalias5(i32 %V, i32* %P) {
 ;; i64 -> float forwarding
 define float @coerce_mustalias6(i64 %V, i64* %P) {
   store i64 %V, i64* %P
-   
+
   %P2 = bitcast i64* %P to float*
 
   %A = load float* %P2
@@ -128,7 +128,7 @@ define float @coerce_mustalias6(i64 %V, i64* %P) {
 ;; i64 -> i8* (32-bit) forwarding
 define i8* @coerce_mustalias7(i64 %V, i64* %P) {
   store i64 %V, i64* %P
-   
+
   %P2 = bitcast i64* %P to i8**
 
   %A = load i8** %P2
@@ -141,7 +141,7 @@ define i8* @coerce_mustalias7(i64 %V, i64* %P) {
 ; memset -> i16 forwarding.
 define signext i16 @memset_to_i16_local(i16* %A) nounwind ssp {
 entry:
-  %conv = bitcast i16* %A to i8* 
+  %conv = bitcast i16* %A to i8*
   tail call void @llvm.memset.p0i8.i64(i8* %conv, i8 1, i64 200, i32 1, i1 false)
   %arrayidx = getelementptr inbounds i16* %A, i64 42
   %tmp2 = load i16* %arrayidx
@@ -177,7 +177,7 @@ define i16 @memset_to_i16_nonlocal0(i16* %P, i1 %cond) {
 T:
   tail call void @llvm.memset.p0i8.i64(i8* %P3, i8 1, i64 400, i32 1, i1 false)
   br label %Cont
-  
+
 F:
   tail call void @llvm.memset.p0i8.i64(i8* %P3, i8 2, i64 400, i32 1, i1 false)
   br label %Cont
@@ -231,7 +231,7 @@ define i8 @coerce_mustalias_nonlocal0(i32* %P, i1 %cond) {
 T:
   store i32 42, i32* %P
   br label %Cont
-  
+
 F:
   store float 1.0, float* %P2
   br label %Cont
@@ -256,7 +256,7 @@ define i8 @coerce_mustalias_nonlocal1(i32* %P, i1 %cond) {
 T:
   store i32 42, i32* %P
   br label %Cont
-  
+
 F:
   store float 1.0, float* %P2
   br label %Cont
@@ -281,7 +281,7 @@ define i8 @coerce_mustalias_pre0(i32* %P, i1 %cond) {
 T:
   store i32 42, i32* %P
   br label %Cont
-  
+
 F:
   br label %Cont
 
@@ -307,7 +307,7 @@ Cont:
 ;; PR4216
 define i8 @coerce_offset0(i32 %V, i32* %P) {
   store i32 %V, i32* %P
-   
+
   %P2 = bitcast i32* %P to i8*
   %P3 = getelementptr i8* %P2, i32 2
 
@@ -340,7 +340,7 @@ define i8 @coerce_offset_nonlocal0(i32* %P, i1 %cond) {
 T:
   store i32 57005, i32* %P
   br label %Cont
-  
+
 F:
   store float 1.0, float* %P2
   br label %Cont
@@ -365,7 +365,7 @@ define i8 @coerce_offset_pre0(i32* %P, i1 %cond) {
 T:
   store i32 42, i32* %P
   br label %Cont
-  
+
 F:
   br label %Cont
 
@@ -403,7 +403,7 @@ block4:
   %c = load i32** %p
   %d = load i32* %c
   ret i32 %d
-  
+
 ; CHECK-LABEL: @chained_load(
 ; CHECK: %z = load i32** %p
 ; CHECK-NOT: load
@@ -420,22 +420,22 @@ define i32 @phi_trans2() {
 entry:
   %P = alloca i32, i32 400
   br label %F1
-  
+
 F1:
   %A = phi i32 [1, %entry], [2, %F]
   %cond2 = call i1 @cond()
   br i1 %cond2, label %T1, label %TY
-  
+
 T1:
   %P2 = getelementptr i32* %P, i32 %A
   %x = load i32* %P2
   %cond = call i1 @cond2()
   br i1 %cond, label %TX, label %F
-  
+
 F:
   %P3 = getelementptr i32* %P, i32 2
   store i32 17, i32* %P3
-  
+
   store i32 42, i32* %P2  ; Provides "P[A]".
   br label %F1
 
@@ -445,7 +445,7 @@ TX:
   ; executes once or 42 if it executes more than that, but we'd have to do
   ; loop restructuring to expose this, and GVN shouldn't do this sort of CFG
   ; transformation.
-  
+
 ; CHECK: TX:
 ; CHECK: ret i32 %x
   ret i32 %x
@@ -471,23 +471,23 @@ block3:
 block4:
   %A = phi i32 [-1, %block2], [42, %block3]
   br i1 %cmpxy, label %block5, label %exit
-  
+
 ; CHECK: block4:
-; CHECK-NEXT: %D = phi i32 [ 87, %block2 ], [ 97, %block3 ]  
+; CHECK-NEXT: %D = phi i32 [ 87, %block2 ], [ 97, %block3 ]
 ; CHECK-NOT: load
 
 block5:
   %B = add i32 %A, 1
   br i1 %cmpxy, label %block6, label %exit
-  
+
 block6:
   %C = getelementptr i32* %p, i32 %B
   br i1 %cmpxy, label %block7, label %exit
-  
+
 block7:
   %D = load i32* %C
   ret i32 %D
-  
+
 ; CHECK: block7:
 ; CHECK-NEXT: ret i32 %D
 
@@ -500,7 +500,7 @@ define i8 @phi_trans4(i8* %p) {
 entry:
   %X3 = getelementptr i8* %p, i32 192
   store i8 192, i8* %X3
-  
+
   %X = getelementptr i8* %p, i32 4
   %Y = load i8* %X
   br label %loop
@@ -509,17 +509,17 @@ loop:
   %i = phi i32 [4, %entry], [192, %loop]
   %X2 = getelementptr i8* %p, i32 %i
   %Y2 = load i8* %X2
-  
+
 ; CHECK: loop:
 ; CHECK-NEXT: %Y2 = phi i8 [ %Y, %entry ], [ 0, %loop ]
 ; CHECK-NOT: load i8
-  
+
   %cond = call i1 @cond2()
 
   %Z = bitcast i8 *%X3 to i32*
   store i32 0, i32* %Z
   br i1 %cond, label %loop, label %out
-  
+
 out:
   %R = add i8 %Y, %Y2
   ret i8 %R
@@ -528,10 +528,10 @@ out:
 define i8 @phi_trans5(i8* %p) {
 ; CHECK-LABEL: @phi_trans5(
 entry:
-  
+
   %X4 = getelementptr i8* %p, i32 2
   store i8 19, i8* %X4
-  
+
   %X = getelementptr i8* %p, i32 4
   %Y = load i8* %X
   br label %loop
@@ -553,7 +553,7 @@ cont:
 ; CHECK-NEXT: getelementptr i8* %p, i32 3
 ; CHECK-NEXT: load i8*
   br label %loop
-  
+
 out:
   %R = add i8 %Y, %Y2
   ret i8 %R
