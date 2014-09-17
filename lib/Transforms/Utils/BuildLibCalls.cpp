@@ -124,7 +124,7 @@ Value *llvm::EmitStrNCmp(Value *Ptr1, Value *Ptr2, Value *Len,
   AttributeSet AS[3];
   AS[0] = AttributeSet::get(M->getContext(), 1, Attribute::NoCapture);
   AS[1] = AttributeSet::get(M->getContext(), 2, Attribute::NoCapture);
-  Attribute::AttrKind AVs[2] = { Attribute::ReadOnly, Attribute::NoUnwind };
+  Attribute::AttrKind AVs[] = { Attribute::ReadOnly, Attribute::NoUnwind };
   AS[2] = AttributeSet::get(M->getContext(), AttributeSet::FunctionIndex, AVs);
 
   LLVMContext &Context = B.GetInsertBlock()->getContext();
