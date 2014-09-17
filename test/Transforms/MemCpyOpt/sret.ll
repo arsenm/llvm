@@ -1,10 +1,12 @@
-; RUN: opt < %s -basicaa -memcpyopt -S | not grep "call.*memcpy"
+; RUN: opt -basicaa -memcpyopt -S < %s | FileCheck %s
 
 target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:128:128"
 target triple = "i686-apple-darwin9"
 
 %0 = type { x86_fp80, x86_fp80 }
 
+; CHECK-LABEL: @ccosl
+; CHECK-NOT: call{{.*}}memcpy
 define void @ccosl(%0* noalias sret %agg.result, %0* byval align 8 %z) nounwind {
 entry:
   %iz = alloca %0
