@@ -419,7 +419,9 @@ AliasAnalysis::callCapturesBefore(const Instruction *I,
   if (!CS.getInstruction() || CS.getInstruction() == Object)
     return AliasAnalysis::ModRef;
 
-  // !isIdentifiedFUnctionLocal except arguments
+  auto ObjectA = Object;
+
+  // !isIdentifiedFunctionLocal except arguments
   if (!isa<AllocaInst>(Object) && !isNoAliasCall(Object)) {
     if (!CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace()))
       return AliasAnalysis::ModRef;
