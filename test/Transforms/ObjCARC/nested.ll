@@ -821,5 +821,6 @@ entry:
   ret void
 }
 
-; CHECK: attributes [[NUW]] = { nounwind }
+; CHECK: attributes #0 = { nounwind nomemfence }
 ; CHECK: attributes #1 = { nonlazybind }
+; CHECK: attributes [[NUW]] = { nounwind }
