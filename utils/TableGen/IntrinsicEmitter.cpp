@@ -640,7 +640,8 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
     }
 
     ModRefKind modRef = getModRefKind(intrinsic);
-    bool hasNoMemFences = !intrinsic.UnfencedAddrSpaces.empty();
+    bool hasNoMemFences = !intrinsic.UnfencedAddrSpaces.empty() ||
+      (intrinsic.ModRef == CodeGenIntrinsic::ReadWriteArgMem);
 
     if (!intrinsic.canThrow || modRef || intrinsic.isNoReturn ||
         intrinsic.isNoDuplicate || hasNoMemFences) {
@@ -680,8 +681,14 @@ EmitAttributes(const std::vector<CodeGenIntrinsic> &Ints, raw_ostream &OS) {
 
       if (hasNoMemFences) {
         OS << "      AttrBuilder B;\n";
-        for (unsigned AS : intrinsic.UnfencedAddrSpaces) {
-          OS << "      B.addNoMemFenceAttr(" << AS << ");\n";
+
+        // ReadWriteArgMem implies NoMemFenceAll since there currently is no IR
+        // attribute for these.
+        if (intrinsic.ModRef == CodeGenIntrinsic::ReadWriteArgMem)
+          OS << "      B.addNoMemFenceAttr(~0U);\n";
+        else {
+          for (unsigned AS : intrinsic.UnfencedAddrSpaces)
+            OS << "      B.addNoMemFenceAttr(" << AS << ");\n";
         }
 
         OS << "      for (unsigned I = 0; I < array_lengthof(Atts); ++I)\n"
