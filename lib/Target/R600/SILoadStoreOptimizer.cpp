@@ -53,21 +53,6 @@ using namespace llvm;
 
 namespace {
 
-struct MergeCandidate {
-  MachineBasicBlock::iterator Inst0;
-  MachineBasicBlock::iterator Inst1;
-  unsigned EltSize;
-  bool IsWrite;
-
-  MergeCandidate(MachineBasicBlock::iterator I0,
-                 MachineBasicBlock::iterator I1,
-                 unsigned Size, bool Write)
-    : Inst0(I0),
-      Inst1(I1),
-      EltSize(Size),
-      IsWrite(Write) { }
-};
-
 class SILoadStoreOptimizer : public MachineFunctionPass {
 private:
   const TargetMachine *TM;
@@ -89,11 +74,14 @@ private:
                          unsigned SubIdx);
 
   MachineBasicBlock::iterator mergeRead2Pair(
-    const MergeCandidate &,
-    SmallVectorImpl<unsigned> &OrigRegs);
+    MachineBasicBlock::iterator I,
+    MachineBasicBlock::iterator Paired,
+    unsigned EltSize);
+
   MachineBasicBlock::iterator mergeWrite2Pair(
-    const MergeCandidate &,
-    SmallVectorImpl<unsigned> &OrigRegs);
+    MachineBasicBlock::iterator I,
+    MachineBasicBlock::iterator Paired,
+    unsigned EltSize);
 
 public:
   static char ID;
@@ -231,26 +219,23 @@ void SILoadStoreOptimizer::updateRegDefsUses(unsigned SrcReg,
 }
 
 MachineBasicBlock::iterator  SILoadStoreOptimizer::mergeRead2Pair(
-  const MergeCandidate &Pair,
-  SmallVectorImpl<unsigned> &OrigRegs) {
-  MachineBasicBlock::iterator Inst0 = Pair.Inst0;
-  MachineBasicBlock::iterator Inst1 = Pair.Inst1;
-  unsigned EltSize = Pair.EltSize;
-
-  MachineBasicBlock *MBB = Inst0->getParent();
+  MachineBasicBlock::iterator I,
+  MachineBasicBlock::iterator Paired,
+  unsigned EltSize) {
+  MachineBasicBlock *MBB = I->getParent();
 
   // Be careful, since the addresses could be subregisters themselves in weird
   // cases, like vectors of pointers.
   const MachineOperand *AddrReg = TII->getNamedOperand(*I, AMDGPU::OpName::addr);
 
-  unsigned DestReg0 = TII->getNamedOperand(*Inst0, AMDGPU::OpName::vdst)->getReg();
+  unsigned DestReg0 = TII->getNamedOperand(*I, AMDGPU::OpName::vdst)->getReg();
   unsigned DestReg1
-    = TII->getNamedOperand(*Inst1, AMDGPU::OpName::vdst)->getReg();
+    = TII->getNamedOperand(*Paired, AMDGPU::OpName::vdst)->getReg();
 
   unsigned Offset0
-          = TII->getNamedOperand(*Inst0, AMDGPU::OpName::offset)->getImm() & 0xffff;
+          = TII->getNamedOperand(*I, AMDGPU::OpName::offset)->getImm() & 0xffff;
   unsigned Offset1
-    = TII->getNamedOperand(*Inst1, AMDGPU::OpName::offset)->getImm() & 0xffff;
+    = TII->getNamedOperand(*Paired, AMDGPU::OpName::offset)->getImm() & 0xffff;
 
   unsigned NewOffset0 = Offset0 / EltSize;
   unsigned NewOffset1 = Offset1 / EltSize;
@@ -275,15 +260,15 @@ MachineBasicBlock::iterator  SILoadStoreOptimizer::mergeRead2Pair(
     = (EltSize == 4) ? &AMDGPU::VReg_64RegClass : &AMDGPU::VReg_128RegClass;
   unsigned DestReg = MRI->createVirtualRegister(SuperRC);
 
-  DebugLoc DL = Inst0->getDebugLoc();
+  DebugLoc DL = I->getDebugLoc();
   MachineInstrBuilder Read2
-    = BuildMI(*MBB, Inst0, DL, Read2Desc, DestReg)
+    = BuildMI(*MBB, I, DL, Read2Desc, DestReg)
     .addImm(0) // gds
     .addOperand(*AddrReg) // addr
     .addImm(NewOffset0) // offset0
     .addImm(NewOffset1) // offset1
-    .addMemOperand(*Inst0->memoperands_begin())
-    .addMemOperand(*Inst1->memoperands_begin());
+    .addMemOperand(*I->memoperands_begin())
+    .addMemOperand(*Paired->memoperands_begin());
 
   LIS->InsertMachineInstrInMaps(Read2);
 
@@ -302,24 +287,15 @@ MachineBasicBlock::iterator  SILoadStoreOptimizer::mergeRead2Pair(
 
   LIS->getInterval(DestReg); // Create new LI
 
-  /*
-  LIS->RemoveMachineInstrFromMaps(Inst0);
-  LIS->RemoveMachineInstrFromMaps(Inst1);
-  Inst0->eraseFromParent();
-  Inst1->eraseFromParent();
-  */
-
   DEBUG(dbgs() << "Inserted read2: " << *Read2 << '\n');
   return Read2;
 }
 
 MachineBasicBlock::iterator SILoadStoreOptimizer::mergeWrite2Pair(
-  const MergeCandidate &Pair,
-  SmallVectorImpl<unsigned> &OrigRegs) {
-  MachineBasicBlock::iterator Inst0 = Pair.Inst0;
-  MachineBasicBlock::iterator Inst1 = Pair.Inst1;
-  unsigned EltSize = Pair.EltSize;
-  MachineBasicBlock *MBB = Inst0->getParent();
+  MachineBasicBlock::iterator I,
+  MachineBasicBlock::iterator Paired,
+  unsigned EltSize) {
+  MachineBasicBlock *MBB = I->getParent();
 
   // Be sure to use .addOperand(), and not .addReg() with these. We want to be
   // sure we preserve the subregister index and any register flags set on them.
@@ -327,6 +303,7 @@ MachineBasicBlock::iterator SILoadStoreOptimizer::mergeWrite2Pair(
   const MachineOperand *Data0 = TII->getNamedOperand(*I, AMDGPU::OpName::data0);
   const MachineOperand *Data1
     = TII->getNamedOperand(*Paired, AMDGPU::OpName::data0);
+
 
   unsigned Offset0
     = TII->getNamedOperand(*I, AMDGPU::OpName::offset)->getImm() & 0xffff;
@@ -351,18 +328,18 @@ MachineBasicBlock::iterator SILoadStoreOptimizer::mergeWrite2Pair(
          "Computed offset doesn't fit");
 
   const MCInstrDesc &Write2Desc = TII->get(Opc);
-  DebugLoc DL = Inst0->getDebugLoc();
+  DebugLoc DL = I->getDebugLoc();
 
   MachineInstrBuilder Write2
-    = BuildMI(*MBB, Inst0, DL, Write2Desc)
+    = BuildMI(*MBB, I, DL, Write2Desc)
     .addImm(0) // gds
     .addOperand(*Addr) // addr
     .addOperand(*Data0) // data0
     .addOperand(*Data1) // data1
     .addImm(NewOffset0) // offset0
     .addImm(NewOffset1) // offset1
-    .addMemOperand(*Inst0->memoperands_begin())
-    .addMemOperand(*Inst1->memoperands_begin());
+    .addMemOperand(*I->memoperands_begin())
+    .addMemOperand(*Paired->memoperands_begin());
 
   // XXX - How do we express subregisters here?
   unsigned OrigRegs[] = { Data0->getReg(), Data1->getReg(), Addr->getReg() };
@@ -374,14 +351,6 @@ MachineBasicBlock::iterator SILoadStoreOptimizer::mergeWrite2Pair(
 
   LIS->repairIntervalsInRange(MBB, Write2, Write2, OrigRegs);
 
-  /*
-  LIS->RemoveMachineInstrFromMaps(Inst0);
-  LIS->RemoveMachineInstrFromMaps(Inst1);
-  Inst0->eraseFromParent();
-  Inst1->eraseFromParent();
-  */
-
-
   DEBUG(dbgs() << "Inserted write2 inst: " << *Write2 << '\n');
   return Write2;
 }
@@ -390,56 +359,46 @@ MachineBasicBlock::iterator SILoadStoreOptimizer::mergeWrite2Pair(
 // the same base register. We rely on the scheduler to do the hard work of
 // clustering nearby loads, and assume these are all adjacent.
 bool SILoadStoreOptimizer::optimizeBlock(MachineBasicBlock &MBB) {
-  SmallVector<MergeCandidate, 8> MergeWorklist;
+  bool Modified = false;
 
-  for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end(); I != E; ++I) {
+  for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end(); I != E;) {
     MachineInstr &MI = *I;
 
     // Don't combine if volatile.
-    if (MI.hasOrderedMemoryRef())
+    if (MI.hasOrderedMemoryRef()) {
+      ++I;
       continue;
+    }
 
     unsigned Opc = MI.getOpcode();
     if (Opc == AMDGPU::DS_READ_B32 || Opc == AMDGPU::DS_READ_B64) {
       unsigned Size = (Opc == AMDGPU::DS_READ_B64) ? 8 : 4;
       MachineBasicBlock::iterator Match = findMatchingDSInst(I, Size);
       if (Match != E) {
-        MergeWorklist.push_back(MergeCandidate(I, Match, Size, false));
+        Modified = true;
+        I = mergeRead2Pair(I, Match, Size);
+      } else {
         ++I;
       }
-    }
 
-    if (Opc == AMDGPU::DS_WRITE_B32 || Opc == AMDGPU::DS_WRITE_B64) {
+      continue;
+    } else if (Opc == AMDGPU::DS_WRITE_B32 || Opc == AMDGPU::DS_WRITE_B64) {
       unsigned Size = (Opc == AMDGPU::DS_WRITE_B64) ? 8 : 4;
       MachineBasicBlock::iterator Match = findMatchingDSInst(I, Size);
       if (Match != E) {
-        MergeWorklist.push_back(MergeCandidate(I, Match, Size, true));
+        Modified = true;
+        I = mergeWrite2Pair(I, Match, Size);
+      } else {
         ++I;
       }
+
+      continue;
     }
+
+    ++I;
   }
 
-  if (MergeWorklist.empty())
-    return false;
-
-  dbgs() << "Found " << MergeWorklist.size() << " merge candidates\n";
-  for (auto I : MergeWorklist) {
-    dbgs() << "Merge:\n  " << *I.Inst0 << "\n  " << *I.Inst1 << '\n';
-  }
-
-  SmallVector<unsigned, 32> OrigRegs;
-  for (auto I : MergeWorklist) {
-    if (I.IsWrite)
-      mergeWrite2Pair(I, OrigRegs);
-    else
-      mergeRead2Pair(I, OrigRegs);
-  }
-
-  MachineBasicBlock::iterator First = MergeWorklist.front().Inst0;
-  MachineBasicBlock::iterator Last = MergeWorklist.back().Inst1;
-
-  LIS->repairIntervalsInRange(&MBB, First, Last, OrigRegs);
-  return true;
+  return Modified;
 }
 
 bool SILoadStoreOptimizer::runOnMachineFunction(MachineFunction &MF) {
