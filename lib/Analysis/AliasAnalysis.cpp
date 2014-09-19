@@ -400,6 +400,12 @@ AliasAnalysis::getModRefInfo(const AtomicRMWInst *RMW, const Location &Loc) {
   return ModRef;
 }
 
+static bool isSRetArg(const Value *V) {
+  if (const Argument *A = dyn_cast<Argument>(V))
+    return A->hasStructRetAttr();
+  return false;
+}
+
 // FIXME: this is really just shoring-up a deficiency in alias analysis.
 // BasicAA isn't willing to spend linear time determining whether an alloca
 // was captured before or after this particular call, while we are. However,
@@ -421,8 +427,8 @@ AliasAnalysis::callCapturesBefore(const Instruction *I,
 
   auto ObjectA = Object;
 
-  // !isIdentifiedFunctionLocal except arguments
-  if (!isa<AllocaInst>(Object) && !isNoAliasCall(Object)) {
+  // !isIdentifiedFunctionLocal except arguments, and sret
+  if (!isa<AllocaInst>(Object) && !isNoAliasCall(Object) && !isSRetArg(Object)) {
     if (!CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace()))
       return AliasAnalysis::ModRef;
   }
