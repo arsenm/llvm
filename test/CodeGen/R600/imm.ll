@@ -1,25 +1,60 @@
 ; RUN: llc -march=amdgcn -mcpu=verde -verify-machineinstrs < %s | FileCheck -check-prefix=SI -check-prefix=CHECK %s
 ; RUN: llc -march=amdgcn -mcpu=tonga -verify-machineinstrs < %s | FileCheck -check-prefix=VI -check-prefix=CHECK %s
 
-; Use a 64-bit value with lo bits that can be represented as an inline constant
-; CHECK-LABEL: {{^}}i64_imm_inline_lo:
+; Use a 64-bit value with lo bits that can be represented as a literal constant
+; CHECK-LABEL: {{^}}i64_imm_literal_lo
 ; CHECK: s_mov_b32 [[LO:s[0-9]+]], 5
 ; CHECK: v_mov_b32_e32 v[[LO_VGPR:[0-9]+]], [[LO]]
 ; CHECK: buffer_store_dwordx2 v{{\[}}[[LO_VGPR]]:
-define void @i64_imm_inline_lo(i64 addrspace(1) *%out) {
+define void @i64_imm_literal_lo(i64 addrspace(1) *%out) {
 entry:
   store i64 1311768464867721221, i64 addrspace(1) *%out ; 0x1234567800000005
   ret void
 }
 
 ; Use a 64-bit value with hi bits that can be represented as an inline constant
-; CHECK-LABEL: {{^}}i64_imm_inline_hi:
+; CHECK-LABEL: {{^}}i64_imm_literal_hi
+; CHECK: s_mov_b32 [[HI:s[0-9]+]], 5
+; CHECK: v_mov_b32_e32 v[[HI_VGPR:[0-9]+]], [[HI]]
+; CHECK: buffer_store_dwordx2 v{{\[[0-9]+:}}[[HI_VGPR]]
+define void @i64_imm_literal_hi(i64 addrspace(1) *%out) {
+entry:
+  store i64 21780256376, i64 addrspace(1) *%out ; 0x0000000512345678
+  ret void
+}
+
+; Use a 64-bit value with hi bits that can be represented as an inline constant
+; CHECK-LABEL: {{^}}i64_imm_inline_hi
 ; CHECK: s_mov_b32 [[HI:s[0-9]+]], 5
 ; CHECK: v_mov_b32_e32 v[[HI_VGPR:[0-9]+]], [[HI]]
 ; CHECK: buffer_store_dwordx2 v{{\[[0-9]+:}}[[HI_VGPR]]
 define void @i64_imm_inline_hi(i64 addrspace(1) *%out) {
 entry:
   store i64 21780256376, i64 addrspace(1) *%out ; 0x0000000512345678
+  ret void
+}
+
+; CHECK-LABEL: {{^}}store_inline_imm_0_i64
+define void @store_inline_imm_0_i64(i64 addrspace(1) *%out) {
+  store i64 0, i64 addrspace(1) *%out
+  ret void
+}
+
+; CHECK-LABEL: {{^}}store_inline_imm_64_i64
+define void @store_inline_imm_64_i64(i64 addrspace(1) *%out) {
+  store i64 64, i64 addrspace(1) *%out
+  ret void
+}
+
+; CHECK-LABEL: {{^}}store_inline_imm_neg_1_i64
+define void @store_inline_imm_neg_1_i64(i64 addrspace(1) *%out) {
+  store i64 -1, i64 addrspace(1) *%out
+  ret void
+}
+
+; CHECK-LABEL: {{^}}store_inline_imm_neg_16_i64
+define void @store_inline_imm_neg_16_i64(i64 addrspace(1) *%out) {
+  store i64 -16, i64 addrspace(1) *%out
   ret void
 }
 
