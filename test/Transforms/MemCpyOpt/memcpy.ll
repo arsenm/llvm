@@ -29,7 +29,7 @@ entry:
 ; CHECK: ret void
 }
 
-declare void @ccoshl(%0* nocapture sret, x86_fp80, x86_fp80) nounwind 
+declare void @ccoshl(%0* nocapture sret, x86_fp80, x86_fp80) nounwind
 
 
 ; The intermediate alloca and one of the memcpy's should be eliminated, the
@@ -40,7 +40,7 @@ define void @test2(i8* %P, i8* %Q) nounwind  {
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %R, i8* %P, i32 32, i32 16, i1 false)
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %Q, i8* %R, i32 32, i32 16, i1 false)
   ret void
-        
+
 ; CHECK-LABEL: @test2(
 ; CHECK-NEXT: call void @llvm.memmove{{.*}}(i8* %Q, i8* %P
 ; CHECK-NEXT: ret void
@@ -59,7 +59,7 @@ define void @test3(%0* noalias sret %agg.result) nounwind  {
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %agg.result2, i8* %x.01, i32 32, i32 16, i1 false)
   ret void
 ; CHECK-LABEL: @test3(
-; CHECK-NEXT: %agg.result1 = bitcast 
+; CHECK-NEXT: %agg.result1 = bitcast
 ; CHECK-NEXT: call void @llvm.memcpy
 ; CHECK-NEXT: ret void
 }
@@ -206,5 +206,6 @@ declare void @f1(%struct.big* nocapture sret)
 declare void @f2(%struct.big*)
 
 ; CHECK: attributes [[NUW]] = { nounwind }
-; CHECK: attributes #1 = { nounwind ssp }
-; CHECK: attributes #2 = { nounwind ssp uwtable }
+; CHECK: attributes #1 = { nounwind nomemfence }
+; CHECK: attributes #2 = { nounwind ssp }
+; CHECK: attributes #3 = { nounwind ssp uwtable }
