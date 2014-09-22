@@ -3,9 +3,9 @@ target datalayout = "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f3
 target triple = "x86_64-unknown-linux-gnu"
 
 declare void @llvm.memcpy.p0i8.p0i8.i64(i8* nocapture, i8* nocapture readonly, i64, i32, i1) #0
-declare void @hey() #0
+declare void @hey() #1
 
-define void @hello(i8* noalias nocapture %a, i8* noalias nocapture readonly %c, i8* nocapture %b) #1 {
+define void @hello(i8* noalias nocapture %a, i8* noalias nocapture readonly %c, i8* nocapture %b) #2 {
 entry:
   %l = alloca i8, i32 512, align 1
   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %a, i8* %b, i64 16, i32 16, i1 0)
@@ -16,24 +16,25 @@ entry:
   ret void
 }
 
-define void @foo(i8* nocapture %a, i8* nocapture readonly %c, i8* nocapture %b) #1 {
+define void @foo(i8* nocapture %a, i8* nocapture readonly %c, i8* nocapture %b) #2 {
 entry:
   tail call void @hello(i8* %a, i8* %c, i8* %b)
   ret void
 }
 
-; CHECK: define void @foo(i8* nocapture %a, i8* nocapture readonly %c, i8* nocapture %b) #1 {
+; CHECK: define void @foo(i8* nocapture %a, i8* nocapture readonly %c, i8* nocapture %b) #2 {
 ; CHECK: entry:
-; CHECK:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %a, i8* %b, i64 16, i32 16, i1 false) #0, !noalias !0
-; CHECK:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %b, i8* %c, i64 16, i32 16, i1 false) #0, !noalias !3
-; CHECK:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %a, i8* %c, i64 16, i32 16, i1 false) #0, !alias.scope !5
-; CHECK:   call void @hey() #0, !noalias !5
-; CHECK:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %{{.*}}, i8* %c, i64 16, i32 16, i1 false) #0, !noalias !3
+; CHECK:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %a, i8* %b, i64 16, i32 16, i1 false) #1, !noalias !0
+; CHECK:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %b, i8* %c, i64 16, i32 16, i1 false) #1, !noalias !3
+; CHECK:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %a, i8* %c, i64 16, i32 16, i1 false) #1, !alias.scope !5
+; CHECK:   call void @hey() #1, !noalias !5
+; CHECK:   call void @llvm.memcpy.p0i8.p0i8.i64(i8* %{{.*}}, i8* %c, i64 16, i32 16, i1 false) #1, !noalias !3
 ; CHECK:   ret void
 ; CHECK: }
 
-attributes #0 = { nounwind }
-attributes #1 = { nounwind uwtable }
+attributes #0 = { nounwind nomemfence }
+attributes #1 = { nounwind }
+attributes #2 = { nounwind uwtable }
 
 ; CHECK: !0 = metadata !{metadata !1}
 ; CHECK: !1 = metadata !{metadata !1, metadata !2, metadata !"hello: %c"}
