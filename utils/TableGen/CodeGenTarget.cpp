@@ -571,9 +571,13 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R) {
       ModRef = ReadArgMem;
     else if (Property->getName() == "IntrReadMem")
       ModRef = ReadMem;
-    else if (Property->getName() == "IntrReadWriteArgMem")
+    else if (Property->getName() == "IntrReadWriteArgMem") {
       ModRef = ReadWriteArgMem;
-    else if (Property->getName() == "Commutative")
+
+      // ReadWriteArgMem implies NoMemFenceAll since there currently is no IR
+      // attribute for these.
+      UnfencedAddrSpaces.push_back(~0U);
+    } else if (Property->getName() == "Commutative")
       isCommutative = true;
     else if (Property->getName() == "Throws")
       canThrow = true;
