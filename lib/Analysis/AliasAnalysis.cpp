@@ -429,7 +429,8 @@ AliasAnalysis::callCapturesBefore(const Instruction *I,
 
   // !isIdentifiedFunctionLocal except arguments, and sret
   if (!isa<AllocaInst>(Object) && !isNoAliasCall(Object) && !isSRetArg(Object)) {
-    if (!CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace()))
+    if (!CS.onlyReadsMemory() &&
+        !CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace()))
       return AliasAnalysis::ModRef;
   }
 

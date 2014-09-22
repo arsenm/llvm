@@ -831,7 +831,8 @@ BasicAliasAnalysis::getModRefInfo(ImmutableCallSite CS,
   if (!isa<Constant>(Object) && CS.getInstruction() != Object &&
       isNonEscapingLocalObject(Object)) {
 
-    if (!CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace())) {
+    if (!CS.onlyReadsMemory() &&
+        !CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace())) {
 
       return ModRef;
     }
@@ -867,7 +868,8 @@ BasicAliasAnalysis::getModRefInfo(ImmutableCallSite CS,
   if (isAssumeIntrinsic(CS))
     return NoModRef;
 
-  if (!CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace())) {
+  if (!CS.doesNotAccessMemory() &&
+      !CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace())) {
 
     return ModRef;
   }
