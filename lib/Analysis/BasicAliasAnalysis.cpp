@@ -868,7 +868,7 @@ BasicAliasAnalysis::getModRefInfo(ImmutableCallSite CS,
   if (isAssumeIntrinsic(CS))
     return NoModRef;
 
-  if (!CS.doesNotAccessMemory() &&
+  if (!CS.onlyReadsMemory() &&
       !CS.addrspaceIsUnfenced(Object->getType()->getPointerAddressSpace())) {
 
     return ModRef;
