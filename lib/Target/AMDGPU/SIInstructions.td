@@ -336,18 +336,18 @@ defm S_ABSDIFF_I32 : SOP2_32 <sop2<0x2c, 0x2a>, "s_absdiff_i32", []>;
 // SOPC Instructions
 //===----------------------------------------------------------------------===//
 
-def S_CMP_EQ_I32 : SOPC_32 <0x00000000, "s_cmp_eq_i32">;
-def S_CMP_LG_I32 : SOPC_32 <0x00000001, "s_cmp_lg_i32">;
-def S_CMP_GT_I32 : SOPC_32 <0x00000002, "s_cmp_gt_i32">;
-def S_CMP_GE_I32 : SOPC_32 <0x00000003, "s_cmp_ge_i32">;
-def S_CMP_LT_I32 : SOPC_32 <0x00000004, "s_cmp_lt_i32">;
-def S_CMP_LE_I32 : SOPC_32 <0x00000005, "s_cmp_le_i32">;
-def S_CMP_EQ_U32 : SOPC_32 <0x00000006, "s_cmp_eq_u32">;
-def S_CMP_LG_U32 : SOPC_32 <0x00000007, "s_cmp_lg_u32">;
-def S_CMP_GT_U32 : SOPC_32 <0x00000008, "s_cmp_gt_u32">;
-def S_CMP_GE_U32 : SOPC_32 <0x00000009, "s_cmp_ge_u32">;
-def S_CMP_LT_U32 : SOPC_32 <0x0000000a, "s_cmp_lt_u32">;
-def S_CMP_LE_U32 : SOPC_32 <0x0000000b, "s_cmp_le_u32">;
+def S_CMP_EQ_I32 : SOPC_32 <0x00000000, "s_cmp_eq_i32", COND_EQ>;
+def S_CMP_LG_I32 : SOPC_32 <0x00000001, "s_cmp_lg_i32", COND_NE>;
+def S_CMP_GT_I32 : SOPC_32 <0x00000002, "s_cmp_gt_i32", COND_SGT>;
+def S_CMP_GE_I32 : SOPC_32 <0x00000003, "s_cmp_ge_i32", COND_SGE>;
+def S_CMP_LT_I32 : SOPC_32 <0x00000004, "s_cmp_lt_i32", COND_SLT>;
+def S_CMP_LE_I32 : SOPC_32 <0x00000005, "s_cmp_le_i32", COND_SLE>;
+def S_CMP_EQ_U32 : SOPC_32 <0x00000006, "s_cmp_eq_u32", COND_EQ>;
+def S_CMP_LG_U32 : SOPC_32 <0x00000007, "s_cmp_lg_u32", COND_NE>;
+def S_CMP_GT_U32 : SOPC_32 <0x00000008, "s_cmp_gt_u32", COND_UGT>;
+def S_CMP_GE_U32 : SOPC_32 <0x00000009, "s_cmp_ge_u32", COND_UGE>;
+def S_CMP_LT_U32 : SOPC_32 <0x0000000a, "s_cmp_lt_u32", COND_ULT>;
+def S_CMP_LE_U32 : SOPC_32 <0x0000000b, "s_cmp_le_u32", COND_ULE>;
 ////def S_BITCMP0_B32 : SOPC_BITCMP0 <0x0000000c, "s_bitcmp0_b32", []>;
 ////def S_BITCMP1_B32 : SOPC_BITCMP1 <0x0000000d, "s_bitcmp1_b32", []>;
 ////def S_BITCMP0_B64 : SOPC_BITCMP0 <0x0000000e, "s_bitcmp0_b64", []>;
@@ -667,12 +667,12 @@ defm V_CMPSX_TRU_F64 : VOPCX_F64 <vopc<0x7f>, "v_cmpsx_tru_f64">;
 } // End SubtargetPredicate = isSICI
 
 defm V_CMP_F_I32 : VOPC_I32 <vopc<0x80, 0xc0>, "v_cmp_f_i32">;
-defm V_CMP_LT_I32 : VOPC_I32 <vopc<0x81, 0xc1>, "v_cmp_lt_i32", COND_SLT, "v_cmp_gt_i32">;
-defm V_CMP_EQ_I32 : VOPC_I32 <vopc<0x82, 0xc2>, "v_cmp_eq_i32", COND_EQ>;
-defm V_CMP_LE_I32 : VOPC_I32 <vopc<0x83, 0xc3>, "v_cmp_le_i32", COND_SLE, "v_cmp_ge_i32">;
-defm V_CMP_GT_I32 : VOPC_I32 <vopc<0x84, 0xc4>, "v_cmp_gt_i32", COND_SGT>;
-defm V_CMP_NE_I32 : VOPC_I32 <vopc<0x85, 0xc5>, "v_cmp_ne_i32", COND_NE>;
-defm V_CMP_GE_I32 : VOPC_I32 <vopc<0x86, 0xc6>, "v_cmp_ge_i32", COND_SGE>;
+defm V_CMP_LT_I32 : VOPC_I32 <vopc<0x81, 0xc1>, "v_cmp_lt_i32", COND_NULL, "v_cmp_gt_i32">;
+defm V_CMP_EQ_I32 : VOPC_I32 <vopc<0x82, 0xc2>, "v_cmp_eq_i32">;
+defm V_CMP_LE_I32 : VOPC_I32 <vopc<0x83, 0xc3>, "v_cmp_le_i32", COND_NULL, "v_cmp_ge_i32">;
+defm V_CMP_GT_I32 : VOPC_I32 <vopc<0x84, 0xc4>, "v_cmp_gt_i32">;
+defm V_CMP_NE_I32 : VOPC_I32 <vopc<0x85, 0xc5>, "v_cmp_ne_i32">;
+defm V_CMP_GE_I32 : VOPC_I32 <vopc<0x86, 0xc6>, "v_cmp_ge_i32">;
 defm V_CMP_T_I32 : VOPC_I32 <vopc<0x87, 0xc7>, "v_cmp_t_i32">;
 
 
@@ -707,12 +707,12 @@ defm V_CMPX_T_I64 : VOPCX_I64 <vopc<0xb7, 0xf7>, "v_cmpx_t_i64">;
 
 
 defm V_CMP_F_U32 : VOPC_I32 <vopc<0xc0, 0xc8>, "v_cmp_f_u32">;
-defm V_CMP_LT_U32 : VOPC_I32 <vopc<0xc1, 0xc9>, "v_cmp_lt_u32", COND_ULT, "v_cmp_gt_u32">;
-defm V_CMP_EQ_U32 : VOPC_I32 <vopc<0xc2, 0xca>, "v_cmp_eq_u32", COND_EQ>;
-defm V_CMP_LE_U32 : VOPC_I32 <vopc<0xc3, 0xcb>, "v_cmp_le_u32", COND_ULE, "v_cmp_ge_u32">;
-defm V_CMP_GT_U32 : VOPC_I32 <vopc<0xc4, 0xcc>, "v_cmp_gt_u32", COND_UGT>;
-defm V_CMP_NE_U32 : VOPC_I32 <vopc<0xc5, 0xcd>, "v_cmp_ne_u32", COND_NE>;
-defm V_CMP_GE_U32 : VOPC_I32 <vopc<0xc6, 0xce>, "v_cmp_ge_u32", COND_UGE>;
+defm V_CMP_LT_U32 : VOPC_I32 <vopc<0xc1, 0xc9>, "v_cmp_lt_u32", COND_NULL, "v_cmp_gt_u32">;
+defm V_CMP_EQ_U32 : VOPC_I32 <vopc<0xc2, 0xca>, "v_cmp_eq_u32">;
+defm V_CMP_LE_U32 : VOPC_I32 <vopc<0xc3, 0xcb>, "v_cmp_le_u32", COND_NULL, "v_cmp_ge_u32">;
+defm V_CMP_GT_U32 : VOPC_I32 <vopc<0xc4, 0xcc>, "v_cmp_gt_u32">;
+defm V_CMP_NE_U32 : VOPC_I32 <vopc<0xc5, 0xcd>, "v_cmp_ne_u32">;
+defm V_CMP_GE_U32 : VOPC_I32 <vopc<0xc6, 0xce>, "v_cmp_ge_u32">;
 defm V_CMP_T_U32 : VOPC_I32 <vopc<0xc7, 0xcf>, "v_cmp_t_u32">;
 
 

@@ -777,9 +777,9 @@ multiclass SOP2_64_32 <sop2 op, string opName, list<dag> pattern> : SOP2_m <
 class SOPC_Helper <bits<7> op, RegisterOperand rc, ValueType vt,
                     string opName, PatLeaf cond> : SOPC <
   op, (outs), (ins rc:$src0, rc:$src1),
-  opName#" $src0, $src1", []> {
-  let Defs = [SCC];
-}
+  opName#" $src0, $src1",
+  [(set SCC, (setcc vt:$src0, vt:$src1, cond))]
+>;
 
 class SOPC_32<bits<7> op, string opName, PatLeaf cond = COND_NULL>
   : SOPC_Helper<op, SSrc_32, i32, opName, cond>;
