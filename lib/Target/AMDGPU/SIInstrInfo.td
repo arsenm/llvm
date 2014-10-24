@@ -1444,7 +1444,9 @@ multiclass VOP3_C_m <vop op, dag outs, dag ins, string asm,
                      bit HasMods, bit defExec, string revOp> {
 
   def "" : VOP3_Pseudo <outs, ins, pattern, opName>,
-           VOP2_REV<revOp#"_e64", !eq(revOp, opName)>;
+           VOP2_REV<revOp#"_e64", !eq(revOp, opName)> {
+    let VOP3 = 1;
+  }
 
   def _si : VOP3_Real_si <op.SI3, outs, ins, asm, opName>,
             VOP3DisableFields<1, 0, HasMods> {
@@ -1454,6 +1456,7 @@ multiclass VOP3_C_m <vop op, dag outs, dag ins, string asm,
   def _vi : VOP3_Real_vi <op.VI3, outs, ins, asm, opName>,
             VOP3DisableFields<1, 0, HasMods> {
     let Defs = !if(defExec, [EXEC], []);
+    let VOP3 = 1;
   }
 }
 
