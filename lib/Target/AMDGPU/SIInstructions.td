@@ -235,9 +235,13 @@ defm S_MAX_U32 : SOP2_32 <sop2<0x09>, "s_max_u32",
 >;
 } // End Defs = [SCC]
 
-
 let Uses = [SCC] in {
   defm S_CSELECT_B32 : SOP2_32 <sop2<0x0a>, "s_cselect_b32", []>;
+  // def S_CSELECT_B32 : SOP2_SELECT_32 <
+  //   sop2<0x0a>, "s_cselect_b32",
+  //   [(set i32:$dst, (select i1:$scc, i32:$src1, i32:$src0))]
+  // >;
+
   defm S_CSELECT_B64 : SOP2_64 <sop2<0x0b>, "s_cselect_b64", []>;
 } // End Uses = [SCC]
 
@@ -2699,12 +2703,12 @@ def : Pat <
 
 def : Pat <
   (i32 (sext i1:$src0)),
-  (V_CNDMASK_B32_e64 (i32 0), (i32 -1), $src0)
+  (S_CSELECT_B32 (i32 0), (i32 -1), $src0)
 >;
 
 class Ext32Pat <SDNode ext> : Pat <
   (i32 (ext i1:$src0)),
-  (V_CNDMASK_B32_e64 (i32 0), (i32 1), $src0)
+  (S_CSELECT_B32 (i32 0), (i32 1), $src0)
 >;
 
 def : Ext32Pat <zext>;
