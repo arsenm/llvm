@@ -95,6 +95,8 @@ private:
                                                  unsigned SubReg) const;
   bool isVGPRToSGPRCopy(const MachineInstr &Copy, const SIRegisterInfo *TRI,
                         const MachineRegisterInfo &MRI) const;
+  bool isSCCCopy(const MachineInstr &Copy, const SIRegisterInfo *TRI,
+                 const MachineRegisterInfo &MRI) const;
 
 public:
   SIFixSGPRCopies(TargetMachine &tm) : MachineFunctionPass(ID) { }
@@ -201,6 +203,33 @@ bool SIFixSGPRCopies::isVGPRToSGPRCopy(const MachineInstr &Copy,
   return TRI->isSGPRClass(DstRC) && TRI->hasVGPRs(SrcRC);
 }
 
+bool SIFixSGPRCopies::isSCCCopy(const MachineInstr &Copy,
+                                const SIRegisterInfo *TRI,
+                                const MachineRegisterInfo &MRI) const {
+  unsigned SrcReg = Copy.getOperand(1).getReg();
+  if (SrcReg == AMDGPU::SCC)
+    return true;
+
+  return false;
+
+#if 0
+  if (!TargetRegisterInfo::isVirtualRegister(SrcReg))
+    return false;
+
+  const TargetRegisterClass *SrcRC = MRI.getRegClass(SrcReg);
+  if (SrcRC == &AMDGPU::SCCRegRegClass) {
+    unsigned DstReg = Copy.getOperand(0).getReg();
+    const TargetRegisterClass *DstRC = MRI.getRegClass(DstReg);
+
+    assert(DstRC->hasSubClassEq(&AMDGPU::SReg_64RegClass));
+
+    return true;
+  }
+
+  return false;
+#endif
+}
+
 bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
   MachineRegisterInfo &MRI = MF.getRegInfo();
   const SIRegisterInfo *TRI =
@@ -218,8 +247,18 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
         DEBUG(dbgs() << "Fixing VGPR -> SGPR copy:\n");
         DEBUG(MI.print(dbgs()));
         TII->moveToVALU(MI);
-
       }
+
+      // If is copy of SCC, need to move the def inst.
+
+      if (MI.getOpcode() == AMDGPU::COPY && isSCCCopy(MI, TRI, MRI)) {
+        MI.dump();
+        unsigned SrcReg = MI.getOperand(1).getReg();
+        MachineInstr *Def = MRI.getVRegDef(SrcReg);
+        TII->moveToVALU(*Def);
+        MI.dump();
+      }
+
 
       switch (MI.getOpcode()) {
       default: continue;
