@@ -1693,7 +1693,7 @@ void SIInstrInfo::legalizeOperands(MachineInstr *MI) const {
                                            AMDGPU::OpName::src2);
 
   // Legalize VOP2
-  if (isVOP2(MI->getOpcode()) && Src1Idx != -1) {
+  if ((isVOP2(MI->getOpcode()) || isVOPC(MI->getOpcode())) && Src1Idx != -1) {
     // Legalize src0
     if (!isOperandLegal(MI, Src0Idx))
       legalizeOpWithMove(MI, Src0Idx);
