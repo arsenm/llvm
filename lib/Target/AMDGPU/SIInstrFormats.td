@@ -105,6 +105,7 @@ class VOPCCommon <dag ins, string asm, list<dag> pattern> :
   let VOPC = 1;
   let Size = 4;
   let Defs = [VCC];
+  let isCompare = 1;
 }
 
 class VOP1Common <dag outs, dag ins, string asm, list<dag> pattern> :
@@ -265,6 +266,7 @@ class SOPC <bits<7> op, dag outs, dag ins, string asm, list<dag> pattern> :
   let mayLoad = 0;
   let mayStore = 0;
   let hasSideEffects = 0;
+  let isCompare = 1;
   let SALU = 1;
   let SOPC = 1;
   let isCodeGenOnly = 0;
