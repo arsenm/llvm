@@ -483,6 +483,9 @@ void SIInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   DebugLoc DL = MBB.findDebugLoc(MI);
   int Opcode = -1;
 
+  assert(RC != &AMDGPU::SCCRegRegClass &&
+         "Should not be trying to spill scc");
+
   if (RI.isSGPRClass(RC)) {
     // We are only allowed to create one new instruction when spilling
     // registers, so we need to use pseudo instruction for spilling
