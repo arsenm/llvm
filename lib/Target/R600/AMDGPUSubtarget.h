@@ -212,6 +212,16 @@ public:
     return true;
   }
 
+  bool enablePostMachineScheduler() const override {
+    return getGeneration() >= SOUTHERN_ISLANDS;
+  }
+
+  // We must always do hazard recognition because of some special cases where
+  // the hardware does not do dependency checking.
+  CodeGenOpt::Level getOptLevelToEnablePostRAScheduler() const override {
+    return CodeGenOpt::None;
+  }
+
   void overrideSchedPolicy(MachineSchedPolicy &Policy,
                            MachineInstr *begin, MachineInstr *end,
                            unsigned NumRegionInstrs) const override;

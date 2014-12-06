@@ -44,6 +44,7 @@ add_llvm_target(R600CodeGen
   SIFixSGPRCopies.cpp
   SIFixSGPRLiveRanges.cpp
   SIFoldOperands.cpp
+  SIHazardRecognizer.cpp
   SIInsertWaits.cpp
   SIInstrInfo.cpp
   SIISelLowering.cpp
