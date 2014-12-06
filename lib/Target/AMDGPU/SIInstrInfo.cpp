@@ -16,6 +16,7 @@
 #include "SIInstrInfo.h"
 #include "AMDGPUTargetMachine.h"
 #include "SIDefines.h"
+#include "SIHazardRecognizer.h"
 #include "SIMachineFunctionInfo.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -307,6 +308,24 @@ bool SIInstrInfo::shouldClusterLoads(MachineInstr *FirstLdSt,
     return true;
 
   return false;
+}
+
+ScheduleHazardRecognizer *
+SIInstrInfo::CreateTargetHazardRecognizer(const TargetSubtargetInfo *STI,
+                                          const ScheduleDAG *DAG) const {
+  // XXX: Why don't other targets do special hazards in pre-RA sched?
+  if (false) {
+    const InstrItineraryData *II = STI->getInstrItineraryData();
+    return new ScoreboardHazardRecognizer(II, DAG, "pre-RA-sched");
+  }
+
+  return TargetInstrInfo::CreateTargetHazardRecognizer(STI, DAG);
+}
+
+ScheduleHazardRecognizer *
+SIInstrInfo::CreateTargetPostRAHazardRecognizer(const InstrItineraryData *II,
+                                                const ScheduleDAG *DAG) const {
+  return new SIHazardRecognizer(II, DAG);
 }
 
 void
@@ -680,6 +699,11 @@ void SIInstrInfo::insertNOPs(MachineBasicBlock::iterator MI,
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), get(AMDGPU::S_NOP))
             .addImm(Arg);
   }
+}
+
+void SIInstrInfo::insertNoop(MachineBasicBlock &MBB,
+                             MachineBasicBlock::iterator MI) const {
+  insertNOPs(MI, 1);
 }
 
 bool SIInstrInfo::expandPostRAPseudo(MachineBasicBlock::iterator MI) const {

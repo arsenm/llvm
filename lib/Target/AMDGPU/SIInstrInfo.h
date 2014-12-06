@@ -87,6 +87,14 @@ public:
                           MachineInstr *SecondLdSt,
                           unsigned NumLoads) const final;
 
+  ScheduleHazardRecognizer *
+  CreateTargetHazardRecognizer(const TargetSubtargetInfo *STI,
+                               const ScheduleDAG *DAG) const override;
+
+  ScheduleHazardRecognizer *
+  CreateTargetPostRAHazardRecognizer(const InstrItineraryData *II,
+                                     const ScheduleDAG *DAG) const override;
+
   void copyPhysReg(MachineBasicBlock &MBB,
                    MachineBasicBlock::iterator MI, DebugLoc DL,
                    unsigned DestReg, unsigned SrcReg,
@@ -110,6 +118,9 @@ public:
                             unsigned DestReg, int FrameIndex,
                             const TargetRegisterClass *RC,
                             const TargetRegisterInfo *TRI) const override;
+
+  void insertNoop(MachineBasicBlock &MBB,
+                  MachineBasicBlock::iterator MI) const override;
 
   bool expandPostRAPseudo(MachineBasicBlock::iterator MI) const override;
 
