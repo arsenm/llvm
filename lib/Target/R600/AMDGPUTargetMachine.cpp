@@ -204,7 +204,6 @@ void AMDGPUPassConfig::addPostRegAlloc() {
 
   if (ST.getGeneration() > AMDGPUSubtarget::NORTHERN_ISLANDS) {
     addPass(createSIPrepareScratchRegs(), false);
-    addPass(createSIShrinkInstructionsPass(), false);
   }
 }
 
@@ -231,7 +230,8 @@ void AMDGPUPassConfig::addPreEmitPass() {
     addPass(createR600Packetizer(*TM), false);
     addPass(createR600ControlFlowFinalizer(*TM), false);
   } else {
-    addPass(createSILowerControlFlowPass(*TM), false);
+    addPass(createSIShrinkInstructionsPass());
+    addPass(createSILowerControlFlowPass(*TM));
   }
 }
 
