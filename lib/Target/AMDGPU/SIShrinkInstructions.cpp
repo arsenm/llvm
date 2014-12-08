@@ -190,6 +190,7 @@ bool SIShrinkInstructions::runOnMachineFunction(MachineFunction &MF) {
     for (I = MBB.begin(); I != MBB.end(); I = Next) {
       Next = std::next(I);
       MachineInstr &MI = *I;
+      MachineInstr &NextMI = *Next;
 
       // Try to use S_MOVK_I32, which will save 4 bytes for small immediates.
       if (MI.getOpcode() == AMDGPU::S_MOV_B32) {
@@ -198,6 +199,30 @@ bool SIShrinkInstructions::runOnMachineFunction(MachineFunction &MF) {
         if (Src.isImm()) {
           if (isInt<16>(Src.getImm()) && !TII->isInlineConstant(Src, 4))
             MI.setDesc(TII->get(AMDGPU::S_MOVK_I32));
+        }
+
+        continue;
+      }
+
+      // Combine adjacent s_nops to use the immediate operand encoding how long
+      // to wait.
+      //
+      // s_nop N
+      // s_nop M
+      //  =>
+      // s_nop (N + M)
+      if (MI.getOpcode() == AMDGPU::S_NOP &&
+          NextMI.getOpcode() == AMDGPU::S_NOP) {
+        // The instruction encodes the amount to wait with an offset of 1,
+        // i.e. 0 is wait 1 cycle. Convert both to cycles and then convert back
+        // after adding.
+        uint8_t Nop0 = MI.getOperand(0).getImm() + 1;
+        uint8_t Nop1 = NextMI.getOperand(0).getImm() + 1;
+
+        // Make sure we don't overflow the bounds.
+        if (Nop0 + Nop1 <= 8) {
+          NextMI.getOperand(0).setImm(Nop0 + Nop1 - 1);
+          MI.eraseFromParent();
         }
 
         continue;
