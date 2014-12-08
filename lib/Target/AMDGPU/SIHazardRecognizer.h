@@ -31,7 +31,7 @@ private:
   const SIRegisterInfo *TRI;
 
   MachineInstr *LastMI;
-  unsigned VALUWriteVCC;
+  int64_t VALUWriteVCC;
 
   bool isVALUWriteVCC(MachineInstr *MI) const;
   bool isFMASAfterVALUWriteVCC(SUnit *SU) const;
@@ -39,7 +39,7 @@ private:
 public:
   SIHazardRecognizer(const InstrItineraryData *ItinData, const ScheduleDAG *DAG);
 
-  //void EmitNoop() override;
+  void EmitNoop() override;
   HazardType getHazardType(SUnit *SU, int Stalls) override;
   void Reset() override;
   void EmitInstruction(SUnit *SU) override;
