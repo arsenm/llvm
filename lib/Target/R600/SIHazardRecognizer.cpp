@@ -13,8 +13,11 @@
 #include "AMDGPUSubtarget.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/ScheduleDAG.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Target/TargetRegisterInfo.h"
 using namespace llvm;
+
+#define DEBUG_TYPE "post-RA-sched"
 
 
 SIHazardRecognizer::SIHazardRecognizer(const InstrItineraryData *ItinData,
@@ -63,12 +66,15 @@ bool SIHazardRecognizer::isFMASAfterVALUWriteVCC(SUnit *SU) const {
   return false;
 }
 
-#if 0
 void SIHazardRecognizer::EmitNoop() {
+  if (VALUWriteVCC > 0) {
+//    llvm_unreachable("Emitting noop with VCC write waits");
+    --VALUWriteVCC;
+    DEBUG(dbgs() << "emit noop dec: " << VALUWriteVCC << '\n');
+  }
 
+  ScoreboardHazardRecognizer::EmitNoop();
 }
-#endif
-
 
 ScheduleHazardRecognizer::HazardType
 SIHazardRecognizer::getHazardType(SUnit *SU, int Stalls) {
@@ -78,16 +84,23 @@ SIHazardRecognizer::getHazardType(SUnit *SU, int Stalls) {
   if (MI->isDebugValue())
     return ScoreboardHazardRecognizer::getHazardType(SU, Stalls);
 
+#if 0
   if (isVALUWriteVCC(MI)) {
     VALUWriteVCC = 4;
   }
+#endif
 
-  if (VALUWriteVCC < 4) {
+
+//  if (VALUWriteVCC >= 0 && VALUWriteVCC < 4) {
+#if 0
+  if (VALUWriteVCC > 0) {
     if (MI->getOpcode() == AMDGPU::V_DIV_FMAS_F32 ||
         MI->getOpcode() == AMDGPU::V_DIV_FMAS_F64) {
+      DEBUG(dbgs() << "Reporting no-op hazard " << VALUWriteVCC << '\n');
       return NoopHazard;
     }
   }
+#endif
 
 #if 0
   if (isFMASAfterVALUWriteVCC(SU)) {
@@ -104,18 +117,36 @@ SIHazardRecognizer::getHazardType(SUnit *SU, int Stalls) {
 
 void SIHazardRecognizer::Reset() {
   LastMI = nullptr;
+//  VALUWriteVCC = -1;
   VALUWriteVCC = 0;
   ScoreboardHazardRecognizer::Reset();
 }
 
 void SIHazardRecognizer::EmitInstruction(SUnit *SU) {
+
   MachineInstr *MI = SU->getInstr();
 
-  if (!MI->isDebugValue()) {
-    LastMI = MI;
-//    VALUWriteVCC = 0;
-    --VALUWriteVCC;
+  if (MI->isDebugValue()) {
+    llvm_unreachable("emitting debug value?");
+    ScoreboardHazardRecognizer::EmitInstruction(SU);
+    return;
   }
+
+
+  LastMI = MI;
+
+  if (isVALUWriteVCC(MI)) {
+    DEBUG(dbgs() << "Is write to VCC: " << *MI << '\n');
+    // XXX - Table says need to wait "4" but unclear 4 what.
+    VALUWriteVCC = 4;
+  }
+
+#if 0
+  else if (VALUWriteVCC > 0) {
+    --VALUWriteVCC;
+    DEBUG(dbgs() << "VALUWriteVCC dec to " << VALUWriteVCC << " in EmitInst " << *MI << '\n');
+  }
+#endif
 
   ScoreboardHazardRecognizer::EmitInstruction(SU);
 }
@@ -124,18 +155,26 @@ unsigned SIHazardRecognizer::PreEmitNoops(SUnit *SU) {
   MachineInstr *MI = SU->getInstr();
 
   if (MI->getOpcode() == AMDGPU::V_DIV_FMAS_F32 ||
-      MI->getOpcode() == AMDGPU::V_DIV_FMAS_F64)
-    return 1;
+      MI->getOpcode() == AMDGPU::V_DIV_FMAS_F64) {
+//    assert(VALUWriteVCC >= 0 && VALUWriteVCC <= 4);
+//    assert(VALUWriteVCC > 0 && VALUWriteVCC <= 4);
+    DEBUG(dbgs() << "PreEmitNoops: " << VALUWriteVCC);
+    return VALUWriteVCC;
+  }
 
-  return 0;
+  return ScoreboardHazardRecognizer::PreEmitNoops(SU);
 }
 
-
 void SIHazardRecognizer::AdvanceCycle() {
-  if (VALUWriteVCC && --VALUWriteVCC == 0) {
-    // Stalled for 4 cycles but still can't schedule any other instructions.
-    LastMI = nullptr;
+  DEBUG(dbgs() << "Advance cycle: " << VALUWriteVCC << '\n');
+#if 1
+  if (VALUWriteVCC > 0) {
+    if (--VALUWriteVCC == 0)
+      LastMI = nullptr;
+
+    DEBUG(dbgs() << "Advance cycle: dec to " << VALUWriteVCC << '\n');
   }
+#endif
 
   ScoreboardHazardRecognizer::AdvanceCycle();
 }
