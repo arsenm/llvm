@@ -554,8 +554,10 @@ void TargetPassConfig::addMachinePasses() {
   if (EnableImplicitNullChecks)
     addPass(&ImplicitNullChecksID);
 
+  const TargetSubtargetInfo *ST = TM->getSubtargetImpl();
+
   // Second pass scheduler.
-  if (getOptLevel() != CodeGenOpt::None) {
+  if (getOptLevel() >= ST->getOptLevelToEnablePostRAScheduler()) {
     if (MISchedPostRA)
       addPass(&PostMachineSchedulerID);
     else
