@@ -90,9 +90,8 @@ SIHazardRecognizer::getHazardType(SUnit *SU, int Stalls) {
   }
 #endif
 
-
 //  if (VALUWriteVCC >= 0 && VALUWriteVCC < 4) {
-#if 0
+#if 1
   if (VALUWriteVCC > 0) {
     if (MI->getOpcode() == AMDGPU::V_DIV_FMAS_F32 ||
         MI->getOpcode() == AMDGPU::V_DIV_FMAS_F64) {
@@ -133,14 +132,19 @@ void SIHazardRecognizer::EmitInstruction(SUnit *SU) {
   }
 
 
-  LastMI = MI;
-
   if (isVALUWriteVCC(MI)) {
+    // Set to number of cycles until it is OK to issue v_div_fmas, it will be OK
+    // to emit again once it reaches 0.
     DEBUG(dbgs() << "Is write to VCC: " << *MI << '\n');
     // XXX - Table says need to wait "4" but unclear 4 what.
-    VALUWriteVCC = 4;
-  }
+    // We need to wait 1 more than this because we want to count from the end of
+    // the write of vcc.
 
+    //VALUWriteVCC = 4;
+    VALUWriteVCC = 16;
+
+    LastMI = MI;
+  }
 #if 0
   else if (VALUWriteVCC > 0) {
     --VALUWriteVCC;
@@ -158,7 +162,7 @@ unsigned SIHazardRecognizer::PreEmitNoops(SUnit *SU) {
       MI->getOpcode() == AMDGPU::V_DIV_FMAS_F64) {
 //    assert(VALUWriteVCC >= 0 && VALUWriteVCC <= 4);
 //    assert(VALUWriteVCC > 0 && VALUWriteVCC <= 4);
-    DEBUG(dbgs() << "PreEmitNoops: " << VALUWriteVCC);
+    DEBUG(dbgs() << "PreEmitNoops: " << VALUWriteVCC << '\n');
     return VALUWriteVCC;
   }
 
