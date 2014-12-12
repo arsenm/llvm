@@ -572,8 +572,10 @@ void TargetPassConfig::addMachinePasses() {
   // Run pre-sched2 passes.
   addPreSched2();
 
+  const TargetSubtargetInfo *ST = TM->getSubtargetImpl();
+
   // Second pass scheduler.
-  if (getOptLevel() != CodeGenOpt::None) {
+  if (getOptLevel() >= ST->getOptLevelToEnablePostRAScheduler()) {
     if (MISchedPostRA)
       addPass(&PostMachineSchedulerID);
     else
