@@ -679,7 +679,7 @@ public:
                   SDValue N3, SDValue N4);
   SDValue getNode(unsigned Opcode, SDLoc DL, EVT VT, SDValue N1, SDValue N2,
                   SDValue N3, SDValue N4, SDValue N5);
-  
+
   // Specialize again based on number of operands for nodes with a VTList
   // rather than a single VT.
   SDValue getNode(unsigned Opcode, SDLoc DL, SDVTList VTs);
@@ -1203,6 +1203,21 @@ public:
   /// units away from the location that the 'Base' load is loading from.
   bool isConsecutiveLoad(LoadSDNode *LD, LoadSDNode *Base,
                          unsigned Bytes, int Dist) const;
+
+  bool isConsecutiveLSLoc(SDValue Loc, EVT VT, LSBaseSDNode *Base,
+                          unsigned Bytes, int Dist) const;
+
+  // Like SelectionDAG::isConsecutiveLoad, but also works for stores, and does
+  // not enforce equality of the chain operands.
+  bool isConsecutiveLS(SDNode *N, LSBaseSDNode *Base,
+                       unsigned Bytes, int Dist) const;
+
+  // Return true is there is a nearyby consecutive load to the one provided
+  // (regardless of alignment). We search up and down the chain, looking though
+  // token factors and other loads (but nothing else). As a result, a true
+  // result indicates that it is safe to create a new consecutive load adjacent
+  // to the load provided.
+  bool findConsecutiveLoad(LoadSDNode *LD) const;
 
   /// Return information about a set of loads on the same chain derived 
   /// from the same base pointer as LD. The loads may be candidates for loading, 

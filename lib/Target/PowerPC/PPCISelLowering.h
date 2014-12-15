@@ -423,6 +423,9 @@ namespace llvm {
     /// DAG node.
     const char *getTargetNodeName(unsigned Opcode) const override;
 
+    bool isConsecutiveLSIntrinsic(SDNode *N, LSBaseSDNode *Base,
+                                  unsigned Bytes, int Dist,
+                                  const SelectionDAG &DAG) const override;
     MVT getScalarShiftAmountTy(EVT LHSTy) const override { return MVT::i32; }
 
     bool isCheapToSpeculateCttz() const override {

@@ -6884,6 +6884,126 @@ bool SelectionDAG::isConsecutiveLoad(LoadSDNode *LD, LoadSDNode *Base,
   return false;
 }
 
+bool SelectionDAG::isConsecutiveLSLoc(SDValue Loc, EVT VT, LSBaseSDNode *Base,
+                                      unsigned Bytes, int Dist) const {
+  if (VT.getStoreSize() != Bytes)
+    return false;
+
+  SDValue BaseLoc = Base->getBasePtr();
+  if (Loc.getOpcode() == ISD::FrameIndex) {
+    if (BaseLoc.getOpcode() != ISD::FrameIndex)
+      return false;
+
+    const MachineFrameInfo *MFI = getMachineFunction().getFrameInfo();
+    int FI  = cast<FrameIndexSDNode>(Loc)->getIndex();
+    int BFI = cast<FrameIndexSDNode>(BaseLoc)->getIndex();
+    int FS  = MFI->getObjectSize(FI);
+    int BFS = MFI->getObjectSize(BFI);
+    if (FS != BFS || FS != (int)Bytes)
+      return false;
+    return MFI->getObjectOffset(FI) == (MFI->getObjectOffset(BFI) + Dist * Bytes);
+  }
+
+  // Handle X + C
+  if (isBaseWithConstantOffset(Loc) && Loc.getOperand(0) == BaseLoc &&
+      cast<ConstantSDNode>(Loc.getOperand(1))->getSExtValue() == Dist * Bytes)
+    return true;
+
+  const GlobalValue *GV0 = nullptr;
+  const GlobalValue *GV1 = nullptr;
+  int64_t Offset0 = 0;
+  int64_t Offset1 = 0;
+  bool isGA1 = TLI->isGAPlusOffset(Loc.getNode(), GV0, Offset0);
+  bool isGA2 = TLI->isGAPlusOffset(BaseLoc.getNode(), GV1, Offset1);
+  if (isGA1 && isGA2 && GV0 == GV1)
+    return Offset0 == (Offset1 + Dist * Bytes);
+  return false;
+}
+
+bool SelectionDAG::isConsecutiveLS(SDNode *N, LSBaseSDNode *Base,
+                                   unsigned Bytes, int Dist) const {
+  if (LSBaseSDNode *LS = dyn_cast<LSBaseSDNode>(N)) {
+    EVT VT = LS->getMemoryVT();
+    SDValue Loc = LS->getBasePtr();
+    return isConsecutiveLSLoc(Loc, VT, Base, Bytes, Dist);
+  }
+
+  if (N->getOpcode() == ISD::INTRINSIC_W_CHAIN ||
+      N->getOpcode() == ISD::INTRINSIC_VOID ||
+      N->getOpcode() >= ISD::FIRST_TARGET_MEMORY_OPCODE) {
+    return TLI->isConsecutiveLSIntrinsic(N, Base, Bytes, Dist, *this);
+  }
+
+  return false;
+}
+
+bool SelectionDAG::findConsecutiveLoad(LoadSDNode *LD) const {
+  SDValue Chain = LD->getChain();
+  EVT VT = LD->getMemoryVT();
+
+  SmallSet<SDNode *, 16> LoadRoots;
+  SmallVector<SDNode *, 8> Queue(1, Chain.getNode());
+  SmallSet<SDNode *, 16> Visited;
+
+  // First, search up the chain, branching to follow all token-factor operands.
+  // If we find a consecutive load, then we're done, otherwise, record all
+  // nodes just above the top-level loads and token factors.
+  while (!Queue.empty()) {
+    SDNode *ChainNext = Queue.pop_back_val();
+    if (!Visited.insert(ChainNext).second)
+      continue;
+
+    if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(ChainNext)) {
+      if (isConsecutiveLS(ChainLD, LD, VT.getStoreSize(), 1))
+        return true;
+
+      if (!Visited.count(ChainLD->getChain().getNode()))
+        Queue.push_back(ChainLD->getChain().getNode());
+    } else if (ChainNext->getOpcode() == ISD::TokenFactor) {
+      for (const SDUse &O : ChainNext->ops()) {
+        if (!Visited.count(O.getNode()))
+          Queue.push_back(O.getNode());
+      }
+    } else
+      LoadRoots.insert(ChainNext);
+  }
+
+  // Second, search down the chain, starting from the top-level nodes recorded
+  // in the first phase. These top-level nodes are the nodes just above all
+  // loads and token factors. Starting with their uses, recursively look though
+  // all loads (just the chain uses) and token factors to find a consecutive
+  // load.
+  Visited.clear();
+  Queue.clear();
+
+  for (SDNode *N : LoadRoots) {
+    Queue.push_back(N);
+
+    while (!Queue.empty()) {
+      SDNode *LoadRoot = Queue.pop_back_val();
+      if (!Visited.insert(LoadRoot).second)
+        continue;
+
+      if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(LoadRoot)) {
+        if (isConsecutiveLS(ChainLD, LD, VT.getStoreSize(), 1))
+          return true;
+      }
+
+      for (SDNode *U : LoadRoot->uses()) {
+        MemSDNode *MemU = dyn_cast<MemSDNode>(U);
+        if (!MemU)
+          continue;
+
+        if ((MemU->getOpcode() == ISD::TokenFactor ||
+             (MemU->getChain().getNode() == LoadRoot)) &&
+            !Visited.count(MemU))
+          Queue.push_back(MemU);
+      }
+    }
+  }
+
+  return false;
+}
 
 bool SelectionDAG::findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
                                         LoadSDNode *LD) const {

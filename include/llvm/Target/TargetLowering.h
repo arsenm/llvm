@@ -507,6 +507,14 @@ public:
     return false;
   }
 
+  /// Used by SelectionDAG::isConsecutiveLS to determine if a target node is
+  /// loading or storing from a consecutive location.
+  virtual bool isConsecutiveLSIntrinsic(SDNode *N, LSBaseSDNode *Base,
+                                        unsigned Bytes, int Dist,
+                                        const SelectionDAG &DAG) const {
+    return false;
+  }
+
   /// Returns true if the target can instruction select the specified FP
   /// immediate natively. If false, the legalizer will materialize the FP
   /// immediate as a load from a constant pool.
