@@ -26,6 +26,7 @@
 #include "SIMachineFunctionInfo.h"
 #include "SIRegisterInfo.h"
 #include "llvm/ADT/BitVector.h"
+#include "llvm/CodeGen/BaseIndexOffset.h"
 #include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -1634,6 +1635,104 @@ SDValue SITargetLowering::performClassCombine(SDNode *N,
   return SDValue();
 }
 
+// Try to merge a pair of adjacent loads into one.
+
+// TODO: Merge 3-vector loads. This probably requires adding 3 vectors as MVTs,
+// and allowing findConsecutiveLoad to sometimes find loads with different
+// sizes, or to make this look for more than one load at a time.
+SDValue SITargetLowering::mergeConsecutiveLoads(SDNode *N,
+                                                DAGCombinerInfo &DCI) const {
+  if (DCI.getDAGCombineLevel() < AfterLegalizeDAG ||
+      getTargetMachine().getOptLevel() == CodeGenOpt::None)
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  LoadSDNode *Load = cast<LoadSDNode>(N);
+  EVT MemVT = Load->getMemoryVT();
+
+  assert(MemVT.isInteger());
+
+  unsigned AS = Load->getAddressSpace();
+  unsigned Size = MemVT.getStoreSize();
+  if (Size < 4 || Size > 16) // TODO: Combine extloads and unpack with BFE
+    return SDValue();
+
+  if (MemVT != MVT::i32) // XXX: TODO, merge 64-bit values.
+    return SDValue();
+
+  SmallVector<MemOpLink, 8> AdjacentLoads;
+
+  if (!DAG.findConsecutiveLoads(AdjacentLoads, Load))
+    return SDValue();
+
+  std::sort(AdjacentLoads.begin(), AdjacentLoads.end(),
+            MemOpLink::compare);
+  // We potentially found a load with an address before the load we started
+  // looking at, so make sure we are using the lowest sorted address.
+  MemSDNode *FirstLoad = AdjacentLoads[0].MemNode;
+  int64_t StartAddress = AdjacentLoads[0].OffsetFromBase;
+
+  unsigned NElts = AdjacentLoads.size();
+
+  for (unsigned I = 0; I != NElts; ++I) {
+    // TODO: We could scan ahead and find a set of adjacent non-volatile loads.
+
+    if (AdjacentLoads[I].MemNode->isVolatile()) {
+      NElts = I;
+      break;
+    }
+
+    if (I > 0) {
+      int64_t CurrAddress = AdjacentLoads[I].OffsetFromBase;
+      if (CurrAddress - StartAddress != (I * Size)) {
+        NElts = I;
+        break;
+      }
+    }
+  }
+
+  if (NElts <= 1)
+    return SDValue();
+
+  NElts = std::min(NElts, 4u);
+
+  if (NElts == 3) // FIXME: 3 should work.
+    NElts = 2;
+
+  // Only merge 2 LDS elements at a time, which we can handle with ds_read2_b32.
+  // TODO: On CI+, we can use ds_read_b128.
+  if (AS == AMDGPUAS::LOCAL_ADDRESS || AS == AMDGPUAS::REGION_ADDRESS)
+    NElts = 2;
+
+  // FIXME: Should probably check allowsMisalignedMemoryAccesses
+  EVT NewMemVT = EVT::getVectorVT(*DAG.getContext(), MVT::i32, NElts);
+
+  MachineFunction &MF = DAG.getMachineFunction();
+
+  SDValue Chain = FirstLoad->getChain();
+  SDValue Ptr = FirstLoad->getBasePtr();
+  MachineMemOperand *OldMMO = FirstLoad->getMemOperand();
+
+  SDLoc SL(N);
+
+
+  MachineMemOperand *NewMMO = MF.getMachineMemOperand(OldMMO, 0, NElts * Size);
+
+  SDValue NewLoad = DAG.getLoad(NewMemVT, SL, Chain, Ptr, NewMMO);
+
+  SDValue NewChain = cast<LoadSDNode>(NewLoad)->getChain();
+
+  for (unsigned I = 0; I != NElts; ++I) {
+    SDValue Elt = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, SL, MVT::i32, NewLoad,
+                              DAG.getConstant(I, SL, MVT::i32));
+    DCI.CombineTo(AdjacentLoads[I].MemNode, Elt, NewChain);
+  }
+
+  DCI.AddToWorklist(NewLoad.getNode());
+
+  return NewLoad;
+}
+
 static unsigned minMaxOpcToMin3Max3Opc(unsigned Opc) {
   switch (Opc) {
   case ISD::FMAXNUM:
@@ -1849,7 +1948,12 @@ SDValue SITargetLowering::PerformDAGCombine(SDNode *N,
     break;
   }
   }
-  case ISD::LOAD:
+  case ISD::LOAD: {
+    if (mergeConsecutiveLoads(N, DCI))
+      break;
+
+    // Fallthrough.
+  }
   case ISD::STORE:
   case ISD::ATOMIC_LOAD:
   case ISD::ATOMIC_STORE:
