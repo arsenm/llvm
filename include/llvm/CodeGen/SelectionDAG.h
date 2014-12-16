@@ -1212,12 +1212,13 @@ public:
   bool isConsecutiveLS(SDNode *N, LSBaseSDNode *Base,
                        unsigned Bytes, int Dist) const;
 
-  // Return true is there is a nearyby consecutive load to the one provided
-  // (regardless of alignment). We search up and down the chain, looking though
-  // token factors and other loads (but nothing else). As a result, a true
-  // result indicates that it is safe to create a new consecutive load adjacent
-  // to the load provided.
-  bool findConsecutiveLoad(LoadSDNode *LD) const;
+  // Return the noad if is there is a nearyby consecutive load to the one
+  // provided (regardless of alignment). We search up and down the chain,
+  // looking though token factors and other loads (but nothing else). As a
+  // result, a non-null result indicates that it is safe to create a new
+  // consecutive load adjacent to the load provided. Note the returned node may
+  // not be a LOAD node, and may be a target intrinsic.
+  MemSDNode *findConsecutiveLoad(LoadSDNode *LD) const;
 
   /// Return information about a set of loads on the same chain derived 
   /// from the same base pointer as LD. The loads may be candidates for loading, 

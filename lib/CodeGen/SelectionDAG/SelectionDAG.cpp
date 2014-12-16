@@ -6937,7 +6937,7 @@ bool SelectionDAG::isConsecutiveLS(SDNode *N, LSBaseSDNode *Base,
   return false;
 }
 
-bool SelectionDAG::findConsecutiveLoad(LoadSDNode *LD) const {
+MemSDNode *SelectionDAG::findConsecutiveLoad(LoadSDNode *LD) const {
   SDValue Chain = LD->getChain();
   EVT VT = LD->getMemoryVT();
 
@@ -6955,7 +6955,7 @@ bool SelectionDAG::findConsecutiveLoad(LoadSDNode *LD) const {
 
     if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(ChainNext)) {
       if (isConsecutiveLS(ChainLD, LD, VT.getStoreSize(), 1))
-        return true;
+        return ChainLD;
 
       if (!Visited.count(ChainLD->getChain().getNode()))
         Queue.push_back(ChainLD->getChain().getNode());
@@ -6986,7 +6986,7 @@ bool SelectionDAG::findConsecutiveLoad(LoadSDNode *LD) const {
 
       if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(LoadRoot)) {
         if (isConsecutiveLS(ChainLD, LD, VT.getStoreSize(), 1))
-          return true;
+          return ChainLD;
       }
 
       for (SDNode *U : LoadRoot->uses()) {
@@ -7002,7 +7002,7 @@ bool SelectionDAG::findConsecutiveLoad(LoadSDNode *LD) const {
     }
   }
 
-  return false;
+  return nullptr;
 }
 
 bool SelectionDAG::findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
