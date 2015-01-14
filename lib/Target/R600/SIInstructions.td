@@ -3243,6 +3243,21 @@ def : Pat <
              (V_ALIGNBIT_B32 $a, $a, 8))
 >;
 
+// XXX - This causes one test to regress that seems to be a failure of
+// the operand folding. extract_subreg on immediate...
+def : Pat <
+  (i64 (select i1:$src2, i64:$src1, i64:$src0)),
+  (REG_SEQUENCE VReg_64,
+    (V_CNDMASK_B32_e64 (EXTRACT_SUBREG $src0, sub0),
+                       (EXTRACT_SUBREG $src1, sub0),
+                       $src2),
+    sub0,
+    (V_CNDMASK_B32_e64 (EXTRACT_SUBREG $src0, sub1),
+                       (EXTRACT_SUBREG $src1, sub1),
+                       $src2),
+    sub1)
+>;
+
 def : Pat <
   (f32 (select i1:$src2, f32:$src1, f32:$src0)),
   (V_CNDMASK_B32_e64 $src0, $src1, $src2)

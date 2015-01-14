@@ -1071,6 +1071,7 @@ SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
     }
   }
 
+#if 0
   LHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, LHS);
   RHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, RHS);
 
@@ -1086,6 +1087,9 @@ SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
 
   SDValue Res = DAG.getNode(ISD::BUILD_VECTOR, DL, MVT::v2i32, Lo, Hi);
   return DAG.getNode(ISD::BITCAST, DL, MVT::i64, Res);
+#endif
+
+  return Op;
 }
 
 // Catch division cases where we can use shortcuts with rcp and rsq
