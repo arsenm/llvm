@@ -1034,8 +1034,45 @@ SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDValue Zero = DAG.getConstant(0, MVT::i32);
   SDValue One = DAG.getConstant(1, MVT::i32);
 
-  SDValue LHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, Op.getOperand(1));
-  SDValue RHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, Op.getOperand(2));
+  SDValue LHS = Op.getOperand(1);
+  SDValue RHS = Op.getOperand(2);
+
+  // Undo combine done in visitSINT_TO_FP / visitUINT_TO_FP.
+  // f64 (select (i1 cnd), [+|-]1.0, 0.0) -> f64 [u|s]int_to_fp (i1 cnd)
+  //
+  // It is larger and expensive to do the 2 selects and materialize the weird
+  // constant than selecting an i32 -1 / 0 and doing the conversion to f64.
+  //
+  // = 16 byte, 12 cycle
+  // v_cndmask_b32_e32 v0, 0, -1, s[0:1]
+  // v_cvt_f64_i32_e32 v[0:1], v0
+  //
+  // vs.
+  //
+  // = 20 byte, 16 cycle
+  // v_mov_b32_e32 v0, 0xbff00000
+  // v_cndmask_b32_e64 v1, 0, v0, s[0:1]
+  // v_mov_b32 v0, 0
+  //
+
+  if (const ConstantSDNode *CRHS = dyn_cast<ConstantSDNode>(RHS)) {
+    if (CRHS->isNullValue()) {
+      if (const ConstantSDNode *CLHS = dyn_cast<ConstantSDNode>(LHS)) {
+        if (CLHS->getZExtValue() == DoubleToBits(-1.0)) {
+          SDValue Cvt = DAG.getNode(ISD::SINT_TO_FP, DL, MVT::f64, Cond);
+          return DAG.getNode(ISD::BITCAST, DL, MVT::i64, Cvt);
+        }
+
+        if (CLHS->getZExtValue() == DoubleToBits(1.0)) {
+          SDValue Cvt = DAG.getNode(ISD::UINT_TO_FP, DL, MVT::f64, Cond);
+          return DAG.getNode(ISD::BITCAST, DL, MVT::i64, Cvt);
+        }
+      }
+    }
+  }
+
+  LHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, LHS);
+  RHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, RHS);
 
   SDValue Lo0 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, DL, MVT::i32, LHS, Zero);
   SDValue Lo1 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, DL, MVT::i32, RHS, Zero);

@@ -26,8 +26,8 @@ declare <16 x double> @llvm.ceil.v16f64(<16 x double>) nounwind readnone
 ; SI: v_cmp_gt_f64
 ; SI: v_cmp_lg_f64
 ; SI: s_and_b64
-; SI: v_cndmask_b32
-; SI: v_cndmask_b32
+; SI: v_cndmask_b32_e64 {{v[0-9]+}}, 0, 1,
+; SI-NEXT: v_cvt_f64_u32_e32
 ; SI: v_add_f64
 ; SI: s_endpgm
 define void @fceil_f64(double addrspace(1)* %out, double %x) {
