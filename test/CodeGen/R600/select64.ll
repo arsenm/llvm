@@ -49,3 +49,14 @@ define void @v_select_trunc_i64_2(i32 addrspace(1)* %out, i32 %cond, i64 addrspa
   store i32 %trunc, i32 addrspace(1)* %out, align 4
   ret void
 }
+
+
+; CHECK-LABEL: {{^}}v_select_i64_split_imm:
+define void @v_select_i64_split_imm(i64 addrspace(1)* %out, i32 %cond, i64 addrspace(1)* %aptr, i64 addrspace(1)* %bptr) nounwind {
+  %cmp = icmp ugt i32 %cond, 5
+  %a = load i64 addrspace(1)* %aptr, align 8
+  %b = load i64 addrspace(1)* %bptr, align 8
+  %sel = select i1 %cmp, i64 %a, i64 270582939648 ; 63 << 32
+  store i64 %sel, i64 addrspace(1)* %out, align 8
+  ret void
+}
