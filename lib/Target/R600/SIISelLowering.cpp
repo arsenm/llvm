@@ -1037,41 +1037,59 @@ SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDValue LHS = Op.getOperand(1);
   SDValue RHS = Op.getOperand(2);
 
+  const MCSchedModel &Sched = Subtarget->getSchedModel();
+  const SIInstrInfo *TII
+    = static_cast<const SIInstrInfo *>(Subtarget->getInstrInfo());
+
+  unsigned SchedIdx = TII->get(AMDGPU::V_CVT_F64_I32_e64).getSchedClass();
+  const MCSchedClassDesc *SchedClass = Sched.getSchedClassDesc(SchedIdx);
+
+  if (Subtarget->getWriteLatencyEntry(SchedClass, 0)->Cycles <= 8) {
+
+  }
+
   // Undo combine done in visitSINT_TO_FP / visitUINT_TO_FP.
   // f64 (select (i1 cnd), [+|-]1.0, 0.0) -> f64 [u|s]int_to_fp (i1 cnd)
   //
   // It is larger and expensive to do the 2 selects and materialize the weird
   // constant than selecting an i32 -1 / 0 and doing the conversion to f64.
   //
-  // = 16 byte, 12 cycle
-  // v_cndmask_b32_e32 v0, 0, -1, s[0:1]
+  // = 12 byte, (12 cycle or 20 cycles depending on part)
+  // v_cndmask_b32_e64 v0, 0, -1, s[0:1]
   // v_cvt_f64_i32_e32 v[0:1], v0
   //
   // vs.
   //
-  // = 20 byte, 16 cycle
+  // = 20 byte, 12 cycle
   // v_mov_b32_e32 v0, 0xbff00000
   // v_cndmask_b32_e64 v1, 0, v0, s[0:1]
   // v_mov_b32 v0, 0
   //
+#if 0
+  if (!Subtarget->hasQuarterRateFP64()
+      // || -Oz
+    ) {
 
-  if (const ConstantSDNode *CRHS = dyn_cast<ConstantSDNode>(RHS)) {
-    if (CRHS->isNullValue()) {
-      if (const ConstantSDNode *CLHS = dyn_cast<ConstantSDNode>(LHS)) {
-        if (CLHS->getZExtValue() == DoubleToBits(-1.0)) {
-          SDValue Cvt = DAG.getNode(ISD::SINT_TO_FP, DL, MVT::f64, Cond);
-          return DAG.getNode(ISD::BITCAST, DL, MVT::i64, Cvt);
-        }
+  }
+#endif
+  if (1) {
+    if (const ConstantSDNode *CRHS = dyn_cast<ConstantSDNode>(RHS)) {
+      if (CRHS->isNullValue()) {
+        if (const ConstantSDNode *CLHS = dyn_cast<ConstantSDNode>(LHS)) {
+          if (CLHS->getZExtValue() == DoubleToBits(-1.0)) {
+            SDValue Cvt = DAG.getNode(ISD::SINT_TO_FP, DL, MVT::f64, Cond);
+            return DAG.getNode(ISD::BITCAST, DL, MVT::i64, Cvt);
+          }
 
-        if (CLHS->getZExtValue() == DoubleToBits(1.0)) {
-          SDValue Cvt = DAG.getNode(ISD::UINT_TO_FP, DL, MVT::f64, Cond);
-          return DAG.getNode(ISD::BITCAST, DL, MVT::i64, Cvt);
+          if (CLHS->getZExtValue() == DoubleToBits(1.0)) {
+            SDValue Cvt = DAG.getNode(ISD::UINT_TO_FP, DL, MVT::f64, Cond);
+            return DAG.getNode(ISD::BITCAST, DL, MVT::i64, Cvt);
+          }
         }
       }
     }
   }
 
-#if 0
   LHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, LHS);
   RHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, RHS);
 
@@ -1087,9 +1105,6 @@ SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
 
   SDValue Res = DAG.getNode(ISD::BUILD_VECTOR, DL, MVT::v2i32, Lo, Hi);
   return DAG.getNode(ISD::BITCAST, DL, MVT::i64, Res);
-#endif
-
-  return Op;
 }
 
 // Catch division cases where we can use shortcuts with rcp and rsq
