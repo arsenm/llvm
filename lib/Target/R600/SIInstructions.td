@@ -1749,7 +1749,7 @@ let isCommutable = 1, Uses = [VCC] in {
 //   if (vcc)
 //     result *= 2^32
 //
-defm V_DIV_FMAS_F32 : VOP3_VCC_Inst <vop3<0x16f>, "v_div_fmas_f32",
+defm V_DIV_FMAS_F32 : VOP3_VCC_Inst <vop3<0x16f, 0x1e2>, "v_div_fmas_f32",
   VOP_F32_F32_F32_F32, AMDGPUdiv_fmas
 >;
 
