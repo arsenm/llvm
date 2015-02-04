@@ -47,12 +47,8 @@ bool SIHazardRecognizer::isFMASAfterVALUWriteVCC(SUnit *SU) const {
     if (Pred.isAssignedRegDep()) {
       SUnit *PredSU = Pred.getSUnit();
 
-
-
       if (SU->TopReadyCycle - PredSU->BotReadyCycle > 4)
         continue;
-
-
       unsigned Reg = Pred.getReg();
 
       if (Reg == AMDGPU::VCC ||
@@ -68,7 +64,6 @@ bool SIHazardRecognizer::isFMASAfterVALUWriteVCC(SUnit *SU) const {
 
 void SIHazardRecognizer::EmitNoop() {
   if (VALUWriteVCC > 0) {
-//    llvm_unreachable("Emitting noop with VCC write waits");
     --VALUWriteVCC;
     DEBUG(dbgs() << "emit noop dec: " << VALUWriteVCC << '\n');
   }
@@ -84,14 +79,6 @@ SIHazardRecognizer::getHazardType(SUnit *SU, int Stalls) {
   if (MI->isDebugValue())
     return ScoreboardHazardRecognizer::getHazardType(SU, Stalls);
 
-#if 0
-  if (isVALUWriteVCC(MI)) {
-    VALUWriteVCC = 4;
-  }
-#endif
-
-//  if (VALUWriteVCC >= 0 && VALUWriteVCC < 4) {
-#if 1
   if (VALUWriteVCC > 0) {
     if (MI->getOpcode() == AMDGPU::V_DIV_FMAS_F32 ||
         MI->getOpcode() == AMDGPU::V_DIV_FMAS_F64) {
@@ -99,38 +86,23 @@ SIHazardRecognizer::getHazardType(SUnit *SU, int Stalls) {
       return NoopHazard;
     }
   }
-#endif
-
-#if 0
-  if (isFMASAfterVALUWriteVCC(SU)) {
-    // Try to schedule another instruction for the next 4 cycles.
-    if (VALUWriteVCC < 4) {
-      return NoopHazard;
-    }
-  }
-#endif
-
 
   return ScoreboardHazardRecognizer::getHazardType(SU, Stalls);
 }
 
 void SIHazardRecognizer::Reset() {
   LastMI = nullptr;
-//  VALUWriteVCC = -1;
   VALUWriteVCC = 0;
   ScoreboardHazardRecognizer::Reset();
 }
 
 void SIHazardRecognizer::EmitInstruction(SUnit *SU) {
-
   MachineInstr *MI = SU->getInstr();
 
   if (MI->isDebugValue()) {
-    llvm_unreachable("emitting debug value?");
     ScoreboardHazardRecognizer::EmitInstruction(SU);
     return;
   }
-
 
   if (isVALUWriteVCC(MI)) {
     // Set to number of cycles until it is OK to issue v_div_fmas, it will be OK
@@ -139,18 +111,10 @@ void SIHazardRecognizer::EmitInstruction(SUnit *SU) {
     // XXX - Table says need to wait "4" but unclear 4 what.
     // We need to wait 1 more than this because we want to count from the end of
     // the write of vcc.
-
-    //VALUWriteVCC = 4;
-    VALUWriteVCC = 16;
+    VALUWriteVCC = 4;
 
     LastMI = MI;
   }
-#if 0
-  else if (VALUWriteVCC > 0) {
-    --VALUWriteVCC;
-    DEBUG(dbgs() << "VALUWriteVCC dec to " << VALUWriteVCC << " in EmitInst " << *MI << '\n');
-  }
-#endif
 
   ScoreboardHazardRecognizer::EmitInstruction(SU);
 }
@@ -160,8 +124,7 @@ unsigned SIHazardRecognizer::PreEmitNoops(SUnit *SU) {
 
   if (MI->getOpcode() == AMDGPU::V_DIV_FMAS_F32 ||
       MI->getOpcode() == AMDGPU::V_DIV_FMAS_F64) {
-//    assert(VALUWriteVCC >= 0 && VALUWriteVCC <= 4);
-//    assert(VALUWriteVCC > 0 && VALUWriteVCC <= 4);
+    assert(VALUWriteVCC >= 0 && VALUWriteVCC <= 4);
     DEBUG(dbgs() << "PreEmitNoops: " << VALUWriteVCC << '\n');
     return VALUWriteVCC;
   }
@@ -170,15 +133,12 @@ unsigned SIHazardRecognizer::PreEmitNoops(SUnit *SU) {
 }
 
 void SIHazardRecognizer::AdvanceCycle() {
-  DEBUG(dbgs() << "Advance cycle: " << VALUWriteVCC << '\n');
-#if 1
   if (VALUWriteVCC > 0) {
     if (--VALUWriteVCC == 0)
       LastMI = nullptr;
 
     DEBUG(dbgs() << "Advance cycle: dec to " << VALUWriteVCC << '\n');
   }
-#endif
 
   ScoreboardHazardRecognizer::AdvanceCycle();
 }
