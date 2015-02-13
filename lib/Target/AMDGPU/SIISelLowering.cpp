@@ -1223,6 +1223,15 @@ SDValue SITargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
   EVT VT = Op.getValueType();
   assert(VT.isInteger() && !VT.isVector());
 
+  // Replace this with ISETCC if we can select this to an SALU compare with an
+  // implicit def of scc. Since there is only one scc, if we use this in any
+  // logical operations we must select to the VALU compares.
+  for (const SDNode *User : Op->uses()) {
+    unsigned Opc = User->getOpcode();
+    if (Opc == ISD::AND || Opc == ISD::OR || Opc == ISD::XOR)
+      return Op;
+  }
+
   SDValue LHS = Op.getOperand(0);
   SDValue RHS = Op.getOperand(1);
   SDValue CC = Op.getOperand(2);
