@@ -1735,7 +1735,14 @@ void SIInstrInfo::legalizeOperands(MachineInstr *MI) const {
       MachineOperand &MO = MI->getOperand(Idx);
 
       if (MO.isReg()) {
-        if (!RI.isSGPRClass(MRI.getRegClass(MO.getReg())))
+        unsigned Reg = MO.getReg();
+
+        const TargetRegisterClass *RC =
+          TargetRegisterInfo::isVirtualRegister(Reg) ?
+          MRI.getRegClass(Reg) :
+          RI.getPhysRegClass(Reg);
+
+        if (!RI.isSGPRClass(RC))
           continue; // VGPRs are legal
 
         assert(MO.getReg() != AMDGPU::SCC && "SCC operand to VOP3 instruction");
@@ -2630,8 +2637,16 @@ unsigned SIInstrInfo::findUsedSGPR(const MachineInstr *MI,
     if (RI.isSGPRClassID(Desc.OpInfo[Idx].RegClass))
       SGPRReg = MO.getReg();
 
-    if (MO.isReg() && RI.isSGPRClass(MRI.getRegClass(MO.getReg())))
-      UsedSGPRs[i] = MO.getReg();
+    if (MO.isReg()) {
+      unsigned Reg = MO.getReg();
+      const TargetRegisterClass *RC =
+        TargetRegisterInfo::isVirtualRegister(Reg) ?
+        MRI.getRegClass(Reg) :
+        RI.getPhysRegClass(Reg);
+
+      if (RI.isSGPRClass(RC))
+        UsedSGPRs[i] = MO.getReg();
+    }
   }
 
   if (SGPRReg != AMDGPU::NoRegister)
