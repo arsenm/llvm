@@ -1417,7 +1417,8 @@ defm V_INTERP_MOV_F32 : VINTRP_m <
 
 multiclass V_CNDMASK <vop2 op, string name> {
   defm _e32 : VOP2_m <
-      op, VOP_CNDMASK.Outs, VOP_CNDMASK.Ins32, VOP_CNDMASK.Asm32, [],
+      op, VOP_CNDMASK.Outs, VOP_CNDMASK.Ins32, VOP_CNDMASK.Asm32,
+      [(set i32:$dst, (select i1:$src2, i32:$src1, i32:$src0))],
       name, name>;
 
   defm _e64  : VOP3_m <

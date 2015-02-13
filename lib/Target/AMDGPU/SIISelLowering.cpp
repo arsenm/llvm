@@ -1245,9 +1245,16 @@ SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDValue Cond = Op.getOperand(0);
 
   if (VT == MVT::i32) {
-    SDValue LHS = Op.getOperand(1);
-    SDValue RHS = Op.getOperand(2);
-    return DAG.getNode(AMDGPUISD::ISELECT, DL, VT, LHS, RHS, Cond);
+    // Only try to use an SALU select if we have an SALU condition.
+
+    SDValue Cond = Op.getOperand(0);
+    if (Cond.getOpcode() == AMDGPUISD::ISETCC) {
+      SDValue LHS = Op.getOperand(1);
+      SDValue RHS = Op.getOperand(2);
+      return DAG.getNode(AMDGPUISD::ISELECT, DL, VT, LHS, RHS, Cond);
+    }
+
+    return Op;
   }
 
   if (VT != MVT::i64)
