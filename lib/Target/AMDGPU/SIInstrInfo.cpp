@@ -1108,54 +1108,6 @@ bool SIInstrInfo::areMemAccessesTriviallyDisjoint(MachineInstr *MIa,
   // underlying addres space, even if it was lowered to a different one,
   // e.g. private accesses lowered to use MUBUF instructions on a scratch
   // buffer.
-
-  assert(MIa->hasOneMemOperand() && MIb->hasOneMemOperand() &&
-         "read2 / write2 not expected here yet");
-  unsigned Width0 = (*MIa->memoperands_begin())->getSize();
-  unsigned Width1 = (*MIb->memoperands_begin())->getSize();
-  unsigned AS0 = (*MIa->memoperands_begin())->getAddrSpace();
-  unsigned AS1 = (*MIb->memoperands_begin())->getAddrSpace();
-
-  // OpenCL constant address space is not accessible through generic pointers.
-  if (AS0 == AMDGPUAS::CONSTANT_ADDRESS)
-    return AS1 != AMDGPUAS::CONSTANT_ADDRESS;
-
-  if (AS1 == AMDGPUAS::CONSTANT_ADDRESS)
-    return AS0 != AMDGPUAS::CONSTANT_ADDRESS;
-
-  // First check the underlying source value address space. We fall through to
-  // test the specific instructions for getting the offsets, which may also
-  // differ from expected since some address space accesses may be lowered to
-  // different address spaces.
-  if (AS0 == AMDGPUAS::LOCAL_ADDRESS) {
-    if (AS1 == AMDGPUAS::FLAT_ADDRESS)
-      return false;
-
-    if (AS1 != AMDGPUAS::LOCAL_ADDRESS)
-      return false;
-  }
-
-  if (AS0 == AMDGPUAS::GLOBAL_ADDRESS) {
-    if (AS1 == AMDGPUAS::FLAT_ADDRESS)
-      return false;
-
-    if (AS1 != AMDGPUAS::GLOBAL_ADDRESS)
-      return false;
-  }
-
-  if (AS0 == AMDGPUAS::PRIVATE_ADDRESS) {
-    if (AS1 == AMDGPUAS::FLAT_ADDRESS)
-      return false;
-
-    if (AS1 != AMDGPUAS::PRIVATE_ADDRESS)
-      return false;
-  }
-
-  if (AS0 == AMDGPUAS::FLAT_ADDRESS) {
-    if (AS1 != AMDGPUAS::FLAT_ADDRESS)
-      return false;
-  }
-
   if (isDS(Opc0)) {
     if (isDS(Opc1))
       return checkInstOffsetsDoNotOverlap(MIa, MIb);
