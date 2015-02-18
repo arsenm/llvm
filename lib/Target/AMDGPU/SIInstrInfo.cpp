@@ -2294,8 +2294,14 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     // both.
     for (unsigned i = Inst->getNumOperands() - 1; i > 0; --i) {
       MachineOperand &Op = Inst->getOperand(i);
-      if (Op.isReg() && Op.getReg() == AMDGPU::SCC && !Op.isDef())
-        Inst->RemoveOperand(i);
+      if (Op.isReg() && Op.getReg() == AMDGPU::SCC) {
+        if (Op.isDef()) {
+          Op.setReg(AMDGPU::VCC);
+          // FIXME: We need to move uses of this def as well.
+        } else {
+          Inst->RemoveOperand(i);
+        }
+      }
     }
 
     if (Opcode == AMDGPU::S_SEXT_I32_I8 || Opcode == AMDGPU::S_SEXT_I32_I16) {
