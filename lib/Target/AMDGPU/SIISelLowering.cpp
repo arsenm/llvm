@@ -1092,9 +1092,10 @@ SDValue SITargetLowering::LowerINTRINSIC_VOID(SDValue Op,
 SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   LoadSDNode *Load = cast<LoadSDNode>(Op);
+  EVT VT = Op.getValueType();
 
-  if (Op.getValueType().isVector()) {
-    assert(Op.getValueType().getVectorElementType() == MVT::i32 &&
+  if (VT.isVector()) {
+    assert(VT.getVectorElementType() == MVT::i32 &&
            "Custom lowering for non-i32 vectors hasn't been implemented.");
     unsigned NumElements = Op.getValueType().getVectorNumElements();
     assert(NumElements != 2 && "v2 loads are supported for all address spaces.");
@@ -1107,7 +1108,14 @@ SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
           break;
         // fall-through
       case AMDGPUAS::LOCAL_ADDRESS:
+      case AMDGPUAS::REGION_ADDRESS: {
+        unsigned Elts = VT.getVectorNumElements();
+
+//        if (Elts == 4 || Elts == 8 || Elts == 16)
+        return SplitVectorLoad(Op, DAG);
+
         return ScalarizeVectorLoad(Op, DAG);
+      }
     }
   }
 
