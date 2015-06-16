@@ -7089,7 +7089,7 @@ SDValue DAGCombiner::CombineConsecutiveLoads(SDNode *N, EVT VT) {
       // If one is volatile it might be ok, but play conservative and bail out.
       !LD1->isVolatile() &&
       !LD2->isVolatile() &&
-      DAG.isConsecutiveLoad(LD2, LD1, LD1VT.getSizeInBits()/8, 1)) {
+      DAG.isConsecutiveLoad(LD2, LD1, LD1VT.getStoreSize(), 1)) {
     unsigned Align = LD1->getAlignment();
     unsigned NewAlign = TLI.getDataLayout()->
       getABITypeAlignment(VT.getTypeForEVT(*DAG.getContext()));
@@ -10827,12 +10827,12 @@ bool DAGCombiner::MergeConsecutiveStores(StoreSDNode* St) {
     return false;
 
   EVT MemVT = St->getMemoryVT();
-  int64_t ElementSizeBytes = MemVT.getSizeInBits() / 8;
+  int64_t ElementSizeBytes = MemVT.getStoreSize();
   bool NoVectors = DAG.getMachineFunction().getFunction()->hasFnAttribute(
       Attribute::NoImplicitFloat);
 
   // This function cannot currently deal with non-byte-sized memory sizes.
-  if (ElementSizeBytes * 8 != MemVT.getSizeInBits())
+  if (MemVT.getStoreSize() != ElementSizeBytes)
     return false;
 
   // Don't merge vectors into wider inputs.
