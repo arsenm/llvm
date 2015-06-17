@@ -35,6 +35,7 @@ class AliasAnalysis;
 class MachineConstantPoolValue;
 class MachineFunction;
 class MDNode;
+struct MemOpLink;
 class SDDbgValue;
 class TargetLowering;
 class TargetSelectionDAGInfo;
@@ -1202,6 +1203,13 @@ public:
   /// units away from the location that the 'Base' load is loading from.
   bool isConsecutiveLoad(LoadSDNode *LD, LoadSDNode *Base,
                          unsigned Bytes, int Dist) const;
+
+  /// Return information about a set of loads on the same chain derived 
+  /// from the same base pointer as LD. The loads may be candidates for loading, 
+  /// but users must check that all of the offsets are adjacent or volatile before 
+  /// merging. Returns true if multiple loads are found.
+  bool findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
+                            LoadSDNode *LD) const;
 
   /// Infer alignment of a load / store address. Return 0 if
   /// it cannot be inferred.

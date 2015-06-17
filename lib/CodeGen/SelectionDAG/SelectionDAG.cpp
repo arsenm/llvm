@@ -19,6 +19,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/Analysis/ValueTracking.h"
+#include "llvm/CodeGen/BaseIndexOffset.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -6883,6 +6884,83 @@ bool SelectionDAG::isConsecutiveLoad(LoadSDNode *LD, LoadSDNode *Base,
   return false;
 }
 
+
+bool SelectionDAG::findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
+                                        LoadSDNode *LD) const {
+  SDValue Chain = LD->getChain();
+  EVT VT = LD->getMemoryVT();
+
+  SmallSet<SDNode *, 16> LoadRoots;
+  SmallVector<SDNode *, 8> Queue(1, Chain.getNode());
+  SmallSet<SDNode *, 16> Visited;
+
+  unsigned Seq = 0; // FIXME: Does this make sense here?
+  BaseIndexOffset BasePtr = BaseIndexOffset::match(LD->getBasePtr());
+
+  // First, search up the chain, branching to follow all token-factor operands.
+  // If we find a consecutive load, then we're done, otherwise, record all
+  // nodes just above the top-level loads and token factors.
+  while (!Queue.empty()) {
+    SDNode *ChainNext = Queue.pop_back_val();
+    if (!Visited.insert(ChainNext).second)
+      continue;
+
+    if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(ChainNext)) {
+      BaseIndexOffset Ptr = BaseIndexOffset::match(ChainLD->getBasePtr());
+
+      if (ChainLD->getMemoryVT() == VT && Ptr.equalBaseIndex(BasePtr))
+        Loads.push_back(MemOpLink(ChainLD, Ptr.Offset, Seq++));
+
+      if (!Visited.count(ChainLD->getChain().getNode()))
+        Queue.push_back(ChainLD->getChain().getNode());
+    } else if (ChainNext->getOpcode() == ISD::TokenFactor) {
+      for (const SDUse &O : ChainNext->ops()) {
+        if (!Visited.count(O.getNode()))
+          Queue.push_back(O.getNode());
+      }
+    } else {
+      LoadRoots.insert(ChainNext);
+    }
+  }
+
+  // Second, search down the chain, starting from the top-level nodes recorded
+  // in the first phase. These top-level nodes are the nodes just above all
+  // loads and token factors. Starting with their uses, recursively look though
+  // all loads (just the chain uses) and token factors to find a consecutive
+  // load.
+  Visited.clear();
+  Queue.clear();
+
+  for (SDNode *N : LoadRoots) {
+    Queue.push_back(N);
+
+    while (!Queue.empty()) {
+      SDNode *LoadRoot = Queue.pop_back_val();
+      if (!Visited.insert(LoadRoot).second)
+        continue;
+
+      if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(LoadRoot)) {
+        BaseIndexOffset Ptr = BaseIndexOffset::match(ChainLD->getBasePtr());
+        if (ChainLD->getMemoryVT() == VT && Ptr.equalBaseIndex(BasePtr))
+          Loads.push_back(MemOpLink(ChainLD, Ptr.Offset, Seq++));
+      }
+
+      for (SDNode *U : LoadRoot->uses()) {
+        MemSDNode *MemU = dyn_cast<MemSDNode>(U);
+        if (!MemU)
+          continue;
+
+        if ((MemU->getOpcode() == ISD::TokenFactor ||
+             (MemU->getChain().getNode() == LoadRoot)) &&
+            !Visited.count(MemU)) {
+          Queue.push_back(MemU);
+        }
+      }
+    }
+  }
+
+  return Loads.size() >= 2;
+}
 
 /// InferPtrAlignment - Infer alignment of a load / store address. Return 0 if
 /// it cannot be inferred.
