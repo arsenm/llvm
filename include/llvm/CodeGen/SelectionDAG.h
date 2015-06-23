@@ -1220,9 +1220,9 @@ public:
   // not be a LOAD node, and may be a target intrinsic.
   MemSDNode *findConsecutiveLoad(LoadSDNode *LD) const;
 
-  /// Return information about a set of loads on the same chain derived 
-  /// from the same base pointer as LD. The loads may be candidates for loading, 
-  /// but users must check that all of the offsets are adjacent or volatile before 
+  /// Return information about a set of loads on the same chain derived
+  /// from the same base pointer as LD. The loads may be candidates for loading,
+  /// but users must check that all of the offsets are adjacent or volatile before
   /// merging. Returns true if multiple loads are found.
   bool findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
                             LoadSDNode *LD) const;
