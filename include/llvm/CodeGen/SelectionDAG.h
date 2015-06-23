@@ -1227,6 +1227,11 @@ public:
   bool findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
                             LoadSDNode *LD) const;
 
+  /// Return true if there is any possibility that the two addresses overlap.
+  bool isAlias(LSBaseSDNode *Op0, LSBaseSDNode *Op1,
+               AliasAnalysis *AA = nullptr,
+               bool UseTBAA = false) const;
+
   /// Infer alignment of a load / store address. Return 0 if
   /// it cannot be inferred.
   unsigned InferPtrAlignment(SDValue Ptr) const;
