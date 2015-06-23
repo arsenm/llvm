@@ -57,15 +57,15 @@ define void @lds_atomic_cmpxchg_ret_i32_bad_si_offset(i32 addrspace(1)* %out, i3
 
 ; FUNC-LABEL: {{^}}lds_atomic_cmpxchg_noret_i32_offset:
 ; SICI: s_load_dword [[PTR:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x9
-; SICI: s_load_dword [[SWAP:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xa
+; SICI: s_load_dword [[SWAP:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
 ; VI: s_load_dword [[PTR:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x24
-; VI: s_load_dword [[SWAP:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x28
+; VI: s_load_dword [[SWAP:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x2c
 ; GCN-DAG: v_mov_b32_e32 [[VCMP:v[0-9]+]], 7
 ; GCN-DAG: v_mov_b32_e32 [[VPTR:v[0-9]+]], [[PTR]]
 ; GCN-DAG: v_mov_b32_e32 [[VSWAP:v[0-9]+]], [[SWAP]]
 ; GCN: ds_cmpst_b32 [[VPTR]], [[VCMP]], [[VSWAP]] offset:16
 ; GCN: s_endpgm
-define void @lds_atomic_cmpxchg_noret_i32_offset(i32 addrspace(3)* %ptr, i32 %swap) nounwind {
+define void @lds_atomic_cmpxchg_noret_i32_offset(i32 addrspace(3)* %ptr, i32, i32 %swap) nounwind {
   %gep = getelementptr i32, i32 addrspace(3)* %ptr, i32 4
   %pair = cmpxchg i32 addrspace(3)* %gep, i32 7, i32 %swap seq_cst monotonic
   %result = extractvalue { i32, i1 } %pair, 0

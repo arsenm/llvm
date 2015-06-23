@@ -28,13 +28,13 @@ define void @test_sgpr_use_three_ternary_op(float addrspace(1)* %out, float %a) 
 
 ; GCN-LABEL: {{^}}test_sgpr_use_twice_ternary_op_a_a_b:
 ; SI: s_load_dword [[SGPR0:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
+; SI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
 ; VI: s_load_dword [[SGPR0:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x2c
-; VI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x30
+; VI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x34
 ; GCN: v_mov_b32_e32 [[VGPR1:v[0-9]+]], [[SGPR1]]
 ; GCN: v_fma_f32 [[RESULT:v[0-9]+]], [[SGPR0]], [[SGPR0]], [[VGPR1]]
 ; GCN: buffer_store_dword [[RESULT]]
-define void @test_sgpr_use_twice_ternary_op_a_a_b(float addrspace(1)* %out, float %a, float %b) #0 {
+define void @test_sgpr_use_twice_ternary_op_a_a_b(float addrspace(1)* %out, float %a, i32, float %b) #0 {
   %fma = call float @llvm.fma.f32(float %a, float %a, float %b) #1
   store float %fma, float addrspace(1)* %out, align 4
   ret void
@@ -42,13 +42,13 @@ define void @test_sgpr_use_twice_ternary_op_a_a_b(float addrspace(1)* %out, floa
 
 ; GCN-LABEL: {{^}}test_sgpr_use_twice_ternary_op_a_b_a:
 ; SI: s_load_dword [[SGPR0:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
+; SI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
 ; VI: s_load_dword [[SGPR0:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x2c
-; VI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x30
+; VI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x34
 ; GCN: v_mov_b32_e32 [[VGPR1:v[0-9]+]], [[SGPR1]]
 ; GCN: v_fma_f32 [[RESULT:v[0-9]+]], [[VGPR1]], [[SGPR0]], [[SGPR0]]
 ; GCN: buffer_store_dword [[RESULT]]
-define void @test_sgpr_use_twice_ternary_op_a_b_a(float addrspace(1)* %out, float %a, float %b) #0 {
+define void @test_sgpr_use_twice_ternary_op_a_b_a(float addrspace(1)* %out, float %a, i32, float %b) #0 {
   %fma = call float @llvm.fma.f32(float %a, float %b, float %a) #1
   store float %fma, float addrspace(1)* %out, align 4
   ret void
@@ -56,13 +56,13 @@ define void @test_sgpr_use_twice_ternary_op_a_b_a(float addrspace(1)* %out, floa
 
 ; GCN-LABEL: {{^}}test_sgpr_use_twice_ternary_op_b_a_a:
 ; SI: s_load_dword [[SGPR0:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
+; SI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
 ; VI: s_load_dword [[SGPR0:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x2c
-; VI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x30
+; VI: s_load_dword [[SGPR1:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x34
 ; GCN: v_mov_b32_e32 [[VGPR1:v[0-9]+]], [[SGPR1]]
 ; GCN: v_fma_f32 [[RESULT:v[0-9]+]], [[SGPR0]], [[VGPR1]], [[SGPR0]]
 ; GCN: buffer_store_dword [[RESULT]]
-define void @test_sgpr_use_twice_ternary_op_b_a_a(float addrspace(1)* %out, float %a, float %b) #0 {
+define void @test_sgpr_use_twice_ternary_op_b_a_a(float addrspace(1)* %out, float %a, i32, float %b) #0 {
   %fma = call float @llvm.fma.f32(float %b, float %a, float %a) #1
   store float %fma, float addrspace(1)* %out, align 4
   ret void

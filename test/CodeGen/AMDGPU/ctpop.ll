@@ -279,7 +279,7 @@ define void @v_ctpop_i32_add_vvar_inv(i32 addrspace(1)* noalias %out, i32 addrsp
 ; GCN: buffer_store_dword [[RESULT]],
 ; GCN: s_endpgm
 ; EG: BCNT_INT
-define void @ctpop_i32_in_br(i32 addrspace(1)* %out, i32 addrspace(1)* %in, i32 %ctpop_arg, i32 %cond) {
+define void @ctpop_i32_in_br(i32 addrspace(1)* %out, i32 addrspace(1)* %in, i32 %ctpop_arg, i32, i32 %cond) {
 entry:
   %tmp0 = icmp eq i32 %cond, 0
   br i1 %tmp0, label %if, label %else

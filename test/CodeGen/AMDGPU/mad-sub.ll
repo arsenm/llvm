@@ -18,9 +18,9 @@ define void @mad_sub_f32(float addrspace(1)* noalias nocapture %out, float addrs
   %add2 = add i64 %tid.ext, 2
   %gep2 = getelementptr float, float addrspace(1)* %ptr, i64 %add2
   %outgep = getelementptr float, float addrspace(1)* %out, i64 %tid.ext
-  %a = load float, float addrspace(1)* %gep0, align 4
-  %b = load float, float addrspace(1)* %gep1, align 4
-  %c = load float, float addrspace(1)* %gep2, align 4
+  %a = load volatile float, float addrspace(1)* %gep0, align 4
+  %b = load volatile float, float addrspace(1)* %gep1, align 4
+  %c = load volatile float, float addrspace(1)* %gep2, align 4
   %mul = fmul float %a, %b
   %sub = fsub float %mul, %c
   store float %sub, float addrspace(1)* %outgep, align 4
@@ -42,9 +42,9 @@ define void @mad_sub_inv_f32(float addrspace(1)* noalias nocapture %out, float a
   %add2 = add i64 %tid.ext, 2
   %gep2 = getelementptr float, float addrspace(1)* %ptr, i64 %add2
   %outgep = getelementptr float, float addrspace(1)* %out, i64 %tid.ext
-  %a = load float, float addrspace(1)* %gep0, align 4
-  %b = load float, float addrspace(1)* %gep1, align 4
-  %c = load float, float addrspace(1)* %gep2, align 4
+  %a = load volatile float, float addrspace(1)* %gep0, align 4
+  %b = load volatile float, float addrspace(1)* %gep1, align 4
+  %c = load volatile float, float addrspace(1)* %gep2, align 4
   %mul = fmul float %a, %b
   %sub = fsub float %c, %mul
   store float %sub, float addrspace(1)* %outgep, align 4
@@ -87,9 +87,9 @@ define void @mad_sub_fabs_f32(float addrspace(1)* noalias nocapture %out, float 
   %add2 = add i64 %tid.ext, 2
   %gep2 = getelementptr float, float addrspace(1)* %ptr, i64 %add2
   %outgep = getelementptr float, float addrspace(1)* %out, i64 %tid.ext
-  %a = load float, float addrspace(1)* %gep0, align 4
-  %b = load float, float addrspace(1)* %gep1, align 4
-  %c = load float, float addrspace(1)* %gep2, align 4
+  %a = load volatile float, float addrspace(1)* %gep0, align 4
+  %b = load volatile float, float addrspace(1)* %gep1, align 4
+  %c = load volatile float, float addrspace(1)* %gep2, align 4
   %c.abs = call float @llvm.fabs.f32(float %c) #0
   %mul = fmul float %a, %b
   %sub = fsub float %mul, %c.abs
@@ -112,9 +112,9 @@ define void @mad_sub_fabs_inv_f32(float addrspace(1)* noalias nocapture %out, fl
   %add2 = add i64 %tid.ext, 2
   %gep2 = getelementptr float, float addrspace(1)* %ptr, i64 %add2
   %outgep = getelementptr float, float addrspace(1)* %out, i64 %tid.ext
-  %a = load float, float addrspace(1)* %gep0, align 4
-  %b = load float, float addrspace(1)* %gep1, align 4
-  %c = load float, float addrspace(1)* %gep2, align 4
+  %a = load volatile float, float addrspace(1)* %gep0, align 4
+  %b = load volatile float, float addrspace(1)* %gep1, align 4
+  %c = load volatile float, float addrspace(1)* %gep2, align 4
   %c.abs = call float @llvm.fabs.f32(float %c) #0
   %mul = fmul float %a, %b
   %sub = fsub float %c.abs, %mul
@@ -159,9 +159,9 @@ define void @mad_fabs_sub_f32(float addrspace(1)* noalias nocapture %out, float 
   %add2 = add i64 %tid.ext, 2
   %gep2 = getelementptr float, float addrspace(1)* %ptr, i64 %add2
   %outgep = getelementptr float, float addrspace(1)* %out, i64 %tid.ext
-  %a = load float, float addrspace(1)* %gep0, align 4
-  %b = load float, float addrspace(1)* %gep1, align 4
-  %c = load float, float addrspace(1)* %gep2, align 4
+  %a = load volatile float, float addrspace(1)* %gep0, align 4
+  %b = load volatile float, float addrspace(1)* %gep1, align 4
+  %c = load volatile float, float addrspace(1)* %gep2, align 4
   %b.abs = call float @llvm.fabs.f32(float %b) #0
   %mul = fmul float %a, %b.abs
   %sub = fsub float %mul, %c
