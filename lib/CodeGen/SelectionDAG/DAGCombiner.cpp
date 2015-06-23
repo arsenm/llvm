@@ -10533,7 +10533,7 @@ bool DAGCombiner::MergeStoresOfConstantsOrVecElts(
     return false;
 
   int64_t ElementSizeBytes = MemVT.getSizeInBits() / 8;
-  LSBaseSDNode *FirstInChain = StoreNodes[0].MemNode;
+  MemSDNode *FirstInChain = StoreNodes[0].MemNode;
   unsigned LatestNodeUsed = 0;
 
   for (unsigned i=0; i < NumElem; ++i) {
@@ -10546,7 +10546,7 @@ bool DAGCombiner::MergeStoresOfConstantsOrVecElts(
   }
 
   // The latest Node in the DAG.
-  LSBaseSDNode *LatestOp = StoreNodes[LatestNodeUsed].MemNode;
+  MemSDNode *LatestOp = StoreNodes[LatestNodeUsed].MemNode;
   SDLoc DL(StoreNodes[0].MemNode);
 
   SDValue StoredVal;
@@ -10786,7 +10786,7 @@ bool DAGCombiner::MergeConsecutiveStores(StoreSDNode* St) {
     bool Alias = false;
     // Check if this store interferes with any of the loads that we found.
     for (unsigned ld = 0, lde = AliasLoadNodes.size(); ld < lde; ++ld)
-      if (isAlias(AliasLoadNodes[ld], StoreNodes[i].MemNode)) {
+      if (isAlias(AliasLoadNodes[ld], cast<LSBaseSDNode>(StoreNodes[i].MemNode))) {
         Alias = true;
         break;
       }
@@ -10799,7 +10799,7 @@ bool DAGCombiner::MergeConsecutiveStores(StoreSDNode* St) {
   }
 
   // The node with the lowest store address.
-  LSBaseSDNode *FirstInChain = StoreNodes[0].MemNode;
+  MemSDNode *FirstInChain = StoreNodes[0].MemNode;
   unsigned FirstStoreAS = FirstInChain->getAddressSpace();
   unsigned FirstStoreAlign = FirstInChain->getAlignment();
 
@@ -11032,7 +11032,7 @@ bool DAGCombiner::MergeConsecutiveStores(StoreSDNode* St) {
       LatestNodeUsed = i;
   }
 
-  LSBaseSDNode *LatestOp = StoreNodes[LatestNodeUsed].MemNode;
+  MemSDNode *LatestOp = StoreNodes[LatestNodeUsed].MemNode;
 
   // Find if it is better to use vectors or integers to load and store
   // to memory.

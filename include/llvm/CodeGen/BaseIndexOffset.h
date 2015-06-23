@@ -104,10 +104,10 @@ struct BaseIndexOffset {
 /// Holds a pointer to an LSBaseSDNode as well as information on where it
 /// is located in a sequence of memory operations connected by a chain.
 struct MemOpLink {
-  MemOpLink (LSBaseSDNode *N, int64_t Offset, unsigned Seq):
+  MemOpLink (MemSDNode *N, int64_t Offset, unsigned Seq):
     MemNode(N), OffsetFromBase(Offset), SequenceNum(Seq) { }
   // Ptr to the mem node.
-  LSBaseSDNode *MemNode;
+  MemSDNode *MemNode;
   // Offset from the base ptr.
   int64_t OffsetFromBase;
   // What is the sequence number of this mem node.
