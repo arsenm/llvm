@@ -1661,8 +1661,9 @@ SDValue SITargetLowering::mergeConsecutiveLoads(SDNode *N,
     return SDValue();
 
   SmallVector<MemOpLink, 8> AdjacentLoads;
+  SmallVector<LSBaseSDNode *, 8> AliasedStores;
 
-  if (!DAG.findConsecutiveLoads(AdjacentLoads, Load))
+  if (!DAG.findConsecutiveLoads(AdjacentLoads, AliasedStores, Load))
     return SDValue();
 
   std::sort(AdjacentLoads.begin(), AdjacentLoads.end(),
@@ -1672,10 +1673,14 @@ SDValue SITargetLowering::mergeConsecutiveLoads(SDNode *N,
   MemSDNode *FirstLoad = AdjacentLoads[0].MemNode;
   int64_t StartAddress = AdjacentLoads[0].OffsetFromBase;
 
+
   unsigned NElts = AdjacentLoads.size();
 
   for (unsigned I = 0; I != NElts; ++I) {
     // TODO: We could scan ahead and find a set of adjacent non-volatile loads.
+
+    assert(cast<LoadSDNode>(AdjacentLoads[I].MemNode)->getAddressSpace() == AS);
+    //assert(cast<LSBaseSDNode>(AdjacentLoads[I].MemNode)->getAddressSpace() == AS);
 
     if (AdjacentLoads[I].MemNode->isVolatile()) {
       NElts = I;
@@ -1688,6 +1693,22 @@ SDValue SITargetLowering::mergeConsecutiveLoads(SDNode *N,
         NElts = I;
         break;
       }
+    }
+
+    bool Alias = false;
+    // Check if this store interferes with any of the loads that we found.
+    for (unsigned ld = 0, lde = AliasedStores.size(); ld < lde; ++ld) {
+      // XXX - Pass AA
+      if (DAG.isAlias(AliasedStores[ld], cast<LSBaseSDNode>(AdjacentLoads[I].MemNode))) {
+        Alias = true;
+        break;
+      }
+    }
+
+    // We found a store that alias with this load. Stop the sequence.
+    if (Alias) {
+      NElts = I;
+      break;
     }
   }
 
