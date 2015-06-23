@@ -11304,9 +11304,11 @@ SDValue DAGCombiner::visitSTORE(SDNode *N) {
                              Ptr, ST->getMemoryVT(), ST->getMemOperand());
   }
 
-  // Only perform this optimization before the types are legal, because we
+  // Only perform this optimization after the types are legal, because we
   // don't want to perform this optimization on every DAGCombine invocation.
-  if (!LegalTypes) {
+//  if (!LegalTypes) {
+//  if (Level == AfterLegalizeTypes) {
+  if (true) {
     bool EverChanged = false;
 
     do {
