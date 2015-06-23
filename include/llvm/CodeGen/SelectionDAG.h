@@ -1225,6 +1225,7 @@ public:
   /// but users must check that all of the offsets are adjacent or volatile before
   /// merging. Returns true if multiple loads are found.
   bool findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
+                            SmallVectorImpl<LSBaseSDNode*> &AliasStoreNodes,
                             LoadSDNode *LD) const;
 
   /// Return true if there is any possibility that the two addresses overlap.

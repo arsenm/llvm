@@ -7020,8 +7020,10 @@ MemSDNode *SelectionDAG::findConsecutiveLoad(LoadSDNode *LD) const {
   return nullptr;
 }
 
-bool SelectionDAG::findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
-                                        LoadSDNode *LD) const {
+bool SelectionDAG::findConsecutiveLoads(
+  SmallVectorImpl<MemOpLink> &Loads,
+  SmallVectorImpl<LSBaseSDNode *> &AliasStoreNodes,
+  LoadSDNode *LD) const {
   SDValue Chain = LD->getChain();
   EVT VT = LD->getMemoryVT();
 
@@ -7040,7 +7042,8 @@ bool SelectionDAG::findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
     if (!Visited.insert(ChainNext).second)
       continue;
 
-    if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(ChainNext)) {
+
+    if (LoadSDNode *ChainLD = dyn_cast<LoadSDNode>(ChainNext)) {
       BaseIndexOffset Ptr = BaseIndexOffset::match(ChainLD->getBasePtr());
 
       if (ChainLD->getMemoryVT() == VT && Ptr.equalBaseIndex(BasePtr))
@@ -7048,6 +7051,9 @@ bool SelectionDAG::findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
 
       if (!Visited.count(ChainLD->getChain().getNode()))
         Queue.push_back(ChainLD->getChain().getNode());
+//    } else if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(ChainNext)) {
+    } else if (StoreSDNode *ChainST = dyn_cast<StoreSDNode>(ChainNext)) {
+      AliasStoreNodes.push_back(ChainST);
     } else if (ChainNext->getOpcode() == ISD::TokenFactor) {
       for (const SDUse &O : ChainNext->ops()) {
         if (!Visited.count(O.getNode()))
@@ -7074,10 +7080,13 @@ bool SelectionDAG::findConsecutiveLoads(SmallVectorImpl<MemOpLink> &Loads,
       if (!Visited.insert(LoadRoot).second)
         continue;
 
-      if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(LoadRoot)) {
+//      if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(LoadRoot)) {
+      if (LoadSDNode *ChainLD = dyn_cast<LoadSDNode>(LoadRoot)) {
         BaseIndexOffset Ptr = BaseIndexOffset::match(ChainLD->getBasePtr());
         if (ChainLD->getMemoryVT() == VT && Ptr.equalBaseIndex(BasePtr))
           Loads.push_back(MemOpLink(ChainLD, Ptr.Offset, Seq++));
+      } else if (StoreSDNode *ChainST = dyn_cast<StoreSDNode>(LoadRoot)) {
+        AliasStoreNodes.push_back(ChainST);
       }
 
       for (SDNode *U : LoadRoot->uses()) {
