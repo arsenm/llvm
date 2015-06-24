@@ -7044,10 +7044,12 @@ bool SelectionDAG::findConsecutiveLoads(
 
 
     if (LoadSDNode *ChainLD = dyn_cast<LoadSDNode>(ChainNext)) {
-      BaseIndexOffset Ptr = BaseIndexOffset::match(ChainLD->getBasePtr());
-
-      if (ChainLD->getMemoryVT() == VT && Ptr.equalBaseIndex(BasePtr))
-        Loads.push_back(MemOpLink(ChainLD, Ptr.Offset, Seq++));
+      // The memory operands must not be volatile.
+      if (!ChainLD->isVolatile() && !ChainLD->isIndexed()) {
+        BaseIndexOffset Ptr = BaseIndexOffset::match(ChainLD->getBasePtr());
+        if (ChainLD->getMemoryVT() == VT && Ptr.equalBaseIndex(BasePtr))
+          Loads.push_back(MemOpLink(ChainLD, Ptr.Offset, Seq++));
+      }
 
       if (!Visited.count(ChainLD->getChain().getNode()))
         Queue.push_back(ChainLD->getChain().getNode());
@@ -7082,9 +7084,12 @@ bool SelectionDAG::findConsecutiveLoads(
 
 //      if (MemSDNode *ChainLD = dyn_cast<MemSDNode>(LoadRoot)) {
       if (LoadSDNode *ChainLD = dyn_cast<LoadSDNode>(LoadRoot)) {
-        BaseIndexOffset Ptr = BaseIndexOffset::match(ChainLD->getBasePtr());
-        if (ChainLD->getMemoryVT() == VT && Ptr.equalBaseIndex(BasePtr))
-          Loads.push_back(MemOpLink(ChainLD, Ptr.Offset, Seq++));
+        // The memory operands must not be volatile.
+        if (!ChainLD->isVolatile() && !ChainLD->isIndexed()) {
+          BaseIndexOffset Ptr = BaseIndexOffset::match(ChainLD->getBasePtr());
+          if (ChainLD->getMemoryVT() == VT && Ptr.equalBaseIndex(BasePtr))
+            Loads.push_back(MemOpLink(ChainLD, Ptr.Offset, Seq++));
+        }
       } else if (StoreSDNode *ChainST = dyn_cast<StoreSDNode>(LoadRoot)) {
         AliasStoreNodes.push_back(ChainST);
       }

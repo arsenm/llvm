@@ -399,13 +399,11 @@ entry:
   ret void
 }
 
-; FIXME: We could merge the last 2 loads
 ; GCN-LABEL: {{^}}merge_global_load_4_volatile_0_i32:
 ; GCN: buffer_load_dword v[[X0:[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0{{$}}
-; GCN: buffer_load_dword v[[X1:[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0 offset:4{{$}}
-; GCN: buffer_load_dword v[[X2:[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0 offset:8{{$}}
+; GCN: buffer_load_dwordx2 v{{\[}}[[X1:[0-9]+]]:[[X2:[0-9]+]]{{\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0 offset:4{{$}}
 ; GCN: buffer_load_dword v[[X3:[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0 offset:12{{$}}
-; GCN: v_add_i32_e32 [[ADD0:v[0-9]+]], v[[X1]], v[[X0]]
+; GCN: v_add_i32_e32 [[ADD0:v[0-9]+]], v[[X0]], v[[X1]]
 ; GCN: v_add_i32_e32 [[ADD1:v[0-9]+]], v[[X2]], [[ADD0]]
 ; GCN: v_add_i32_e32 [[ADD2:v[0-9]+]], v[[X3]], [[ADD1]]
 ; GCN: buffer_store_dword [[ADD2]]
