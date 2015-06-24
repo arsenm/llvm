@@ -9,7 +9,7 @@ declare i32 @llvm.r600.read.tidig.x() #0
 ; OPT-CI-NOT: getelementptr i32, i32 addrspace(1)* %in
 ; OPT-VI: getelementptr i32, i32 addrspace(1)* %in
 ; OPT: br i1
-; OPT-CI: ptrtoint
+; OPT-CI: %sunkaddr = getelementptr
 
 ; GCN-LABEL: {{^}}test_sink_global_small_offset_i32:
 ; GCN: {{^}}BB0_2:
@@ -147,7 +147,7 @@ done:
 ; OPT-LABEL: @test_sink_scratch_small_offset_i32(
 ; OPT-NOT:  getelementptr [512 x i32]
 ; OPT: br i1
-; OPT: ptrtoint
+; OPT: %sunkaddr = getelementptr
 
 ; GCN-LABEL: {{^}}test_sink_scratch_small_offset_i32:
 ; GCN: s_and_saveexec_b64
