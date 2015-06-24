@@ -285,6 +285,10 @@ public:
     llvm_unreachable("do not know max waves per CU for this subtarget.");
   }
 
+  bool useAA() const override {
+    return true;
+  }
+
   bool enableSubRegLiveness() const override {
     return true;
   }

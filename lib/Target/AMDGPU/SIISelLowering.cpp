@@ -1698,8 +1698,7 @@ SDValue SITargetLowering::mergeConsecutiveLoads(SDNode *N,
     bool Alias = false;
     // Check if this store interferes with any of the loads that we found.
     for (unsigned ld = 0, lde = AliasedStores.size(); ld < lde; ++ld) {
-      // XXX - Pass AA
-      if (DAG.isAlias(AliasedStores[ld], cast<LSBaseSDNode>(AdjacentLoads[I].MemNode))) {
+      if (DAG.isAlias(AliasedStores[ld], cast<LSBaseSDNode>(AdjacentLoads[I].MemNode), DCI.AA, true)) {
         Alias = true;
         break;
       }
