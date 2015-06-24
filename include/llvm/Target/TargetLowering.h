@@ -41,6 +41,7 @@
 #include <vector>
 
 namespace llvm {
+  class AliasAnalysis;
   class CallInst;
   class CCState;
   class FastISel;
@@ -2171,9 +2172,11 @@ public:
     bool CalledByLegalizer;
   public:
     SelectionDAG &DAG;
+    AliasAnalysis *AA;
 
-    DAGCombinerInfo(SelectionDAG &dag, CombineLevel level,  bool cl, void *dc)
-      : DC(dc), Level(level), CalledByLegalizer(cl), DAG(dag) {}
+    DAGCombinerInfo(SelectionDAG &dag, CombineLevel level,  bool cl, void *dc,
+                    AliasAnalysis *AA = nullptr)
+      : DC(dc), Level(level), CalledByLegalizer(cl), DAG(dag), AA(AA) {}
 
     bool isBeforeLegalize() const { return Level == BeforeLegalizeTypes; }
     bool isBeforeLegalizeOps() const { return Level < AfterLegalizeVectorOps; }

@@ -128,6 +128,11 @@ namespace {
     /// Call the node-specific routine that folds each particular type of node.
     SDValue visit(SDNode *N);
 
+    bool useAA() const {
+      return CombinerAA.getNumOccurrences() > 0 ?
+        CombinerAA : DAG.getSubtarget().useAA();
+    }
+
   public:
     /// Add to the worklist making sure its instance is at the back (next to be
     /// processed.)
@@ -1421,7 +1426,7 @@ SDValue DAGCombiner::combine(SDNode *N) {
 
       // Expose the DAG combiner to the target combiner impls.
       TargetLowering::DAGCombinerInfo
-        DagCombineInfo(DAG, Level, false, this);
+        DagCombineInfo(DAG, Level, false, this, useAA() ? &AA : nullptr);
 
       RV = TLI.PerformDAGCombine(N, DagCombineInfo);
     }
@@ -1566,9 +1571,7 @@ SDValue DAGCombiner::visitTokenFactor(SDNode *N) {
 
     // Add users to worklist if AA is enabled, since it may introduce
     // a lot of new chained token factors while removing memory deps.
-    bool UseAA = CombinerAA.getNumOccurrences() > 0 ? CombinerAA
-      : DAG.getSubtarget().useAA();
-    return CombineTo(N, Result, UseAA /*add to worklist*/);
+    return CombineTo(N, Result, useAA() /*add to worklist*/);
   }
 
   return Result;
@@ -13531,7 +13534,7 @@ SDValue DAGCombiner::SimplifySetCC(EVT VT, SDValue N0,
                                    SDValue N1, ISD::CondCode Cond,
                                    SDLoc DL, bool foldBooleans) {
   TargetLowering::DAGCombinerInfo
-    DagCombineInfo(DAG, Level, false, this);
+    DagCombineInfo(DAG, Level, false, this, useAA() ? &AA : nullptr);
   return TLI.SimplifySetCC(VT, N0, N1, Cond, foldBooleans, DagCombineInfo, DL);
 }
 
@@ -13603,7 +13606,8 @@ SDValue DAGCombiner::BuildReciprocalEstimate(SDValue Op) {
     return SDValue();
 
   // Expose the DAG combiner to the target combiner implementations.
-  TargetLowering::DAGCombinerInfo DCI(DAG, Level, false, this);
+  TargetLowering::DAGCombinerInfo DCI(DAG, Level, false, this,
+                                      useAA() ? &AA : nullptr);
 
   unsigned Iterations = 0;
   if (SDValue Est = TLI.getRecipEstimate(Op, DCI, Iterations)) {
@@ -13715,7 +13719,8 @@ SDValue DAGCombiner::BuildRsqrtEstimate(SDValue Op) {
     return SDValue();
 
   // Expose the DAG combiner to the target combiner implementations.
-  TargetLowering::DAGCombinerInfo DCI(DAG, Level, false, this);
+  TargetLowering::DAGCombinerInfo DCI(DAG, Level, false, this,
+                                      useAA() ? &AA : nullptr);
   unsigned Iterations = 0;
   bool UseOneConstNR = false;
   if (SDValue Est = TLI.getRsqrtEstimate(Op, DCI, Iterations, UseOneConstNR)) {
