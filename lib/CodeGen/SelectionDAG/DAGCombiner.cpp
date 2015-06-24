@@ -393,6 +393,13 @@ namespace {
                                          EVT MemVT, unsigned NumElem,
                                          bool IsConstantSrc, bool UseVector);
 
+    /// Find index in StoreNodes of last consecutive, non-aliased store in
+    /// the pre-sorted StoreNodes.
+    unsigned findLastConsecutiveStore(
+      ArrayRef<MemOpLink> StoreNodes,
+      ArrayRef<LSBaseSDNode *> AliasLoadNodes,
+      unsigned ElementSizeBytes) const;
+
     /// This is a helper function for MergeConsecutiveStores.
     /// Stores that may be merged are placed in StoreNodes.
     /// Loads that may alias with those stores are placed in AliasLoadNodes.
@@ -10722,6 +10729,44 @@ void DAGCombiner::getStoreMergeAndAliasCandidates(
   }
 }
 
+unsigned DAGCombiner::findLastConsecutiveStore(
+  ArrayRef<MemOpLink> StoreNodes,
+  ArrayRef<LSBaseSDNode *> AliasLoadNodes,
+  unsigned ElementSizeBytes) const {
+  // Scan the memory operations on the chain and find the first non-consecutive
+  // store memory address.
+  unsigned LastConsecutiveStore = 0;
+  int64_t StartAddress = StoreNodes[0].OffsetFromBase;
+  for (unsigned I = 0, E = StoreNodes.size(); I < E; ++I) {
+
+    // Check that the addresses are consecutive starting from the second
+    // element in the list of stores.
+    if (I > 0) {
+      int64_t CurrAddress = StoreNodes[I].OffsetFromBase;
+      if (CurrAddress - StartAddress != (ElementSizeBytes * I))
+        break;
+    }
+
+    bool Alias = false;
+    // Check if this store interferes with any of the loads that we found.
+    for (unsigned Ld = 0, LdE = AliasLoadNodes.size(); Ld < LdE; ++Ld) {
+      if (isAlias(AliasLoadNodes[Ld], cast<LSBaseSDNode>(StoreNodes[I].MemNode))) {
+        Alias = true;
+        break;
+      }
+    }
+
+    // We found a load that alias with this store. Stop the sequence.
+    if (Alias)
+      break;
+
+    // Mark this node as useful.
+    LastConsecutiveStore = I;
+  }
+
+  return LastConsecutiveStore;
+}
+
 bool DAGCombiner::MergeConsecutiveStores(StoreSDNode* St) {
   if (OptLevel == CodeGenOpt::None)
     return false;
@@ -10774,32 +10819,8 @@ bool DAGCombiner::MergeConsecutiveStores(StoreSDNode* St) {
 
   // Scan the memory operations on the chain and find the first non-consecutive
   // store memory address.
-  unsigned LastConsecutiveStore = 0;
-  int64_t StartAddress = StoreNodes[0].OffsetFromBase;
-  for (unsigned i = 0, e = StoreNodes.size(); i < e; ++i) {
-
-    // Check that the addresses are consecutive starting from the second
-    // element in the list of stores.
-    if (i > 0) {
-      int64_t CurrAddress = StoreNodes[i].OffsetFromBase;
-      if (CurrAddress - StartAddress != (ElementSizeBytes * i))
-        break;
-    }
-
-    bool Alias = false;
-    // Check if this store interferes with any of the loads that we found.
-    for (unsigned ld = 0, lde = AliasLoadNodes.size(); ld < lde; ++ld)
-      if (isAlias(AliasLoadNodes[ld], cast<LSBaseSDNode>(StoreNodes[i].MemNode))) {
-        Alias = true;
-        break;
-      }
-    // We found a load that alias with this store. Stop the sequence.
-    if (Alias)
-      break;
-
-    // Mark this node as useful.
-    LastConsecutiveStore = i;
-  }
+  unsigned LastConsecutiveStore
+    = findLastConsecutiveStore(StoreNodes, AliasLoadNodes, ElementSizeBytes);
 
   // The node with the lowest store address.
   MemSDNode *FirstInChain = StoreNodes[0].MemNode;
@@ -10956,6 +10977,7 @@ bool DAGCombiner::MergeConsecutiveStores(StoreSDNode* St) {
       St->getAlignment() >= RequiredAlignment)
     return false;
 
+  int64_t StartAddress = StoreNodes[0].OffsetFromBase;
   LoadSDNode *FirstLoad = cast<LoadSDNode>(LoadNodes[0].MemNode);
   unsigned FirstLoadAS = FirstLoad->getAddressSpace();
   unsigned FirstLoadAlign = FirstLoad->getAlignment();
