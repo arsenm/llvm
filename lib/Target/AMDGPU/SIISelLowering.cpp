@@ -1635,6 +1635,50 @@ SDValue SITargetLowering::performClassCombine(SDNode *N,
   return SDValue();
 }
 
+// FIXME: Mostly copied from DAGCombiner::findLastConsecutiveStore
+unsigned SITargetLowering::findLastConsecutiveLoad(
+  ArrayRef<MemOpLink> LoadNodes,
+  ArrayRef<LSBaseSDNode *> AliasStoreNodes,
+  unsigned ElementSizeBytes,
+  DAGCombinerInfo &DCI) const {
+  SelectionDAG &DAG = DCI.DAG;
+
+  // Scan the memory operations on the chain and find the first non-consecutive
+  // store memory address.
+  unsigned LastConsecutiveLoad = 0;
+  int64_t StartAddress = LoadNodes[0].OffsetFromBase;
+
+  for (unsigned I = 0, E = LoadNodes.size(); I < E; ++I) {
+    assert(!LoadNodes[I].MemNode->isVolatile() && "Should have been filtered");
+
+    // Check that the addresses are consecutive starting from the second
+    // element in the list of stores.
+    if (I > 0) {
+      int64_t CurrAddress = LoadNodes[I].OffsetFromBase;
+      if (CurrAddress - StartAddress != (ElementSizeBytes * I))
+        break;
+    }
+
+    bool Alias = false;
+    // Check if this store interferes with any of the loads that we found.
+    for (unsigned St = 0, StE = AliasStoreNodes.size(); St < StE; ++St) {
+      if (DAG.isAlias(AliasStoreNodes[St], cast<LSBaseSDNode>(LoadNodes[I].MemNode), DCI.AA, true)) {
+        Alias = true;
+        break;
+      }
+    }
+
+    // We found a load that alias with this store. Stop the sequence.
+    if (Alias)
+      break;
+
+    // Mark this node as useful.
+    LastConsecutiveLoad = I;
+  }
+
+  return LastConsecutiveLoad;
+}
+
 // Try to merge a pair of adjacent loads into one.
 
 // TODO: Merge 3-vector loads. This probably requires adding 3 vectors as MVTs,
@@ -1673,44 +1717,7 @@ SDValue SITargetLowering::mergeConsecutiveLoads(SDNode *N,
   MemSDNode *FirstLoad = AdjacentLoads[0].MemNode;
   int64_t StartAddress = AdjacentLoads[0].OffsetFromBase;
 
-
-  unsigned NElts = AdjacentLoads.size();
-
-  for (unsigned I = 0; I != NElts; ++I) {
-    // TODO: We could scan ahead and find a set of adjacent non-volatile loads.
-
-    assert(cast<LoadSDNode>(AdjacentLoads[I].MemNode)->getAddressSpace() == AS);
-    //assert(cast<LSBaseSDNode>(AdjacentLoads[I].MemNode)->getAddressSpace() == AS);
-
-    if (AdjacentLoads[I].MemNode->isVolatile()) {
-      NElts = I;
-      break;
-    }
-
-    if (I > 0) {
-      int64_t CurrAddress = AdjacentLoads[I].OffsetFromBase;
-      if (CurrAddress - StartAddress != (I * Size)) {
-        NElts = I;
-        break;
-      }
-    }
-
-    bool Alias = false;
-    // Check if this store interferes with any of the loads that we found.
-    for (unsigned ld = 0, lde = AliasedStores.size(); ld < lde; ++ld) {
-      if (DAG.isAlias(AliasedStores[ld], cast<LSBaseSDNode>(AdjacentLoads[I].MemNode), DCI.AA, true)) {
-        Alias = true;
-        break;
-      }
-    }
-
-    // We found a store that alias with this load. Stop the sequence.
-    if (Alias) {
-      NElts = I;
-      break;
-    }
-  }
-
+  unsigned NElts = findLastConsecutiveLoad(AdjacentLoads, AliasedStores, Size, DCI) + 1;
   if (NElts <= 1)
     return SDValue();
 

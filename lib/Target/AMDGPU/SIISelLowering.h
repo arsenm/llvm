@@ -20,6 +20,8 @@
 
 namespace llvm {
 
+struct MemOpLink;
+
 class SITargetLowering : public AMDGPUTargetLowering {
   SDValue LowerParameter(SelectionDAG &DAG, EVT VT, EVT MemVT, SDLoc DL,
                          SDValue Chain, unsigned Offset, bool Signed) const;
@@ -52,6 +54,12 @@ class SITargetLowering : public AMDGPUTargetLowering {
   SDValue performAndCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performOrCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performClassCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+
+  unsigned findLastConsecutiveLoad(ArrayRef<MemOpLink> LoadNodes,
+                                   ArrayRef<LSBaseSDNode *> AliasLoadNodes,
+                                   unsigned ElementSizeBytes,
+                                   DAGCombinerInfo &DCI) const;
+
   SDValue mergeConsecutiveLoads(SDNode *N,
                                 DAGCombinerInfo &DCI) const;
 
