@@ -7081,10 +7081,12 @@ SDValue DAGCombiner::CombineConsecutiveLoads(SDNode *N, EVT VT) {
         VT.getTypeForEVT(*DAG.getContext()));
 
     if (NewAlign <= Align &&
-        (!LegalOperations || TLI.isOperationLegal(ISD::LOAD, VT)))
+        (!LegalOperations || TLI.isOperationLegal(ISD::LOAD, VT))) {
+      DEBUG(dbgs() << "Combined BUILD_PAIR into load\n");
       return DAG.getLoad(VT, SDLoc(N), LD1->getChain(),
                          LD1->getBasePtr(), LD1->getPointerInfo(),
                          false, false, false, Align);
+    }
   }
 
   return SDValue();
@@ -11167,6 +11169,8 @@ bool DAGCombiner::MergeConsecutiveStores(StoreSDNode* St) {
   SDLoc LoadDL(LoadNodes[0].MemNode);
   SDLoc StoreDL(StoreNodes[0].MemNode);
 
+  DEBUG(dbgs() << "Replacing consecutive loads->store\n");
+
   SDValue NewLoad = DAG.getLoad(
       JointMemOpVT, LoadDL, FirstLoad->getChain(), FirstLoad->getBasePtr(),
       FirstLoad->getPointerInfo(), false, false, false, FirstLoadAlign);
@@ -11334,11 +11338,20 @@ SDValue DAGCombiner::visitSTORE(SDNode *N) {
     UseAA = false;
 #endif
   if (UseAA && ST->isUnindexed()) {
+    DEBUG(
+      dbgs() << "Look for better chain: ";
+      ST->dump(&DAG);
+    );
     // Walk up chain skipping non-aliasing memory nodes.
     SDValue BetterChain = FindBetterChain(N, Chain);
 
     // If there is a better chain.
     if (Chain != BetterChain) {
+      DEBUG(
+        dbgs() << "Found better chain: ";
+        BetterChain->dump(&DAG);
+      );
+
       SDValue ReplStore;
 
       // Replace the chain to avoid dependency.
@@ -11359,6 +11372,8 @@ SDValue DAGCombiner::visitSTORE(SDNode *N) {
 
       // Don't add users to work list.
       return CombineTo(N, Token, false);
+    } else {
+      DEBUG(dbgs() << "Did not find better chain\n");
     }
   }
 
@@ -13951,11 +13966,17 @@ void DAGCombiner::GatherAllAliases(SDNode *N, SDValue OriginalChain,
   Chains.push_back(OriginalChain);
   unsigned Depth = 0;
 
+  DEBUG(dbgs() << "\n\nGatherAllAliases:\n");
+
   // Look at each chain and determine if it is an alias.  If so, add it to the
   // aliases list.  If not, then continue up the chain looking for the next
   // candidate.
   while (!Chains.empty()) {
     SDValue Chain = Chains.pop_back_val();
+    DEBUG(
+      dbgs() << "Look at chain: ";
+      Chain->dump(&DAG);
+    );
 
     // For TokenFactor nodes, look at each operand and only continue up the
     // chain until we find two aliases.  If we've seen two aliases, assume we'll
@@ -13966,6 +13987,7 @@ void DAGCombiner::GatherAllAliases(SDNode *N, SDValue OriginalChain,
     // chain we found before we hit a tokenfactor rather than the original
     // chain.
     if (Depth > 6 || Aliases.size() == 2) {
+      DEBUG(dbgs() << "Depth too far, give up\n");
       Aliases.clear();
       Aliases.push_back(OriginalChain);
       return;
@@ -13977,6 +13999,7 @@ void DAGCombiner::GatherAllAliases(SDNode *N, SDValue OriginalChain,
 
     switch (Chain.getOpcode()) {
     case ISD::EntryToken:
+      DEBUG(dbgs() << "Break on EntryToken\n");
       // Entry token is ideal chain operand, but handled in FindBetterChain.
       break;
 
@@ -13989,9 +14012,12 @@ void DAGCombiner::GatherAllAliases(SDNode *N, SDValue OriginalChain,
       // If chain is alias then stop here.
       if (!(IsLoad && IsOpLoad) &&
           isAlias(cast<LSBaseSDNode>(N), cast<LSBaseSDNode>(Chain.getNode()))) {
+        DEBUG(dbgs() << "Load alias\n");
         Aliases.push_back(Chain);
       } else {
         // Look further up the chain.
+        DEBUG(dbgs() << "Look up load / store chain: ");
+        Chain.getOperand(0)->dump(&DAG);
         Chains.push_back(Chain.getOperand(0));
         ++Depth;
       }
@@ -13999,6 +14025,7 @@ void DAGCombiner::GatherAllAliases(SDNode *N, SDValue OriginalChain,
     }
 
     case ISD::TokenFactor:
+      DEBUG(dbgs() << "Push token factor\n");
       // We have to check each of the operands of the token factor for "small"
       // token factors, so we queue them up.  Adding the operands to the queue
       // (stack) in reverse order maintains the original order and increases the
@@ -14013,6 +14040,7 @@ void DAGCombiner::GatherAllAliases(SDNode *N, SDValue OriginalChain,
       break;
 
     default:
+      DEBUG(dbgs() << "Push other\n");
       // For all other instructions we will just have to take what we can get.
       Aliases.push_back(Chain);
       break;
@@ -14051,8 +14079,14 @@ void DAGCombiner::GatherAllAliases(SDNode *N, SDValue OriginalChain,
     if (N != OriginalChain.getNode())
       Worklist.push_back(N);
 
+  DEBUG(dbgs() << "GatherAllAliases Worklist size: " << Worklist.size() << '\n');
+
   while (!Worklist.empty()) {
     const SDNode *M = Worklist.pop_back_val();
+    DEBUG(
+      dbgs() << "Look at users of: ";
+      M->dump(&DAG);
+    );
 
     // We have already visited M, and want to make sure we've visited any uses
     // of M that we care about. For uses that we've not visisted, and don't
@@ -14063,6 +14097,11 @@ void DAGCombiner::GatherAllAliases(SDNode *N, SDValue OriginalChain,
       if (UI.getUse().getValueType() == MVT::Other &&
           Visited.insert(*UI).second) {
         if (isa<MemSDNode>(*UI)) {
+          DEBUG(
+            dbgs() << "Giving up on MemSDNode: ";
+            (*UI)->dump();
+          );
+
           // We've not visited this use, and we care about it (it could have an
           // ordering dependency with the original node).
           Aliases.clear();
@@ -14092,6 +14131,8 @@ SDValue DAGCombiner::FindBetterChain(SDNode *N, SDValue OldChain) {
   // If a single operand then chain to it.  We don't need to revisit it.
   if (Aliases.size() == 1)
     return Aliases[0];
+
+  DEBUG(dbgs() << "Found better chain with " << Aliases.size() << " aliases\n");
 
   // Construct a custom tailored token factor.
   return DAG.getNode(ISD::TokenFactor, SDLoc(N), MVT::Other, Aliases);
