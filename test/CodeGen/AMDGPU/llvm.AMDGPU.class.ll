@@ -7,10 +7,9 @@ declare float @llvm.fabs.f32(float) #1
 declare double @llvm.fabs.f64(double) #1
 
 ; SI-LABEL: {{^}}test_class_f32:
-; SI-DAG: s_load_dword [[SA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
-; SI: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
-; SI: v_cmp_class_f32_e32 vcc, [[SA]], [[VB]]
+; SI-DAG: s_load_dwordx2 s{{\[}}[[SA:[0-9]+]]:[[SB:[0-9]+]]{{\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0xb{{$}}
+; SI: v_mov_b32_e32 [[VB:v[0-9]+]], s[[SB]]
+; SI: v_cmp_class_f32_e32 vcc, s[[SA]], [[VB]]
 ; SI-NEXT: v_cndmask_b32_e64 [[RESULT:v[0-9]+]], 0, -1, vcc
 ; SI-NEXT: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm
@@ -22,10 +21,9 @@ define void @test_class_f32(i32 addrspace(1)* %out, float %a, i32 %b) #0 {
 }
 
 ; SI-LABEL: {{^}}test_class_fabs_f32:
-; SI-DAG: s_load_dword [[SA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
-; SI: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
-; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], |[[SA]]|, [[VB]]
+; SI-DAG: s_load_dwordx2 s{{\[}}[[SA:[0-9]+]]:[[SB:[0-9]+]]{{\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0xb{{$}}
+; SI: v_mov_b32_e32 [[VB:v[0-9]+]], s[[SB]]
+; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], |s[[SA]]|, [[VB]]
 ; SI-NEXT: v_cndmask_b32_e64 [[RESULT:v[0-9]+]], 0, -1, [[CMP]]
 ; SI-NEXT: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm
@@ -38,10 +36,9 @@ define void @test_class_fabs_f32(i32 addrspace(1)* %out, float %a, i32 %b) #0 {
 }
 
 ; SI-LABEL: {{^}}test_class_fneg_f32:
-; SI-DAG: s_load_dword [[SA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
-; SI: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
-; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], -[[SA]], [[VB]]
+; SI-DAG: s_load_dwordx2 s{{\[}}[[SA:[0-9]+]]:[[SB:[0-9]+]]{{\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0xb{{$}}
+; SI: v_mov_b32_e32 [[VB:v[0-9]+]], s[[SB]]
+; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], -s[[SA]], [[VB]]
 ; SI-NEXT: v_cndmask_b32_e64 [[RESULT:v[0-9]+]], 0, -1, [[CMP]]
 ; SI-NEXT: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm
@@ -54,10 +51,9 @@ define void @test_class_fneg_f32(i32 addrspace(1)* %out, float %a, i32 %b) #0 {
 }
 
 ; SI-LABEL: {{^}}test_class_fneg_fabs_f32:
-; SI-DAG: s_load_dword [[SA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
-; SI: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
-; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], -|[[SA]]|, [[VB]]
+; SI-DAG: s_load_dwordx2 s{{\[}}[[SA:[0-9]+]]:[[SB:[0-9]+]]{{\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0xb{{$}}
+; SI: v_mov_b32_e32 [[VB:v[0-9]+]], s[[SB]]
+; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], -|s[[SA]]|, [[VB]]
 ; SI-NEXT: v_cndmask_b32_e64 [[RESULT:v[0-9]+]], 0, -1, [[CMP]]
 ; SI-NEXT: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm

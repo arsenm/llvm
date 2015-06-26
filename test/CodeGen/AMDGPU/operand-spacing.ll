@@ -5,13 +5,13 @@
 
 ; GCN-LABEL: {{^}}add_f32:
 ; SI-DAG: s_load_dword [[SREGA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[SREGB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
+; SI-DAG: s_load_dword [[SREGB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
 ; VI-DAG: s_load_dword [[SREGA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x2c
-; VI-DAG: s_load_dword [[SREGB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x30
+; VI-DAG: s_load_dword [[SREGB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x34
 ; GCN: v_mov_b32_e32 [[VREGB:v[0-9]+]], [[SREGB]]
 ; GCN: v_add_f32_e32 [[RESULT:v[0-9]+]], [[SREGA]], [[VREGB]]
 ; GCN: buffer_store_dword [[RESULT]],
-define void @add_f32(float addrspace(1)* %out, float %a, float %b) {
+define void @add_f32(float addrspace(1)* %out, float %a, i32, float %b) {
   %result = fadd float %a, %b
   store float %result, float addrspace(1)* %out
   ret void

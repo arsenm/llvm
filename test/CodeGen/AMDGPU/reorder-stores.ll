@@ -34,26 +34,10 @@ define void @no_reorder_scalarized_v2f64_local_load_store(<2 x double> addrspace
 }
 
 ; SI-LABEL: {{^}}no_reorder_split_v8i32_global_load_store:
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-; SI: buffer_load_dword
-
+; SI: buffer_load_dwordx4
+; SI: buffer_load_dwordx4
+; SI: buffer_load_dwordx4
+; SI: buffer_load_dwordx4
 
 ; SI: buffer_store_dword
 ; SI: buffer_store_dword

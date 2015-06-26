@@ -231,12 +231,12 @@ define void @test_div_scale_f64_scalar_den_2(double addrspace(1)* %out, double a
 
 ; SI-LABEL @test_div_scale_f32_all_scalar_1:
 ; SI-DAG: s_load_dword [[A:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[B:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xc
+; SI-DAG: s_load_dword [[B:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xd
 ; SI: v_mov_b32_e32 [[VA:v[0-9]+]], [[A]]
 ; SI: v_div_scale_f32 [[RESULT0:v[0-9]+]], [[RESULT1:s\[[0-9]+:[0-9]+\]]], [[B]], [[B]], [[VA]]
 ; SI: buffer_store_dword [[RESULT0]]
 ; SI: s_endpgm
-define void @test_div_scale_f32_all_scalar_1(float addrspace(1)* %out, float %a, float %b) nounwind {
+define void @test_div_scale_f32_all_scalar_1(float addrspace(1)* %out, float %a, i32 ,float %b) nounwind {
   %result = call { float, i1 } @llvm.AMDGPU.div.scale.f32(float %a, float %b, i1 false) nounwind readnone
   %result0 = extractvalue { float, i1 } %result, 0
   store float %result0, float addrspace(1)* %out, align 4
@@ -245,12 +245,12 @@ define void @test_div_scale_f32_all_scalar_1(float addrspace(1)* %out, float %a,
 
 ; SI-LABEL @test_div_scale_f32_all_scalar_2:
 ; SI-DAG: s_load_dword [[A:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[B:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xc
+; SI-DAG: s_load_dword [[B:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xd
 ; SI: v_mov_b32_e32 [[VB:v[0-9]+]], [[B]]
 ; SI: v_div_scale_f32 [[RESULT0:v[0-9]+]], [[RESULT1:s\[[0-9]+:[0-9]+\]]], [[A]], [[VB]], [[A]]
 ; SI: buffer_store_dword [[RESULT0]]
 ; SI: s_endpgm
-define void @test_div_scale_f32_all_scalar_2(float addrspace(1)* %out, float %a, float %b) nounwind {
+define void @test_div_scale_f32_all_scalar_2(float addrspace(1)* %out, float %a, i32, float %b) nounwind {
   %result = call { float, i1 } @llvm.AMDGPU.div.scale.f32(float %a, float %b, i1 true) nounwind readnone
   %result0 = extractvalue { float, i1 } %result, 0
   store float %result0, float addrspace(1)* %out, align 4

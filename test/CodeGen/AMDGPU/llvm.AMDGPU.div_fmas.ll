@@ -10,32 +10,32 @@ declare double @llvm.AMDGPU.div.fmas.f64(double, double, double, i1) nounwind re
 
 ; GCN-LABEL: {{^}}test_div_fmas_f32:
 ; SI-DAG: s_load_dword [[SA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[SC:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
-; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
+; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
+; SI-DAG: s_load_dword [[SC:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xf
 ; VI-DAG: s_load_dword [[SA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x2c
-; VI-DAG: s_load_dword [[SC:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x34
-; VI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x30
-; GCN-DAG: v_mov_b32_e32 [[VC:v[0-9]+]], [[SC]]
-; GCN-DAG: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
+; VI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x34
+; VI-DAG: s_load_dword [[SC:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x3c
 ; GCN-DAG: v_mov_b32_e32 [[VA:v[0-9]+]], [[SA]]
+; GCN-DAG: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
+; GCN-DAG: v_mov_b32_e32 [[VC:v[0-9]+]], [[SC]]
 ; GCN: v_div_fmas_f32 [[RESULT:v[0-9]+]], [[VB]], [[VA]], [[VC]]
 ; GCN: buffer_store_dword [[RESULT]],
 ; GCN: s_endpgm
-define void @test_div_fmas_f32(float addrspace(1)* %out, float %a, float %b, float %c, i1 %d) nounwind {
+define void @test_div_fmas_f32(float addrspace(1)* %out, float %a, i32, float %b, i32, float %c, i1 %d) nounwind {
   %result = call float @llvm.AMDGPU.div.fmas.f32(float %a, float %b, float %c, i1 %d) nounwind readnone
   store float %result, float addrspace(1)* %out, align 4
   ret void
 }
 
 ; GCN-LABEL: {{^}}test_div_fmas_f32_inline_imm_0:
-; SI-DAG: s_load_dword [[SC:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
-; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
+; SI-DAG: s_load_dword [[SC:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xf
+; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
 ; SI-DAG: v_mov_b32_e32 [[VC:v[0-9]+]], [[SC]]
 ; SI-DAG: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
 ; SI: v_div_fmas_f32 [[RESULT:v[0-9]+]], 1.0, [[VB]], [[VC]]
 ; SI: buffer_store_dword [[RESULT]],
 ; SI: s_endpgm
-define void @test_div_fmas_f32_inline_imm_0(float addrspace(1)* %out, float %a, float %b, float %c, i1 %d) nounwind {
+define void @test_div_fmas_f32_inline_imm_0(float addrspace(1)* %out, float %a, i32, float %b, i32, float %c, i1 %d) nounwind {
   %result = call float @llvm.AMDGPU.div.fmas.f32(float 1.0, float %b, float %c, i1 %d) nounwind readnone
   store float %result, float addrspace(1)* %out, align 4
   ret void
@@ -57,13 +57,13 @@ define void @test_div_fmas_f32_inline_imm_1(float addrspace(1)* %out, float %a, 
 
 ; GCN-LABEL: {{^}}test_div_fmas_f32_inline_imm_2:
 ; SI-DAG: s_load_dword [[SA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
+; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
 ; SI-DAG: v_mov_b32_e32 [[VA:v[0-9]+]], [[SA]]
 ; SI-DAG: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
 ; SI: v_div_fmas_f32 [[RESULT:v[0-9]+]], [[VA]], [[VB]], 1.0
 ; SI: buffer_store_dword [[RESULT]],
 ; SI: s_endpgm
-define void @test_div_fmas_f32_inline_imm_2(float addrspace(1)* %out, float %a, float %b, float %c, i1 %d) nounwind {
+define void @test_div_fmas_f32_inline_imm_2(float addrspace(1)* %out, float %a, i32, float %b, float %c, i1 %d) nounwind {
   %result = call float @llvm.AMDGPU.div.fmas.f32(float %a, float %b, float 1.0, i1 %d) nounwind readnone
   store float %result, float addrspace(1)* %out, align 4
   ret void

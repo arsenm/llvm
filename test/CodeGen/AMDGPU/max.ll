@@ -119,11 +119,11 @@ define void @s_test_umax_ugt_i32(i32 addrspace(1)* %out, i32 %a, i32 %b) nounwin
 ; Make sure redundant and removed
 ; FUNC-LABEL: {{^}}simplify_demanded_bits_test_umax_ugt_i16:
 ; SI-DAG: s_load_dword [[A:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[B:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xc
+; SI-DAG: s_load_dword [[B:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xd
 ; SI: s_max_u32 [[MIN:s[0-9]+]], [[A]], [[B]]
 ; SI-NEXT: v_mov_b32_e32 [[VMIN:v[0-9]+]], [[MIN]]
 ; SI-NEXT: buffer_store_dword [[VMIN]]
-define void @simplify_demanded_bits_test_umax_ugt_i16(i32 addrspace(1)* %out, i16 zeroext %a, i16 zeroext %b) nounwind {
+define void @simplify_demanded_bits_test_umax_ugt_i16(i32 addrspace(1)* %out, i16 zeroext %a, i32, i16 zeroext %b) nounwind {
   %a.ext = zext i16 %a to i32
   %b.ext = zext i16 %b to i32
   %cmp = icmp ugt i32 %a.ext, %b.ext
@@ -137,11 +137,11 @@ define void @simplify_demanded_bits_test_umax_ugt_i16(i32 addrspace(1)* %out, i1
 
 ; FUNC-LABEL: {{^}}simplify_demanded_bits_test_min_slt_i16:
 ; SI-DAG: s_load_dword [[A:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[B:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xc
+; SI-DAG: s_load_dword [[B:s[0-9]+]], {{s\[[0-9]+:[0-9]+\]}}, 0xd
 ; SI: s_max_i32 [[MIN:s[0-9]+]], [[A]], [[B]]
 ; SI-NEXT: v_mov_b32_e32 [[VMIN:v[0-9]+]], [[MIN]]
 ; SI-NEXT: buffer_store_dword [[VMIN]]
-define void @simplify_demanded_bits_test_min_slt_i16(i32 addrspace(1)* %out, i16 signext %a, i16 signext %b) nounwind {
+define void @simplify_demanded_bits_test_min_slt_i16(i32 addrspace(1)* %out, i16 signext %a, i32, i16 signext %b) nounwind {
   %a.ext = sext i16 %a to i32
   %b.ext = sext i16 %b to i32
   %cmp = icmp sgt i32 %a.ext, %b.ext

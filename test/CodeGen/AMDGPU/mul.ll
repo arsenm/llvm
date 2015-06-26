@@ -114,7 +114,7 @@ define void @v_mul64_sext_inline_imm(i64 addrspace(1)* %out, i32 addrspace(1)* %
 ; SI: v_mov_b32_e32 [[VRESULT:v[0-9]+]], [[SRESULT]]
 ; SI: buffer_store_dword [[VRESULT]],
 ; SI: s_endpgm
-define void @s_mul_i32(i32 addrspace(1)* %out, i32 %a, i32 %b) nounwind {
+define void @s_mul_i32(i32 addrspace(1)* %out, i32 %a, i32, i32 %b) nounwind {
   %mul = mul i32 %a, %b
   store i32 %mul, i32 addrspace(1)* %out, align 4
   ret void

@@ -125,15 +125,15 @@ define void @zext_bool_icmp_ne_1(i1 addrspace(1)* %out, i32 %a, i32 %b) nounwind
 
 ; FUNC-LABEL: {{^}}sext_bool_icmp_ne_k:
 ; SI-DAG: s_load_dword [[A:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
-; SI-DAG: s_load_dword [[B:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
+; SI-DAG: s_load_dword [[B:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
 ; VI-DAG: s_load_dword [[A:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x2c
-; VI-DAG: s_load_dword [[B:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x30
+; VI-DAG: s_load_dword [[B:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0x34
 ; GCN: v_mov_b32_e32 [[VB:v[0-9]+]], [[B]]
 ; GCN: v_cmp_ne_i32_e32 vcc, 2, [[VB]]{{$}}
 ; GCN: v_cndmask_b32_e64 [[RESULT:v[0-9]+]], 0, 1, vcc
 ; GCN: buffer_store_byte
 ; GCN: s_endpgm
-define void @sext_bool_icmp_ne_k(i1 addrspace(1)* %out, i32 %a, i32 %b) nounwind {
+define void @sext_bool_icmp_ne_k(i1 addrspace(1)* %out, i32 %a, i32, i32 %b) nounwind {
   %icmp0 = icmp ne i32 %a, %b
   %ext = sext i1 %icmp0 to i32
   %icmp1 = icmp ne i32 %ext, 2

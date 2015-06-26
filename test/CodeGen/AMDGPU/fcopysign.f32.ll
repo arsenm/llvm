@@ -10,9 +10,9 @@ declare <4 x float> @llvm.copysign.v4f32(<4 x float>, <4 x float>) nounwind read
 ; Try to identify arg based on higher address.
 ; FUNC-LABEL: {{^}}test_copysign_f32:
 ; SI: s_load_dword [[SMAG:s[0-9]+]], {{.*}} 0xb
-; SI: s_load_dword [[SSIGN:s[0-9]+]], {{.*}} 0xc
+; SI: s_load_dword [[SSIGN:s[0-9]+]], {{.*}} 0xd
 ; VI: s_load_dword [[SMAG:s[0-9]+]], {{.*}} 0x2c
-; VI: s_load_dword [[SSIGN:s[0-9]+]], {{.*}} 0x30
+; VI: s_load_dword [[SSIGN:s[0-9]+]], {{.*}} 0x34
 ; GCN-DAG: v_mov_b32_e32 [[VSIGN:v[0-9]+]], [[SSIGN]]
 ; GCN-DAG: v_mov_b32_e32 [[VMAG:v[0-9]+]], [[SMAG]]
 ; GCN-DAG: s_mov_b32 [[SCONST:s[0-9]+]], 0x7fffffff
@@ -21,7 +21,7 @@ declare <4 x float> @llvm.copysign.v4f32(<4 x float>, <4 x float>) nounwind read
 ; GCN: s_endpgm
 
 ; EG: BFI_INT
-define void @test_copysign_f32(float addrspace(1)* %out, float %mag, float %sign) nounwind {
+define void @test_copysign_f32(float addrspace(1)* %out, float %mag, i32, float %sign) nounwind {
   %result = call float @llvm.copysign.f32(float %mag, float %sign)
   store float %result, float addrspace(1)* %out, align 4
   ret void

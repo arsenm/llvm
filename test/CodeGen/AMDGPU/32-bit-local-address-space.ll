@@ -118,8 +118,9 @@ define void @local_address_gep_store(i32 addrspace(3)* %out, i32, i32 %val, i32 
 }
 
 ; FUNC-LABEL: {{^}}local_address_gep_const_offset_store:
-; SI: v_mov_b32_e32 [[VPTR:v[0-9]+]], s{{[0-9]+}}
-; SI: v_mov_b32_e32 [[VAL:v[0-9]+]], s{{[0-9]+}}
+; SI: s_load_dwordx2 s{{\[}}[[SPTR:[0-9]+]]:[[SVAL:[0-9]+]]{{\]}},
+; SI-DAG: v_mov_b32_e32 [[VPTR:v[0-9]+]], s[[SPTR]]
+; SI-DAG: v_mov_b32_e32 [[VAL:v[0-9]+]], s[[SVAL]]
 ; SI: ds_write_b32 [[VPTR]], [[VAL]] offset:4
 define void @local_address_gep_const_offset_store(i32 addrspace(3)* %out, i32 %val) {
   %gep = getelementptr i32, i32 addrspace(3)* %out, i32 1
