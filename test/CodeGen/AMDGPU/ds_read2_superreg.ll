@@ -35,14 +35,11 @@ define void @simple_read2_v2f32_superreg(<2 x float> addrspace(1)* %out) #0 {
   ret void
 }
 
-; FIXME: Shuffling to new superregister
 ; CI-LABEL: {{^}}simple_read2_v4f32_superreg_align4:
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_W:[0-9]+]]:[[REG_Z:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:3 offset1:2{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_Y:[0-9]+]]:[[REG_X:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
-; CI-DAG: v_mov_b32_e32 v[[COPY_REG_Y:[0-9]+]], v[[REG_Y]]
-; CI-DAG: v_mov_b32_e32 v[[COPY_REG_Z:[0-9]+]], v[[REG_Z]]
-; CI-DAG: v_add_f32_e32 v[[ADD0:[0-9]+]], v[[COPY_REG_Z]], v[[REG_X]]
-; CI-DAG: v_add_f32_e32 v[[ADD1:[0-9]+]], v[[REG_W]], v[[COPY_REG_Y]]
+; CI-DAG: ds_read2_b32 v{{\[}}[[REG_Z:[0-9]+]]:[[REG_W:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:2 offset1:3{{$}}
+; CI-DAG: ds_read2_b32 v{{\[}}[[REG_X:[0-9]+]]:[[REG_Y:[0-9]+]]{{\]}}, v{{[0-9]+}} offset1:1{{$}}
+; CI-DAG: v_add_f32_e32 v[[ADD0:[0-9]+]], v[[REG_Z]], v[[REG_X]]
+; CI-DAG: v_add_f32_e32 v[[ADD1:[0-9]+]], v[[REG_W]], v[[REG_Y]]
 ; CI: v_add_f32_e32 v[[ADD2:[0-9]+]], v[[ADD1]], v[[ADD0]]
 ; CI: buffer_store_dword v[[ADD2]]
 ; CI: s_endpgm
@@ -88,8 +85,7 @@ define void @simple_read2_v3f32_superreg_align4(float addrspace(1)* %out) #0 {
 }
 
 ; CI-LABEL: {{^}}simple_read2_v4f32_superreg_align8:
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_W:[0-9]+]]:[[REG_Z:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:3 offset1:2{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_X:[0-9]+]]:[[REG_Y:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
+; CI-DAG: ds_read2_b64 v{{\[}}[[REG_Z:[0-9]+]]:[[REG_Y:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
 ; CI: buffer_store_dwordx4
 ; CI: s_endpgm
 define void @simple_read2_v4f32_superreg_align8(<4 x float> addrspace(1)* %out) #0 {
@@ -102,8 +98,7 @@ define void @simple_read2_v4f32_superreg_align8(<4 x float> addrspace(1)* %out) 
 }
 
 ; CI-LABEL: {{^}}simple_read2_v4f32_superreg:
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_W:[0-9]+]]:[[REG_Z:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:3 offset1:2{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_X:[0-9]+]]:[[REG_Y:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
+; CI-DAG: ds_read2_b64 v{{\[}}[[REG_W:[0-9]+]]:[[REG_Z:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
 ; CI: buffer_store_dwordx4
 ; CI: s_endpgm
 define void @simple_read2_v4f32_superreg(<4 x float> addrspace(1)* %out) #0 {
@@ -116,10 +111,8 @@ define void @simple_read2_v4f32_superreg(<4 x float> addrspace(1)* %out) #0 {
 }
 
 ; CI-LABEL: {{^}}simple_read2_v8f32_superreg:
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT7:[0-9]+]]:[[REG_ELT6:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:7 offset1:6{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT5:[0-9]+]]:[[REG_ELT4:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:5 offset1:4{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT3:[0-9]+]]:[[REG_ELT2:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:3 offset1:2{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT1:[0-9]+]]:[[REG_ELT0:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
+; CI-DAG: ds_read2_b64 v{{\[}}[[REG_ELT3:[0-9]+]]:[[REG_ELT2:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:3 offset1:2{{$}}
+; CI-DAG: ds_read2_b64 v{{\[}}[[REG_ELT5:[0-9]+]]:[[REG_ELT4:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
 ; CI: buffer_store_dword
 ; CI: buffer_store_dword
 ; CI: buffer_store_dword
@@ -138,15 +131,34 @@ define void @simple_read2_v8f32_superreg(<8 x float> addrspace(1)* %out) #0 {
   ret void
 }
 
+; CI-LABEL: {{^}}simple_read2_v8f32_superreg_align4:
+; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT6:[0-9]+]]:[[REG_ELT6:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:6 offset1:7{{$}}
+; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT4:[0-9]+]]:[[REG_ELT5:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:4 offset1:5{{$}}
+; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT2:[0-9]+]]:[[REG_ELT3:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:2 offset1:3{{$}}
+; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT0:[0-9]+]]:[[REG_ELT1:[0-9]+]]{{\]}}, v{{[0-9]+}} offset1:1{{$}}
+; CI: buffer_store_dword
+; CI: buffer_store_dword
+; CI: buffer_store_dword
+; CI: buffer_store_dword
+; CI: buffer_store_dword
+; CI: buffer_store_dword
+; CI: buffer_store_dword
+; CI: buffer_store_dword
+; CI: s_endpgm
+define void @simple_read2_v8f32_superreg_align4(<8 x float> addrspace(1)* %out) #0 {
+  %x.i = tail call i32 @llvm.r600.read.tidig.x() #1
+  %arrayidx0 = getelementptr inbounds [512 x <8 x float>], [512 x <8 x float>] addrspace(3)* @lds.v8, i32 0, i32 %x.i
+  %val0 = load <8 x float>, <8 x float> addrspace(3)* %arrayidx0, align 4
+  %out.gep = getelementptr inbounds <8 x float>, <8 x float> addrspace(1)* %out, i32 %x.i
+  store <8 x float> %val0, <8 x float> addrspace(1)* %out.gep
+  ret void
+}
+
 ; CI-LABEL: {{^}}simple_read2_v16f32_superreg:
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT7:[0-9]+]]:[[REG_ELT6:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:15 offset1:14{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT7:[0-9]+]]:[[REG_ELT6:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:13 offset1:12{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT7:[0-9]+]]:[[REG_ELT6:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:11 offset1:10{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT7:[0-9]+]]:[[REG_ELT6:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:9 offset1:8{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT7:[0-9]+]]:[[REG_ELT6:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:7 offset1:6{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT5:[0-9]+]]:[[REG_ELT4:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:5 offset1:4{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT3:[0-9]+]]:[[REG_ELT2:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:3 offset1:2{{$}}
-; CI-DAG: ds_read2_b32 v{{\[}}[[REG_ELT1:[0-9]+]]:[[REG_ELT0:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
+; CI-DAG: ds_read2_b64 v{{\[}}[[REG_ELT9:[0-9]+]]:[[REG_ELT7:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:7 offset1:6{{$}}
+; CI-DAG: ds_read2_b64 v{{\[}}[[REG_ELT7:[0-9]+]]:[[REG_ELT5:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:5 offset1:4{{$}}
+; CI-DAG: ds_read2_b64 v{{\[}}[[REG_ELT5:[0-9]+]]:[[REG_ELT3:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:3 offset1:2{{$}}
+; CI-DAG: ds_read2_b64 v{{\[}}[[REG_ELT3:[0-9]+]]:[[REG_ELT1:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
 
 ; CI: s_waitcnt lgkmcnt(0)
 ; CI: buffer_store_dword
