@@ -85,8 +85,9 @@ define void @simple_read2_v3f32_superreg_align4(float addrspace(1)* %out) #0 {
 }
 
 ; CI-LABEL: {{^}}simple_read2_v4f32_superreg_align8:
-; CI-DAG: ds_read2_b64 v{{\[}}[[REG_Z:[0-9]+]]:[[REG_Y:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
-; CI: buffer_store_dwordx4
+; CI: ds_read2_b64 v{{\[}}[[REG_X:[0-9]+]]:[[REG_W:[0-9]+]]{{\]}}, v{{[0-9]+}} offset0:1{{$}}
+; CI-NOT: v_mov_b32
+; CI: buffer_store_dwordx4 v{{\[}}[[REG_X]]:[[REG_W]]{{\]}}
 ; CI: s_endpgm
 define void @simple_read2_v4f32_superreg_align8(<4 x float> addrspace(1)* %out) #0 {
   %x.i = tail call i32 @llvm.r600.read.tidig.x() #1
