@@ -32,10 +32,10 @@ define void @load_v2f16_arg(<2 x half> addrspace(1)* %out, <2 x half> %arg) #0 {
 ; GCN-DAG: buffer_store_short
 ; GCN-NOT: buffer_store
 ; GCN: s_endpgm
-define void @load_v3f16_arg(<3 x half> addrspace(1)* %out, <3 x half> %arg) #0 {
-  store <3 x half> %arg, <3 x half> addrspace(1)* %out
-  ret void
-}
+; define void @load_v3f16_arg(<3 x half> addrspace(1)* %out, <3 x half> %arg) #0 {
+;   store <3 x half> %arg, <3 x half> addrspace(1)* %out
+;   ret void
+; }
 
 ; GCN-LABEL: {{^}}load_v4f16_arg:
 ; GCN: buffer_load_ushort
@@ -294,12 +294,12 @@ define void @global_extload_v2f16_to_v2f32(<2 x float> addrspace(1)* %out, <2 x 
 }
 
 ; GCN-LABEL: {{^}}global_extload_v3f16_to_v3f32:
-define void @global_extload_v3f16_to_v3f32(<3 x float> addrspace(1)* %out, <3 x half> addrspace(1)* %in) #0 {
-  %val = load <3 x half>, <3 x half> addrspace(1)* %in
-  %cvt = fpext <3 x half> %val to <3 x float>
-  store <3 x float> %cvt, <3 x float> addrspace(1)* %out
-  ret void
-}
+; define void @global_extload_v3f16_to_v3f32(<3 x float> addrspace(1)* %out, <3 x half> addrspace(1)* %in) #0 {
+;   %val = load <3 x half>, <3 x half> addrspace(1)* %in
+;   %cvt = fpext <3 x half> %val to <3 x float>
+;   store <3 x float> %cvt, <3 x float> addrspace(1)* %out
+;   ret void
+; }
 
 ; GCN-LABEL: {{^}}global_extload_v4f16_to_v4f32:
 define void @global_extload_v4f16_to_v4f32(<4 x float> addrspace(1)* %out, <4 x half> addrspace(1)* %in) #0 {
@@ -476,12 +476,12 @@ define void @global_truncstore_v2f32_to_v2f16(<2 x half> addrspace(1)* %out, <2 
 ; GCN: buffer_store_short
 ; GCN: buffer_store_dword
 ; GCN: s_endpgm
-define void @global_truncstore_v3f32_to_v3f16(<3 x half> addrspace(1)* %out, <3 x float> addrspace(1)* %in) #0 {
-  %val = load <3 x float>, <3 x float> addrspace(1)* %in
-  %cvt = fptrunc <3 x float> %val to <3 x half>
-  store <3 x half> %cvt, <3 x half> addrspace(1)* %out
-  ret void
-}
+; define void @global_truncstore_v3f32_to_v3f16(<3 x half> addrspace(1)* %out, <3 x float> addrspace(1)* %in) #0 {
+;   %val = load <3 x float>, <3 x float> addrspace(1)* %in
+;   %cvt = fptrunc <3 x float> %val to <3 x half>
+;   store <3 x half> %cvt, <3 x half> addrspace(1)* %out
+;   ret void
+; }
 
 ; GCN-LABEL: {{^}}global_truncstore_v4f32_to_v4f16:
 ; GCN: buffer_load_dwordx4
