@@ -107,6 +107,9 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(TargetMachine &TM,
 
   // Lower floating point store/load to integer store/load to reduce the number
   // of patterns in tablegen.
+  setOperationAction(ISD::STORE, MVT::f16, Promote);
+  AddPromotedToType(ISD::STORE, MVT::f16, MVT::i16);
+
   setOperationAction(ISD::STORE, MVT::f32, Promote);
   AddPromotedToType(ISD::STORE, MVT::f32, MVT::i32);
 
@@ -146,6 +149,8 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(TargetMachine &TM,
   setTruncStoreAction(MVT::v2i64, MVT::v2i1, Expand);
   setTruncStoreAction(MVT::v4i64, MVT::v4i1, Expand);
 
+  setOperationAction(ISD::LOAD, MVT::f16, Promote);
+  AddPromotedToType(ISD::LOAD, MVT::f16, MVT::i16);
 
   setOperationAction(ISD::LOAD, MVT::f32, Promote);
   AddPromotedToType(ISD::LOAD, MVT::f32, MVT::i32);
@@ -1331,8 +1336,8 @@ SDValue AMDGPUTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   EVT VT = Op.getValueType();
   EVT MemVT = Load->getMemoryVT();
 
-  if (ExtType == ISD::NON_EXTLOAD && VT.getSizeInBits() < 32) {
-    assert(VT == MVT::i1 && "Only i1 non-extloads expected");
+//  if (ExtType == ISD::NON_EXTLOAD && VT.getSizeInBits() < 32) {
+  if (ExtType == ISD::NON_EXTLOAD && VT == MVT::i1) {
     // FIXME: Copied from PPC
     // First, load into 32 bits, then truncate to 1 bit.
 

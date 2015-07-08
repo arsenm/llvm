@@ -62,6 +62,11 @@ SITargetLowering::SITargetLowering(TargetMachine &TM,
   addRegisterClass(MVT::v16i32, &AMDGPU::SReg_512RegClass);
   addRegisterClass(MVT::v16f32, &AMDGPU::VReg_512RegClass);
 
+  if (STI.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
+    addRegisterClass(MVT::i16, &AMDGPU::VGPR_32RegClass);
+    addRegisterClass(MVT::f16, &AMDGPU::VGPR_32RegClass);
+  }
+
   computeRegisterProperties(STI.getRegisterInfo());
 
   setOperationAction(ISD::VECTOR_SHUFFLE, MVT::v8i32, Expand);
@@ -249,6 +254,12 @@ SITargetLowering::SITargetLowering(TargetMachine &TM,
   setOperationAction(ISD::FFLOOR, MVT::f64, Legal);
   setOperationAction(ISD::FDIV, MVT::f32, Custom);
   setOperationAction(ISD::FDIV, MVT::f64, Custom);
+
+  if (Subtarget->getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS_ISLANDS) {
+    setOperationAction(ISD::ConstantFP, MVT::f16, Legal);
+    setOperationAction(ISD::STORE, MVT::f16, Custom);
+    setOperationAction(ISD::LOAD, MVT::f16, Custom);
+  }
 
   setTargetDAGCombine(ISD::FADD);
   setTargetDAGCombine(ISD::FSUB);
@@ -1558,7 +1569,27 @@ SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   LoadSDNode *Load = cast<LoadSDNode>(Op);
 
-  if (Op.getValueType().isVector()) {
+  EVT VT = Op.getValueType();
+
+  if (VT == MVT::f16) {
+    // FIXME: Temporary hack to get f16 loads to work without legal i16.
+    SDValue Chain = Load->getChain();
+    SDValue BasePtr = Load->getBasePtr();
+    MachineMemOperand *MMO = Load->getMemOperand();
+
+    SDValue NewLD = DAG.getExtLoad(ISD::ZEXTLOAD, DL, MVT::i32, Chain,
+                                   BasePtr, MVT::i16, MMO);
+    SDNode *Copy = DAG.getMachineNode(TargetOpcode::COPY, DL, VT, NewLD);
+
+    SDValue Ops[] = {
+      SDValue(Copy, 0),
+      NewLD.getValue(1)
+    };
+
+    return DAG.getMergeValues(Ops, DL);
+  }
+
+  if (VT.isVector()) {
     assert(Op.getValueType().getVectorElementType() == MVT::i32 &&
            "Custom lowering for non-i32 vectors hasn't been implemented.");
     unsigned NumElements = Op.getValueType().getVectorNumElements();
@@ -1785,6 +1816,17 @@ SDValue SITargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   StoreSDNode *Store = cast<StoreSDNode>(Op);
   EVT VT = Store->getMemoryVT();
+
+  if (VT == MVT::f16) {
+    // FIXME: Temporary hack to get f16 stores to work without legal i16.
+    SDNode *Copy = DAG.getMachineNode(TargetOpcode::COPY, DL, MVT::i32,
+                                      Store->getValue());
+    return DAG.getTruncStore(Store->getChain(), DL,
+                             SDValue(Copy, 0),
+                             Store->getBasePtr(),
+                             MVT::i16,
+                             Store->getMemOperand());
+  }
 
   // These stores are legal.
   if (Store->getAddressSpace() == AMDGPUAS::PRIVATE_ADDRESS) {

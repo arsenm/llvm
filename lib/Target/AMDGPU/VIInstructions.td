@@ -103,6 +103,26 @@ def S_DCACHE_WB_VOL : SMEM_Inval <0x23,
 
 let Predicates = [isVI] in {
 
+def : Pat<
+  (f32 (fextend f16:$src)),
+  (V_CVT_F32_F16_e32 $src)
+>;
+
+def : Pat<
+  (f16 (fround f32:$src)),
+  (V_CVT_F16_F32_e32 $src)
+>;
+
+// def : Pat <
+//   (i32 (anyext i16:$src)),
+//   (V_MOV_B32_e32 $src)
+// >;
+
+def : Pat <
+  (i16 (bitconvert f16:$src)),
+  (COPY $src)
+>;
+
 // 1. Offset as 20bit DWORD immediate
 def : Pat <
   (SIload_constant v4i32:$sbase, IMM20bit:$offset),
