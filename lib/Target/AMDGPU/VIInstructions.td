@@ -19,24 +19,24 @@ defm V_CVT_F16_U16 : VOP1Inst <vop1<0, 0x39>, "v_cvt_f16_u16", VOP_F16_I16>;
 defm V_CVT_F16_I16 : VOP1Inst <vop1<0, 0x3a>, "v_cvt_f16_i16", VOP_F16_I16>;
 defm V_CVT_U16_F16 : VOP1Inst <vop1<0, 0x3b>, "v_cvt_u16_f16", VOP_I16_F16>;
 defm V_CVT_I16_F16 : VOP1Inst <vop1<0, 0x3c>, "v_cvt_i16_f16", VOP_I16_F16>;
-defm V_RCP_F16 : VOP1Inst <vop1<0, 0x3d>, "v_rcp_f16", VOP_F16_F16>;
-defm V_SQRT_F16 : VOP1Inst <vop1<0, 0x3e>, "v_sqrt_f16", VOP_F16_F16>;
-defm V_RSQ_F16 : VOP1Inst <vop1<0, 0x3f>, "v_rsq_f16", VOP_F16_F16>;
-defm V_LOG_F16 : VOP1Inst <vop1<0, 0x40>, "v_log_f16", VOP_F16_F16>;
-defm V_EXP_F16 : VOP1Inst <vop1<0, 0x41>, "v_exp_f16", VOP_F16_F16>;
+defm V_RCP_F16 : VOP1Inst <vop1<0, 0x3d>, "v_rcp_f16", VOP_F16_F16, AMDGPUrcp>;
+defm V_SQRT_F16 : VOP1Inst <vop1<0, 0x3e>, "v_sqrt_f16", VOP_F16_F16, fsqrt>;
+defm V_RSQ_F16 : VOP1Inst <vop1<0, 0x3f>, "v_rsq_f16", VOP_F16_F16, AMDGPUrsq>;
+defm V_LOG_F16 : VOP1Inst <vop1<0, 0x40>, "v_log_f16", VOP_F16_F16, flog2>;
+defm V_EXP_F16 : VOP1Inst <vop1<0, 0x41>, "v_exp_f16", VOP_F16_F16, fexp2>;
 defm V_FREXP_MANT_F16 : VOP1Inst <vop1<0, 0x42>, "v_frexp_mant_f16",
   VOP_F16_F16
 >;
 defm V_FREXP_EXP_I16_F16 : VOP1Inst <vop1<0, 0x43>, "v_frexp_exp_i16_f16",
   VOP_I16_F16
 >;
-defm V_FLOOR_F16 : VOP1Inst <vop1<0, 0x44>, "v_floor_f16", VOP_F16_F16>;
-defm V_CEIL_F16 : VOP1Inst <vop1<0, 0x45>, "v_ceil_f16", VOP_F16_F16>;
-defm V_TRUNC_F16 : VOP1Inst <vop1<0, 0x46>, "v_trunc_f16", VOP_F16_F16>;
-defm V_RNDNE_F16 : VOP1Inst <vop1<0, 0x47>, "v_rndne_f16", VOP_F16_F16>;
-defm V_FRACT_F16 : VOP1Inst <vop1<0, 0x48>, "v_fract_f16", VOP_F16_F16>;
-defm V_SIN_F16 : VOP1Inst <vop1<0, 0x49>, "v_sin_f16", VOP_F16_F16>;
-defm V_COS_F16 : VOP1Inst <vop1<0, 0x4a>, "v_cos_f16", VOP_F16_F16>;
+defm V_FLOOR_F16 : VOP1Inst <vop1<0, 0x44>, "v_floor_f16", VOP_F16_F16, ffloor>;
+defm V_CEIL_F16 : VOP1Inst <vop1<0, 0x45>, "v_ceil_f16", VOP_F16_F16, fceil>;
+defm V_TRUNC_F16 : VOP1Inst <vop1<0, 0x46>, "v_trunc_f16", VOP_F16_F16, ftrunc>;
+defm V_RNDNE_F16 : VOP1Inst <vop1<0, 0x47>, "v_rndne_f16", VOP_F16_F16, frint>;
+defm V_FRACT_F16 : VOP1Inst <vop1<0, 0x48>, "v_fract_f16", VOP_F16_F16, AMDGPUfract>;
+defm V_SIN_F16 : VOP1Inst <vop1<0, 0x49>, "v_sin_f16", VOP_F16_F16, AMDGPUsin>;
+defm V_COS_F16 : VOP1Inst <vop1<0, 0x4a>, "v_cos_f16", VOP_F16_F16, AMDGPUcos>;
 
 //===----------------------------------------------------------------------===//
 // VOP2 Instructions
@@ -44,12 +44,13 @@ defm V_COS_F16 : VOP1Inst <vop1<0, 0x4a>, "v_cos_f16", VOP_F16_F16>;
 
 let isCommutable = 1 in {
 
-defm V_ADD_F16 : VOP2Inst <vop2<0, 0x1f>, "v_add_f16", VOP_F16_F16_F16>;
-defm V_SUB_F16 : VOP2Inst <vop2<0, 0x20>, "v_sub_f16", VOP_F16_F16_F16>;
+// FIXME: This is defining _si versions of these VI only instructions
+defm V_ADD_F16 : VOP2Inst <vop2<0, 0x1f>, "v_add_f16", VOP_F16_F16_F16, fadd>;
+defm V_SUB_F16 : VOP2Inst <vop2<0, 0x20>, "v_sub_f16", VOP_F16_F16_F16, fsub>;
 defm V_SUBREV_F16 : VOP2Inst <vop2<0, 0x21>, "v_subrev_f16", VOP_F16_F16_F16,
   null_frag, "v_sub_f16"
 >;
-defm V_MUL_F16 : VOP2Inst <vop2<0, 0x22>, "v_mul_f16", VOP_F16_F16_F16>;
+defm V_MUL_F16 : VOP2Inst <vop2<0, 0x22>, "v_mul_f16", VOP_F16_F16_F16, fmul>;
 defm V_MAC_F16 : VOP2Inst <vop2<0, 0x23>, "v_mac_f16", VOP_F16_F16_F16>;
 } // End isCommutable = 1
 defm V_MADMK_F16 : VOP2MADK <vop2<0,0x24>, "v_madmk_f16">;
@@ -64,14 +65,14 @@ defm V_LSHLREV_B16 : VOP2Inst <vop2<0,0x2a>, "v_lshlrev_b16", VOP_I16_I16_I16>;
 defm V_LSHRREV_B16 : VOP2Inst <vop2<0,0x2b>, "v_lshrrev_b16", VOP_I16_I16_I16>;
 defm V_ASHRREV_B16 : VOP2Inst <vop2<0,0x2c>, "v_ashrrev_b16", VOP_I16_I16_I16>;
 let isCommutable = 1 in {
-defm V_MAX_F16 : VOP2Inst <vop2<0,0x2d>, "v_max_f16", VOP_F16_F16_F16>;
-defm V_MIN_F16 : VOP2Inst <vop2<0,0x2e>, "v_min_f16", VOP_F16_F16_F16>;
+defm V_MAX_F16 : VOP2Inst <vop2<0,0x2d>, "v_max_f16", VOP_F16_F16_F16, fmaxnum>;
+defm V_MIN_F16 : VOP2Inst <vop2<0,0x2e>, "v_min_f16", VOP_F16_F16_F16, fminnum>;
 defm V_MAX_U16 : VOP2Inst <vop2<0,0x2f>, "v_max_u16", VOP_I16_I16_I16>;
 defm V_MAX_I16 : VOP2Inst <vop2<0,0x30>, "v_max_i16", VOP_I16_I16_I16>;
 defm V_MIN_U16 : VOP2Inst <vop2<0,0x31>, "v_min_u16", VOP_I16_I16_I16>;
 defm V_MIN_I16 : VOP2Inst <vop2<0,0x32>, "v_min_i16", VOP_I16_I16_I16>;
 } // End isCommutable = 1
-defm V_LDEXP_F16 : VOP2Inst <vop2<0,0x33>, "v_ldexp_f16", VOP_F16_F16_I16>;
+defm V_LDEXP_F16 : VOP2Inst <vop2<0,0x33>, "v_ldexp_f16", VOP_F16_F16_I16, AMDGPUldexp>;
 
 // Aliases to simplify matching of floating-point instructions that
 // are VOP2 on SI and VOP3 on VI.
