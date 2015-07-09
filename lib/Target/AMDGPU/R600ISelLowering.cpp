@@ -1651,12 +1651,16 @@ SDValue R600TargetLowering::LowerFormalArguments(
     unsigned PartOffset = VA.getLocMemOffset();
     unsigned Offset = 36 + VA.getLocMemOffset();
 
+    Type *Ty = MemVT.getTypeForEVT(*DAG.getContext());
+    unsigned Align = DAG.getDataLayout().getABITypeAlignment(Ty);
+
+
     MachinePointerInfo PtrInfo(UndefValue::get(PtrTy), PartOffset - ValBase);
     SDValue Arg = DAG.getLoad(ISD::UNINDEXED, Ext, VT, DL, Chain,
                               DAG.getConstant(Offset, DL, MVT::i32),
                               DAG.getUNDEF(MVT::i32),
                               PtrInfo,
-                              MemVT, false, true, true, 4);
+                              MemVT, false, true, true, Align);
 
     // 4 is the preferred alignment for the CONSTANT memory space.
     InVals.push_back(Arg);
