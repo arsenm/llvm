@@ -346,6 +346,9 @@ defm CUBE_eg : CUBE_Common<0xC0>;
 
 def BCNT_INT : R600_1OP_Helper <0xAA, "BCNT_INT", ctpop, VecALU>;
 
+def FLT16_TO_FLT32 : R600_1OP_Helper <0xA3, "FLT16_TO_FLT32", f16_to_fp, VecALU>;
+def FLT32_TO_FLT16 : R600_1OP_Helper <0xA2, "FLT32_TO_FLT16", fp_to_f16, VecALU>;
+
 def ADDC_UINT : R600_2OP_Helper <0x52, "ADDC_UINT", AMDGPUcarry>;
 def SUBB_UINT : R600_2OP_Helper <0x53, "SUBB_UINT", AMDGPUborrow>;
 
