@@ -1638,9 +1638,9 @@ SDValue R600TargetLowering::LowerFormalArguments(
     if (MemVT.getScalarSizeInBits() != VT.getScalarSizeInBits()) {
       // FIXME: This should really check the extload type, but the handling of
       // extload vector parameters seems to be broken.
-
-      // Ext = In.Flags.isSExt() ? ISD::SEXTLOAD : ISD::ZEXTLOAD;
-      Ext = ISD::SEXTLOAD;
+      Ext = In.Flags.isSExt() ? ISD::SEXTLOAD : ISD::ZEXTLOAD;
+      if (MemVT.isFloatingPoint())
+        Ext = ISD::EXTLOAD;
     }
 
     // Compute the offset from the value.
