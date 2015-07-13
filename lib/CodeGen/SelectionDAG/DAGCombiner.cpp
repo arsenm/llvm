@@ -10787,6 +10787,34 @@ void DAGCombiner::getStoreMergeAndAliasCandidates(
   EVT MemVT = St->getMemoryVT();
   unsigned Seq = 0;
   StoreSDNode *Index = St;
+
+
+  bool UseAA = CombinerAA.getNumOccurrences() > 0 ? CombinerAA
+                                                  : DAG.getSubtarget().useAA();
+
+  if (UseAA) {
+    // Look at other users of the same chain. Stores on the same chain do not
+    // alias.
+    // TODO: This should be the common (only?) case if combiner-aa is
+    // enabled. Should we skip or remove the code looking at consecutive chains?
+    SDValue Chain = St->getChain();
+    for (auto I = Chain->use_begin(), E = Chain->use_end(); I != E; ++I) {
+      if (StoreSDNode *OtherST = dyn_cast<StoreSDNode>(*I)) {
+
+        if (OtherST->isVolatile() || OtherST->isIndexed())
+          continue;
+
+        if (OtherST->getMemoryVT() != MemVT)
+          continue;
+
+        BaseIndexOffset Ptr = BaseIndexOffset::match(OtherST->getBasePtr());
+        StoreNodes.push_back(MemOpLink(OtherST, Ptr.Offset, Seq++));
+      }
+    }
+
+    return;
+  }
+
   while (Index) {
     // If the chain has more than one use, then we can't reorder the mem ops.
     if (Index != St && !SDValue(Index, 0)->hasOneUse())
