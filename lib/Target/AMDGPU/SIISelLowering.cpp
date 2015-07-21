@@ -1260,8 +1260,8 @@ SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   if (VT != MVT::i64)
     return SDValue();
 
-  SDValue Zero = DAG.getConstant(0, MVT::i32);
-  SDValue One = DAG.getConstant(1, MVT::i32);
+  SDValue Zero = DAG.getConstant(0, DL, MVT::i32);
+  SDValue One = DAG.getConstant(1, DL, MVT::i32);
 
   SDValue LHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, Op.getOperand(1));
   SDValue RHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, Op.getOperand(2));
