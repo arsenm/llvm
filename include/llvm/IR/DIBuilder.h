@@ -145,6 +145,7 @@ namespace llvm {
     /// \param Name        Pointer type name. (optional)
     DIDerivedType *createPointerType(DIType *PointeeTy, uint64_t SizeInBits,
                                      uint64_t AlignInBits = 0,
+                                     unsigned AddrSpace = 0,
                                      StringRef Name = "");
 
     /// Create debugging information entry for a pointer to member.

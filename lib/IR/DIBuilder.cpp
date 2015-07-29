@@ -238,11 +238,19 @@ DIDerivedType *DIBuilder::createQualifiedType(unsigned Tag, DIType *FromTy) {
 DIDerivedType *DIBuilder::createPointerType(DIType *PointeeTy,
                                             uint64_t SizeInBits,
                                             uint64_t AlignInBits,
+                                            unsigned AddrSpace,
                                             StringRef Name) {
+  ConstantAsMetadata *AddrSpaceMD = nullptr;
+
+  if (AddrSpace != 0) {
+    Type *I32Ty = Type::getInt32Ty(VMContext);
+    AddrSpaceMD = ConstantAsMetadata::get(ConstantInt::get(I32Ty, AddrSpace));
+  }
+
   // FIXME: Why is there a name here?
   return DIDerivedType::get(VMContext, dwarf::DW_TAG_pointer_type, Name,
                             nullptr, 0, nullptr, DITypeRef::get(PointeeTy),
-                            SizeInBits, AlignInBits, 0, 0);
+                            SizeInBits, AlignInBits, 0, 0, AddrSpaceMD);
 }
 
 DIDerivedType *DIBuilder::createMemberPointerType(DIType *PointeeTy,
