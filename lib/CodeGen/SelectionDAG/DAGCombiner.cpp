@@ -14015,23 +14015,10 @@ void DAGCombiner::GatherAllAliases(SDNode *N, SDValue OriginalChain,
         DEBUG(dbgs() << "Load alias\n");
         Aliases.push_back(Chain);
       } else {
-        SDValue NextChain = Chain.getOperand(0);
-
-        if (!isa<MemSDNode>(NextChain)) {
-          // Don't continue the search if we see a chain dependency that isn't a
-          // memory access.
-          //
-          // e.g. we could have a dependency on a CopyFromReg into the pointer
-          // value of a load.
-          Chains.push_back(Chain);
-          break;
-        }
-
-        // Look further up the chain at possible memory dependencies.
-        Chains.push_back(NextChain);
+        // Look further up the chain.
         DEBUG(dbgs() << "Look up load / store chain: ");
-        NextChain->dump(&DAG);
-        Chains.push_back(NextChain);
+        Chain.getOperand(0)->dump(&DAG);
+        Chains.push_back(Chain.getOperand(0));
         ++Depth;
       }
       break;
