@@ -254,8 +254,29 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
       if (MI.getOpcode() == AMDGPU::COPY && isSCCCopy(MI, TRI, MRI)) {
         MI.dump();
         unsigned SrcReg = MI.getOperand(1).getReg();
-        MachineInstr *Def = MRI.getVRegDef(SrcReg);
-        TII->moveToVALU(*Def);
+
+        if (SrcReg == AMDGPU::SCC) {
+//          MachineInstr *Def = MRI.getVRegDef(SrcReg);
+
+          auto J = I;
+          for (; J != MBB.begin(); --J) {
+            if (J->definesRegister(AMDGPU::SCC, TRI)) {
+              TII->moveToVALU(*J);
+              break;
+            }
+          }
+
+          // XXX - what if scc def is first inst?
+          assert(J != MBB.begin() && "Didn't find def of scc?");
+
+
+
+          //for (MachineInstr &DefInst : MRI.def_instructions(AMDGPU::SCC))
+//            TII->moveToVALU(*Def);
+        } else {
+          llvm_unreachable("copy to scc");
+        }
+
         MI.dump();
       }
 
