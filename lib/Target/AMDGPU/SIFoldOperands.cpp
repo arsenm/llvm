@@ -205,6 +205,9 @@ bool SIFoldOperands::runOnMachineFunction(MachineFunction &MF) {
         continue;
 
       unsigned OpSize = TII->getOpSize(MI, 1);
+      if (OpSize == 0)
+        continue;
+
       MachineOperand &OpToFold = MI.getOperand(1);
       bool FoldingImm = OpToFold.isImm();
 

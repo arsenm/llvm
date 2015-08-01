@@ -266,13 +266,18 @@ public:
       return 4;
     }
 
-    return RI.getRegClass(OpInfo.RegClass)->getSize();
+    if (const TargetRegisterClass *RC = RI.getRegClass(OpInfo.RegClass))
+      return RC->getSize();
+
+    return 0;
   }
 
   /// \brief This form should usually be preferred since it handles operands
   /// with unknown register classes.
   unsigned getOpSize(const MachineInstr &MI, unsigned OpNo) const {
-    return getOpRegClass(MI, OpNo)->getSize();
+    if (const TargetRegisterClass *RC = getOpRegClass(MI, OpNo))
+      return RC->getSize();
+    return 0;
   }
 
   /// \returns true if it is legal for the operand at index \p OpNo
