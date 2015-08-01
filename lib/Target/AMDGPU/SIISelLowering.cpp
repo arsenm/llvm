@@ -1230,6 +1230,27 @@ SDValue SITargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
     unsigned Opc = User->getOpcode();
     if (Opc == ISD::AND || Opc == ISD::OR || Opc == ISD::XOR)
       return Op;
+
+    // XXX - branches for now.
+    if (Opc == ISD::INTRINSIC_W_CHAIN)
+      return Op;
+
+    if (Opc != ISD::SELECT) {
+      return Op;
+    }
+
+    if (Opc == ISD::SELECT) {
+      // Make sure this is the condition operand.
+
+      if (Op == User->getOperand(1) ||
+          Op == User->getOperand(2))
+        return Op;
+
+      // XXX This will only ever not be the case if the select is on an i1 value?
+      //if (User->getValueType(0) == MVT::i1)
+      //  return Op;
+
+    }
   }
 
   SDValue LHS = Op.getOperand(0);
