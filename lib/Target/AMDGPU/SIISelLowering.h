@@ -32,6 +32,7 @@ class SITargetLowering : public AMDGPUTargetLowering {
   SDValue LowerINTRINSIC_VOID(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerFrameIndex(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerLOAD(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSETCC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerFastFDIV(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerFDIV32(SDValue Op, SelectionDAG &DAG) const;

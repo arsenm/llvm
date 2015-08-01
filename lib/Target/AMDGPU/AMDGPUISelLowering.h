@@ -234,6 +234,15 @@ enum NodeType : unsigned {
   FRACT,
   CLAMP,
 
+  // Same as standard setcc, except produces no output. Expects to write
+  // implicit def to SCC. Should only be used for integers, since there are only
+  // SALU integer compares.
+  ISETCC,
+
+  // Same as standard select, except reads the conditon from SCC. Expects to
+  // read implicit SCC.
+  ISELECT,
+
   // SIN_HW, COS_HW - f32 for SI, 1 ULP max error, valid from -100 pi to 100 pi.
   // Denormals handled on some parts.
   COS_HW,

@@ -778,7 +778,7 @@ class SOPC_Helper <bits<7> op, RegisterOperand rc, ValueType vt,
                     string opName, PatLeaf cond> : SOPC <
   op, (outs), (ins rc:$src0, rc:$src1),
   opName#" $src0, $src1",
-  [(set SCC, (setcc vt:$src0, vt:$src1, cond))]
+  [(set SCC, (i1 (AMDGPUisetcc vt:$src0, vt:$src1, cond)))]
 >;
 
 class SOPC_32<bits<7> op, string opName, PatLeaf cond = COND_NULL>

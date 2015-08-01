@@ -102,6 +102,11 @@ SITargetLowering::SITargetLowering(TargetMachine &TM,
   setOperationAction(ISD::SETCC, MVT::v2i1, Expand);
   setOperationAction(ISD::SETCC, MVT::v4i1, Expand);
 
+  setOperationAction(ISD::SETCC, MVT::i32, Custom);
+//  setOperationAction(ISD::SETCC, MVT::i64, Custom);
+  setOperationAction(ISD::SELECT, MVT::i32, Custom);
+  setOperationAction(ISD::SELECT, MVT::i64, Custom);
+
   setOperationAction(ISD::BSWAP, MVT::i32, Legal);
 
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Legal);
@@ -833,6 +838,8 @@ SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::FSIN:
   case ISD::FCOS:
     return LowerTrig(Op, DAG);
+  case ISD::SETCC:
+    return LowerSETCC(Op, DAG);
   case ISD::SELECT: return LowerSELECT(Op, DAG);
   case ISD::FDIV: return LowerFDIV(Op, DAG);
   case ISD::STORE: return LowerSTORE(Op, DAG);
@@ -1212,15 +1219,33 @@ SDValue SITargetLowering::LowerSampleIntrinsic(unsigned Opcode,
                      Op.getOperand(4));
 }
 
-SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
-  if (Op.getValueType() != MVT::i64)
-    return SDValue();
+SDValue SITargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
+  EVT VT = Op.getValueType();
+  assert(VT.isInteger() && !VT.isVector());
 
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  SDValue CC = Op.getOperand(2);
+
+  return DAG.getNode(AMDGPUISD::ISETCC, SDLoc(Op), VT, LHS, RHS, CC);
+}
+
+SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
+  EVT VT = Op.getValueType();
   SDLoc DL(Op);
   SDValue Cond = Op.getOperand(0);
 
-  SDValue Zero = DAG.getConstant(0, DL, MVT::i32);
-  SDValue One = DAG.getConstant(1, DL, MVT::i32);
+  if (VT == MVT::i32) {
+    SDValue LHS = Op.getOperand(1);
+    SDValue RHS = Op.getOperand(2);
+    return DAG.getNode(AMDGPUISD::ISELECT, DL, VT, LHS, RHS, Cond);
+  }
+
+  if (VT != MVT::i64)
+    return SDValue();
+
+  SDValue Zero = DAG.getConstant(0, MVT::i32);
+  SDValue One = DAG.getConstant(1, MVT::i32);
 
   SDValue LHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, Op.getOperand(1));
   SDValue RHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, Op.getOperand(2));

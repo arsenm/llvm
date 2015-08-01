@@ -224,6 +224,16 @@ def AMDGPUinterp_p1 : SDNode<"AMDGPUISD::INTERP_P1",
 def AMDGPUinterp_p2 : SDNode<"AMDGPUISD::INTERP_P2",
                       SDTypeProfile<1, 4, [SDTCisFP<0>]>,
                       [SDNPInGlue]>;
+def SDT_AMDGPUISetCC : SDTypeProfile<1, 3, [SDTCisInt<0>, SDTCisInt<1>, SDTCisSameAs<1, 2>]>;
+def SDT_AMDGPUISelect : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>]>;
+
+def AMDGPUisetcc : SDNode<"AMDGPUISD::ISETCC", SDT_AMDGPUISetCC,
+  []
+>;
+
+def AMDGPUiselect : SDNode<"AMDGPUISD::ISELECT", SDT_AMDGPUISelect,
+  []
+>;
 
 //===----------------------------------------------------------------------===//
 // Flow Control Profile Types
