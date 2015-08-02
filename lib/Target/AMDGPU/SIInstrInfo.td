@@ -1085,12 +1085,27 @@ def VOP_I32_I32_I32_VCC : VOPProfile <[i32, i32, i32, untyped]> {
   let Src0RC32 = VCSrc_32;
 }
 
+// VOPC instructions are a special case because for the 32-bit
+// encoding, we want to display the implicit vcc write as if it were
+// an explicit $dst.
+class VOPC_Profile<ValueType vt> : VOPProfile <[i1, vt, vt, untyped]> {
+  let Asm32 = "_e32 vcc, $src0, $src1";
+}
+
+def VOPC_I1_F32_F32 : VOPC_Profile<f32>;
+def VOPC_I1_F64_F64 : VOPC_Profile<f64>;
+def VOPC_I1_I32_I32 : VOPC_Profile<i32>;
+def VOPC_I1_I64_I64 : VOPC_Profile<i64>;
+
 def VOP_I1_F32_I32 : VOPProfile <[i1, f32, i32, untyped]> {
+  let Asm32 = "_e32 vcc, $src0, $src1";
+
   let Ins64 = (ins InputModsNoDefault:$src0_modifiers, Src0RC64:$src0, Src1RC64:$src1);
   let Asm64 = "$dst, $src0_modifiers, $src1";
 }
 
 def VOP_I1_F64_I32 : VOPProfile <[i1, f64, i32, untyped]> {
+  let Asm32 = "_e32 vcc, $src0, $src1";
   let Ins64 = (ins InputModsNoDefault:$src0_modifiers, Src0RC64:$src0, Src1RC64:$src1);
   let Asm64 = "$dst, $src0_modifiers, $src1";
 }
@@ -1592,13 +1607,13 @@ multiclass VOPC_m <vopc op, dag outs, dag ins, string asm, list<dag> pattern,
 
   def _si : VOPC<op.SI, ins, asm, []>,
             SIMCInstr <opName#"_e32", SISubtarget.SI> {
-    let Defs = !if(DefExec, [EXEC], []);
+    let Defs = !if(DefExec, [VCC, EXEC], [VCC]);
     let hasSideEffects = DefExec;
   }
 
   def _vi : VOPC<op.VI, ins, asm, []>,
             SIMCInstr <opName#"_e32", SISubtarget.VI> {
-    let Defs = !if(DefExec, [EXEC], []);
+    let Defs = !if(DefExec, [VCC, EXEC], [VCC]);
     let hasSideEffects = DefExec;
   }
 }
@@ -1657,16 +1672,16 @@ multiclass VOPCClassInst <vopc op, string opName, VOPProfile P,
 
 
 multiclass VOPC_F32 <vopc op, string opName, PatLeaf cond = COND_NULL, string revOp = opName> :
-  VOPCInst <op, opName, VOP_F32_F32_F32, cond, revOp>;
+  VOPCInst <op, opName, VOPC_I1_F32_F32, cond, revOp>;
 
 multiclass VOPC_F64 <vopc op, string opName, PatLeaf cond = COND_NULL, string revOp = opName> :
-  VOPCInst <op, opName, VOP_F64_F64_F64, cond, revOp>;
+  VOPCInst <op, opName, VOPC_I1_F64_F64, cond, revOp>;
 
 multiclass VOPC_I32 <vopc op, string opName, PatLeaf cond = COND_NULL, string revOp = opName> :
-  VOPCInst <op, opName, VOP_I32_I32_I32, cond, revOp>;
+  VOPCInst <op, opName, VOPC_I1_I32_I32, cond, revOp>;
 
 multiclass VOPC_I64 <vopc op, string opName, PatLeaf cond = COND_NULL, string revOp = opName> :
-  VOPCInst <op, opName, VOP_I64_I64_I64, cond, revOp>;
+  VOPCInst <op, opName, VOPC_I1_I64_I64, cond, revOp>;
 
 
 multiclass VOPCX <vopc op, string opName, VOPProfile P,
@@ -1675,16 +1690,16 @@ multiclass VOPCX <vopc op, string opName, VOPProfile P,
   : VOPCInst <op, opName, P, cond, revOp, 1>;
 
 multiclass VOPCX_F32 <vopc op, string opName, string revOp = opName> :
-  VOPCX <op, opName, VOP_F32_F32_F32, COND_NULL, revOp>;
+  VOPCX <op, opName, VOPC_I1_F32_F32, COND_NULL, revOp>;
 
 multiclass VOPCX_F64 <vopc op, string opName, string revOp = opName> :
-  VOPCX <op, opName, VOP_F64_F64_F64, COND_NULL, revOp>;
+  VOPCX <op, opName, VOPC_I1_F64_F64, COND_NULL, revOp>;
 
 multiclass VOPCX_I32 <vopc op, string opName, string revOp = opName> :
-  VOPCX <op, opName, VOP_I32_I32_I32, COND_NULL, revOp>;
+  VOPCX <op, opName, VOPC_I1_I32_I32, COND_NULL, revOp>;
 
 multiclass VOPCX_I64 <vopc op, string opName, string revOp = opName> :
-  VOPCX <op, opName, VOP_I64_I64_I64, COND_NULL, revOp>;
+  VOPCX <op, opName, VOPC_I1_I64_I64, COND_NULL, revOp>;
 
 multiclass VOP3_Helper <vop3 op, string opName, dag outs, dag ins, string asm,
                         list<dag> pat, int NumSrcArgs, bit HasMods> : VOP3_m <
