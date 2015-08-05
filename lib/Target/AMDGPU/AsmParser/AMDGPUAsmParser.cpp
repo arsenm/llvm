@@ -133,9 +133,15 @@ public:
     return Token.endswith("_e32") || Token.endswith("_e64");
   }
 
+#if 1
   bool isToken() const override {
     return Kind == Token;
   }
+#else
+  bool isToken() const override {
+    return Kind == Token || (Kind == Register && getReg() == AMDGPU::VCC);
+  }
+#endif
 
   bool isImm() const override {
     return Kind == Immediate;
@@ -560,6 +566,12 @@ bool AMDGPUAsmParser::MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                               bool MatchingInlineAsm) {
   MCInst Inst;
 
+  dbgs() << "MatchAndEmitInstruction operands size: " << Operands.size() << '\n';
+  for (const auto &X : Operands) {
+    X->dump();
+  }
+  dbgs() << '\n';
+
   switch (MatchInstructionImpl(Operands, Inst, ErrorInfo, MatchingInlineAsm)) {
     default: break;
     case Match_Success:
@@ -927,9 +939,12 @@ static bool operandsHaveModifiers(const OperandVector &Operands) {
 
 AMDGPUAsmParser::OperandMatchResultTy
 AMDGPUAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
+  dbgs() << "parseOperand: Operands size = " << Operands.size() << '\n';
 
   // Try to parse with a custom parser
   OperandMatchResultTy ResTy = MatchOperandParserImpl(Operands, Mnemonic);
+
+  dbgs() << "MatchOperandParserImpl: " << ResTy << " mnemonic: " << Mnemonic << '\n';
 
   // If we successfully parsed the operand or if there as an error parsing,
   // we are done.
@@ -938,8 +953,10 @@ AMDGPUAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
   // are appending default values to the Operands list.  This is only done
   // by custom parser, so we shouldn't continue on to the generic parsing.
   if (ResTy == MatchOperand_Success || ResTy == MatchOperand_ParseFail ||
-      getLexer().is(AsmToken::EndOfStatement))
+      getLexer().is(AsmToken::EndOfStatement)) {
+    dbgs() << "parseOperand early exit\n";
     return ResTy;
+  }
 
   bool Negate = false, Abs = false;
   if (getLexer().getKind()== AsmToken::Minus) {
@@ -967,6 +984,8 @@ AMDGPUAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
       IntVal = IntVal32.getSExtValue();
       if (Negate)
         IntVal *= -1;
+
+      dbgs() << "Push int val operand: " << IntVal << '\n';
       Operands.push_back(AMDGPUOperand::CreateImm(IntVal, S));
       return MatchOperand_Success;
     }
@@ -981,6 +1000,8 @@ AMDGPUAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
       APFloat F((float)BitsToDouble(IntVal));
       if (Negate)
         F.changeSign();
+
+      dbgs() << "Push real val operand\n";
       Operands.push_back(
           AMDGPUOperand::CreateImm(F.bitcastToAPInt().getZExtValue(), S));
       return MatchOperand_Success;
@@ -1015,7 +1036,7 @@ AMDGPUAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
           }
         }
 
-
+        dbgs() << "Push identifier operand: " << RegNo << '\n';
         Operands.push_back(AMDGPUOperand::CreateReg(
             RegNo, S, E, getContext().getRegisterInfo(),
             isForcedVOP3()));
@@ -1026,13 +1047,15 @@ AMDGPUAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
 
         }
      }  else {
-      Operands.push_back(AMDGPUOperand::CreateToken(Parser.getTok().getString(),
-                                                    S));
-      Parser.Lex();
+        dbgs() << "Push string operand: " << Parser.getTok().getString() << '\n';
+        Operands.push_back(AMDGPUOperand::CreateToken(Parser.getTok().getString(),
+                                                      S));
+        Parser.Lex();
      }
      return MatchOperand_Success;
     }
     default:
+      dbgs() << "Parse operand NoMatch: " << Mnemonic << '\n';
       return MatchOperand_NoMatch;
   }
 }
@@ -1052,6 +1075,8 @@ bool AMDGPUAsmParser::ParseInstruction(ParseInstructionInfo &Info,
   // Add the instruction mnemonic
   Operands.push_back(AMDGPUOperand::CreateToken(Name, NameLoc));
 
+  dbgs() << "Push operand: " << Name << '\n';
+
   while (!getLexer().is(AsmToken::EndOfStatement)) {
     AMDGPUAsmParser::OperandMatchResultTy Res = parseOperand(Operands, Name);
 
@@ -1067,6 +1092,8 @@ bool AMDGPUAsmParser::ParseInstruction(ParseInstructionInfo &Info,
                                               "not a valid operand.");
     }
   }
+
+  dbgs() << "Parsed operands size: " << Operands.size() << '\n';
 
   // Once we reach end of statement, continue parsing so we can add default
   // values for optional arguments.
@@ -1623,23 +1650,30 @@ static bool isVOP3(OperandVector &Operands) {
 
   AMDGPUOperand &DstOp = ((AMDGPUOperand&)*Operands[1]);
 
-  if (DstOp.isReg() && DstOp.isRegClass(AMDGPU::SGPR_64RegClassID))
+  if (DstOp.isReg() && DstOp.isRegClass(AMDGPU::SGPR_64RegClassID)) {
+    llvm_unreachable("arst");
     return true;
+  }
 
-  if (Operands.size() >= 5)
+  if (Operands.size() >= 5) {
+    llvm_unreachable("arstarstarst");
     return true;
+  }
 
   if (Operands.size() > 3) {
     AMDGPUOperand &Src1Op = ((AMDGPUOperand&)*Operands[3]);
     if (Src1Op.getReg() && (Src1Op.isRegClass(AMDGPU::SReg_32RegClassID) ||
-                            Src1Op.isRegClass(AMDGPU::SReg_64RegClassID)))
+                            Src1Op.isRegClass(AMDGPU::SReg_64RegClassID))) {
+      llvm_unreachable("arstarst");
       return true;
+    }
   }
   return false;
 }
 
 AMDGPUAsmParser::OperandMatchResultTy
 AMDGPUAsmParser::parseVOP3OptionalOps(OperandVector &Operands) {
+  dbgs() << "parseVOP3OptionalOps\n";
 
   // The value returned by this function may change after parsing
   // an operand so store the original value here.

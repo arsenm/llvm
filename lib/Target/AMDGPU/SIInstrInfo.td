@@ -1089,7 +1089,7 @@ def VOP_I32_I32_I32_VCC : VOPProfile <[i32, i32, i32, untyped]> {
 // encoding, we want to display the implicit vcc write as if it were
 // an explicit $dst.
 class VOPC_Profile<ValueType vt> : VOPProfile <[i1, vt, vt, untyped]> {
-  let Asm32 = "_e32 vcc, $src0, $src1";
+  let Asm32 = "_e32 XXX, $src0, $src1";
 }
 
 def VOPC_I1_F32_F32 : VOPC_Profile<f32>;
