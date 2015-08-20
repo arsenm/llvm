@@ -39,7 +39,7 @@
 ; HSA: {{^}}simple:
 ; HSA: .amd_kernel_code_t
 ; HSA: .end_amd_kernel_code_t
-; HSA: s_load_dwordx2 s[{{[0-9]+:[0-9]+}}], s[0:1], 0x0
+; HSA: s_load_dwordx2 s[{{[0-9]+:[0-9]+}}], s[2:3], 0x0
 
 ; Make sure we are setting the ATC bit:
 ; HSA-CI: s_mov_b32 s[[HI:[0-9]]], 0x100f000

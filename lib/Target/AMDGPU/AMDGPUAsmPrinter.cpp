@@ -514,6 +514,7 @@ void AMDGPUAsmPrinter::EmitAmdKernelCodeT(const MachineFunction &MF,
       KernelInfo.ComputePGMRSrc1 |
       (KernelInfo.ComputePGMRSrc2 << 32);
   header.code_properties =
+      AMD_CODE_PROPERTY_ENABLE_SGPR_DISPATCH_PTR |
       AMD_CODE_PROPERTY_ENABLE_SGPR_KERNARG_SEGMENT_PTR |
       AMD_CODE_PROPERTY_IS_PTR64;
 

@@ -22,12 +22,15 @@ namespace llvm {
 
 class SITargetLowering : public AMDGPUTargetLowering {
   SDValue LowerParameter(SelectionDAG &DAG, EVT VT, EVT MemVT, SDLoc DL,
-                         SDValue Chain, unsigned Offset, bool Signed) const;
+                         SDValue Chain, unsigned Offset, 
+                         unsigned BasePtrReg, bool Signed) const;
   SDValue LowerSampleIntrinsic(unsigned Opcode, const SDValue &Op,
                                SelectionDAG &DAG) const;
   SDValue LowerGlobalAddress(AMDGPUMachineFunction *MFI, SDValue Op,
                              SelectionDAG &DAG) const override;
 
+  SDValue LowerLocalSizeIntrinsic(SelectionDAG &DAG, SDLoc DL,
+                                  unsigned Dim) const;
   SDValue LowerINTRINSIC_WO_CHAIN(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerINTRINSIC_VOID(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerFrameIndex(SDValue Op, SelectionDAG &DAG) const;

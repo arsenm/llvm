@@ -472,6 +472,17 @@ namespace AMDGPU {
 } // End namespace AMDGPU
 
 namespace SI {
+
+namespace DispatchPacketOffset {
+
+enum {
+  LOCAL_SIZE_X = 4,
+  LOCAL_SIZE_Y = 6,
+  LOCAL_SIZE_Z = 8,
+};
+
+}
+
 namespace KernelInputOffsets {
 
 /// Offsets in bytes from the start of the input buffer

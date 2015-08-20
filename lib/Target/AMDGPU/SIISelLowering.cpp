@@ -19,6 +19,7 @@
 #endif
 
 #include "SIISelLowering.h"
+#include "SIInstrInfo.h"
 #include "AMDGPU.h"
 #include "AMDGPUDiagnosticInfoUnsupported.h"
 #include "AMDGPUIntrinsicInfo.h"
@@ -467,12 +468,15 @@ bool SITargetLowering::shouldConvertConstantLoadToIntImm(const APInt &Imm,
 
 SDValue SITargetLowering::LowerParameter(SelectionDAG &DAG, EVT VT, EVT MemVT,
                                          SDLoc SL, SDValue Chain,
-                                         unsigned Offset, bool Signed) const {
+                                         unsigned Offset, unsigned BasePtrReg,
+                                         bool Signed) const {
   const DataLayout &DL = DAG.getDataLayout();
   MachineFunction &MF = DAG.getMachineFunction();
   const SIRegisterInfo *TRI =
       static_cast<const SIRegisterInfo*>(Subtarget->getRegisterInfo());
-  unsigned InputPtrReg = TRI->getPreloadedValue(MF, SIRegisterInfo::INPUT_PTR);
+
+  if (!BasePtrReg)
+    BasePtrReg = TRI->getPreloadedValue(MF, SIRegisterInfo::INPUT_PTR);
 
   Type *Ty = VT.getTypeForEVT(*DAG.getContext());
 
@@ -480,7 +484,7 @@ SDValue SITargetLowering::LowerParameter(SelectionDAG &DAG, EVT VT, EVT MemVT,
   MVT PtrVT = getPointerTy(DL, AMDGPUAS::CONSTANT_ADDRESS);
   PointerType *PtrTy = PointerType::get(Ty, AMDGPUAS::CONSTANT_ADDRESS);
   SDValue BasePtr = DAG.getCopyFromReg(Chain, SL,
-                                       MRI.getLiveInVirtReg(InputPtrReg), PtrVT);
+                                       MRI.getLiveInVirtReg(BasePtrReg), PtrVT);
   SDValue Ptr = DAG.getNode(ISD::ADD, SL, PtrVT, BasePtr,
                             DAG.getConstant(Offset, SL, PtrVT));
   SDValue PtrOffset = DAG.getUNDEF(PtrVT);
@@ -580,7 +584,7 @@ SDValue SITargetLowering::LowerFormalArguments(
   // The pointer to the scratch buffer is stored in SGPR2, SGPR3
   if (Info->getShaderType() == ShaderType::COMPUTE) {
     if (Subtarget->isAmdHsaOS())
-      Info->NumUserSGPRs = 2;  // FIXME: Need to support scratch buffers.
+      Info->NumUserSGPRs = 4;  // FIXME: Need to support scratch buffers.
     else
       Info->NumUserSGPRs = 4;
 
@@ -604,6 +608,17 @@ SDValue SITargetLowering::LowerFormalArguments(
     CCInfo.AllocateReg(ScratchPtrRegHi);
     MF.addLiveIn(InputPtrReg, &AMDGPU::SReg_64RegClass);
     MF.addLiveIn(ScratchPtrReg, &AMDGPU::SReg_64RegClass);
+    if (Subtarget->isAmdHsaOS()) {
+      unsigned DispatchPtrReg =
+          TRI->getPreloadedValue(MF, SIRegisterInfo::DISPATCH_PTR);
+      unsigned DispatchPtrRegLo =
+          TRI->getPhysRegSubReg(DispatchPtrReg, &AMDGPU::SReg_32RegClass, 0);
+      unsigned DispatchPtrRegHi =
+          TRI->getPhysRegSubReg(DispatchPtrReg, &AMDGPU::SReg_32RegClass, 1);
+      CCInfo.AllocateReg(DispatchPtrRegLo);
+      CCInfo.AllocateReg(DispatchPtrRegHi);
+      MF.addLiveIn(DispatchPtrReg, &AMDGPU::SReg_64RegClass);
+    }
   }
 
   if (Info->getShaderType() == ShaderType::COMPUTE) {
@@ -633,8 +648,10 @@ SDValue SITargetLowering::LowerFormalArguments(
                               VA.getLocMemOffset();
       // The first 36 bytes of the input buffer contains information about
       // thread group and global sizes.
+      unsigned InputPtrReg = TRI->getPreloadedValue(MF,
+                                                    SIRegisterInfo::INPUT_PTR);
       SDValue Arg = LowerParameter(DAG, VT, MemVT,  DL, Chain,
-                                   Offset, Ins[i].Flags.isSExt());
+                                   Offset, InputPtrReg, Ins[i].Flags.isSExt());
       Chains.push_back(Arg.getValue(1));
 
       auto *ParamTy =
@@ -997,6 +1014,60 @@ SDValue SITargetLowering::copyToM0(SelectionDAG &DAG, SDValue Chain, SDLoc DL,
                                                       // a glue result.
 }
 
+SDValue SITargetLowering::LowerLocalSizeIntrinsic(SelectionDAG &DAG,
+                                                  SDLoc DL,
+                                                  unsigned Dim) const {
+  MachineFunction &MF = DAG.getMachineFunction();
+  const SIRegisterInfo *TRI =
+      static_cast<const SIRegisterInfo *>(Subtarget->getRegisterInfo());
+
+  unsigned Offset;
+  unsigned BasePtr;
+  EVT MemVT;
+  SDValue Param;
+  if (Subtarget->isAmdHsaOS()) {
+    BasePtr = TRI->getPreloadedValue(MF, SIRegisterInfo::DISPATCH_PTR);
+
+    // Local size value are 16-bits, but we always load 32-bit values and
+    // then mask or shift to get the correct value.  This allows use to
+    // load the data with SMRD instructions which is faster than using
+    // MUBUF instructions.
+    Offset = SI::DispatchPacketOffset::LOCAL_SIZE_X + (4 * (Dim >> 1));
+    Param = LowerParameter(DAG, MVT::i32, MVT::i32, DL, DAG.getEntryNode(),
+                           Offset, BasePtr, false);
+
+    switch (Dim) {
+    case 0:
+      // Clear the high bits.
+      Param = DAG.getNode(ISD::AND, DL, MVT::i32, Param,
+                          DAG.getConstant(0xffff, DL, MVT::i32));
+      break;
+    case 1:
+      // Get local size y from the high bits.  We can use SRL here, because
+      // the max value range is 0-256, so the sign bit will always be zero.
+      Param = DAG.getNode(ISD::SRL, DL, MVT::i32, Param,
+                          DAG.getConstant(16, DL, MVT::i32));
+      break;
+    case 2:
+      // Do nothing, the 16-bits after the z dimension size are always
+      // zero, so we don't need to clear them.  AssertZext will be added
+      // below.
+      break;
+    }
+  } else {
+
+    BasePtr = TRI->getPreloadedValue(MF, SIRegisterInfo::INPUT_PTR);
+    Offset = SI::KernelInputOffsets::LOCAL_SIZE_X + (Dim * 4);
+
+    Param = LowerParameter(DAG, MVT::i32, MVT::i32, DL, DAG.getEntryNode(),
+                           Offset, BasePtr, false);
+  }
+
+  // The local size values will have the hi 16-bits as zero.
+  return DAG.getNode(ISD::AssertZext, DL, MVT::i32, Param,
+                     DAG.getValueType(MVT::i16));
+}
+
 SDValue SITargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
                                                   SelectionDAG &DAG) const {
   MachineFunction &MF = DAG.getMachineFunction();
@@ -1007,41 +1078,46 @@ SDValue SITargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
   EVT VT = Op.getValueType();
   SDLoc DL(Op);
   unsigned IntrinsicID = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
+  unsigned InputPtrReg = TRI->getPreloadedValue(MF, SIRegisterInfo::INPUT_PTR);
 
   // TODO: Should this propagate fast-math-flags?
 
   switch (IntrinsicID) {
   case Intrinsic::r600_read_ngroups_x:
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::NGROUPS_X, false);
+                          SI::KernelInputOffsets::NGROUPS_X,
+                          InputPtrReg, false);
   case Intrinsic::r600_read_ngroups_y:
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::NGROUPS_Y, false);
+                          SI::KernelInputOffsets::NGROUPS_Y,
+                          InputPtrReg, false);
   case Intrinsic::r600_read_ngroups_z:
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::NGROUPS_Z, false);
+                          SI::KernelInputOffsets::NGROUPS_Z,
+                          InputPtrReg, false);
   case Intrinsic::r600_read_global_size_x:
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::GLOBAL_SIZE_X, false);
+                          SI::KernelInputOffsets::GLOBAL_SIZE_X,
+                          InputPtrReg, false);
   case Intrinsic::r600_read_global_size_y:
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::GLOBAL_SIZE_Y, false);
+                          SI::KernelInputOffsets::GLOBAL_SIZE_Y,
+                          InputPtrReg, false);
   case Intrinsic::r600_read_global_size_z:
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::GLOBAL_SIZE_Z, false);
+                          SI::KernelInputOffsets::GLOBAL_SIZE_Z,
+                          InputPtrReg, false);
   case Intrinsic::r600_read_local_size_x:
-    return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::LOCAL_SIZE_X, false);
+    return LowerLocalSizeIntrinsic(DAG, DL, 0);
   case Intrinsic::r600_read_local_size_y:
-    return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::LOCAL_SIZE_Y, false);
+    return LowerLocalSizeIntrinsic(DAG, DL, 1);
   case Intrinsic::r600_read_local_size_z:
-    return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::LOCAL_SIZE_Z, false);
+    return LowerLocalSizeIntrinsic(DAG, DL, 2);
 
   case Intrinsic::AMDGPU_read_workdim:
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          getImplicitParameterOffset(MFI, GRID_DIM), false);
+                          getImplicitParameterOffset(MFI, GRID_DIM),
+                          InputPtrReg, false);
 
   case Intrinsic::r600_read_tgid_x:
     return CreateLiveInRegister(DAG, &AMDGPU::SReg_32RegClass,
