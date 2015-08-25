@@ -2264,6 +2264,37 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       }
       break;
 
+    case AMDGPU::S_BFE_I32:
+    case AMDGPU::S_BFE_U32: {
+      const MachineOperand &OffsetWidthOp = Inst->getOperand(2);
+      // If we need to move this to VGPRs, we need to unpack the second operand
+      // back into the 2 separate ones for bit offset and width.
+      assert(OffsetWidthOp.isImm() &&
+             "Scalar BFE is only implemented for constant width and offset");
+      uint32_t Imm = OffsetWidthOp.getImm();
+
+      uint32_t Offset = Imm & 0x3f; // Extract bits [5:0].
+      uint32_t BitWidth = (Imm & 0x7f0000) >> 16; // Extract bits [22:16].
+
+      const MCInstrDesc &NewDesc = get(NewOpcode);
+      unsigned RCID = NewDesc.OpInfo[0].RegClass;
+      const TargetRegisterClass *NewDstRC = RI.getRegClass(RCID);
+
+      unsigned DstReg = Inst->getOperand(0).getReg();
+      unsigned NewDstReg = MRI.createVirtualRegister(NewDstRC);
+
+      MachineInstr *NewInst =
+        BuildMI(*MBB, Inst, Inst->getDebugLoc(), NewDesc, NewDstReg)
+        .addOperand(Inst->getOperand(1))
+        .addImm(Offset)
+        .addImm(BitWidth);
+      Inst->eraseFromParent();
+      MRI.replaceRegWith(DstReg, NewDstReg);
+
+      legalizeOperands(NewInst);
+      addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
+      continue;
+    }
     case AMDGPU::S_BFE_U64:
     case AMDGPU::S_BFM_B64:
       llvm_unreachable("Moving this op to VALU not implemented");
@@ -2303,21 +2334,6 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     }
 
     Inst->addImplicitDefUseOperands(*Inst->getParent()->getParent());
-
-    if (Opcode == AMDGPU::S_BFE_I32 || Opcode == AMDGPU::S_BFE_U32) {
-      const MachineOperand &OffsetWidthOp = Inst->getOperand(2);
-      // If we need to move this to VGPRs, we need to unpack the second operand
-      // back into the 2 separate ones for bit offset and width.
-      assert(OffsetWidthOp.isImm() &&
-             "Scalar BFE is only implemented for constant width and offset");
-      uint32_t Imm = OffsetWidthOp.getImm();
-
-      uint32_t Offset = Imm & 0x3f; // Extract bits [5:0].
-      uint32_t BitWidth = (Imm & 0x7f0000) >> 16; // Extract bits [22:16].
-      Inst->RemoveOperand(2); // Remove old immediate.
-      Inst->addOperand(MachineOperand::CreateImm(Offset));
-      Inst->addOperand(MachineOperand::CreateImm(BitWidth));
-    }
 
     // Update the destination register class.
 
