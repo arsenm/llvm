@@ -2186,16 +2186,28 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     MachineRegisterInfo &MRI = MBB->getParent()->getRegInfo();
 
     unsigned Opcode = Inst->getOpcode();
-    unsigned NewOpcode = getVALUOp(*Inst);
 
     // Handle some special cases
     switch (Opcode) {
-    default:
+    default: {
       if (isSMRD(Inst->getOpcode())) {
         moveSMRDToVALU(Inst, MRI, Worklist);
         continue;
       }
+
+      unsigned NewOpcode = getVALUOp(*Inst);
+      if (NewOpcode == AMDGPU::INSTRUCTION_LIST_END) {
+        // We cannot move this instruction to the VALU, so we should try to
+        // legalize its operands instead.
+        legalizeOperands(Inst);
+        continue;
+      }
+
+      // Use the new VALU Opcode.
+      const MCInstrDesc &NewDesc = get(NewOpcode);
+      Inst->setDesc(NewDesc);
       break;
+    }
     case AMDGPU::S_AND_B64:
       splitScalar64BitBinaryOp(Worklist, Inst, AMDGPU::V_AND_B32_e64);
       Inst->eraseFromParent();
@@ -2216,54 +2228,67 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       Inst->eraseFromParent();
       continue;
 
-    case AMDGPU::S_BCNT1_I32_B64:
-      splitScalar64BitBCNT(Worklist, Inst);
-      Inst->eraseFromParent();
-      continue;
-
-    case AMDGPU::S_BFE_I64: {
-      splitScalar64BitBFE(Worklist, Inst);
-      Inst->eraseFromParent();
-      continue;
-    }
-
     case AMDGPU::S_LSHL_B32:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
-        NewOpcode = AMDGPU::V_LSHLREV_B32_e64;
+        Inst->setDesc(get(AMDGPU::V_LSHLREV_B32_e64));
         swapOperands(Inst);
+      } else {
+        Inst->setDesc(get(getVALUOp(*Inst)));
       }
       break;
     case AMDGPU::S_ASHR_I32:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
-        NewOpcode = AMDGPU::V_ASHRREV_I32_e64;
+        Inst->setDesc(get(AMDGPU::V_ASHRREV_I32_e64));
         swapOperands(Inst);
+      } else {
+        Inst->setDesc(get(getVALUOp(*Inst)));
       }
       break;
     case AMDGPU::S_LSHR_B32:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
-        NewOpcode = AMDGPU::V_LSHRREV_B32_e64;
+        Inst->setDesc(get(AMDGPU::V_LSHRREV_B32_e64));
         swapOperands(Inst);
+      } else {
+        Inst->setDesc(get(getVALUOp(*Inst)));
       }
       break;
     case AMDGPU::S_LSHL_B64:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
-        NewOpcode = AMDGPU::V_LSHLREV_B64;
+        Inst->setDesc(get(AMDGPU::V_LSHLREV_B64));
         swapOperands(Inst);
+      } else {
+        Inst->setDesc(get(getVALUOp(*Inst)));
       }
       break;
     case AMDGPU::S_ASHR_I64:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
-        NewOpcode = AMDGPU::V_ASHRREV_I64;
+          Inst->setDesc(get(AMDGPU::V_ASHRREV_I64));
         swapOperands(Inst);
+      } else {
+        Inst->setDesc(get(getVALUOp(*Inst)));
       }
       break;
     case AMDGPU::S_LSHR_B64:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
-        NewOpcode = AMDGPU::V_LSHRREV_B64;
+        Inst->setDesc(get(AMDGPU::V_LSHRREV_B64));
         swapOperands(Inst);
+      } else {
+        Inst->setDesc(get(getVALUOp(*Inst)));
       }
       break;
 
+    case AMDGPU::S_SEXT_I32_I8:
+    case AMDGPU::S_SEXT_I32_I16: {
+      const MCInstrDesc &NewDesc = get(getVALUOp(*Inst));
+      Inst->setDesc(NewDesc);
+
+      // We are converting these to a BFE, so we need to add the missing
+      // operands for the size and offset.
+      unsigned Size = (Opcode == AMDGPU::S_SEXT_I32_I8) ? 8 : 16;
+      Inst->addOperand(MachineOperand::CreateImm(0));
+      Inst->addOperand(MachineOperand::CreateImm(Size));
+      break;
+    }
     case AMDGPU::S_BFE_I32:
     case AMDGPU::S_BFE_U32: {
       const MachineOperand &OffsetWidthOp = Inst->getOperand(2);
@@ -2276,7 +2301,7 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       uint32_t Offset = Imm & 0x3f; // Extract bits [5:0].
       uint32_t BitWidth = (Imm & 0x7f0000) >> 16; // Extract bits [22:16].
 
-      const MCInstrDesc &NewDesc = get(NewOpcode);
+      const MCInstrDesc &NewDesc = get(getVALUOp(*Inst));
       unsigned RCID = NewDesc.OpInfo[0].RegClass;
       const TargetRegisterClass *NewDstRC = RI.getRegClass(RCID);
 
@@ -2295,21 +2320,29 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
       continue;
     }
+    case AMDGPU::S_BFE_I64: {
+      splitScalar64BitBFE(Worklist, Inst);
+      Inst->eraseFromParent();
+      continue;
+    }
+    case AMDGPU::S_BCNT1_I32_B32: {
+      const MCInstrDesc &NewDesc = get(getVALUOp(*Inst));
+
+      Inst->setDesc(NewDesc);
+      // The VALU version adds the second operand to the result, so insert an
+      // extra 0 operand.
+      Inst->addOperand(MachineOperand::CreateImm(0));
+      break;
+    }
+    case AMDGPU::S_BCNT1_I32_B64: {
+      splitScalar64BitBCNT(Worklist, Inst);
+      Inst->eraseFromParent();
+      continue;
+    }
     case AMDGPU::S_BFE_U64:
     case AMDGPU::S_BFM_B64:
       llvm_unreachable("Moving this op to VALU not implemented");
     }
-
-    if (NewOpcode == AMDGPU::INSTRUCTION_LIST_END) {
-      // We cannot move this instruction to the VALU, so we should try to
-      // legalize its operands instead.
-      legalizeOperands(Inst);
-      continue;
-    }
-
-    // Use the new VALU Opcode.
-    const MCInstrDesc &NewDesc = get(NewOpcode);
-    Inst->setDesc(NewDesc);
 
     // Remove any references to SCC. Vector instructions can't read from it, and
     // We're just about to add the implicit use / defs of VCC, and we don't want
@@ -2318,19 +2351,6 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       MachineOperand &Op = Inst->getOperand(i);
       if (Op.isReg() && Op.getReg() == AMDGPU::SCC)
         Inst->RemoveOperand(i);
-    }
-
-    if (Opcode == AMDGPU::S_SEXT_I32_I8 || Opcode == AMDGPU::S_SEXT_I32_I16) {
-      // We are converting these to a BFE, so we need to add the missing
-      // operands for the size and offset.
-      unsigned Size = (Opcode == AMDGPU::S_SEXT_I32_I8) ? 8 : 16;
-      Inst->addOperand(MachineOperand::CreateImm(0));
-      Inst->addOperand(MachineOperand::CreateImm(Size));
-
-    } else if (Opcode == AMDGPU::S_BCNT1_I32_B32) {
-      // The VALU version adds the second operand to the result, so insert an
-      // extra 0 operand.
-      Inst->addOperand(MachineOperand::CreateImm(0));
     }
 
     Inst->addImplicitDefUseOperands(*Inst->getParent()->getParent());
