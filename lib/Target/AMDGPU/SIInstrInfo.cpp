@@ -2176,6 +2176,17 @@ void SIInstrInfo::moveSMRDToVALU(MachineInstr *MI,
   }
 }
 
+// Remove any references to SCC. If we are mutating an instruction in place,
+// vector instructions can't read from it, and We're just about to add the
+// implicit use / defs of VCC, and we don't want both.
+static void removeSCCUses(MachineInstr &Inst) {
+  for (unsigned I = Inst.getNumOperands() - 1; I > 0; --I) {
+    MachineOperand &Op = Inst.getOperand(I);
+    if (Op.isReg() && Op.getReg() == AMDGPU::SCC)
+      Inst.RemoveOperand(I);
+  }
+}
+
 void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
   SmallVector<MachineInstr *, 128> Worklist;
   Worklist.push_back(&TopInst);
@@ -2206,6 +2217,8 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       // Use the new VALU Opcode.
       const MCInstrDesc &NewDesc = get(NewOpcode);
       Inst->setDesc(NewDesc);
+      removeSCCUses(*Inst);
+      Inst->addImplicitDefUseOperands(*MBB->getParent());
       break;
     }
     case AMDGPU::S_AND_B64:
@@ -2235,6 +2248,9 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       } else {
         Inst->setDesc(get(getVALUOp(*Inst)));
       }
+
+      removeSCCUses(*Inst);
+      Inst->addImplicitDefUseOperands(*MBB->getParent());
       break;
     case AMDGPU::S_ASHR_I32:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
@@ -2243,6 +2259,9 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       } else {
         Inst->setDesc(get(getVALUOp(*Inst)));
       }
+
+      removeSCCUses(*Inst);
+      Inst->addImplicitDefUseOperands(*MBB->getParent());
       break;
     case AMDGPU::S_LSHR_B32:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
@@ -2251,6 +2270,9 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       } else {
         Inst->setDesc(get(getVALUOp(*Inst)));
       }
+
+      removeSCCUses(*Inst);
+      Inst->addImplicitDefUseOperands(*MBB->getParent());
       break;
     case AMDGPU::S_LSHL_B64:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
@@ -2259,6 +2281,9 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       } else {
         Inst->setDesc(get(getVALUOp(*Inst)));
       }
+
+      removeSCCUses(*Inst);
+      Inst->addImplicitDefUseOperands(*MBB->getParent());
       break;
     case AMDGPU::S_ASHR_I64:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
@@ -2267,6 +2292,9 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       } else {
         Inst->setDesc(get(getVALUOp(*Inst)));
       }
+
+      removeSCCUses(*Inst);
+      Inst->addImplicitDefUseOperands(*MBB->getParent());
       break;
     case AMDGPU::S_LSHR_B64:
       if (ST.getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
@@ -2275,6 +2303,9 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       } else {
         Inst->setDesc(get(getVALUOp(*Inst)));
       }
+
+      removeSCCUses(*Inst);
+      Inst->addImplicitDefUseOperands(*MBB->getParent());
       break;
 
     case AMDGPU::S_SEXT_I32_I8:
@@ -2287,6 +2318,8 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       unsigned Size = (Opcode == AMDGPU::S_SEXT_I32_I8) ? 8 : 16;
       Inst->addOperand(MachineOperand::CreateImm(0));
       Inst->addOperand(MachineOperand::CreateImm(Size));
+      removeSCCUses(*Inst);
+      Inst->addImplicitDefUseOperands(*MBB->getParent());
       break;
     }
     case AMDGPU::S_BFE_I32:
@@ -2332,6 +2365,8 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       // The VALU version adds the second operand to the result, so insert an
       // extra 0 operand.
       Inst->addOperand(MachineOperand::CreateImm(0));
+      removeSCCUses(*Inst);
+      Inst->addImplicitDefUseOperands(*MBB->getParent());
       break;
     }
     case AMDGPU::S_BCNT1_I32_B64: {
@@ -2343,17 +2378,6 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     case AMDGPU::S_BFM_B64:
       llvm_unreachable("Moving this op to VALU not implemented");
     }
-
-    // Remove any references to SCC. Vector instructions can't read from it, and
-    // We're just about to add the implicit use / defs of VCC, and we don't want
-    // both.
-    for (unsigned i = Inst->getNumOperands() - 1; i > 0; --i) {
-      MachineOperand &Op = Inst->getOperand(i);
-      if (Op.isReg() && Op.getReg() == AMDGPU::SCC)
-        Inst->RemoveOperand(i);
-    }
-
-    Inst->addImplicitDefUseOperands(*Inst->getParent()->getParent());
 
     // Update the destination register class.
     const TargetRegisterClass *NewDstRC = getDestEquivalentVGPRClass(*Inst);
