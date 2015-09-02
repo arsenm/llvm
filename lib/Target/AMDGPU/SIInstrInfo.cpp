@@ -2508,7 +2508,7 @@ void SIInstrInfo::splitScalar64BitBCNT(SmallVectorImpl<MachineInstr *> &Worklist
 
   BuildMI(MBB, MII, DL, InstDesc, ResultReg)
     .addOperand(SrcRegSub1)
-    .addReg(MidReg);
+    .addReg(MidReg, RegState::Kill);
 
   MRI.replaceRegWith(Dest.getReg(), ResultReg);
 
