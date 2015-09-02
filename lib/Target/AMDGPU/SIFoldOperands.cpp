@@ -327,8 +327,12 @@ bool SIFoldOperands::runOnMachineFunction(MachineFunction &MF) {
       // FIXME: Fold operands with subregs.
       if (OpToFold.isReg() &&
           (!TargetRegisterInfo::isVirtualRegister(OpToFold.getReg()) ||
-           OpToFold.getSubReg()))
+           OpToFold.getSubReg())) {
+
+        if (OpToFold.getSubReg())
+          DEBUG(dbgs() << "Not folding with subregs: " << MI << '\n');
         continue;
+      }
 
 
       // We need mutate the operands of new mov instructions to add implicit
