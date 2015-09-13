@@ -68,6 +68,7 @@
 #include "AMDGPU.h"
 #include "AMDGPUSubtarget.h"
 #include "SIInstrInfo.h"
+#include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -93,6 +94,13 @@ private:
                                                  const MachineRegisterInfo &MRI,
                                                  unsigned Reg,
                                                  unsigned SubReg) const;
+
+  void addToWorklistWithUsers(MachineInstr &MI,
+                              const SIInstrInfo *TII,
+                              MachineRegisterInfo &MRI,
+                              std::vector<MachineInstr *> &Worklist,
+                              SmallPtrSetImpl<MachineInstr *> &Visited) const;
+
   bool isVGPRToSGPRCopy(const MachineInstr &Copy, const SIRegisterInfo *TRI,
                         const MachineRegisterInfo &MRI) const;
 
@@ -175,6 +183,68 @@ const TargetRegisterClass *SIFixSGPRCopies::inferRegClassFromDef(
                                    Def->getOperand(1).getSubReg());
 }
 
+// Add instruction and recursively add all user instructions to the worklist to
+// move to the VALU.
+void SIFixSGPRCopies::addToWorklistWithUsers(
+  MachineInstr &MI,
+  const SIInstrInfo *TII,
+  MachineRegisterInfo &MRI,
+  std::vector<MachineInstr *> &Worklist,
+  SmallPtrSetImpl<MachineInstr *> &Visited) const {
+  MachineOperand &Dst = MI.getOperand(0);
+
+  assert(Dst.isDef());
+
+  DEBUG(dbgs() << "Add to worklist: " << &MI << " : " << MI);
+
+  if (!Visited.insert(&MI).second)
+    return;
+
+  Worklist.push_back(&MI);
+
+  SmallVector<unsigned, 8> RegWorkList;
+  SmallSet<unsigned, 4> VisitedRegs;
+  RegWorkList.push_back(Dst.getReg());
+
+  while (!RegWorkList.empty()) {
+    unsigned Reg = RegWorkList.pop_back_val();
+
+#if 1
+    // XXX - Is this necessary?
+    if (!VisitedRegs.insert(Reg).second)
+      continue;
+#endif
+
+    for (MachineRegisterInfo::use_iterator I = MRI.use_begin(Reg),
+           E = MRI.use_end(); I != E; ++I) {
+      MachineInstr &UseMI = *I->getParent();
+
+      if (!TII->isSALUOpSupportedOnVALU(UseMI)) {
+        UseMI.dump();
+        llvm_unreachable("This happens");
+        continue;
+      }
+
+      if (!TII->canReadVGPR(UseMI, I.getOperandNo())) {
+        if (Visited.insert(&UseMI).second) {
+          DEBUG(dbgs() << "Adding use to worklist: " << &UseMI << " : " << UseMI);
+          Worklist.push_back(&UseMI);
+        } else {
+          DEBUG(dbgs() << "Already visited UseMI: " << &UseMI << " : " << UseMI);
+        }
+
+        MachineOperand &UseMIDef = UseMI.getOperand(0);
+        if (UseMIDef.isReg() && UseMIDef.isDef()) {
+          DEBUG(dbgs() << "Add Reg to worklist: " << PrintReg(UseMIDef.getReg(), nullptr, UseMIDef.getSubReg()) << '\n');
+          RegWorkList.push_back(UseMIDef.getReg());
+        } else {
+          DEBUG(dbgs() << "Skipping operand\n");
+        }
+      }
+    }
+  }
+}
+
 bool SIFixSGPRCopies::isVGPRToSGPRCopy(const MachineInstr &Copy,
                                       const SIRegisterInfo *TRI,
                                       const MachineRegisterInfo &MRI) const {
@@ -207,11 +277,21 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
       static_cast<const SIRegisterInfo *>(MF.getSubtarget().getRegisterInfo());
   const SIInstrInfo *TII =
       static_cast<const SIInstrInfo *>(MF.getSubtarget().getInstrInfo());
-  for (MachineFunction::iterator BI = MF.begin(), BE = MF.end();
-                                                  BI != BE; ++BI) {
 
-    MachineBasicBlock &MBB = *BI;
-    for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end();
+
+  SmallPtrSet<MachineInstr *, 32> Visited;
+  std::vector<MachineInstr *> Worklist;
+  Worklist.reserve(16 * MF.size());
+
+  /*
+  bool Repeat = true;
+
+repeat:
+  */
+  MachineBasicBlock *Entry = MF.begin();
+
+  for (MachineBasicBlock *MBB : depth_first(Entry)) {
+    for (MachineBasicBlock::iterator I = MBB->begin(), E = MBB->end();
                                                       I != E; ++I) {
       MachineInstr &MI = *I;
 
@@ -221,7 +301,7 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
       case AMDGPU::COPY: {
         if (isVGPRToSGPRCopy(MI, TRI, MRI)) {
           DEBUG(dbgs() << "Fixing VGPR -> SGPR copy: " << MI);
-          TII->moveToVALU(MI);
+          addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
         }
 
         break;
@@ -285,10 +365,10 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
         // is no chance for values to be over-written.
 
         bool HasBreakDef = false;
-        for (unsigned i = 1; i < MI.getNumOperands(); i+=2) {
+        for (unsigned i = 1, n = MI.getNumOperands(); i < n; i += 2) {
           unsigned Reg = MI.getOperand(i).getReg();
           if (TRI->hasVGPRs(MRI.getRegClass(Reg))) {
-            TII->moveToVALU(MI);
+            addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
             break;
           }
           MachineInstr *DefInstr = MRI.getUniqueVRegDef(Reg);
@@ -308,7 +388,7 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
         }
 
         if (!SGPRBranch && !HasBreakDef)
-          TII->moveToVALU(MI);
+          addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
         break;
       }
       case AMDGPU::REG_SEQUENCE: {
@@ -317,8 +397,7 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
           continue;
 
         DEBUG(dbgs() << "Fixing REG_SEQUENCE: " << MI);
-
-        TII->moveToVALU(MI);
+        addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
         break;
       }
       case AMDGPU::INSERT_SUBREG: {
@@ -329,13 +408,42 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
         if (TRI->isSGPRClass(DstRC) &&
             (TRI->hasVGPRs(Src0RC) || TRI->hasVGPRs(Src1RC))) {
           DEBUG(dbgs() << " Fixing INSERT_SUBREG: " << MI);
-          TII->moveToVALU(MI);
+          addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
         }
         break;
       }
       }
     }
   }
+
+
+  DEBUG(
+    dbgs() << "\n\n\nComplete worklist:\n";
+    for (MachineInstr *MI : Worklist) {
+      dbgs() << "Worklist " << MI << " : " << *MI;
+    }
+
+    dbgs() << "\n\n\n";
+  );
+
+  for (MachineInstr *MI : Worklist) {
+    DEBUG(dbgs() << "Moving " << MI << " : " << *MI);
+
+
+    TII->moveToVALU(*MI);
+  }
+
+/*
+  if (Repeat) {
+    Repeat = false;
+    goto repeat;
+  }
+*/
+
+  DEBUG(
+    dbgs() << "Moved VALU uses:\n";
+    MF.dump();
+  );
 
   return true;
 }

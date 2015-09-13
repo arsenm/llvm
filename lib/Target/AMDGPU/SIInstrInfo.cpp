@@ -26,6 +26,7 @@
 #include "llvm/Support/Debug.h"
 
 using namespace llvm;
+#define DEBUG_TYPE "siinstrinfo"
 
 SIInstrInfo::SIInstrInfo(const AMDGPUSubtarget &st)
     : AMDGPUInstrInfo(st), RI() {}
@@ -1500,7 +1501,13 @@ unsigned SIInstrInfo::getVALUOp(const MachineInstr &MI) {
 }
 
 bool SIInstrInfo::isSALUOpSupportedOnVALU(const MachineInstr &MI) const {
-  return getVALUOp(MI) != AMDGPU::INSTRUCTION_LIST_END;
+  switch (MI.getOpcode()) {
+  case AMDGPU::S_AND_B64:
+    return true;
+
+  default:
+    return getVALUOp(MI) != AMDGPU::INSTRUCTION_LIST_END;
+  }
 }
 
 const TargetRegisterClass *SIInstrInfo::getOpRegClass(const MachineInstr &MI,
@@ -1570,11 +1577,15 @@ unsigned SIInstrInfo::buildExtractSubReg(MachineBasicBlock::iterator MI,
   DebugLoc DL = MI->getDebugLoc();
   unsigned SubReg = MRI.createVirtualRegister(SubRC);
 
+#if 1
   if (SuperReg.getSubReg() == AMDGPU::NoSubRegister) {
-    BuildMI(*MBB, MI, DL, get(TargetOpcode::COPY), SubReg)
+    auto Copy = BuildMI(*MBB, MI, DL, get(TargetOpcode::COPY), SubReg)
       .addReg(SuperReg.getReg(), 0, SubIdx);
+
+    DEBUG(dbgs() << "Create simple extract copy: " << *Copy);
     return SubReg;
   }
+#endif
 
   // Just in case the super register is itself a sub-register, copy it to a new
   // value so we don't need to worry about merging its subreg index with the
@@ -1582,12 +1593,15 @@ unsigned SIInstrInfo::buildExtractSubReg(MachineBasicBlock::iterator MI,
   // eliminate this extra copy.
   unsigned NewSuperReg = MRI.createVirtualRegister(SuperRC);
 
-  BuildMI(*MBB, MI, DL, get(TargetOpcode::COPY), NewSuperReg)
+  auto Copy0 = BuildMI(*MBB, MI, DL, get(TargetOpcode::COPY), NewSuperReg)
     .addReg(SuperReg.getReg(), 0, SuperReg.getSubReg());
 
-  BuildMI(*MBB, MI, DL, get(TargetOpcode::COPY), SubReg)
+  DEBUG(dbgs() << "Created extract copy0: " << *Copy0);
+
+  auto Copy1 = BuildMI(*MBB, MI, DL, get(TargetOpcode::COPY), SubReg)
     .addReg(NewSuperReg, 0, SubIdx);
 
+  DEBUG(dbgs() << "Created extract copy1: " << *Copy1);
   return SubReg;
 }
 
@@ -2151,7 +2165,7 @@ void SIInstrInfo::moveSMRDToVALU(MachineInstr *MI,
       MI->eraseFromParent();
 
       legalizeOperands(NewInst);
-      addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
+      //addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
       break;
     }
     case 32: {
@@ -2198,6 +2212,10 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
 
     unsigned Opcode = Inst->getOpcode();
 
+    if (Opcode == AMDGPU::COPY) {
+      dbgs() << "Moving copy: " << *Inst << '\n';
+    }
+
     // Handle some special cases
     switch (Opcode) {
     default: {
@@ -2219,6 +2237,7 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       Inst->setDesc(NewDesc);
       removeSCCUses(*Inst);
       Inst->addImplicitDefUseOperands(*MBB->getParent());
+
       break;
     }
     case AMDGPU::S_AND_B64:
@@ -2350,7 +2369,7 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
       MRI.replaceRegWith(DstReg, NewDstReg);
 
       legalizeOperands(NewInst);
-      addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
+      //addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
       continue;
     }
     case AMDGPU::S_BFE_I64: {
@@ -2391,7 +2410,11 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     // Legalize the operands
     legalizeOperands(Inst);
 
-    addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
+    if (Opcode == AMDGPU::COPY) {
+      dbgs() << "Moved copy: " << *Inst << '\n';
+    }
+
+    //addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
   }
 }
 
@@ -2460,7 +2483,7 @@ void SIInstrInfo::splitScalar64BitUnaryOp(
   // will support any kind of input.
 
   // Move all users of this moved value.
-  addUsersToMoveToVALUWorklist(FullDestReg, MRI, Worklist);
+  //addUsersToMoveToVALUWorklist(FullDestReg, MRI, Worklist);
 }
 
 void SIInstrInfo::splitScalar64BitBinaryOp(
@@ -2528,7 +2551,7 @@ void SIInstrInfo::splitScalar64BitBinaryOp(
   legalizeOperands(HiHalf);
 
   // Move all users of this moved vlaue.
-  addUsersToMoveToVALUWorklist(FullDestReg, MRI, Worklist);
+//  addUsersToMoveToVALUWorklist(FullDestReg, MRI, Worklist);
 }
 
 void SIInstrInfo::splitScalar64BitBCNT(SmallVectorImpl<MachineInstr *> &Worklist,
@@ -2569,7 +2592,7 @@ void SIInstrInfo::splitScalar64BitBCNT(SmallVectorImpl<MachineInstr *> &Worklist
 
   // We don't need to legalize operands here. src0 for etiher instruction can be
   // an SGPR, and the second input is unused or determined here.
-  addUsersToMoveToVALUWorklist(ResultReg, MRI, Worklist);
+  //addUsersToMoveToVALUWorklist(ResultReg, MRI, Worklist);
 }
 
 void SIInstrInfo::splitScalar64BitBFE(SmallVectorImpl<MachineInstr *> &Worklist,
@@ -2613,7 +2636,7 @@ void SIInstrInfo::splitScalar64BitBFE(SmallVectorImpl<MachineInstr *> &Worklist,
       .addImm(AMDGPU::sub1);
 
     MRI.replaceRegWith(Dest.getReg(), ResultReg);
-    addUsersToMoveToVALUWorklist(ResultReg, MRI, Worklist);
+    //addUsersToMoveToVALUWorklist(ResultReg, MRI, Worklist);
     return;
   }
 
@@ -2632,7 +2655,7 @@ void SIInstrInfo::splitScalar64BitBFE(SmallVectorImpl<MachineInstr *> &Worklist,
     .addImm(AMDGPU::sub1);
 
   MRI.replaceRegWith(Dest.getReg(), ResultReg);
-  addUsersToMoveToVALUWorklist(ResultReg, MRI, Worklist);
+  //addUsersToMoveToVALUWorklist(ResultReg, MRI, Worklist);
 }
 
 void SIInstrInfo::addUsersToMoveToVALUWorklist(
