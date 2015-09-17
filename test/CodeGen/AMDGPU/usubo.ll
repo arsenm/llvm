@@ -34,7 +34,7 @@ define void @s_usubo_i32(i32 addrspace(1)* %out, i1 addrspace(1)* %carryout, i32
 }
 
 ; FUNC-LABEL: {{^}}v_usubo_i32:
-; SI: v_subrev_i32_e32
+; SI: v_sub_i32_e32
 
 ; EG-DAG: SUBB_UINT
 ; EG-DAG: SUB_INT

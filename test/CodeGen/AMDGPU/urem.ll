@@ -21,7 +21,7 @@ define void @test_urem_i32(i32 addrspace(1)* %out, i32 addrspace(1)* %in) {
 ; FUNC-LABEL: {{^}}test_urem_i32_7:
 ; SI: v_mov_b32_e32 [[MAGIC:v[0-9]+]], 0x24924925
 ; SI: v_mul_hi_u32 {{v[0-9]+}}, [[MAGIC]]
-; SI: v_subrev_i32
+; SI: v_sub_i32_e32
 ; SI: v_mul_lo_i32
 ; SI: v_sub_i32
 ; SI: buffer_store_dword

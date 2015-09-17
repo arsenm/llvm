@@ -5,7 +5,7 @@
 declare i32 @llvm.r600.read.tidig.x() #0
 
 ; FUNC-LABEL: {{^}}lshr_i32:
-; SI: v_lshrrev_b32_e32 v{{[0-9]+, v[0-9]+, v[0-9]+}}
+; SI: v_lshr_b32_e32 v{{[0-9]+, v[0-9]+, v[0-9]+}}
 ; VI: v_lshrrev_b32_e32 v{{[0-9]+, v[0-9]+, v[0-9]+}}
 ; EG: LSHR {{\*? *}}T{{[0-9]+\.[XYZW], T[0-9]+\.[XYZW], T[0-9]+\.[XYZW]}}
 define void @lshr_i32(i32 addrspace(1)* %out, i32 addrspace(1)* %in) {
