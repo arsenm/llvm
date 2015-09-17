@@ -226,7 +226,7 @@ entry:
 
 ; GCN-LABEL: {{^}}smrd_valu2_salu_user:
 ; GCN: buffer_load_dword [[MOVED:v[0-9]+]], v{{\[[0-9]+:[0-9]+\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0 addr64 offset:16{{$}}
-; GCN: v_add_i32_e32 [[ADD:v[0-9]+]], s{{[0-9]+}}, [[MOVED]]
+; GCN: v_add_i32_e32 [[ADD:v[0-9]+]], vcc, s{{[0-9]+}}, [[MOVED]]
 ; GCN: buffer_store_dword [[ADD]]
 define void @smrd_valu2_salu_user(i32 addrspace(1)* %out, [8 x i32] addrspace(2)* %in, i32 %a) #1 {
 entry:
