@@ -76,6 +76,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 
+#include <deque>
+
 using namespace llvm;
 
 #define DEBUG_TYPE "sgpr-copies"
@@ -95,11 +97,11 @@ private:
                                                  unsigned Reg,
                                                  unsigned SubReg) const;
 
-  void addToWorklistWithUsers(MachineInstr &MI,
-                              const SIInstrInfo *TII,
-                              MachineRegisterInfo &MRI,
-                              std::vector<MachineInstr *> &Worklist,
-                              SmallPtrSetImpl<MachineInstr *> &Visited) const;
+  void addUsersToQueue(MachineInstr &MI,
+                       const SIInstrInfo *TII,
+                       MachineRegisterInfo &MRI,
+                       std::deque<MachineInstr *> &Queue,
+                       SmallPtrSetImpl<MachineInstr *> &Visited) const;
 
   bool isVGPRToSGPRCopy(const MachineInstr &Copy, const SIRegisterInfo *TRI,
                         const MachineRegisterInfo &MRI) const;
@@ -185,30 +187,28 @@ const TargetRegisterClass *SIFixSGPRCopies::inferRegClassFromDef(
 
 // Add instruction and recursively add all user instructions to the worklist to
 // move to the VALU.
-void SIFixSGPRCopies::addToWorklistWithUsers(
+void SIFixSGPRCopies::addUsersToQueue(
   MachineInstr &MI,
   const SIInstrInfo *TII,
   MachineRegisterInfo &MRI,
-  std::vector<MachineInstr *> &Worklist,
+  std::deque<MachineInstr *> &Queue,
   SmallPtrSetImpl<MachineInstr *> &Visited) const {
   MachineOperand &Dst = MI.getOperand(0);
 
-  assert(Dst.isDef());
+#if 1
+  if (!Dst.isDef())
+    return;
+#endif
 
   DEBUG(dbgs() << "Add to worklist: " << &MI << " : " << MI);
 
-  if (!Visited.insert(&MI).second)
-    return;
-
-  Worklist.push_back(&MI);
-
-  SmallVector<unsigned, 8> RegWorkList;
+  std::deque<unsigned> RegWorkList;
   SmallSet<unsigned, 4> VisitedRegs;
   RegWorkList.push_back(Dst.getReg());
 
   while (!RegWorkList.empty()) {
-    unsigned Reg = RegWorkList.pop_back_val();
-
+    unsigned Reg = RegWorkList.front();
+    RegWorkList.pop_front();
 #if 1
     // XXX - Is this necessary?
     if (!VisitedRegs.insert(Reg).second)
@@ -219,19 +219,22 @@ void SIFixSGPRCopies::addToWorklistWithUsers(
            E = MRI.use_end(); I != E; ++I) {
       MachineInstr &UseMI = *I->getParent();
 
+#if 0
       if (!TII->isSALUOpSupportedOnVALU(UseMI)) {
         UseMI.dump();
         llvm_unreachable("This happens");
         continue;
       }
+#endif
 
       if (!TII->canReadVGPR(UseMI, I.getOperandNo())) {
-        if (Visited.insert(&UseMI).second) {
-          DEBUG(dbgs() << "Adding use to worklist: " << &UseMI << " : " << UseMI);
-          Worklist.push_back(&UseMI);
-        } else {
+        if (!Visited.insert(&UseMI).second) {
           DEBUG(dbgs() << "Already visited UseMI: " << &UseMI << " : " << UseMI);
+          continue;
         }
+
+        DEBUG(dbgs() << "Adding use to worklist: " << &UseMI << " : " << UseMI);
+        Queue.push_back(&UseMI);
 
         MachineOperand &UseMIDef = UseMI.getOperand(0);
         if (UseMIDef.isReg() && UseMIDef.isDef()) {
@@ -240,6 +243,8 @@ void SIFixSGPRCopies::addToWorklistWithUsers(
         } else {
           DEBUG(dbgs() << "Skipping operand\n");
         }
+      } else {
+        DEBUG(dbgs() << "Use " << I.getOperandNo() << " cannot read VGPR: " << &UseMI << " : " << UseMI);
       }
     }
   }
@@ -280,14 +285,18 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
 
 
   SmallPtrSet<MachineInstr *, 32> Visited;
-  std::vector<MachineInstr *> Worklist;
-  Worklist.reserve(16 * MF.size());
+//  std::vector<MachineInstr *> Worklist;
+//  Worklist.reserve(16 * MF.size());
 
-  /*
+  std::deque<MachineInstr *> Queue;
+
+/*
   bool Repeat = true;
 
 repeat:
-  */
+*/
+
+
   MachineBasicBlock *Entry = MF.begin();
 
   for (MachineBasicBlock *MBB : depth_first(Entry)) {
@@ -301,12 +310,22 @@ repeat:
       case AMDGPU::COPY: {
         if (isVGPRToSGPRCopy(MI, TRI, MRI)) {
           DEBUG(dbgs() << "Fixing VGPR -> SGPR copy: " << MI);
-          addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+          //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+
+          MachineOperand &Dst = MI.getOperand(0);
+
+          if (Visited.insert(&MI).second) {
+            const TargetRegisterClass *RC =
+              TRI->getEquivalentVGPRClass(MRI.getRegClass(Dst.getReg()));
+            MRI.constrainRegClass(Dst.getReg(), RC);
+            Queue.push_back(&MI);
+          }
         }
 
         break;
       }
       case AMDGPU::PHI: {
+#if 1
         DEBUG(dbgs() << "Fixing PHI: " << MI);
 
         for (unsigned i = 1; i < MI.getNumOperands(); i += 2) {
@@ -326,6 +345,7 @@ repeat:
 
         if (!TRI->isSGPRClass(MRI.getRegClass(Reg)))
           break;
+#endif
 
         // If a PHI node defines an SGPR and any of its operands are VGPRs,
         // then we need to move it to the VALU.
@@ -368,7 +388,13 @@ repeat:
         for (unsigned i = 1, n = MI.getNumOperands(); i < n; i += 2) {
           unsigned Reg = MI.getOperand(i).getReg();
           if (TRI->hasVGPRs(MRI.getRegClass(Reg))) {
-            addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+            //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+
+            if (Visited.insert(&MI).second) {
+              DEBUG(dbgs() << "Inserting phi into worklist due to operand: " << i
+                    << " : " << MI);
+              Queue.push_back(&MI);
+            }
             break;
           }
           MachineInstr *DefInstr = MRI.getUniqueVRegDef(Reg);
@@ -387,8 +413,13 @@ repeat:
           }
         }
 
-        if (!SGPRBranch && !HasBreakDef)
-          addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+        if (!SGPRBranch && !HasBreakDef) {
+          if (Visited.insert(&MI).second) {
+            DEBUG(dbgs() << "Inserting phi into worklist because of this shit: " << MI);
+            Queue.push_back(&MI);
+          }
+        }
+          //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
         break;
       }
       case AMDGPU::REG_SEQUENCE: {
@@ -397,7 +428,11 @@ repeat:
           continue;
 
         DEBUG(dbgs() << "Fixing REG_SEQUENCE: " << MI);
-        addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+        //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+
+        if (Visited.insert(&MI).second)
+          Queue.push_back(&MI);
+
         break;
       }
       case AMDGPU::INSERT_SUBREG: {
@@ -408,7 +443,10 @@ repeat:
         if (TRI->isSGPRClass(DstRC) &&
             (TRI->hasVGPRs(Src0RC) || TRI->hasVGPRs(Src1RC))) {
           DEBUG(dbgs() << " Fixing INSERT_SUBREG: " << MI);
-          addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+          //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+
+          if (Visited.insert(&MI).second)
+            Queue.push_back(&MI);
         }
         break;
       }
@@ -418,27 +456,41 @@ repeat:
 
 
   DEBUG(
-    dbgs() << "\n\n\nComplete worklist:\n";
-    for (MachineInstr *MI : Worklist) {
-      dbgs() << "Worklist " << MI << " : " << *MI;
+    dbgs() << "\n\nComplete Queue:\n";
+    for (MachineInstr *MI : Queue) {
+      dbgs() << *MI;
     }
-
     dbgs() << "\n\n\n";
   );
 
-  for (MachineInstr *MI : Worklist) {
-    DEBUG(dbgs() << "Moving " << MI << " : " << *MI);
 
-
+  DEBUG(dbgs() << "Perform moves:\n");
+  while (!Queue.empty()) {
+    MachineInstr *MI = Queue.front();
+    Queue.pop_front();
+    addUsersToQueue(*MI, TII, MRI, Queue, Visited);
     TII->moveToVALU(*MI);
   }
 
+  // for (MachineInstr *MI : Worklist) {
+  //   DEBUG(dbgs() << "Moving " << MI << " : " << *MI);
+
+
+  //   TII->moveToVALU(*MI);
+  // }
+
+
 /*
   if (Repeat) {
+    DEBUG(dbgs() << "\n\n*******Repeating*******\n\n\n");
+    Visited.clear();
+    Queue.clear();
     Repeat = false;
     goto repeat;
   }
 */
+
+
 
   DEBUG(
     dbgs() << "Moved VALU uses:\n";

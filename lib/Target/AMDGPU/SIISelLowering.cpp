@@ -2167,6 +2167,10 @@ void SITargetLowering::AdjustInstrPostInstrSelection(MachineInstr *MI,
     return;
   }
 
+  if (MI->getOpcode() == AMDGPU::PHI) {
+    llvm_unreachable("This happens");
+  }
+
   // Replace unused atomics with the no return version.
   int NoRetAtomicOp = AMDGPU::getAtomicNoRetOp(MI->getOpcode());
   if (NoRetAtomicOp != -1) {

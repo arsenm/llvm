@@ -1503,6 +1503,11 @@ unsigned SIInstrInfo::getVALUOp(const MachineInstr &MI) {
 bool SIInstrInfo::isSALUOpSupportedOnVALU(const MachineInstr &MI) const {
   switch (MI.getOpcode()) {
   case AMDGPU::S_AND_B64:
+  case AMDGPU::S_OR_B64:
+  case AMDGPU::S_XOR_B64:
+  case AMDGPU::S_NOT_B64:
+  case AMDGPU::S_BFE_I64:
+  case AMDGPU::S_BCNT1_I32_B64:
     return true;
 
   default:
@@ -2213,7 +2218,7 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     unsigned Opcode = Inst->getOpcode();
 
     if (Opcode == AMDGPU::COPY) {
-      dbgs() << "Moving copy: " << *Inst << '\n';
+      DEBUG(dbgs() << "Moving copy: " << *Inst << '\n');
     }
 
     // Handle some special cases
@@ -2411,7 +2416,7 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     legalizeOperands(Inst);
 
     if (Opcode == AMDGPU::COPY) {
-      dbgs() << "Moved copy: " << *Inst << '\n';
+      DEBUG(dbgs() << "Moved copy: " << *Inst << '\n');
     }
 
     //addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
