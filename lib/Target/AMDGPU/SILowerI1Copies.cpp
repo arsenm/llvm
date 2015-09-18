@@ -76,6 +76,8 @@ bool SILowerI1Copies::runOnMachineFunction(MachineFunction &MF) {
   const TargetRegisterInfo *TRI = MF.getSubtarget().getRegisterInfo();
   std::vector<unsigned> I1Defs;
 
+  bool Changed = false;
+
   for (MachineFunction::iterator BI = MF.begin(), BE = MF.end();
                                                   BI != BE; ++BI) {
 
@@ -88,8 +90,11 @@ bool SILowerI1Copies::runOnMachineFunction(MachineFunction &MF) {
       if (MI.getOpcode() == AMDGPU::IMPLICIT_DEF) {
         unsigned Reg = MI.getOperand(0).getReg();
         const TargetRegisterClass *RC = MRI.getRegClass(Reg);
-        if (RC == &AMDGPU::VReg_1RegClass)
+        if (RC == &AMDGPU::VReg_1RegClass) {
           MRI.setRegClass(Reg, &AMDGPU::SReg_64RegClass);
+          Changed = true;
+        }
+
         continue;
       }
 
@@ -123,6 +128,7 @@ bool SILowerI1Copies::runOnMachineFunction(MachineFunction &MF) {
               .addOperand(Dst)
               .addImm(Val);
             MI.eraseFromParent();
+            Changed = true;
             continue;
           }
         }
@@ -133,6 +139,7 @@ bool SILowerI1Copies::runOnMachineFunction(MachineFunction &MF) {
           .addImm(-1)
           .addOperand(Src);
         MI.eraseFromParent();
+        Changed = true;
       } else if (SrcRC == &AMDGPU::VReg_1RegClass &&
                  TRI->getCommonSubClass(DstRC, &AMDGPU::SGPR_64RegClass)) {
         BuildMI(MBB, &MI, MI.getDebugLoc(), TII->get(AMDGPU::V_CMP_NE_I32_e64))
@@ -140,12 +147,16 @@ bool SILowerI1Copies::runOnMachineFunction(MachineFunction &MF) {
           .addOperand(Src)
           .addImm(0);
         MI.eraseFromParent();
+        Changed = true;
       }
     }
   }
 
+  if (!I1Defs.empty())
+    Changed = true;
+
   for (unsigned Reg : I1Defs)
     MRI.setRegClass(Reg, &AMDGPU::VGPR_32RegClass);
 
-  return false;
+  return Changed;
 }
