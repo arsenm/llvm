@@ -100,7 +100,6 @@ private:
   void addUsersToQueue(MachineInstr &MI,
                        const SIInstrInfo *TII,
                        MachineRegisterInfo &MRI,
-                       std::deque<MachineInstr *> &Queue,
                        SmallPtrSetImpl<MachineInstr *> &Visited) const;
 
   bool isVGPRToSGPRCopy(const MachineInstr &Copy, const SIRegisterInfo *TRI,
@@ -191,7 +190,6 @@ void SIFixSGPRCopies::addUsersToQueue(
   MachineInstr &MI,
   const SIInstrInfo *TII,
   MachineRegisterInfo &MRI,
-  std::deque<MachineInstr *> &Queue,
   SmallPtrSetImpl<MachineInstr *> &Visited) const {
   MachineOperand &Dst = MI.getOperand(0);
 
@@ -202,13 +200,12 @@ void SIFixSGPRCopies::addUsersToQueue(
 
   DEBUG(dbgs() << "Add to worklist: " << &MI << " : " << MI);
 
-  std::deque<unsigned> RegWorkList;
+  SmallVector<unsigned, 8> RegWorkList;
   SmallSet<unsigned, 4> VisitedRegs;
   RegWorkList.push_back(Dst.getReg());
 
   while (!RegWorkList.empty()) {
-    unsigned Reg = RegWorkList.front();
-    RegWorkList.pop_front();
+    unsigned Reg = RegWorkList.pop_back_val();
 #if 1
     // XXX - Is this necessary?
     if (!VisitedRegs.insert(Reg).second)
@@ -234,7 +231,6 @@ void SIFixSGPRCopies::addUsersToQueue(
         }
 
         DEBUG(dbgs() << "Adding use to worklist: " << &UseMI << " : " << UseMI);
-        Queue.push_back(&UseMI);
 
         MachineOperand &UseMIDef = UseMI.getOperand(0);
         if (UseMIDef.isReg() && UseMIDef.isDef()) {
@@ -286,23 +282,35 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
 
   SmallPtrSet<MachineInstr *, 32> Visited;
 //  std::vector<MachineInstr *> Worklist;
-//  Worklist.reserve(16 * MF.size());
 
-  std::deque<MachineInstr *> Queue;
+  std::vector<MachineInstr *> Queue;
+  Queue.reserve(16 * MF.size());
 
-/*
+
+
   bool Repeat = true;
 
 repeat:
-*/
 
+
+  // Collect all of the PHIs which we encounter. We can't fix all posssible
+  // sources of divergence through a PHI in a single pass over the
+  // function. Once VALUness has propagated to all PHI inputs, we may need to
+  // follow back through users of an SGPR def PHI with a VGPR source.
+  SmallVector<MachineInstr *, 16> PHIs;
 
   MachineBasicBlock *Entry = MF.begin();
 
+  int32_t InstIndex = 0;
+
   for (MachineBasicBlock *MBB : depth_first(Entry)) {
     for (MachineBasicBlock::iterator I = MBB->begin(), E = MBB->end();
-                                                      I != E; ++I) {
+         I != E; ++I, ++InstIndex) {
       MachineInstr &MI = *I;
+      if (Visited.count(&MI)) {
+        Queue.push_back(&MI);
+        continue;
+      }
 
       switch (MI.getOpcode()) {
       default:
@@ -312,21 +320,22 @@ repeat:
           DEBUG(dbgs() << "Fixing VGPR -> SGPR copy: " << MI);
           //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
 
-          MachineOperand &Dst = MI.getOperand(0);
-
-          if (Visited.insert(&MI).second) {
-            const TargetRegisterClass *RC =
-              TRI->getEquivalentVGPRClass(MRI.getRegClass(Dst.getReg()));
-            MRI.constrainRegClass(Dst.getReg(), RC);
-            Queue.push_back(&MI);
-          }
-        }
+//        if (Visited.insert(&MI).second) {
+          const TargetRegisterClass *RC =
+            TRI->getEquivalentVGPRClass(MRI.getRegClass(Dst.getReg()));
+          //MRI.constrainRegClass(Dst.getReg(), RC);
+          Queue.push_back(&MI);
+          addUsersToQueue(MI, TII, MRI, Visited);
+//        }
+      }
 
         break;
       }
       case AMDGPU::PHI: {
 #if 1
         DEBUG(dbgs() << "Fixing PHI: " << MI);
+        PHIs.push_back(&MI);
+
 
         for (unsigned i = 1; i < MI.getNumOperands(); i += 2) {
           const MachineOperand &Op = MI.getOperand(i);
@@ -342,6 +351,11 @@ repeat:
         if (TRI->getCommonSubClass(RC, &AMDGPU::VGPR_32RegClass)) {
           MRI.constrainRegClass(Reg, &AMDGPU::VGPR_32RegClass);
         }
+
+        /*else if (TRI->getCommonSubClass(RC, &AMDGPU::VReg_64RegClass)) {
+          MRI.constrainRegClass(Reg, &AMDGPU::VReg_64RegClass);
+        }
+        */
 
         if (!TRI->isSGPRClass(MRI.getRegClass(Reg)))
           break;
@@ -390,11 +404,10 @@ repeat:
           if (TRI->hasVGPRs(MRI.getRegClass(Reg))) {
             //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
 
-            if (Visited.insert(&MI).second) {
-              DEBUG(dbgs() << "Inserting phi into worklist due to operand: " << i
-                    << " : " << MI);
-              Queue.push_back(&MI);
-            }
+            DEBUG(dbgs() << "Inserting phi into worklist due to operand: " << i
+                  << " : " << MI);
+            Queue.push_back(&MI);
+            addUsersToQueue(MI, TII, MRI, Visited);
             break;
           }
           MachineInstr *DefInstr = MRI.getUniqueVRegDef(Reg);
@@ -414,10 +427,9 @@ repeat:
         }
 
         if (!SGPRBranch && !HasBreakDef) {
-          if (Visited.insert(&MI).second) {
-            DEBUG(dbgs() << "Inserting phi into worklist because of this shit: " << MI);
-            Queue.push_back(&MI);
-          }
+          DEBUG(dbgs() << "Inserting phi into worklist because of this shit: " << MI);
+          Queue.push_back(&MI);
+          addUsersToQueue(MI, TII, MRI, Visited);
         }
           //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
         break;
@@ -430,8 +442,8 @@ repeat:
         DEBUG(dbgs() << "Fixing REG_SEQUENCE: " << MI);
         //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
 
-        if (Visited.insert(&MI).second)
-          Queue.push_back(&MI);
+        Queue.push_back(&MI);
+        addUsersToQueue(MI, TII, MRI, Visited);
 
         break;
       }
@@ -445,8 +457,8 @@ repeat:
           DEBUG(dbgs() << " Fixing INSERT_SUBREG: " << MI);
           //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
 
-          if (Visited.insert(&MI).second)
-            Queue.push_back(&MI);
+          Queue.push_back(&MI);
+          addUsersToQueue(MI, TII, MRI, Visited);
         }
         break;
       }
@@ -465,22 +477,65 @@ repeat:
 
 
   DEBUG(dbgs() << "Perform moves:\n");
-  while (!Queue.empty()) {
-    MachineInstr *MI = Queue.front();
-    Queue.pop_front();
-    addUsersToQueue(*MI, TII, MRI, Queue, Visited);
+  for (MachineInstr *MI : Queue) {
+
+
+    if (MI->getOpcode() == AMDGPU::PHI) {
+      DEBUG(dbgs() << "BEFORE PHI: " << *MI);
+    }
+
+    TII->moveToVALU(*MI);
+
+    if (MI->getOpcode() == AMDGPU::PHI) {
+      DEBUG(dbgs() << "AFTER PHI: " << *MI);
+    }
+  }
+
+#if 0
+
+  DEBUG(
+    dbgs() << "\n\nFixup PHIs:\n";
+    for (MachineInstr *MI : PHIs) {
+      dbgs() << *MI;
+    }
+    dbgs() << "\n\n";
+  );
+
+  Queue.clear();
+
+  // We almost certainly deleted and replaced instructions during the moveToVALU
+  // rewriting, so make sure we aren't checking these instructions.
+  Visited.clear();
+
+  for (MachineInstr *MI : PHIs) {
+    for (unsigned i = 1, n = MI->getNumOperands(); i < n; i += 2) {
+      unsigned Reg = MI->getOperand(i).getReg();
+      if (TRI->hasVGPRs(MRI.getRegClass(Reg))) {
+        //addToWorklistWithUsers(MI, TII, MRI, Worklist, Visited);
+
+        DEBUG(dbgs() << "Inserting phi into worklist due to operand: " << i
+              << " : " << *MI);
+        Queue.push_back(MI);
+        addUsersToQueue(*MI, TII, MRI, Visited);
+        break;
+      }
+    }
+  }
+
+  for (MachineInstr *MI : Queue) {
     TII->moveToVALU(*MI);
   }
 
-  // for (MachineInstr *MI : Worklist) {
-  //   DEBUG(dbgs() << "Moving " << MI << " : " << *MI);
 
+  DEBUG(
+    dbgs() << "\n\nFixed up PHIs:\n";
+    for (MachineInstr *MI : PHIs) {
+      dbgs() << *MI;
+    }
+    dbgs() << "\n\n";
+  );
+#endif
 
-  //   TII->moveToVALU(*MI);
-  // }
-
-
-/*
   if (Repeat) {
     DEBUG(dbgs() << "\n\n*******Repeating*******\n\n\n");
     Visited.clear();
@@ -488,7 +543,7 @@ repeat:
     Repeat = false;
     goto repeat;
   }
-*/
+
 
 
 
