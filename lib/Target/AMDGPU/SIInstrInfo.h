@@ -142,11 +142,6 @@ public:
                                       MachineBasicBlock::iterator &MI,
                                       LiveVariables *LV) const override;
 
-  bool AnalyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
-                     MachineBasicBlock *&FBB,
-                     SmallVectorImpl<MachineOperand> &Cond,
-                     bool AllowModify = false) const override;
-
   bool isSALU(uint16_t Opcode) const {
     return get(Opcode).TSFlags & SIInstrFlags::SALU;
   }

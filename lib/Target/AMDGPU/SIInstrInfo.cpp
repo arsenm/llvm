@@ -1170,66 +1170,6 @@ MachineInstr *SIInstrInfo::convertToThreeAddress(MachineFunction::iterator &MBB,
                  .addImm(0); // omod
 }
 
-bool SIInstrInfo::AnalyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
-                                MachineBasicBlock *&FBB,
-                                SmallVectorImpl<MachineOperand> &Cond,
-                                bool AllowModify) const {
-  MachineBasicBlock::instr_iterator First = MBB.getFirstInstrTerminator();
-  MachineBasicBlock::instr_iterator End = MBB.instr_end();
-  if (First == End)
-    return true;
-
-  MachineBasicBlock::instr_iterator Second = First;
-  ++Second;
-
-  if (Second != End) {
-    assert(Second->getOpcode() == AMDGPU::S_BRANCH);
-
-    if (First->getOpcode() == AMDGPU::SI_LOOP) {
-      MachineRegisterInfo &MRI = MBB.getParent()->getRegInfo();
-      //MachineOperand &CondReg = First->getOperand(0);
-
-
-      MachineInstr *BreakDef = MRI.getUniqueVRegDef(First->getOperand(0).getReg());
-      if (!BreakDef)
-        return true;
-
-      MachineOperand &CondReg = BreakDef->getOperand(1);
-
-      Cond.push_back(CondReg);
-
-      if (BreakDef->getOpcode() == AMDGPU::SI_IF_BREAK) {
-        TBB = First->getOperand(1).getMBB();
-        FBB = Second->getOperand(0).getMBB();
-
-        dbgs() << "Analyzed an if break\n";
-        return false;
-      } else if (BreakDef->getOpcode() == AMDGPU::SI_ELSE_BREAK) {
-        TBB = Second->getOperand(0).getMBB();
-        FBB = First->getOperand(1).getMBB();
-        dbgs() << "Analyzed an else break\n";
-        return false;
-      } else {
-        llvm_unreachable("unexpected loop condition");
-      }
-    }
-  }
-
-  if (First->getOpcode() == AMDGPU::SI_IF) {
-    Cond.push_back(First->getOperand(1));
-    TBB = First->getOperand(2).getMBB();
-
-    if (Second == End) {
-      FBB = nullptr;
-    } else {
-      assert(Second->getOpcode() == AMDGPU::S_BRANCH);
-      FBB = Second->getOperand(0).getMBB();
-    }
-  }
-
-  return true;
-}
-
 bool SIInstrInfo::isInlineConstant(const APInt &Imm) const {
   int64_t SVal = Imm.getSExtValue();
   if (SVal >= -16 && SVal <= 64)
