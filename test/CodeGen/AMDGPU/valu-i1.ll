@@ -105,6 +105,50 @@ exit:
   ret void
 }
 
+; The need to move the phi isn't clear until we've processed it's users.
+
+; SI-LABEL: {{^}}simple_test_v_increment_loop:
+; SI: v_cmp_ne_i32_e64 [[INITCOND:s\[[0-9]+:[0-9]+\]]], 0, s{{[0-9]+}}
+; SI: s_and_saveexec_b64 [[BR_SREG:s\[[0-9]+:[0-9]+\]]], [[INITCOND]]
+; SI: s_xor_b64 [[BR_SREG]], exec, [[BR_SREG]]
+; SI: s_cbranch_execz BB3_2
+
+; SI: ; BB#1:
+; SI: s_mov_b64 {{s\[[0-9]+:[0-9]+\]}}, 0{{$}}
+
+  ; SI: BB3_3:
+; SI: buffer_load_dword
+; SI: buffer_store_dword
+; SI: v_cmp_le_i32_e32 vcc,
+; SI: s_or_b64 [[OR_SREG:s\[[0-9]+:[0-9]+\]]]
+; SI: s_andn2_b64 exec, exec, [[OR_SREG]]
+; SI: s_cbranch_execnz BB3_3
+
+; SI: s_or_b64 exec, exec,
+
+; SI: BB3_2:
+; SI: s_or_b64 exec, exec,
+; SI: s_endpgm
+define void @simple_test_v_increment_loop(i32 addrspace(1)* %dst, i32 addrspace(1)* %src, i32 %arg, i32 %limit) #1 {
+entry:
+  %tid = call i32 @llvm.r600.read.tidig.x() nounwind readnone
+  %is.0 = icmp ne i32 %arg, 0
+  br i1 %is.0, label %loop, label %exit
+
+loop:
+  %i = phi i32 [0, %entry], [%i.inc, %loop]
+  %gep.src = getelementptr i32, i32 addrspace(1)* %src, i32 %i
+  %gep.dst = getelementptr i32, i32 addrspace(1)* %dst, i32 %i
+  %load = load i32, i32 addrspace(1)* %gep.src
+  store i32 %load, i32 addrspace(1)* %gep.dst
+  %i.inc = add nsw i32 %i, %tid
+  %cmp = icmp slt i32 %i.inc, %limit
+  br i1 %cmp, label %loop, label %exit
+
+exit:
+  ret void
+}
+
 ; SI-LABEL: @multi_vcond_loop
 
 ; Load loop limit from buffer
@@ -114,7 +158,7 @@ exit:
 ; SI: v_cmp_lt_i32_e32 vcc
 ; SI: s_and_saveexec_b64 [[OUTER_CMP_SREG:s\[[0-9]+:[0-9]+\]]], vcc
 ; SI: s_xor_b64 [[OUTER_CMP_SREG]], exec, [[OUTER_CMP_SREG]]
-; SI: s_cbranch_execz BB3_2
+; SI: s_cbranch_execz BB4_2
 
 ; Initialize inner condition to false
 ; SI: ; BB#1:
@@ -122,7 +166,7 @@ exit:
 ; SI: s_mov_b64 [[COND_STATE:s\[[0-9]+:[0-9]+\]]], [[ZERO]]
 
 ; Clear exec bits for workitems that load -1s
-; SI: BB3_3:
+; SI: BB4_3:
 ; SI: buffer_load_dword [[B:v[0-9]+]]
 ; SI: buffer_load_dword [[A:v[0-9]+]]
 ; SI-DAG: v_cmp_ne_i32_e64 [[NEG1_CHECK_0:s\[[0-9]+:[0-9]+\]]], -1, [[A]]
@@ -130,23 +174,23 @@ exit:
 ; SI: s_and_b64 [[ORNEG1:s\[[0-9]+:[0-9]+\]]], [[NEG1_CHECK_1]], [[NEG1_CHECK_0]]
 ; SI: s_and_saveexec_b64 [[ORNEG1]], [[ORNEG1]]
 ; SI: s_xor_b64 [[ORNEG1]], exec, [[ORNEG1]]
-; SI: s_cbranch_execz BB3_5
+; SI: s_cbranch_execz BB4_5
 
 ; SI: BB#4:
 ; SI: buffer_store_dword
 ; SI: v_cmp_ge_i64_e32 vcc
 ; SI: s_or_b64 [[COND_STATE]], vcc, [[COND_STATE]]
 
-; SI: BB3_5:
+; SI: BB4_5:
 ; SI: s_or_b64 exec, exec, [[ORNEG1]]
 ; SI: s_or_b64 [[COND_STATE]], [[ORNEG1]], [[COND_STATE]]
 ; SI: s_andn2_b64 exec, exec, [[COND_STATE]]
-; SI: s_cbranch_execnz BB3_3
+; SI: s_cbranch_execnz BB4_3
 
 ; SI: BB#6
 ; SI: s_or_b64 exec, exec, [[COND_STATE]]
 
-; SI: BB3_2:
+; SI: BB4_2:
 ; SI-NOT: [[COND_STATE]]
 ; SI: s_endpgm
 
