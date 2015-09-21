@@ -218,6 +218,14 @@ public:
     return get(Opcode).TSFlags & SIInstrFlags::VGPRSpill;
   }
 
+  // Test if the opcode does not need any processing by moveToVALU.
+  bool isTriviallyVALU(uint16_t Opcode) const {
+    const uint64_t AlwaysVALU = SIInstrFlags::VALU
+                              | SIInstrFlags::DS
+                              | SIInstrFlags::FLAT;
+    return (get(Opcode).TSFlags & AlwaysVALU) != 0;
+  }
+
   bool isInlineConstant(const APInt &Imm) const;
   bool isInlineConstant(const MachineOperand &MO, unsigned OpSize) const;
   bool isLiteralConstant(const MachineOperand &MO, unsigned OpSize) const;
