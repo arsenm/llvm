@@ -403,11 +403,6 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
       MachineInstr &MI = *I;
       ++I;
 
-      // Try to cut down on number of lookups for instructions which obviously
-      // won't be there, which should usually be most instructions.
-      if (TII->isTriviallyVALU(MI.getOpcode()))
-        continue;
-
       if (Visited.count(&MI)) {
         DEBUG(dbgs() << "Moving instructions to VALU: " << MI);
         TII->moveToVALU(MI);
