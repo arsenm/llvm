@@ -68,6 +68,7 @@
 #include "AMDGPU.h"
 #include "AMDGPUSubtarget.h"
 #include "SIInstrInfo.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -97,7 +98,7 @@ private:
   void addUsersToMoveSet(MachineInstr &MI,
                          const SIInstrInfo *TII,
                          MachineRegisterInfo &MRI,
-                         SmallPtrSetImpl<MachineInstr *> &Visited) const;
+                         DenseSet<MachineInstr *> &Visited) const;
 
   bool isVGPRToSGPRCopy(const MachineInstr &Copy, const SIRegisterInfo *TRI,
                         const MachineRegisterInfo &MRI) const;
@@ -193,7 +194,7 @@ void SIFixSGPRCopies::addUsersToMoveSet(
   MachineInstr &MI,
   const SIInstrInfo *TII,
   MachineRegisterInfo &MRI,
-  SmallPtrSetImpl<MachineInstr *> &Visited) const {
+  DenseSet<MachineInstr *> &Visited) const {
   MachineOperand &Dst = MI.getOperand(0);
 
   if (!Dst.isDef())
@@ -271,7 +272,7 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
   } while (!NodeWorkList.empty());
 
 
-  SmallPtrSet<MachineInstr *, 8> Visited;
+  DenseSet<MachineInstr *> Visited;
 
   // First, find the set of instructions which we need to move to the
   // VALU. Start at illegal copy sources and recursively collect users. Do this
