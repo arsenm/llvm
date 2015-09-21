@@ -200,7 +200,7 @@ void SIFixSGPRCopies::addUsersToMoveSet(
   SmallVector<unsigned, 8> RegWorkList;
   RegWorkList.push_back(Dst.getReg());
 
-  while (!RegWorkList.empty()) {
+  do {
     unsigned Reg = RegWorkList.pop_back_val();
 
     for (MachineRegisterInfo::use_iterator I = MRI.use_begin(Reg),
@@ -216,7 +216,7 @@ void SIFixSGPRCopies::addUsersToMoveSet(
           RegWorkList.push_back(UseMIDef.getReg());
       }
     }
-  }
+  } while (!RegWorkList.empty());
 }
 
 bool SIFixSGPRCopies::isVGPRToSGPRCopy(const MachineInstr &Copy,
