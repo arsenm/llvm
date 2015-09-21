@@ -111,6 +111,10 @@ public:
     return "SI Fix SGPR copies";
   }
 
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    MachineFunctionPass::getAnalysisUsage(AU);
+  }
 };
 
 } // End anonymous namespace
