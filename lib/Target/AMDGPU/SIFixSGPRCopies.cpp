@@ -282,30 +282,6 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
         break;
       }
       case AMDGPU::PHI: {
-        MachineOperand &Dst = MI.getOperand(0);
-        unsigned Reg = Dst.getReg();
-        unsigned SubReg = Dst.getSubReg();
-
-        // XXX - Why are any of these constrainRegClass necessary? No tests fail
-        // if I remove them.
-        for (unsigned i = 1; i < MI.getNumOperands(); i += 2) {
-          const MachineOperand &Op = MI.getOperand(i);
-          unsigned Reg = Op.getReg();
-          const TargetRegisterClass *RC
-            = inferRegClassFromDef(TRI, MRI, Reg, SubReg);
-
-          MRI.constrainRegClass(Op.getReg(), RC);
-        }
-
-        const TargetRegisterClass *RC
-          = inferRegClassFromUses(TRI, MRI, Reg, SubReg);
-        if (TRI->getCommonSubClass(RC, &AMDGPU::VGPR_32RegClass)) {
-          MRI.constrainRegClass(Reg, &AMDGPU::VGPR_32RegClass);
-        }
-
-        if (!TRI->isSGPRClass(MRI.getRegClass(Reg)))
-          break;
-
         // If a PHI node defines an SGPR and any of its operands are VGPRs,
         // then we need to move it to the VALU.
         //
