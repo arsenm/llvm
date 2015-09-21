@@ -68,7 +68,7 @@
 #include "AMDGPU.h"
 #include "AMDGPUSubtarget.h"
 #include "SIInstrInfo.h"
-#include "llvm/ADT/DepthFirstIterator.h"
+#include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -112,6 +112,8 @@ public:
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<MachineDominatorTree>();
+    AU.addPreserved<MachineDominatorTree>();
     AU.setPreservesCFG();
     MachineFunctionPass::getAnalysisUsage(AU);
   }
@@ -252,9 +254,24 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
   const SIInstrInfo *TII =
       static_cast<const SIInstrInfo *>(MF.getSubtarget().getInstrInfo());
 
-  SmallPtrSet<MachineInstr *, 8> Visited;
+  MachineDominatorTree *MDT = &getAnalysis<MachineDominatorTree>();
 
-  MachineBasicBlock *Entry = MF.begin();
+  SmallVector<MachineBasicBlock *, 32> BBWorkList;
+  SmallVector<MachineDomTreeNode *, 32> NodeWorkList;
+
+  NodeWorkList.push_back(MDT->getRootNode());
+
+  // Use the DominatorTree to figure out the order we should visit blocks.
+  do {
+    MachineDomTreeNode *Node = NodeWorkList.pop_back_val();
+    BBWorkList.push_back(Node->getBlock());
+
+    ArrayRef<MachineDomTreeNode *> Children = Node->getChildren();
+    NodeWorkList.append(Children.begin(), Children.end());
+  } while (!NodeWorkList.empty());
+
+
+  SmallPtrSet<MachineInstr *, 8> Visited;
 
   // First, find the set of instructions which we need to move to the
   // VALU. Start at illegal copy sources and recursively collect users. Do this
@@ -263,7 +280,7 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
   // We must order the instructions as a second iteration over the function in
   // case we discover we need to move a phi after its input operands may be
   // moved.
-  for (MachineBasicBlock *MBB : depth_first(Entry)) {
+  for (MachineBasicBlock *MBB : BBWorkList) {
     for (MachineInstr &MI : *MBB) {
       switch (MI.getOpcode()) {
       default:
@@ -401,7 +418,7 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
   // Do another depth first walk of the function to produce the worklist. We
   // need to ensure that all defs a use instruction that need to be moved are
   // moved before a use instruction, so we keep the worklist in program order.
-  for (MachineBasicBlock *MBB : depth_first(Entry)) {
+  for (MachineBasicBlock *MBB : BBWorkList) {
     for (MachineBasicBlock::iterator I = MBB->begin(), E = MBB->end();
          I != E; ) {
       MachineInstr &MI = *I;
