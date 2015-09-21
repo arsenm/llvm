@@ -194,15 +194,10 @@ void SIFixSGPRCopies::addUsersToMoveSet(
     return;
 
   SmallVector<unsigned, 8> RegWorkList;
-  SmallSet<unsigned, 4> VisitedRegs;
   RegWorkList.push_back(Dst.getReg());
 
   while (!RegWorkList.empty()) {
     unsigned Reg = RegWorkList.pop_back_val();
-
-    // XXX - Is this necessary?
-    if (!VisitedRegs.insert(Reg).second)
-      continue;
 
     for (MachineRegisterInfo::use_iterator I = MRI.use_begin(Reg),
            E = MRI.use_end(); I != E; ++I) {
