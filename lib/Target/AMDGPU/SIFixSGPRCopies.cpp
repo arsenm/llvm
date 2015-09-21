@@ -254,8 +254,6 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
       static_cast<const SIInstrInfo *>(MF.getSubtarget().getInstrInfo());
 
   SmallPtrSet<MachineInstr *, 8> Visited;
-  std::vector<MachineInstr *> Queue;
-  Queue.reserve(16 * MF.size());
 
   MachineBasicBlock *Entry = MF.begin();
 
@@ -405,20 +403,17 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
   // need to ensure that all defs a use instruction that need to be moved are
   // moved before a use instruction, so we keep the worklist in program order.
   for (MachineBasicBlock *MBB : depth_first(Entry)) {
-    for (MachineInstr &MI : *MBB) {
-      if (Visited.count(&MI))
-        Queue.push_back(&MI);
+    for (MachineBasicBlock::iterator I = MBB->begin(), E = MBB->end();
+         I != E; ) {
+      MachineInstr &MI = *I;
+      ++I;
+
+      if (Visited.count(&MI)) {
+        DEBUG(dbgs() << "Moving instructions to VALU: " << MI);
+        TII->moveToVALU(MI);
+      }
     }
   }
-
-  DEBUG(
-    dbgs() << "Moving instructions to VALU:\n";
-    for (MachineInstr *MI : Queue)
-      dbgs() << "    " << *MI;
-  );
-
-  for (MachineInstr *MI : Queue)
-    TII->moveToVALU(*MI);
 
   // It's highly unlikely this pass didn't make a change.
   return true;
