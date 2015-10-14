@@ -9,9 +9,26 @@
 ; EG: MEM_RAT_CACHELESS STORE_RAW [[VAL:T[0-9]+\.X]]
 ; EG: MOV [[VAL]], KC0[0].X
 
+; HSA: .amd_kernel_code_t
+
+; HSA: enable_sgpr_private_segment_buffer = 1
+; HSA: enable_sgpr_dispatch_ptr = 0
+; HSA: enable_sgpr_queue_ptr = 0
+; HSA: enable_sgpr_kernarg_segment_ptr = 1
+; HSA: enable_sgpr_dispatch_id = 0
+; HSA: enable_sgpr_flat_scratch_init = 0
+; HSA: enable_sgpr_private_segment_size = 0
+; HSA: enable_sgpr_grid_workgroup_count_x = 0
+; HSA: enable_sgpr_grid_workgroup_count_y = 0
+; HSA: enable_sgpr_grid_workgroup_count_z = 0
+
+; HSA: .end_amd_kernel_code_t
+
+
 ; GCN-NOHSA: s_load_dword [[VAL:s[0-9]+]], s[0:1], 0
 ; GCN-NOHSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], [[VAL]]
 ; GCN-NOHSA: buffer_store_dword [[VVAL]]
+
 define void @ngroups_x (i32 addrspace(1)* %out) {
 entry:
   %0 = call i32 @llvm.r600.read.ngroups.x() #0
@@ -98,10 +115,24 @@ entry:
 ; EG: MEM_RAT_CACHELESS STORE_RAW [[VAL:T[0-9]+\.X]]
 ; EG: MOV [[VAL]], KC0[1].Z
 
+; HSA: .amd_kernel_code_t
+; HSA: enable_sgpr_private_segment_buffer = 1
+; HSA: enable_sgpr_dispatch_ptr = 1
+; HSA: enable_sgpr_queue_ptr = 0
+; HSA: enable_sgpr_kernarg_segment_ptr = 1
+; HSA: enable_sgpr_dispatch_id = 0
+; HSA: enable_sgpr_flat_scratch_init = 0
+; HSA: enable_sgpr_private_segment_size = 0
+; HSA: enable_sgpr_grid_workgroup_count_x = 0
+; HSA: enable_sgpr_grid_workgroup_count_y = 0
+; HSA: enable_sgpr_grid_workgroup_count_z = 0
+; HSA: .end_amd_kernel_code_t
+
+
 ; SI-NOHSA: s_load_dword [[VAL:s[0-9]+]], s[0:1], 0x6
 ; VI-NOHSA: s_load_dword [[VAL:s[0-9]+]], s[0:1], 0x18
-; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[0:1], 0x1
-; VI-HSA: s_load_dword [[XY:s[0-9]+]], s[0:1], 0x4
+; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[4:5], 0x1
+; VI-HSA: s_load_dword [[XY:s[0-9]+]], s[4:5], 0x4
 ; HSA: s_and_b32 [[VAL:s[0-9]+]], [[XY]], 0xffff
 ; GCN: v_mov_b32_e32 [[VVAL:v[0-9]+]], [[VAL]]
 ; GCN: buffer_store_dword [[VVAL]]
@@ -116,10 +147,13 @@ entry:
 ; EG: MEM_RAT_CACHELESS STORE_RAW [[VAL:T[0-9]+\.X]]
 ; EG: MOV [[VAL]], KC0[1].W
 
+; HSA: enable_sgpr_private_segment_buffer = 1
+; HSA: enable_sgpr_dispatch_ptr = 1
+
 ; SI-NOHSA: s_load_dword [[VAL:s[0-9]+]], s[0:1], 0x7
 ; VI-NOHSA: s_load_dword [[VAL:s[0-9]+]], s[0:1], 0x1c
-; CI-HSA: s_load_dword [[XY_VAL:s[0-9]+]], s[0:1], 0x1
-; VI-HSA: s_load_dword [[XY_VAL:s[0-9]+]], s[0:1], 0x4
+; CI-HSA: s_load_dword [[XY_VAL:s[0-9]+]], s[4:5], 0x1
+; VI-HSA: s_load_dword [[XY_VAL:s[0-9]+]], s[4:5], 0x4
 ; HSA: s_lshr_b32 [[VAL:s[0-9]+]], [[XY_VAL]], 16
 ; GCN: v_mov_b32_e32 [[VVAL:v[0-9]+]], [[VAL]]
 ; GCN: buffer_store_dword [[VVAL]]
@@ -134,10 +168,13 @@ entry:
 ; EG: MEM_RAT_CACHELESS STORE_RAW [[VAL:T[0-9]+\.X]]
 ; EG: MOV [[VAL]], KC0[2].X
 
+; HSA: enable_sgpr_private_segment_buffer = 1
+; HSA: enable_sgpr_dispatch_ptr = 1
+
 ; SI-NOHSA: s_load_dword [[VAL:s[0-9]+]], s[0:1], 0x8
 ; VI-NOHSA: s_load_dword [[VAL:s[0-9]+]], s[0:1], 0x20
-; CI-HSA: s_load_dword [[VAL:s[0-9]+]], s[0:1], 0x2
-; VI-HSA: s_load_dword [[VAL:s[0-9]+]], s[0:1], 0x8
+; CI-HSA: s_load_dword [[VAL:s[0-9]+]], s[4:5], 0x2
+; VI-HSA: s_load_dword [[VAL:s[0-9]+]], s[4:5], 0x8
 ; GCN: v_mov_b32_e32 [[VVAL:v[0-9]+]], [[VAL]]
 ; GCN: buffer_store_dword [[VVAL]]
 define void @local_size_z (i32 addrspace(1)* %out) {
@@ -152,8 +189,8 @@ entry:
 ; SI-NOHSA-DAG: s_load_dword [[Y:s[0-9]+]], s[0:1], 0x7
 ; VI-NOHSA-DAG: s_load_dword [[X:s[0-9]+]], s[0:1], 0x18
 ; VI-NOHSA-DAG: s_load_dword [[Y:s[0-9]+]], s[0:1], 0x1c
-; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[0:1], 0x1
-; VI-HSA; s_load_dword [[XY:s[0-9]+]], s[0:1], 0x4
+; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[4:5], 0x1
+; VI-HSA; s_load_dword [[XY:s[0-9]+]], s[4:5], 0x4
 ; HSA-DAG: s_and_b32 [[X:s[0-9]+]], [[XY]], 0xffff
 ; HSA-DAG: s_lshr_b32 [[Y:s[0-9]+]], [[XY]], 16
 ; GCN-DAG: v_mov_b32_e32 [[VY:v[0-9]+]], [[Y]]
@@ -169,14 +206,17 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_size_xz:
+; HSA: enable_sgpr_private_segment_buffer = 1
+; HSA: enable_sgpr_dispatch_ptr = 1
+
 ; SI-NOHSA-DAG: s_load_dword [[X:s[0-9]+]], s[0:1], 0x6
 ; SI-NOHSA-DAG: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x8
 ; VI-NOHSA-DAG: s_load_dword [[X:s[0-9]+]], s[0:1], 0x18
 ; VI-NOHSA-DAG: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x20
-; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[0:1], 0x1
-; CI-HSA: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x2
-; VI-HSA: s_load_dword [[XY:s[0-9]+]], s[0:1], 0x4
-; VI-HSA: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x8
+; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[4:5], 0x1
+; CI-HSA: s_load_dword [[Z:s[0-9]+]], s[4:5], 0x2
+; VI-HSA: s_load_dword [[XY:s[0-9]+]], s[4:5], 0x4
+; VI-HSA: s_load_dword [[Z:s[0-9]+]], s[4:5], 0x8
 ; HSA-DAG: s_and_b32 [[X:s[0-9]+]], [[XY]], 0xffff
 ; GCN-DAG: v_mov_b32_e32 [[VZ:v[0-9]+]], [[Z]]
 ; GCN: v_mul_u32_u24_e32 [[VAL:v[0-9]+]], [[X]], [[VZ]]
@@ -191,14 +231,17 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_size_yz:
+; HSA: enable_sgpr_private_segment_buffer = 1
+; HSA: enable_sgpr_dispatch_ptr = 1
+
 ; SI-NOHSA-DAG: s_load_dword [[Y:s[0-9]+]], s[0:1], 0x7
 ; SI-NOHSA-DAG: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x8
 ; VI-NOHSA-DAG: s_load_dword [[Y:s[0-9]+]], s[0:1], 0x1c
 ; VI-NOHSA-DAG: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x20
-; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[0:1], 0x1
-; CI-HSA: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x2
-; VI-HSA: s_load_dword [[XY:s[0-9]+]], s[0:1], 0x4
-; VI-HSA: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x8
+; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[4:5], 0x1
+; CI-HSA: s_load_dword [[Z:s[0-9]+]], s[4:5], 0x2
+; VI-HSA: s_load_dword [[XY:s[0-9]+]], s[4:5], 0x4
+; VI-HSA: s_load_dword [[Z:s[0-9]+]], s[4:5], 0x8
 ; HSA-DAG: s_lshr_b32 [[Y:s[0-9]+]], [[XY]], 16
 ; GCN-DAG: v_mov_b32_e32 [[VZ:v[0-9]+]], [[Z]]
 ; GCN: v_mul_u32_u24_e32 [[VAL:v[0-9]+]], [[Y]], [[VZ]]
@@ -213,16 +256,19 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_size_xyz:
+; HSA: enable_sgpr_private_segment_buffer = 1
+; HSA: enable_sgpr_dispatch_ptr = 1
+
 ; SI-NOHSA-DAG: s_load_dword [[X:s[0-9]+]], s[0:1], 0x6
 ; SI-NOHSA-DAG: s_load_dword [[Y:s[0-9]+]], s[0:1], 0x7
 ; SI-NOHSA-DAG: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x8
 ; VI-NOHSA-DAG: s_load_dword [[X:s[0-9]+]], s[0:1], 0x18
 ; VI-NOHSA-DAG: s_load_dword [[Y:s[0-9]+]], s[0:1], 0x1c
 ; VI-NOHSA-DAG: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x20
-; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[0:1], 0x1
-; CI-HSA: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x2
-; VI-HSA: s_load_dword [[XY:s[0-9]+]], s[0:1], 0x4
-; VI-HSA: s_load_dword [[Z:s[0-9]+]], s[0:1], 0x8
+; CI-HSA: s_load_dword [[XY:s[0-9]+]], s[4:5], 0x1
+; CI-HSA: s_load_dword [[Z:s[0-9]+]], s[4:5], 0x2
+; VI-HSA: s_load_dword [[XY:s[0-9]+]], s[4:5], 0x4
+; VI-HSA: s_load_dword [[Z:s[0-9]+]], s[4:5], 0x8
 ; HSA-DAG: s_and_b32 [[X:s[0-9]+]], [[XY]], 0xffff
 ; HSA-DAG: s_lshr_b32 [[Y:s[0-9]+]], [[XY]], 16
 ; GCN-DAG: v_mov_b32_e32 [[VY:v[0-9]+]], [[Y]]
@@ -255,14 +301,33 @@ entry:
   ret void
 }
 
-; The tgid values are stored in sgprs offset by the number of user sgprs.
-; Currently we always use exactly 2 user sgprs for the pointer to the
-; kernel arguments, but this may change in the future.
+; The tgid values are stored in sgprs offset by the number of user
+; sgprs.
 
 ; FUNC-LABEL: {{^}}tgid_x:
-; GCN-NOHSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s4
-; GCN-NOHSA: buffer_store_dword [[VVAL]]
-define void @tgid_x (i32 addrspace(1)* %out) {
+; HSA: .amd_kernel_code_t
+; HSA: compute_pgm_rsrc2_user_sgpr = 6
+; HSA: compute_pgm_rsrc2_tgid_x_en = 1
+; HSA: compute_pgm_rsrc2_tgid_y_en = 0
+; HSA: compute_pgm_rsrc2_tgid_z_en = 0
+; HSA: compute_pgm_rsrc2_tg_size_en = 0
+; HSA: compute_pgm_rsrc2_tidig_comp_cnt = 0
+; HSA: enable_sgpr_grid_workgroup_count_x = 0
+; HSA: enable_sgpr_grid_workgroup_count_y = 0
+; HSA: enable_sgpr_grid_workgroup_count_z = 0
+; HSA: .end_amd_kernel_code_t
+
+; GCN-NOHSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s2{{$}}
+; HSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s6{{$}}
+; GCN: buffer_store_dword [[VVAL]]
+
+; HSA: COMPUTE_PGM_RSRC2:USER_SGPR: 6
+; GCN-NOHSA: COMPUTE_PGM_RSRC2:USER_SGPR: 2
+; GCN: COMPUTE_PGM_RSRC2:TGID_X_EN: 1
+; GCN: COMPUTE_PGM_RSRC2:TGID_Y_EN: 0
+; GCN: COMPUTE_PGM_RSRC2:TGID_Z_EN: 0
+; GCN: COMPUTE_PGM_RSRC2:TIDIG_COMP_CNT: 0
+define void @tgid_x(i32 addrspace(1)* %out) {
 entry:
   %0 = call i32 @llvm.r600.read.tgid.x() #0
   store i32 %0, i32 addrspace(1)* %out
@@ -270,9 +335,25 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}tgid_y:
-; GCN: v_mov_b32_e32 [[VVAL:v[0-9]+]], s5
+; HSA: compute_pgm_rsrc2_user_sgpr = 6
+; HSA: compute_pgm_rsrc2_tgid_x_en = 1
+; HSA: compute_pgm_rsrc2_tgid_y_en = 1
+; HSA: compute_pgm_rsrc2_tgid_z_en = 0
+; HSA: compute_pgm_rsrc2_tg_size_en = 0
+; HSA: enable_sgpr_grid_workgroup_count_x = 0
+; HSA: enable_sgpr_grid_workgroup_count_y = 0
+; HSA: enable_sgpr_grid_workgroup_count_z = 0
+; GCN-NOHSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s3
+; GCN-HSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s7
 ; GCN: buffer_store_dword [[VVAL]]
-define void @tgid_y (i32 addrspace(1)* %out) {
+
+; HSA: COMPUTE_PGM_RSRC2:USER_SGPR: 6
+; GCN-NOHSA: COMPUTE_PGM_RSRC2:USER_SGPR: 2
+; GCN: COMPUTE_PGM_RSRC2:TGID_X_EN: 1
+; GCN: COMPUTE_PGM_RSRC2:TGID_Y_EN: 1
+; GCN: COMPUTE_PGM_RSRC2:TGID_Z_EN: 0
+; GCN: COMPUTE_PGM_RSRC2:TIDIG_COMP_CNT: 0
+define void @tgid_y(i32 addrspace(1)* %out) {
 entry:
   %0 = call i32 @llvm.r600.read.tgid.y() #0
   store i32 %0, i32 addrspace(1)* %out
@@ -280,16 +361,46 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}tgid_z:
-; GCN: v_mov_b32_e32 [[VVAL:v[0-9]+]], s6
+; HSA: compute_pgm_rsrc2_user_sgpr = 6
+; HSA: compute_pgm_rsrc2_tgid_x_en = 1
+; HSA: compute_pgm_rsrc2_tgid_y_en = 0
+; HSA: compute_pgm_rsrc2_tgid_z_en = 1
+; HSA: compute_pgm_rsrc2_tg_size_en = 0
+; HSA: compute_pgm_rsrc2_tidig_comp_cnt = 0
+; HSA: enable_sgpr_private_segment_buffer = 1
+; HSA: enable_sgpr_dispatch_ptr = 0
+; HSA: enable_sgpr_queue_ptr = 0
+; HSA: enable_sgpr_kernarg_segment_ptr = 1
+; HSA: enable_sgpr_dispatch_id = 0
+; HSA: enable_sgpr_flat_scratch_init = 0
+; HSA: enable_sgpr_private_segment_size = 0
+; HSA: enable_sgpr_grid_workgroup_count_x = 0
+; HSA: enable_sgpr_grid_workgroup_count_y = 0
+; HSA: enable_sgpr_grid_workgroup_count_z = 0
+
+; GCN-NOHSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s3{{$}}
+; HSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s7{{$}}
 ; GCN: buffer_store_dword [[VVAL]]
-define void @tgid_z (i32 addrspace(1)* %out) {
+
+; HSA: COMPUTE_PGM_RSRC2:USER_SGPR: 6
+; GCN-NOHSA: COMPUTE_PGM_RSRC2:USER_SGPR: 2
+; GCN: COMPUTE_PGM_RSRC2:TGID_X_EN: 1
+; GCN: COMPUTE_PGM_RSRC2:TGID_Y_EN: 0
+; GCN: COMPUTE_PGM_RSRC2:TGID_Z_EN: 1
+; GCN: COMPUTE_PGM_RSRC2:TIDIG_COMP_CNT: 0
+define void @tgid_z(i32 addrspace(1)* %out) {
 entry:
   %0 = call i32 @llvm.r600.read.tgid.z() #0
   store i32 %0, i32 addrspace(1)* %out
   ret void
 }
 
+; GCN-NOHSA: .section .AMDGPU.config
+; GCN-NOHSA: .long 47180
+; GCN-NOHSA-NEXT: .long 132{{$}}
+
 ; FUNC-LABEL: {{^}}tidig_x:
+; HSA: compute_pgm_rsrc2_tidig_comp_cnt = 0
 ; GCN: buffer_store_dword v0
 define void @tidig_x (i32 addrspace(1)* %out) {
 entry:
@@ -298,7 +409,13 @@ entry:
   ret void
 }
 
+; GCN-NOHSA: .section .AMDGPU.config
+; GCN-NOHSA: .long 47180
+; GCN-NOHSA-NEXT: .long 2180{{$}}
+
 ; FUNC-LABEL: {{^}}tidig_y:
+
+; HSA: compute_pgm_rsrc2_tidig_comp_cnt = 1
 ; GCN: buffer_store_dword v1
 define void @tidig_y (i32 addrspace(1)* %out) {
 entry:
@@ -307,7 +424,12 @@ entry:
   ret void
 }
 
+; GCN-NOHSA: .section .AMDGPU.config
+; GCN-NOHSA: .long 47180
+; GCN-NOHSA-NEXT: .long 4228{{$}}
+
 ; FUNC-LABEL: {{^}}tidig_z:
+; HSA: compute_pgm_rsrc2_tidig_comp_cnt = 2
 ; GCN: buffer_store_dword v2
 define void @tidig_z (i32 addrspace(1)* %out) {
 entry:
