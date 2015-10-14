@@ -78,6 +78,8 @@ extern char &SIFixControlFlowLiveIntervalsID;
 void initializeSIFixSGPRLiveRangesPass(PassRegistry&);
 extern char &SIFixSGPRLiveRangesID;
 
+void initializeSIRewriteVirtRegsPass(PassRegistry&);
+extern char &SIRewriteVirtRegsID;
 
 extern Target TheAMDGPUTarget;
 extern Target TheGCNTarget;
