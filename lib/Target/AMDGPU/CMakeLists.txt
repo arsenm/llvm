@@ -31,6 +31,7 @@ add_llvm_target(AMDGPUCodeGen
   AMDGPUISelLowering.cpp
   AMDGPUInstrInfo.cpp
   AMDGPUPromoteAlloca.cpp
+  AMDGPUPropagateKernelAttributes.cpp
   AMDGPURegisterInfo.cpp
   R600ClauseMergePass.cpp
   R600ControlFlowFinalizer.cpp
