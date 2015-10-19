@@ -52,7 +52,6 @@ extern "C" void LLVMInitializeAMDGPUTarget() {
   initializeSILoadStoreOptimizerPass(*PR);
   initializeAMDGPUAnnotateKernelFeaturesPass(*PR);
   initializeSIRewriteVirtRegsPass(*PR);
-  initializeAMDGPUPropagateKernelAttributesPass(*PR);
 }
 
 static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
@@ -190,10 +189,6 @@ TargetIRAnalysis AMDGPUTargetMachine::getTargetIRAnalysis() {
 }
 
 void AMDGPUPassConfig::addIRPasses() {
-  // FIXME: Maybe we should do this later. AMDGPUPromoteAlloca at least can
-  // introduce new uses of workitem intrinsics.
-  //addPass(&AMDGPUPropagateKernelAttributesID);
-
   // Function calls are not supported, so make sure we inline everything.
   addPass(createAMDGPUAlwaysInlinePass());
   addPass(createAlwaysInlinerPass());
