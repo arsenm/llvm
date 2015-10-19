@@ -1030,6 +1030,10 @@ SDValue SITargetLowering::LowerLocalSizeIntrinsic(SelectionDAG &DAG,
   EVT MemVT;
   SDValue Param;
   if (Subtarget->isAmdHsaOS()) {
+    const SIMachineFunctionInfo *MFI = MF.getInfo<SIMachineFunctionInfo>();
+    (void) MFI;
+    assert(MFI->hasDispatchPtr());
+
     BasePtr = TRI->getPreloadedValue(MF, SIRegisterInfo::DISPATCH_PTR);
 
     // Local size value are 16-bits, but we always load 32-bit values and
