@@ -51,7 +51,6 @@ extern "C" void LLVMInitializeAMDGPUTarget() {
   initializeSIFixControlFlowLiveIntervalsPass(*PR);
   initializeSILoadStoreOptimizerPass(*PR);
   initializeAMDGPUAnnotateKernelFeaturesPass(*PR);
-  initializeSIRewriteVirtRegsPass(*PR);
 }
 
 static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
@@ -172,7 +171,6 @@ public:
   bool addInstSelector() override;
   void addFastRegAlloc(FunctionPass *RegAllocPass) override;
   void addOptimizedRegAlloc(FunctionPass *RegAllocPass) override;
-  bool addPreRewrite() override;
   void addPreRegAlloc() override;
   void addPostRegAlloc() override;
   void addPreSched2() override;
@@ -326,11 +324,6 @@ void GCNPassConfig::addOptimizedRegAlloc(FunctionPass *RegAllocPass) {
   // that needs to be fixed.
   insertPass(&LiveVariablesID, &SIFixSGPRLiveRangesID, /*VerifyAfter=*/false);
   TargetPassConfig::addOptimizedRegAlloc(RegAllocPass);
-}
-
-bool GCNPassConfig::addPreRewrite() {
-  addPass(&SIRewriteVirtRegsID);
-  return false;
 }
 
 void GCNPassConfig::addPostRegAlloc() {
