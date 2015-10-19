@@ -476,7 +476,7 @@ SDValue SITargetLowering::LowerParameter(SelectionDAG &DAG, EVT VT, EVT MemVT,
       static_cast<const SIRegisterInfo*>(Subtarget->getRegisterInfo());
 
   if (!BasePtrReg)
-    BasePtrReg = TRI->getPreloadedValue(MF, SIRegisterInfo::INPUT_PTR);
+    BasePtrReg = TRI->getPreloadedValue(MF, SIRegisterInfo::KERNARG_SEGMENT_PTR);
 
   Type *Ty = VT.getTypeForEVT(*DAG.getContext());
 
@@ -590,7 +590,7 @@ SDValue SITargetLowering::LowerFormalArguments(
       Info->NumUserSGPRs += 4;
 
     unsigned InputPtrReg =
-        TRI->getPreloadedValue(MF, SIRegisterInfo::INPUT_PTR);
+        TRI->getPreloadedValue(MF, SIRegisterInfo::KERNARG_SEGMENT_PTR);
     unsigned InputPtrRegLo =
         TRI->getPhysRegSubReg(InputPtrReg, &AMDGPU::SReg_32RegClass, 0);
     unsigned InputPtrRegHi =
@@ -600,14 +600,8 @@ SDValue SITargetLowering::LowerFormalArguments(
     CCInfo.AllocateReg(InputPtrRegHi);
     MF.addLiveIn(InputPtrReg, &AMDGPU::SReg_64RegClass);
     if (Subtarget->isAmdHsaOS()) {
-      unsigned DispatchPtrReg =
-          TRI->getPreloadedValue(MF, SIRegisterInfo::DISPATCH_PTR);
-      unsigned DispatchPtrRegLo =
-          TRI->getPhysRegSubReg(DispatchPtrReg, &AMDGPU::SReg_32RegClass, 0);
-      unsigned DispatchPtrRegHi =
-          TRI->getPhysRegSubReg(DispatchPtrReg, &AMDGPU::SReg_32RegClass, 1);
-      CCInfo.AllocateReg(DispatchPtrRegLo);
-      CCInfo.AllocateReg(DispatchPtrRegHi);
+      unsigned DispatchPtrReg
+        = TRI->getPreloadedValue(MF, SIRegisterInfo::DISPATCH_PTR);
       MF.addLiveIn(DispatchPtrReg, &AMDGPU::SReg_64RegClass);
     }
   }
@@ -639,8 +633,8 @@ SDValue SITargetLowering::LowerFormalArguments(
                               VA.getLocMemOffset();
       // The first 36 bytes of the input buffer contains information about
       // thread group and global sizes.
-      unsigned InputPtrReg = TRI->getPreloadedValue(MF,
-                                                    SIRegisterInfo::INPUT_PTR);
+      unsigned InputPtrReg = TRI->getPreloadedValue(
+        MF, SIRegisterInfo::KERNARG_SEGMENT_PTR);
       SDValue Arg = LowerParameter(DAG, VT, MemVT,  DL, Chain,
                                    Offset, InputPtrReg, Ins[i].Flags.isSExt());
       Chains.push_back(Arg.getValue(1));
@@ -1054,7 +1048,7 @@ SDValue SITargetLowering::LowerLocalSizeIntrinsic(SelectionDAG &DAG,
     }
   } else {
 
-    BasePtr = TRI->getPreloadedValue(MF, SIRegisterInfo::INPUT_PTR);
+    BasePtr = TRI->getPreloadedValue(MF, SIRegisterInfo::KERNARG_SEGMENT_PTR);
     Offset = SI::KernelInputOffsets::LOCAL_SIZE_X + (Dim * 4);
 
     Param = LowerParameter(DAG, MVT::i32, MVT::i32, DL, DAG.getEntryNode(),
@@ -1076,7 +1070,8 @@ SDValue SITargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
   EVT VT = Op.getValueType();
   SDLoc DL(Op);
   unsigned IntrinsicID = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
-  unsigned InputPtrReg = TRI->getPreloadedValue(MF, SIRegisterInfo::INPUT_PTR);
+  unsigned InputPtrReg = TRI->getPreloadedValue(
+    MF, SIRegisterInfo::KERNARG_SEGMENT_PTR);
 
   // TODO: Should this propagate fast-math-flags?
 
@@ -1119,22 +1114,22 @@ SDValue SITargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
 
   case Intrinsic::r600_read_tgid_x:
     return CreateLiveInRegister(DAG, &AMDGPU::SReg_32RegClass,
-      TRI->getPreloadedValue(MF, SIRegisterInfo::TGID_X), VT);
+      TRI->getPreloadedValue(MF, SIRegisterInfo::WORKGROUP_ID_X), VT);
   case Intrinsic::r600_read_tgid_y:
     return CreateLiveInRegister(DAG, &AMDGPU::SReg_32RegClass,
-      TRI->getPreloadedValue(MF, SIRegisterInfo::TGID_Y), VT);
+      TRI->getPreloadedValue(MF, SIRegisterInfo::WORKGROUP_ID_Y), VT);
   case Intrinsic::r600_read_tgid_z:
     return CreateLiveInRegister(DAG, &AMDGPU::SReg_32RegClass,
-      TRI->getPreloadedValue(MF, SIRegisterInfo::TGID_Z), VT);
+      TRI->getPreloadedValue(MF, SIRegisterInfo::WORKGROUP_ID_Z), VT);
   case Intrinsic::r600_read_tidig_x:
     return CreateLiveInRegister(DAG, &AMDGPU::VGPR_32RegClass,
-      TRI->getPreloadedValue(MF, SIRegisterInfo::TIDIG_X), VT);
+      TRI->getPreloadedValue(MF, SIRegisterInfo::WORKITEM_ID_X), VT);
   case Intrinsic::r600_read_tidig_y:
     return CreateLiveInRegister(DAG, &AMDGPU::VGPR_32RegClass,
-      TRI->getPreloadedValue(MF, SIRegisterInfo::TIDIG_Y), VT);
+      TRI->getPreloadedValue(MF, SIRegisterInfo::WORKITEM_ID_Y), VT);
   case Intrinsic::r600_read_tidig_z:
     return CreateLiveInRegister(DAG, &AMDGPU::VGPR_32RegClass,
-      TRI->getPreloadedValue(MF, SIRegisterInfo::TIDIG_Z), VT);
+      TRI->getPreloadedValue(MF, SIRegisterInfo::WORKITEM_ID_Z), VT);
   case AMDGPUIntrinsic::SI_load_const: {
     SDValue Ops[] = {
       Op.getOperand(1),

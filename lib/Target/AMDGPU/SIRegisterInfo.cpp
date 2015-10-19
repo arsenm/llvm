@@ -72,7 +72,7 @@ BitVector SIRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   unsigned ScratchRSrcReg = MFI->getScratchRSrcReg();
   if (ScratchRSrcReg != AMDGPU::NoRegister) {
     unsigned ScratchOffsetPreloadReg
-      = getPreloadedValue(MF, SIRegisterInfo::SCRATCH_WAVE_OFFSET);
+      = getPreloadedValue(MF, SIRegisterInfo::PRIVATE_SEGMENT_WAVE_BYTE_OFFSET);
     // We will need to use this user SGPR argument for spilling, and thus never
     // want it to be spilled.
     reserveRegisterTuples(Reserved, ScratchOffsetPreloadReg);
@@ -532,27 +532,29 @@ unsigned SIRegisterInfo::getPreloadedValue(const MachineFunction &MF,
   const AMDGPUSubtarget &STI = MF.getSubtarget<AMDGPUSubtarget>();
   const SIMachineFunctionInfo *MFI = MF.getInfo<SIMachineFunctionInfo>();
   switch (Value) {
-  case SIRegisterInfo::TGID_X:
+  case SIRegisterInfo::WORKGROUP_ID_X:
     return AMDGPU::SReg_32RegClass.getRegister(MFI->NumUserSGPRs + 0);
-  case SIRegisterInfo::TGID_Y:
+  case SIRegisterInfo::WORKGROUP_ID_Y:
     return AMDGPU::SReg_32RegClass.getRegister(MFI->NumUserSGPRs + 1);
-  case SIRegisterInfo::TGID_Z:
+  case SIRegisterInfo::WORKGROUP_ID_Z:
     return AMDGPU::SReg_32RegClass.getRegister(MFI->NumUserSGPRs + 2);
-  case SIRegisterInfo::SCRATCH_WAVE_OFFSET:
+  case SIRegisterInfo::PRIVATE_SEGMENT_WAVE_BYTE_OFFSET:
     if (MFI->getShaderType() != ShaderType::COMPUTE)
       return MFI->ScratchOffsetReg;
     return AMDGPU::SReg_32RegClass.getRegister(MFI->NumUserSGPRs + 4);
-  case SIRegisterInfo::SCRATCH_PTR:
-    return AMDGPU::SGPR2_SGPR3;
-  case SIRegisterInfo::INPUT_PTR:
+  case SIRegisterInfo::PRIVATE_SEGMENT_BUFFER:
+    llvm_unreachable("currently unused");
+  case SIRegisterInfo::KERNARG_SEGMENT_PTR:
     return STI.isAmdHsaOS() ? AMDGPU::SGPR2_SGPR3 : AMDGPU::SGPR0_SGPR1;
   case SIRegisterInfo::DISPATCH_PTR:
     return AMDGPU::SGPR0_SGPR1;
-  case SIRegisterInfo::TIDIG_X:
+  case SIRegisterInfo::QUEUE_PTR:
+    llvm_unreachable("not implemented");
+  case SIRegisterInfo::WORKITEM_ID_X:
     return AMDGPU::VGPR0;
-  case SIRegisterInfo::TIDIG_Y:
+  case SIRegisterInfo::WORKITEM_ID_Y:
     return AMDGPU::VGPR1;
-  case SIRegisterInfo::TIDIG_Z:
+  case SIRegisterInfo::WORKITEM_ID_Z:
     return AMDGPU::VGPR2;
   }
   llvm_unreachable("unexpected preloaded value type");
