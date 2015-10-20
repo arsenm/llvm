@@ -29,11 +29,20 @@ void SIMachineFunctionInfo::anchor() {}
 SIMachineFunctionInfo::SIMachineFunctionInfo(const MachineFunction &MF)
   : AMDGPUMachineFunction(MF),
     TIDReg(AMDGPU::NoRegister),
+    ScratchRSrcReg(AMDGPU::NoRegister),
     HasSpilledSGPRs(false),
     HasSpilledVGPRs(false),
     PSInputAddr(0),
     NumUserSGPRs(0),
     LDSWaveSpillSize(0) { }
+
+void SIMachineFunctionInfo::setScratchRSrcReg(const SIRegisterInfo *TRI) {
+  // We need to round up to next multiple of 4.
+  unsigned NextSReg128 = RoundUpToAlignment(NumUserSGPRs + 5, 4);
+  unsigned RegSub0 = AMDGPU::SReg_32RegClass.getRegister(NextSReg128);
+  ScratchRSrcReg = TRI->getMatchingSuperReg(RegSub0, AMDGPU::sub0,
+                                            &AMDGPU::SReg_128RegClass);
+}
 
 SIMachineFunctionInfo::SpilledReg SIMachineFunctionInfo::getSpilledReg(
                                                        MachineFunction *MF,

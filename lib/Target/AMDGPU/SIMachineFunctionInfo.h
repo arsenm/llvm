@@ -29,6 +29,8 @@ class SIMachineFunctionInfo : public AMDGPUMachineFunction {
   void anchor() override;
 
   unsigned TIDReg;
+  unsigned ScratchRSrcReg;
+
   bool HasSpilledSGPRs;
   bool HasSpilledVGPRs;
 
@@ -55,6 +57,14 @@ public:
   bool hasCalculatedTID() const { return TIDReg != AMDGPU::NoRegister; };
   unsigned getTIDReg() const { return TIDReg; };
   void setTIDReg(unsigned Reg) { TIDReg = Reg; }
+
+  /// \brief Returns the physical register reserved for use as the resource
+  /// descriptor for scratch accesses.
+  unsigned getScratchRSrcReg() const {
+    return ScratchRSrcReg;
+  }
+
+  void setScratchRSrcReg(const SIRegisterInfo *TRI);
 
   bool hasSpilledSGPRs() const {
     return HasSpilledSGPRs;
