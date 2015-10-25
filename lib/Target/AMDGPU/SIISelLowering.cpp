@@ -580,6 +580,13 @@ SDValue SITargetLowering::LowerFormalArguments(
       Info->PSInputAddr |= 1 << PSInputNum++;
     }
 
+    if (Arg.Flags.isInReg() && Subtarget->isAmdHsaOS()) {
+      const Function *Fn = MF.getFunction();
+      DiagnosticInfoUnsupported NoInRegHSA(*Fn, "inreg arguments with HSA");
+      DAG.getContext()->diagnose(NoInRegHSA);
+      return SDValue();
+    }
+
     // Second split vertices into their elements
     if (Info->getShaderType() != ShaderType::COMPUTE && Arg.VT.isVector()) {
       ISD::InputArg NewArg = Arg;
