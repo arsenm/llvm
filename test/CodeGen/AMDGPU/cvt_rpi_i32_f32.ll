@@ -19,7 +19,7 @@ define void @cvt_rpi_i32_f32(i32 addrspace(1)* %out, float %x) #0 {
 
 ; FUNC-LABEL: {{^}}cvt_rpi_i32_f32_fabs:
 ; SI-SAFE-NOT: v_cvt_rpi_i32_f32
-; SI-NONAN: v_cvt_rpi_i32_f32_e64 v{{[0-9]+}}, |s{{[0-9]+}}|{{$}}
+; SI-NONAN: v_cvt_rpi_i32_f32_e64 v{{[0-9]+}}, abs(s{{[0-9]+}}){{$}}
 ; SI: s_endpgm
 define void @cvt_rpi_i32_f32_fabs(i32 addrspace(1)* %out, float %x) #0 {
   %x.fabs = call float @llvm.fabs.f32(float %x) #1
@@ -49,9 +49,9 @@ define void @cvt_rpi_i32_f32_fneg(i32 addrspace(1)* %out, float %x) #0 {
 ; FIXME: This doesn't work for same reason as above
 ; FUNC-LABEL: {{^}}cvt_rpi_i32_f32_fabs_fneg:
 ; SI-SAFE-NOT: v_cvt_rpi_i32_f32
-; XSI-NONAN: v_cvt_rpi_i32_f32_e64 v{{[0-9]+}}, -|s{{[0-9]+}}|
+; XSI-NONAN: v_cvt_rpi_i32_f32_e64 v{{[0-9]+}}, -abs(s{{[0-9]+}})
 
-; SI: v_sub_f32_e64 [[TMP:v[0-9]+]], 0.5, |s{{[0-9]+}}|
+; SI: v_sub_f32_e64 [[TMP:v[0-9]+]], 0.5, abs(s{{[0-9]+}})
 ; SI-SAFE-NOT: v_cvt_flr_i32_f32
 ; SI-NONAN: v_cvt_flr_i32_f32_e32 {{v[0-9]+}}, [[TMP]]
 ; SI: s_endpgm

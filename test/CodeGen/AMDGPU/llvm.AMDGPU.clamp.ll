@@ -21,7 +21,7 @@ define void @clamp_0_1_f32(float addrspace(1)* %out, float %src) nounwind {
 
 ; FUNC-LABEL: {{^}}clamp_fabs_0_1_f32:
 ; SI: s_load_dword [[ARG:s[0-9]+]],
-; SI: v_add_f32_e64 [[RESULT:v[0-9]+]], 0, |[[ARG]]| clamp{{$}}
+; SI: v_add_f32_e64 [[RESULT:v[0-9]+]], 0, abs([[ARG]]) clamp{{$}}
 ; SI: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm
 define void @clamp_fabs_0_1_f32(float addrspace(1)* %out, float %src) nounwind {
@@ -45,7 +45,7 @@ define void @clamp_fneg_0_1_f32(float addrspace(1)* %out, float %src) nounwind {
 
 ; FUNC-LABEL: {{^}}clamp_fneg_fabs_0_1_f32:
 ; SI: s_load_dword [[ARG:s[0-9]+]],
-; SI: v_add_f32_e64 [[RESULT:v[0-9]+]], 0, -|[[ARG]]| clamp{{$}}
+; SI: v_add_f32_e64 [[RESULT:v[0-9]+]], 0, -abs([[ARG]]) clamp{{$}}
 ; SI: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm
 define void @clamp_fneg_fabs_0_1_f32(float addrspace(1)* %out, float %src) nounwind {

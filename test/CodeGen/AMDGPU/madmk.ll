@@ -124,7 +124,7 @@ define void @scalar_vector_madmk_f32(float addrspace(1)* noalias %out, float add
 ; GCN-LABEL: {{^}}no_madmk_src0_modifier_f32:
 ; GCN-DAG: buffer_load_dword [[VA:v[0-9]+]], {{v\[[0-9]+:[0-9]+\]}}, {{s\[[0-9]+:[0-9]+\]}}, 0 addr64{{$}}
 ; GCN-DAG: buffer_load_dword [[VB:v[0-9]+]], {{v\[[0-9]+:[0-9]+\]}}, {{s\[[0-9]+:[0-9]+\]}}, 0 addr64 offset:4
-; GCN: v_mad_f32 {{v[0-9]+}}, |{{v[0-9]+}}|, {{v[0-9]+}}, {{[sv][0-9]+}}
+; GCN: v_mad_f32 {{v[0-9]+}}, abs({{v[0-9]+}}), {{v[0-9]+}}, {{[sv][0-9]+}}
 define void @no_madmk_src0_modifier_f32(float addrspace(1)* noalias %out, float addrspace(1)* noalias %in) nounwind {
   %tid = tail call i32 @llvm.r600.read.tidig.x() nounwind readnone
   %gep.0 = getelementptr float, float addrspace(1)* %in, i32 %tid
@@ -145,7 +145,7 @@ define void @no_madmk_src0_modifier_f32(float addrspace(1)* noalias %out, float 
 ; GCN-LABEL: {{^}}no_madmk_src2_modifier_f32:
 ; GCN-DAG: buffer_load_dword [[VA:v[0-9]+]], {{v\[[0-9]+:[0-9]+\]}}, {{s\[[0-9]+:[0-9]+\]}}, 0 addr64{{$}}
 ; GCN-DAG: buffer_load_dword [[VB:v[0-9]+]], {{v\[[0-9]+:[0-9]+\]}}, {{s\[[0-9]+:[0-9]+\]}}, 0 addr64 offset:4
-; GCN: v_mad_f32 {{v[0-9]+}}, {{v[0-9]+}}, {{v[0-9]+}}, |{{[sv][0-9]+}}|
+; GCN: v_mad_f32 {{v[0-9]+}}, {{v[0-9]+}}, {{v[0-9]+}}, abs({{[sv][0-9]+}})
 define void @no_madmk_src2_modifier_f32(float addrspace(1)* noalias %out, float addrspace(1)* noalias %in) nounwind {
   %tid = tail call i32 @llvm.r600.read.tidig.x() nounwind readnone
   %gep.0 = getelementptr float, float addrspace(1)* %in, i32 %tid

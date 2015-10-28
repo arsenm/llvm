@@ -15,7 +15,7 @@ define void @fp_to_sint_i32(i32 addrspace(1)* %out, float %in) {
 }
 
 ; FUNC-LABEL: {{^}}fp_to_sint_i32_fabs:
-; SI: v_cvt_i32_f32_e64 v{{[0-9]+}}, |s{{[0-9]+}}|{{$}}
+; SI: v_cvt_i32_f32_e64 v{{[0-9]+}}, abs(s{{[0-9]+}}){{$}}
 define void @fp_to_sint_i32_fabs(i32 addrspace(1)* %out, float %in) {
   %in.fabs = call float @llvm.fabs.f32(float %in) #0
   %conv = fptosi float %in.fabs to i32

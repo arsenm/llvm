@@ -354,10 +354,10 @@ void AMDGPUInstPrinter::printOperandAndMods(const MCInst *MI, unsigned OpNo,
   if (InputModifiers & SISrcMods::NEG)
     O << '-';
   if (InputModifiers & SISrcMods::ABS)
-    O << '|';
+    O << "abs(";
   printOperand(MI, OpNo + 1, O);
   if (InputModifiers & SISrcMods::ABS)
-    O << '|';
+    O << ')';
 }
 
 void AMDGPUInstPrinter::printInterpSlot(const MCInst *MI, unsigned OpNum,

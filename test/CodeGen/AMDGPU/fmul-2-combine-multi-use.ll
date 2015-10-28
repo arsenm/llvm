@@ -42,8 +42,8 @@ define void @multiple_use_fadd_fmac(float addrspace(1)* %out, float %x, float %y
 }
 
 ; GCN-LABEL: {{^}}multiple_use_fadd_fmad:
-; GCN-DAG: v_add_f32_e64 [[MUL2:v[0-9]+]], |[[X:s[0-9]+]]|, |s{{[0-9]+}}|
-; GCN-DAG: v_mad_f32 [[MAD:v[0-9]+]], 2.0, |[[X]]|, v{{[0-9]+}}
+; GCN-DAG: v_add_f32_e64 [[MUL2:v[0-9]+]], abs([[X:s[0-9]+]]), abs(s{{[0-9]+}})
+; GCN-DAG: v_mad_f32 [[MAD:v[0-9]+]], 2.0, abs([[X]]), v{{[0-9]+}}
 ; GCN-DAG: buffer_store_dword [[MUL2]]
 ; GCN-DAG: buffer_store_dword [[MAD]]
 ; GCN: s_endpgm
@@ -58,8 +58,8 @@ define void @multiple_use_fadd_fmad(float addrspace(1)* %out, float %x, float %y
 }
 
 ; GCN-LABEL: {{^}}multiple_use_fadd_multi_fmad:
-; GCN: v_mad_f32 {{v[0-9]+}}, 2.0, |[[X:s[0-9]+]]|, v{{[0-9]+}}
-; GCN: v_mad_f32 {{v[0-9]+}}, 2.0, |[[X]]|, v{{[0-9]+}}
+; GCN: v_mad_f32 {{v[0-9]+}}, 2.0, abs([[X:s[0-9]+]]), v{{[0-9]+}}
+; GCN: v_mad_f32 {{v[0-9]+}}, 2.0, abs([[X]]), v{{[0-9]+}}
 define void @multiple_use_fadd_multi_fmad(float addrspace(1)* %out, float %x, float %y, float %z) #0 {
   %out.gep.1 = getelementptr float, float addrspace(1)* %out, i32 1
   %x.abs = call float @llvm.fabs.f32(float %x)

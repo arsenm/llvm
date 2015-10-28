@@ -33,7 +33,7 @@ define void @cvt_flr_i32_f32_1(i32 addrspace(1)* %out, float %x) #0 {
 ; FUNC-LABEL: {{^}}cvt_flr_i32_f32_fabs:
 ; SI-NOT: add
 ; SI-SAFE-NOT: v_cvt_flr_i32_f32
-; SI-NONAN: v_cvt_flr_i32_f32_e64 v{{[0-9]+}}, |s{{[0-9]+}}|
+; SI-NONAN: v_cvt_flr_i32_f32_e64 v{{[0-9]+}}, abs(s{{[0-9]+}})
 ; SI: s_endpgm
 define void @cvt_flr_i32_f32_fabs(i32 addrspace(1)* %out, float %x) #0 {
   %x.fabs = call float @llvm.fabs.f32(float %x) #1
@@ -59,7 +59,7 @@ define void @cvt_flr_i32_f32_fneg(i32 addrspace(1)* %out, float %x) #0 {
 ; FUNC-LABEL: {{^}}cvt_flr_i32_f32_fabs_fneg:
 ; SI-NOT: add
 ; SI-SAFE-NOT: v_cvt_flr_i32_f32
-; SI-NONAN: v_cvt_flr_i32_f32_e64 v{{[0-9]+}}, -|s{{[0-9]+}}|
+; SI-NONAN: v_cvt_flr_i32_f32_e64 v{{[0-9]+}}, -abs(s{{[0-9]+}})
 ; SI: s_endpgm
 define void @cvt_flr_i32_f32_fabs_fneg(i32 addrspace(1)* %out, float %x) #0 {
   %x.fabs = call float @llvm.fabs.f32(float %x) #1

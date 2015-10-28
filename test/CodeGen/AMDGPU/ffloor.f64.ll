@@ -43,12 +43,12 @@ define void @ffloor_f64_neg(double addrspace(1)* %out, double %x) {
 
 ; FUNC-LABEL: {{^}}ffloor_f64_neg_abs:
 ; CI: v_floor_f64_e64
-; SI: v_fract_f64_e64 {{v[[0-9]+:[0-9]+]}}, -|[[INPUT:s[[0-9]+:[0-9]+]]]|
+; SI: v_fract_f64_e64 {{v[[0-9]+:[0-9]+]}}, -abs([[INPUT:s[[0-9]+:[0-9]+]]])
 ; SI: v_min_f64
 ; SI: v_cmp_class_f64_e64
 ; SI: v_cndmask_b32_e64
 ; SI: v_cndmask_b32_e64
-; SI: v_add_f64 {{v[[0-9]+:[0-9]+]}}, -|[[INPUT]]|
+; SI: v_add_f64 {{v[[0-9]+:[0-9]+]}}, -abs([[INPUT]])
 ; SI: s_endpgm
 define void @ffloor_f64_neg_abs(double addrspace(1)* %out, double %x) {
   %abs = call double @llvm.fabs.f64(double %x)

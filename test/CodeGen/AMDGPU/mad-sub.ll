@@ -76,7 +76,7 @@ define void @mad_sub_f64(double addrspace(1)* noalias nocapture %out, double add
 ; SI: buffer_load_dword [[REGA:v[0-9]+]]
 ; SI: buffer_load_dword [[REGB:v[0-9]+]]
 ; SI: buffer_load_dword [[REGC:v[0-9]+]]
-; SI: v_mad_f32 [[RESULT:v[0-9]+]], [[REGA]], [[REGB]], -|[[REGC]]|
+; SI: v_mad_f32 [[RESULT:v[0-9]+]], [[REGA]], [[REGB]], -abs([[REGC]])
 ; SI: buffer_store_dword [[RESULT]]
 define void @mad_sub_fabs_f32(float addrspace(1)* noalias nocapture %out, float addrspace(1)* noalias nocapture readonly %ptr) #1 {
   %tid = tail call i32 @llvm.r600.read.tidig.x() #0
@@ -101,7 +101,7 @@ define void @mad_sub_fabs_f32(float addrspace(1)* noalias nocapture %out, float 
 ; SI: buffer_load_dword [[REGA:v[0-9]+]]
 ; SI: buffer_load_dword [[REGB:v[0-9]+]]
 ; SI: buffer_load_dword [[REGC:v[0-9]+]]
-; SI: v_mad_f32 [[RESULT:v[0-9]+]], -[[REGA]], [[REGB]], |[[REGC]]|
+; SI: v_mad_f32 [[RESULT:v[0-9]+]], -[[REGA]], [[REGB]], abs([[REGC]])
 ; SI: buffer_store_dword [[RESULT]]
 define void @mad_sub_fabs_inv_f32(float addrspace(1)* noalias nocapture %out, float addrspace(1)* noalias nocapture readonly %ptr) #1 {
   %tid = tail call i32 @llvm.r600.read.tidig.x() #0
@@ -148,7 +148,7 @@ define void @neg_neg_mad_f32(float addrspace(1)* noalias nocapture %out, float a
 ; SI: buffer_load_dword [[REGA:v[0-9]+]]
 ; SI: buffer_load_dword [[REGB:v[0-9]+]]
 ; SI: buffer_load_dword [[REGC:v[0-9]+]]
-; SI: v_mad_f32 [[RESULT:v[0-9]+]], [[REGA]], |[[REGB]]|, -[[REGC]]
+; SI: v_mad_f32 [[RESULT:v[0-9]+]], [[REGA]], abs([[REGB]]), -[[REGC]]
 ; SI: buffer_store_dword [[RESULT]]
 define void @mad_fabs_sub_f32(float addrspace(1)* noalias nocapture %out, float addrspace(1)* noalias nocapture readonly %ptr) #1 {
   %tid = tail call i32 @llvm.r600.read.tidig.x() #0

@@ -1050,9 +1050,16 @@ AMDGPUAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
     Negate = true;
   }
 
-  if (getLexer().getKind() == AsmToken::Pipe) {
-    Parser.Lex();
-    Abs = true;
+  if (getLexer().getKind() == AsmToken::Identifier) {
+    const AsmToken Tok = Parser.getTok();
+    if (Tok.getString() == "abs") {
+      Parser.Lex();
+      if (getLexer().getKind() != AsmToken::LParen)
+        return MatchOperand_ParseFail;
+
+      Parser.Lex();
+      Abs = true;
+    }
   }
 
   switch(getLexer().getKind()) {
@@ -1098,7 +1105,7 @@ AMDGPUAsmParser::parseOperand(OperandVector &Operands, StringRef Mnemonic) {
           Modifiers |= 0x1;
 
         if (Abs) {
-          if (getLexer().getKind() != AsmToken::Pipe)
+          if (getLexer().getKind() != AsmToken::RParen)
             return MatchOperand_ParseFail;
           Parser.Lex();
           Modifiers |= 0x2;

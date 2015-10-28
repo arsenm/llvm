@@ -25,7 +25,7 @@ define void @test_class_f32(i32 addrspace(1)* %out, float %a, i32 %b) #0 {
 ; SI-DAG: s_load_dword [[SA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
 ; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
 ; SI: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
-; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], |[[SA]]|, [[VB]]
+; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], abs([[SA]]), [[VB]]
 ; SI-NEXT: v_cndmask_b32_e64 [[RESULT:v[0-9]+]], 0, -1, [[CMP]]
 ; SI-NEXT: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm
@@ -57,7 +57,7 @@ define void @test_class_fneg_f32(i32 addrspace(1)* %out, float %a, i32 %b) #0 {
 ; SI-DAG: s_load_dword [[SA:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
 ; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xc
 ; SI: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
-; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], -|[[SA]]|, [[VB]]
+; SI: v_cmp_class_f32_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], -abs([[SA]]), [[VB]]
 ; SI-NEXT: v_cndmask_b32_e64 [[RESULT:v[0-9]+]], 0, -1, [[CMP]]
 ; SI-NEXT: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm
@@ -201,7 +201,7 @@ define void @test_class_f64(i32 addrspace(1)* %out, double %a, i32 %b) #0 {
 ; SI-DAG: s_load_dwordx2 [[SA:s\[[0-9]+:[0-9]+\]]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
 ; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
 ; SI-DAG: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
-; SI: v_cmp_class_f64_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], |[[SA]]|, [[VB]]
+; SI: v_cmp_class_f64_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], abs([[SA]]), [[VB]]
 ; SI-NEXT: v_cndmask_b32_e64 [[RESULT:v[0-9]+]], 0, -1, [[CMP]]
 ; SI-NEXT: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm
@@ -233,7 +233,7 @@ define void @test_class_fneg_f64(i32 addrspace(1)* %out, double %a, i32 %b) #0 {
 ; SI-DAG: s_load_dwordx2 [[SA:s\[[0-9]+:[0-9]+\]]], s{{\[[0-9]+:[0-9]+\]}}, 0xb
 ; SI-DAG: s_load_dword [[SB:s[0-9]+]], s{{\[[0-9]+:[0-9]+\]}}, 0xd
 ; SI-DAG: v_mov_b32_e32 [[VB:v[0-9]+]], [[SB]]
-; SI: v_cmp_class_f64_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], -|[[SA]]|, [[VB]]
+; SI: v_cmp_class_f64_e64 [[CMP:s\[[0-9]+:[0-9]+\]]], -abs([[SA]]), [[VB]]
 ; SI-NEXT: v_cndmask_b32_e64 [[RESULT:v[0-9]+]], 0, -1, [[CMP]]
 ; SI-NEXT: buffer_store_dword [[RESULT]]
 ; SI: s_endpgm

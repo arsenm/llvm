@@ -41,7 +41,7 @@ define void @fract_f64_neg(double addrspace(1)* %out, double addrspace(1)* %src)
 }
 
 ; FUNC-LABEL: {{^}}fract_f64_neg_abs:
-; GCN: v_fract_f64_e64 [[FRC:v\[[0-9]+:[0-9]+\]]], -|v{{\[}}[[LO:[0-9]+]]:[[HI:[0-9]+]]]|
+; GCN: v_fract_f64_e64 [[FRC:v\[[0-9]+:[0-9]+\]]], -abs(v{{\[}}[[LO:[0-9]+]]:[[HI:[0-9]+]]])
 ; SI: v_mov_b32_e32 v[[UPLO:[0-9]+]], -1
 ; SI: v_mov_b32_e32 v[[UPHI:[0-9]+]], 0x3fefffff
 ; SI: v_min_f64 v{{\[}}[[MINLO:[0-9]+]]:[[MINHI:[0-9]+]]], v{{\[}}[[UPLO]]:[[UPHI]]], [[FRC]]

@@ -50,9 +50,9 @@ define void @fract_f32_neg(float addrspace(1)* %out, float addrspace(1)* %src) n
 }
 
 ; FUNC-LABEL: {{^}}fract_f32_neg_abs:
-; CI: v_fract_f32_e64 [[RESULT:v[0-9]+]], -|[[INPUT:v[0-9]+]]|
-; SI: v_floor_f32_e64 [[FLR:v[0-9]+]], -|[[INPUT:v[0-9]+]]|
-; SI: v_sub_f32_e64 [[RESULT:v[0-9]+]], -|[[INPUT]]|, [[FLR]]
+; CI: v_fract_f32_e64 [[RESULT:v[0-9]+]], -abs([[INPUT:v[0-9]+]])
+; SI: v_floor_f32_e64 [[FLR:v[0-9]+]], -abs([[INPUT:v[0-9]+]])
+; SI: v_sub_f32_e64 [[RESULT:v[0-9]+]], -abs([[INPUT]]), [[FLR]]
 ; GCN: buffer_store_dword [[RESULT]]
 ; EG: FRACT
 define void @fract_f32_neg_abs(float addrspace(1)* %out, float addrspace(1)* %src) nounwind {

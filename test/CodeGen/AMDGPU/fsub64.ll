@@ -15,7 +15,7 @@ define void @fsub_f64(double addrspace(1)* %out, double addrspace(1)* %in1,
 }
 
 ; SI-LABEL: {{^}}fsub_fabs_f64:
-; SI: v_add_f64 {{v\[[0-9]+:[0-9]+\], v\[[0-9]+:[0-9]+\], -\|v\[[0-9]+:[0-9]+\]\|}}
+; SI: v_add_f64 {{v\[[0-9]+:[0-9]+\], v\[[0-9]+:[0-9]+\], -abs\(v\[[0-9]+:[0-9]+\]\)}}
 define void @fsub_fabs_f64(double addrspace(1)* %out, double addrspace(1)* %in1,
                            double addrspace(1)* %in2) {
   %r0 = load double, double addrspace(1)* %in1
