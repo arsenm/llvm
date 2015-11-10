@@ -107,6 +107,17 @@ SIMachineFunctionInfo::SIMachineFunctionInfo(const MachineFunction &MF)
   // enabled if Z is.
   if (WorkItemIDZ)
     WorkItemIDY = true;
+
+  if (!ST.isAmdHsaOS()) {
+    // FIXME: Temporary workaround until mesa is updated to check binary for
+    // what to enable.
+    WorkItemIDX = true;
+    WorkItemIDY = true;
+    WorkItemIDZ = true;
+    WorkGroupIDX = true;
+    WorkGroupIDY = true;
+    WorkGroupIDZ = true;
+  }
 }
 
 unsigned SIMachineFunctionInfo::addPrivateSegmentBuffer(
