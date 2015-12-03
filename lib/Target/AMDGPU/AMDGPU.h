@@ -64,6 +64,7 @@ extern char &SILowerI1CopiesID;
 void initializeSILoadStoreOptimizerPass(PassRegistry &);
 extern char &SILoadStoreOptimizerID;
 
+
 void initializeSIWholeQuadModePass(PassRegistry &);
 extern char &SIWholeQuadModeID;
 
@@ -72,6 +73,9 @@ extern char &SILowerControlFlowID;
 
 void initializeSIInsertSkipsPass(PassRegistry &);
 extern char &SIInsertSkipsPassID;
+
+void initializeSISoftClauseBundlerPass(PassRegistry &);
+extern char &SISoftClauseBundlerID;
 
 // Passes common to R600 and SI
 FunctionPass *createAMDGPUPromoteAlloca(const TargetMachine *TM = nullptr);

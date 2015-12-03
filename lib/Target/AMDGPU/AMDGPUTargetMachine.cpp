@@ -71,6 +71,8 @@ extern "C" void LLVMInitializeAMDGPUTarget() {
   initializeSIFixSGPRCopiesPass(*PR);
   initializeSIFoldOperandsPass(*PR);
   initializeSIShrinkInstructionsPass(*PR);
+  initializeSIFixSGPRLiveRangesPass(*PR);
+  initializeSISoftClauseBundlerPass(*PR);
   initializeSIFixControlFlowLiveIntervalsPass(*PR);
   initializeSILoadStoreOptimizerPass(*PR);
   initializeAMDGPUAnnotateKernelFeaturesPass(*PR);
@@ -548,6 +550,8 @@ bool GCNPassConfig::addGlobalInstructionSelect() {
 #endif
 
 void GCNPassConfig::addPreRegAlloc() {
+  const AMDGPUSubtarget &ST = *getAMDGPUTargetMachine().getSubtargetImpl();
+  insertPass(&MachineSchedulerID, &SISoftClauseBundlerID);
 
   addPass(createSIShrinkInstructionsPass());
   addPass(createSIWholeQuadModePass());
@@ -559,12 +563,20 @@ void GCNPassConfig::addFastRegAlloc(FunctionPass *RegAllocPass) {
   insertPass(&TwoAddressInstructionPassID, &SILowerControlFlowID, false);
 
   TargetPassConfig::addFastRegAlloc(RegAllocPass);
+  addPass(&FinalizeMachineBundlesID);
 }
 
 void GCNPassConfig::addOptimizedRegAlloc(FunctionPass *RegAllocPass) {
   // This needs to be run directly before register allocation because earlier
   // passes might recompute live intervals.
   insertPass(&MachineSchedulerID, &SIFixControlFlowLiveIntervalsID);
+
+  // We want to run this after LiveVariables is computed to avoid computing them
+  // twice.
+  // FIXME: We shouldn't disable the verifier here. r249087 introduced a failure
+  // that needs to be fixed.
+  insertPass(&LiveVariablesID, &SIFixSGPRLiveRangesID, /*VerifyAfter=*/false);
+  insertPass(&VirtRegRewriterID, &FinalizeMachineBundlesID);
 
   // TODO: It might be better to run this right after phi elimination, but for
   // now that would require not running the verifier.

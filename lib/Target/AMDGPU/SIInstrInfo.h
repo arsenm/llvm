@@ -407,6 +407,15 @@ public:
     return !RI.isSGPRReg(MRI, Dest);
   }
 
+  bool formsSoftClause(const MachineInstr &MI) const {
+    // XXX - image instructions?
+    const unsigned InstTypes = SIInstrFlags::FLAT |
+      SIInstrFlags::MUBUF |
+      SIInstrFlags::MTBUF |
+      SIInstrFlags::SMRD;
+    return (MI.getDesc().TSFlags & InstTypes) != 0;
+  }
+
   bool isInlineConstant(const APInt &Imm) const;
   bool isInlineConstant(const MachineOperand &MO, unsigned OpSize) const;
   bool isLiteralConstant(const MachineOperand &MO, unsigned OpSize) const;

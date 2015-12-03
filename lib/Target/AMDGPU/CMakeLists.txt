@@ -79,6 +79,7 @@ add_llvm_target(AMDGPUCodeGen
   SIMachineScheduler.cpp
   SIRegisterInfo.cpp
   SIShrinkInstructions.cpp
+  SISoftClauseBundler.cpp
   SITypeRewriter.cpp
   SIWholeQuadMode.cpp
   ${GLOBAL_ISEL_BUILD_FILES}

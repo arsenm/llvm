@@ -362,7 +362,23 @@ public:
     unsigned SubReg;
     RegSubRegPair(unsigned Reg = 0, unsigned SubReg = 0)
         : Reg(Reg), SubReg(SubReg) {}
+
+    bool operator==(const RegSubRegPair &Other) const {
+      return Reg == Other.Reg && SubReg == Other.SubReg;
+    }
+
+    // For set operations.
+    bool operator<(const RegSubRegPair &Other) const {
+      if (Reg < Other.Reg)
+        return true;
+
+      if (SubReg < Other.SubReg)
+        return true;
+
+      return false;
+    }
   };
+
   /// A pair composed of a pair of a register and a sub-register index,
   /// and another sub-register index.
   /// Used to give some type checking when modeling Reg:SubReg1, SubReg2.
