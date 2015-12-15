@@ -427,8 +427,52 @@ int AMDGPUTTIImpl::getArithmeticInstrCost(
     }
 
     break;
+  case ISD::SDIV: {
+    if (Opd2Info == TargetTransformInfo::OK_UniformConstantValue) {
+      if  (Opd2PropInfo == TargetTransformInfo::OP_PowerOf2) {
+        int Cost = 2 * getArithmeticInstrCost(Instruction::AShr, Ty,
+                                              Opd1Info, Opd2Info,
+                                              TargetTransformInfo::OP_None,
+                                              TargetTransformInfo::OP_None);
+        Cost += getArithmeticInstrCost(Instruction::LShr, Ty, Opd1Info, Opd2Info,
+                                       TargetTransformInfo::OP_None,
+                                       TargetTransformInfo::OP_None);
+        Cost += getArithmeticInstrCost(Instruction::Add, Ty, Opd1Info, Opd2Info,
+                                       TargetTransformInfo::OP_None,
+                                       TargetTransformInfo::OP_None);
+        return Cost;
+      }
+
+      if (LT.second.SimpleTy == MVT::i32)
+        return LT.first * 5;
+
+      if (LT.second.SimpleTy == MVT::i64)
+        return LT.first * 40;
+
+      break;
+    }
+
+    if (LT.second.SimpleTy == MVT::i32) {
+      int Cost = 31 * FullRateCost + 6 * QuarterRateCost;
+      return LT.first * NElts * Cost;
+    }
+
+    if (LT.second.SimpleTy == MVT::i64)
+      return LT.first * 400;
+
+    break;
+  }
+  case ISD::SREM: {
+    if (LT.second.SimpleTy == MVT::i32) {
+      int Cost = 29 * FullRateCost + 6 * QuarterRateCost;
+      return LT.first * NElts * Cost;
+    }
+
+    break;
+  }
   default:
     break;
+
   }
 
   return BaseT::getArithmeticInstrCost(Opcode, Ty, Opd1Info, Opd2Info,
