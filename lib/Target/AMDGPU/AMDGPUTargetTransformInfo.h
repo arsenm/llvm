@@ -102,6 +102,10 @@ public:
   unsigned getCFInstrCost(unsigned Opcode);
 
   int getVectorInstrCost(unsigned Opcode, Type *ValTy, unsigned Index);
+
+  int getMemoryOpCost(unsigned Opcode, Type *Src, unsigned Alignment,
+                      unsigned AddressSpace, const Instruction *I = nullptr);
+
   bool isSourceOfDivergence(const Value *V) const;
 
   unsigned getFlatAddressSpace() const {

@@ -375,6 +375,113 @@ int AMDGPUTTIImpl::getVectorInstrCost(unsigned Opcode, Type *ValTy,
   }
 }
 
+int AMDGPUTTIImpl::getMemoryOpCost(unsigned Opcode, Type *Src,
+                                   unsigned Align, unsigned AS,
+                                   const Instruction *I) {
+  // TODO: We should not use the default accounting for the scalarization of
+  // illegal vector types when they can be successfully merged into fewer loads.
+
+  // FIXME: The base implementation should probably account for
+  // allowsMisalignedMemoryAccess, but unaligned accesses are expanded in a
+  // variety of different ways.
+
+  const unsigned SMRDOpCost = 2;
+  const unsigned BufferOpCost = 5;
+
+  if (Align == 0)
+    Align = DL.getABITypeAlignment(Src);
+
+  const AMDGPUAS &ASST = ST->getAMDGPUAS();
+  if (AS == ASST.PRIVATE_ADDRESS || AS == ASST.FLAT_ADDRESS) {
+    // TODO: Should check private element size and alignment
+    // Access decomposed into 4-byte components at best.
+    return BufferOpCost * ((DL.getTypeStoreSize(Src) + 3) >> 2);
+  }
+
+  switch (AS) {
+  case AMDGPUAS::GLOBAL_ADDRESS:
+  default: {
+    // TODO: Account for alignment restrictions.
+
+    if (VectorType *VT = dyn_cast<VectorType>(Src)) {
+      unsigned NElts = VT->getNumElements();
+      Type *EltTy = VT->getElementType();
+      unsigned EltSize = DL.getTypeAllocSize(EltTy);
+
+      // v8i32 and v16i32 vectors are legal, but the largest store is 16 bytes,
+      // so ignore what the default cost derived from whether the type is legal
+      // and assume the vector is split correctly.
+      if (EltSize == 4) {
+        unsigned RoundedNElts = (NElts + 3) / 4;
+        return BufferOpCost * RoundedNElts;
+      }
+    }
+
+    int BaseCost = BaseT::getMemoryOpCost(Opcode, Src, Align, AS, I);
+    return BufferOpCost * BaseCost;
+  }
+  case AMDGPUAS::LOCAL_ADDRESS: { // TODO: Handle region
+    // LDS is pretty fast assuming no bank conflicts.
+    const unsigned DSOpCost = 3;
+
+    // These don't have the larger load/store sizes, so estimate how the load
+    // will be broken up.
+    VectorType *VT = dyn_cast<VectorType>(Src);
+
+    unsigned Size = DL.getTypeAllocSize(Src);
+    // This only has 32-bit and 64-bit loads and stores available even though
+    // larger vector types are legal, so estimate how many this will be split
+    // into. Ignore the base vector legalization cost.
+    if (Align == 1)
+      return DSOpCost * Size;
+
+    int BaseCost = BaseT::getMemoryOpCost(Opcode, Src, Align, AS, I);
+
+    // Somewhat hacky way to test for scalarization.
+    if (BaseCost == 1 && Align == 2)
+      return DSOpCost * Size / 2;
+
+    if (VT) {
+      unsigned NElts = VT->getNumElements();
+      Type *EltTy = VT->getElementType();
+      unsigned EltSize = DL.getTypeAllocSize(EltTy);
+
+      if (EltSize == 4) {
+        unsigned RoundedNElts = (NElts + 1) / 2;
+        return DSOpCost * RoundedNElts;
+      }
+
+      if (EltSize == 8)
+        return DSOpCost * NElts;
+
+      if (EltSize < 4)
+        return BaseCost * DSOpCost;
+    }
+
+    assert(Align >= 4);
+    return BaseCost * DSOpCost;
+  }
+  case AMDGPUAS::CONSTANT_ADDRESS: {
+    int BaseCost = BaseT::getMemoryOpCost(Opcode, Src, Align, AS, I);
+
+    // SMRD requires 4-byte alignment, otherwise we must use buffer
+    // instructions.
+
+    // FIXME: We should be able to handle >= 4 byte aligned sub-dword types.
+    if (Align < 4 || DL.getTypeAllocSize(Src) < 4)
+      return BufferOpCost * BaseCost;
+
+    // FIXME: Scalarized illegal types not correctly handled.
+
+    // If uniformly accessed, SMRD instructions are faster than buffer/flat
+    // instructions.
+    return SMRDOpCost * BaseCost;
+  }
+  }
+
+  llvm_unreachable("cannot happen");
+}
+
 static bool isIntrinsicSourceOfDivergence(const IntrinsicInst *I) {
   switch (I->getIntrinsicID()) {
   case Intrinsic::amdgcn_workitem_id_x:
