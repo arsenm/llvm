@@ -101,6 +101,9 @@ public:
     TTI::OperandValueProperties Opd2PropInfo = TTI::OP_None,
     ArrayRef<const Value *> Args = ArrayRef<const Value *>());
 
+  int getCastInstrCost(unsigned Opcode, Type *Dst, Type *Src,
+                       const Instruction *I = nullptr);
+
   unsigned getCFInstrCost(unsigned Opcode);
 
   int getVectorInstrCost(unsigned Opcode, Type *ValTy, unsigned Index);

@@ -435,6 +435,148 @@ int AMDGPUTTIImpl::getArithmeticInstrCost(
                                        Opd1PropInfo, Opd2PropInfo);
 }
 
+int AMDGPUTTIImpl::getCastInstrCost(unsigned Opcode,
+                                    Type *Dst, Type *Src,
+                                    const Instruction *I) {
+  if (Opcode != Instruction::FPToSI &&
+      Opcode != Instruction::FPToUI &&
+      Opcode != Instruction::SIToFP &&
+      Opcode != Instruction::UIToFP)
+    return BaseT::getCastInstrCost(Opcode, Dst, Src, I);
+
+  EVT SrcTy = TLI->getValueType(DL, Src);
+  EVT DstTy = TLI->getValueType(DL, Dst);
+
+  if (!SrcTy.isSimple() || !DstTy.isSimple())
+    return BaseT::getCastInstrCost(Opcode, Dst, Src, I);
+
+  std::pair<int, MVT> SrcLT = TLI->getTypeLegalizationCost(DL, Src);
+  std::pair<int, MVT> DstLT = TLI->getTypeLegalizationCost(DL, Dst);
+  assert(SrcLT.first == DstLT.first);
+
+  unsigned NElts = SrcLT.second.isVector() ?
+    SrcLT.second.getVectorNumElements() : 1;
+
+  MVT::SimpleValueType SSrcLT = SrcLT.second.getScalarType().SimpleTy;
+  MVT::SimpleValueType SDstLT = DstLT.second.getScalarType().SimpleTy;
+
+  switch (Opcode) {
+  case Instruction::FPToSI:
+  case Instruction::FPToUI: {
+    int Cost = 0;
+    if (SSrcLT == MVT::f32 || SSrcLT == MVT::f16) {
+      if (SDstLT == MVT::i64) {
+        // f32 -> i64 expansion.
+
+        const int FullRateCost = getFullRateInstrCost();
+        const int Rate64Cost = get64BitInstrCost();
+
+        Cost += FullRateCost; // bfe
+        Cost += FullRateCost; // and
+        Cost += FullRateCost; // add
+        Cost += FullRateCost; // or
+        Cost += FullRateCost; // sub
+        Cost += FullRateCost; // add
+        Cost += FullRateCost; // setcc
+        Cost += Rate64Cost; // lshl
+        Cost += Rate64Cost; // lshr
+        Cost += 2 * FullRateCost; // select
+        Cost += FullRateCost; // ashr
+        Cost += 2 * FullRateCost; // xor
+        Cost += 2 * FullRateCost; // sub i64
+        Cost += FullRateCost; // setcc
+        Cost += 2 * FullRateCost; // select
+      } else {
+        // f32 -> i32 full rate instruction.
+        Cost += getFullRateInstrCost();
+      }
+    } else {
+      assert(SSrcLT == MVT::f64);
+
+      if (SDstLT == MVT::i64) {
+        // f64 -> i64 expansion.
+        const int FP64Cost = get64BitInstrCost();
+        Cost += FP64Cost; // fmul
+        Cost += getSimpleIntrinsicCost(SSrcLT, Intrinsic::floor);
+        Cost += getSimpleIntrinsicCost(SSrcLT, Intrinsic::trunc);
+        Cost += getSimpleIntrinsicCost(SSrcLT, Intrinsic::fma);
+        Cost += FP64Cost; // [su]itofp f64 to i32
+        Cost += FP64Cost; // uitofp f64 to i32
+      } else {
+        // f64 -> i32 half or quarter rate instruction.
+        Cost += get64BitInstrCost();
+      }
+    }
+
+    return NElts * SrcLT.first * Cost;
+  }
+  case Instruction::SIToFP:
+  case Instruction::UIToFP: {
+    int Cost = 0;
+    if (SDstLT == MVT::f32 || SDstLT == MVT::f16) {
+      if (SSrcLT == MVT::i64) {
+        // i64 -> f32 expansion.
+        const int FullRateCost = getFullRateInstrCost();
+        const int Rate64Cost = get64BitInstrCost();
+
+        bool Signed = (Opcode == Instruction::FPToSI);
+        if (Signed) {
+          Cost += FullRateCost; // ashr
+          Cost += 2 * FullRateCost; // add i64
+          Cost += FullRateCost; // and
+          Cost += 2 * FullRateCost; // xor
+        }
+
+        Cost += 2 * FullRateCost; // ctlz
+        Cost += Rate64Cost; // setcc i64
+        Cost += FullRateCost; // add
+        Cost += FullRateCost; // select
+        Cost += Rate64Cost; // shl i64
+        Cost += FullRateCost; // sub
+        Cost += FullRateCost; // and
+        Cost += FullRateCost; // select
+        Cost += FullRateCost; // bfe
+        Cost += FullRateCost; // select
+        Cost += FullRateCost; // shl
+        Cost += Rate64Cost; // setcc i64
+        Cost += FullRateCost; // or
+        Cost += FullRateCost; // and
+        Cost += FullRateCost; // select
+        Cost += FullRateCost; // select
+        Cost += FullRateCost; // add
+        Cost += FullRateCost; // xor
+
+        if (Signed) {
+          Cost += FullRateCost; // setcc i32
+          Cost += FullRateCost; // select
+        }
+      } else {
+        // i32 -> f32 full rate instruction.
+        Cost = getFullRateInstrCost();
+      }
+    } else {
+      // i64 to f64 expansion
+      if (SSrcLT == MVT::i64) {
+        // [su]int_to_fp (half or full)
+        // uint_to_fp (half or full)
+        // ldexp (half or full)
+        // fadd (half or full)
+        Cost = 4 * get64BitInstrCost();
+      } else {
+        // i32 -> f64 half or quarter rate instruction.
+        Cost = get64BitInstrCost();
+      }
+    }
+
+    return NElts * SrcLT.first * Cost;
+  }
+  default:
+    break;
+  }
+
+  return BaseT::getCastInstrCost(Opcode, Dst, Src, I);
+}
+
 unsigned AMDGPUTTIImpl::getCFInstrCost(unsigned Opcode) {
   // XXX - For some reason this isn't called for switch.
   switch (Opcode) {

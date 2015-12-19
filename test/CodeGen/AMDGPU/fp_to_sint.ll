@@ -50,7 +50,7 @@ define amdgpu_kernel void @fp_to_sint_v4i32(<4 x i32> addrspace(1)* %out, <4 x f
   ret void
 }
 
-; FUNC-LABEL: {{^}}fp_to_sint_i64:
+; FUNC-LABEL: {{^}}s_fp_to_sint_i64:
 
 ; EG-DAG: AND_INT
 ; EG-DAG: LSHR
@@ -74,16 +74,25 @@ define amdgpu_kernel void @fp_to_sint_v4i32(<4 x i32> addrspace(1)* %out, <4 x f
 ; EG-DAG: CNDE_INT
 ; EG-DAG: CNDE_INT
 
-; Check that the compiler doesn't crash with a "cannot select" error
 ; SI: s_endpgm
-define amdgpu_kernel void @fp_to_sint_i64 (i64 addrspace(1)* %out, float %in) {
+define amdgpu_kernel void @s_fp_to_sint_i64(i64 addrspace(1)* %out, float %in) {
 entry:
   %0 = fptosi float %in to i64
   store i64 %0, i64 addrspace(1)* %out
   ret void
 }
 
-; FUNC: {{^}}fp_to_sint_v2i64:
+; FUNC-LABEL: {{^}}v_fp_to_sint_i64:
+; SI: s_endpgm
+define amdgpu_kernel void @v_fp_to_sint_i64(i64 addrspace(1)* %out, float addrspace(1)* %in) {
+entry:
+  %load = load float, float addrspace(1)* %in
+  %cvt = fptosi float %load to i64
+  store i64 %cvt, i64 addrspace(1)* %out
+  ret void
+}
+
+; FUNC-LABEL: {{^}}fp_to_sint_v2i64:
 ; EG-DAG: AND_INT
 ; EG-DAG: LSHR
 ; EG-DAG: SUB_INT
