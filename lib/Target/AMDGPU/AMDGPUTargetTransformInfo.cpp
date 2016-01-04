@@ -427,6 +427,27 @@ int AMDGPUTTIImpl::getArithmeticInstrCost(
     }
 
     break;
+  case ISD::UDIV:
+  case ISD::UREM: {
+    if (Opd2Info == TargetTransformInfo::OK_UniformConstantValue) {
+      if  (Opd2PropInfo == TargetTransformInfo::OP_PowerOf2) {
+        int Cost = 1 * FullRateCost;
+        return LT.first * NElts * Cost;
+      }
+
+      int Cost = 1 * QuarterRateCost + 2 * FullRateCost;
+      return LT.first * NElts * Cost;
+    }
+
+    if (SLT == MVT::i32) {
+      int Cost = 21 * FullRateCost + 6 * QuarterRateCost;
+      return LT.first * NElts * Cost;
+    }
+
+    // FIXME: The 64-bit division lowering should be replaced.
+
+    break;
+  }
   case ISD::SDIV: {
     if (Opd2Info == TargetTransformInfo::OK_UniformConstantValue) {
       if  (Opd2PropInfo == TargetTransformInfo::OP_PowerOf2) {
