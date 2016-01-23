@@ -1630,6 +1630,61 @@ Instruction *InstCombiner::visitCallInst(CallInst &CI) {
 
     break;
   }
+  case Intrinsic::amdgcn_smul24: {
+    if (const ConstantInt *C0 = dyn_cast<ConstantInt>(II->getArgOperand(0))) {
+      if (const ConstantInt *C1 = dyn_cast<ConstantInt>(II->getArgOperand(1))) {
+        // Only low 24-bits used.
+        int64_t Val0 = SignExtend64<24>(C0->getSExtValue());
+        int64_t Val1 = SignExtend64<24>(C1->getSExtValue());
+
+        Constant *Folded = ConstantInt::get(CI.getType(), Val0 * Val1, true);
+        return ReplaceInstUsesWith(CI, Folded);
+      }
+    }
+    break;
+  }
+  case Intrinsic::amdgcn_umul24: {
+    if (const ConstantInt *C0 = dyn_cast<ConstantInt>(II->getArgOperand(0))) {
+      if (const ConstantInt *C1 = dyn_cast<ConstantInt>(II->getArgOperand(1))) {
+        // Only low 24-bits used.
+        const int32_t Mask24 = (1 << 24) - 1;
+        uint64_t Val0 = C0->getZExtValue() & Mask24;
+        uint64_t Val1 = C1->getZExtValue() & Mask24;
+
+        Constant *Folded = ConstantInt::get(CI.getType(), Val0 * Val1, false);
+        return ReplaceInstUsesWith(CI, Folded);
+      }
+    }
+    break;
+  }
+  case Intrinsic::amdgcn_smulhi24: {
+    if (const ConstantInt *C0 = dyn_cast<ConstantInt>(II->getArgOperand(0))) {
+      if (const ConstantInt *C1 = dyn_cast<ConstantInt>(II->getArgOperand(1))) {
+        // Only low 24-bits used.
+        int64_t Val0 = SignExtend64<24>(C0->getSExtValue());
+        int64_t Val1 = SignExtend64<24>(C1->getSExtValue());
+
+        Constant *Folded
+          = ConstantInt::get(CI.getType(), (Val0 * Val1) >> 32, true);
+        return ReplaceInstUsesWith(CI, Folded);
+      }
+    }
+    break;
+  }
+  case Intrinsic::amdgcn_umulhi24: {
+    if (const ConstantInt *C0 = dyn_cast<ConstantInt>(II->getArgOperand(0))) {
+      if (const ConstantInt *C1 = dyn_cast<ConstantInt>(II->getArgOperand(1))) {
+        // Only low 24-bits used.
+        const int32_t Mask24 = (1 << 24) - 1;
+        uint64_t Val0 = C0->getZExtValue() & Mask24;
+        uint64_t Val1 = C1->getZExtValue() & Mask24;
+
+        Constant *Folded = ConstantInt::get(CI.getType(), (Val0 * Val1) >> 32);
+        return ReplaceInstUsesWith(CI, Folded);
+      }
+    }
+    break;
+  }
   case Intrinsic::stackrestore: {
     // If the save is right next to the restore, remove the restore.  This can
     // happen when variable allocas are DCE'd.
