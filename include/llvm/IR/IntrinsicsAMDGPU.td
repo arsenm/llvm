@@ -65,6 +65,13 @@ defm int_amdgcn_workitem_id : AMDGPUReadPreloadRegisterIntrinsic_xyz <
 defm int_amdgcn_workgroup_id : AMDGPUReadPreloadRegisterIntrinsic_xyz <
   "__builtin_amdgcn_workgroup_id">;
 
+def int_amdgcn_s_sendmsg : GCCBuiltin<"__builtin_amdgcn_s_sendmsg">,
+  Intrinsic<[], [llvm_i32_ty], []>;
+
+def int_amdgcn_s_sendmsghalt :
+  GCCBuiltin<"__builtin_amdgcn_s_sendmsghalt">,
+  Intrinsic<[], [llvm_i32_ty], []>;
+
 def int_amdgcn_s_barrier : GCCBuiltin<"__builtin_amdgcn_s_barrier">,
   Intrinsic<[], [], [IntrConvergent]>;
 
