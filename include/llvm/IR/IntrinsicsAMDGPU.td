@@ -67,6 +67,30 @@ let TargetPrefix = "amdgcn" in {
 def int_amdgcn_s_barrier : GCCBuiltin<"__builtin_amdgcn_s_barrier">,
   Intrinsic<[], [], [IntrConvergent]>;
 
+def int_amdgcn_umul24 : GCCBuiltin<"__builtin_amdgcn_umul24">,
+  Intrinsic<[llvm_i32_ty], [llvm_i32_ty, llvm_i32_ty], [IntrNoMem]
+>;
+
+def int_amdgcn_umulhi24 : GCCBuiltin<"__builtin_amdgcn_umulhi24">,
+  Intrinsic<[llvm_i32_ty], [llvm_i32_ty, llvm_i32_ty], [IntrNoMem]
+>;
+
+def int_amdgcn_smul24 : GCCBuiltin<"__builtin_amdgcn_smul24">,
+  Intrinsic<[llvm_i32_ty], [llvm_i32_ty, llvm_i32_ty], [IntrNoMem]
+>;
+
+def int_amdgcn_smulhi24 : GCCBuiltin<"__builtin_amdgcn_smulhi24">,
+  Intrinsic<[llvm_i32_ty], [llvm_i32_ty, llvm_i32_ty], [IntrNoMem]
+>;
+
+def int_amdgcn_umad24 : GCCBuiltin<"__builtin_amdgcn_umad24">,
+  Intrinsic<[llvm_i32_ty], [llvm_i32_ty, llvm_i32_ty, llvm_i32_ty], [IntrNoMem]
+>;
+
+def int_amdgcn_smad24 : GCCBuiltin<"__builtin_amdgcn_smad24">,
+  Intrinsic<[llvm_i32_ty], [llvm_i32_ty, llvm_i32_ty, llvm_i32_ty], [IntrNoMem]
+>;
+
 def int_amdgcn_div_scale : Intrinsic<
   // 1st parameter: Numerator
   // 2nd parameter: Denominator

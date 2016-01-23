@@ -1456,6 +1456,18 @@ SDValue SITargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
                        Op.getOperand(2), Op.getOperand(3), Op.getOperand(4),
                        Glue);
   }
+  case Intrinsic::amdgcn_umul24:
+    return DAG.getNode(AMDGPUISD::MUL_U24, DL, VT,
+                       Op.getOperand(1), Op.getOperand(2));
+  case Intrinsic::amdgcn_smul24:
+    return DAG.getNode(AMDGPUISD::MUL_I24, DL, VT,
+                       Op.getOperand(1), Op.getOperand(2));
+  case Intrinsic::amdgcn_umad24:
+    return DAG.getNode(AMDGPUISD::MAD_U24, DL, VT,
+                       Op.getOperand(1), Op.getOperand(2), Op.getOperand(3));
+  case Intrinsic::amdgcn_smad24:
+    return DAG.getNode(AMDGPUISD::MAD_I24, DL, VT,
+                       Op.getOperand(1), Op.getOperand(2), Op.getOperand(3));
   case Intrinsic::amdgcn_ldexp:
     return DAG.getNode(AMDGPUISD::LDEXP, DL, VT,
                        Op.getOperand(1), Op.getOperand(2));
