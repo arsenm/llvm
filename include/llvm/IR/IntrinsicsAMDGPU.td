@@ -157,6 +157,12 @@ def int_amdgcn_smed3 : GCCBuiltin<"__builtin_amdgcn_smed3">,
     [llvm_i32_ty, llvm_i32_ty, llvm_i32_ty], [IntrNoMem]
 >;
 
+// Signed find first bit high.
+// May be selected to s_flbit_i32
+def int_amdgcn_sffbh : Intrinsic<
+  [llvm_i32_ty], [llvm_anyint_ty], [IntrNoMem]
+>;
+
 def int_amdgcn_cubeid : GCCBuiltin<"__builtin_amdgcn_cubeid">,
   Intrinsic<[llvm_float_ty],
     [llvm_float_ty, llvm_float_ty, llvm_float_ty], [IntrNoMem]
