@@ -62,7 +62,6 @@ TargetMachine::~TargetMachine() {
 void TargetMachine::resetTargetOptions(const Function &F) const {
 #define RESET_OPTION(X, Y)                                                     \
   do {                                                                         \
-    Options.X = false;                                                         \
     if (F.hasFnAttribute(Y))                                                   \
       Options.X = (F.getFnAttribute(Y).getValueAsString() == "true");          \
   } while (0)
