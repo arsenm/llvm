@@ -2,6 +2,7 @@
 ; RUN: llc -march=amdgcn -mattr=+fp-exceptions -verify-machineinstrs < %s | FileCheck -check-prefix=SNAN -check-prefix=GCN %s
 
 declare i32 @llvm.r600.read.tidig.x() #0
+declare float @llvm.sqrt.f32(float) #0
 declare float @llvm.minnum.f32(float, float) #0
 declare float @llvm.maxnum.f32(float, float) #0
 declare double @llvm.minnum.f64(double, double) #0
@@ -149,6 +150,92 @@ define void @v_test_legacy_fmed3_r_i_i_f32(float addrspace(1)* %out, float addrs
   ret void
 }
 
+; GCN-LABEL: {{^}}v_test_fmed3_unsafe_sqrt_opt_f32:
+; GCN: {{buffer|flat}}_load_dword [[X:v[0-9]+]]
+; GCN: {{buffer|flat}}_load_dword [[Y:v[0-9]+]]
+; GCN: v_sqrt_f32_e32 [[SQRTX:v[0-9]+]], [[X]]
+; GCN: v_med3_f32 [[MED:v[0-9]+]], [[Y]], 0, [[SQRTX]]
+; GCN: {{buffer|flat}}_store_dword [[MED]]
+define void @v_test_fmed3_unsafe_sqrt_opt_f32(float addrspace(1)* %out, float addrspace(1)* %aptr, float addrspace(1)* %bptr, float addrspace(1)* %cptr) #3 {
+  %tid = call i32 @llvm.r600.read.tidig.x()
+  %gep0 = getelementptr float, float addrspace(1)* %aptr, i32 %tid
+  %gep1 = getelementptr float, float addrspace(1)* %bptr, i32 %tid
+  %outgep = getelementptr float, float addrspace(1)* %out, i32 %tid
+  %x = load volatile float, float addrspace(1)* %gep0
+  %y = load volatile float, float addrspace(1)* %gep1
+
+  %sqrt.x = call float @llvm.sqrt.f32(float %x)
+  %max0 = call float @llvm.maxnum.f32(float %y, float 0.0)
+  %med = call float @llvm.minnum.f32(float %sqrt.x, float %max0)
+
+  store float %med, float addrspace(1)* %outgep
+  ret void
+}
+
+; GCN-LABEL: {{^}}v_test_fmed3_unsafe_sqrt_opt_commute_f32:
+; GCN: {{buffer|flat}}_load_dword [[X:v[0-9]+]]
+; GCN: {{buffer|flat}}_load_dword [[Y:v[0-9]+]]
+; GCN: v_sqrt_f32_e32 [[SQRTX:v[0-9]+]], [[X]]
+; GCN: v_med3_f32 [[MED:v[0-9]+]], [[Y]], 0, [[SQRTX]]
+; GCN: {{buffer|flat}}_store_dword [[MED]]
+define void @v_test_fmed3_unsafe_sqrt_opt_commute_f32(float addrspace(1)* %out, float addrspace(1)* %aptr, float addrspace(1)* %bptr, float addrspace(1)* %cptr) #3 {
+  %tid = call i32 @llvm.r600.read.tidig.x()
+  %gep0 = getelementptr float, float addrspace(1)* %aptr, i32 %tid
+  %gep1 = getelementptr float, float addrspace(1)* %bptr, i32 %tid
+  %outgep = getelementptr float, float addrspace(1)* %out, i32 %tid
+  %x = load volatile float, float addrspace(1)* %gep0
+  %y = load volatile float, float addrspace(1)* %gep1
+
+  %sqrt.x = call float @llvm.sqrt.f32(float %x)
+  %max0 = call float @llvm.maxnum.f32(float %y, float 0.0)
+  %med = call float @llvm.minnum.f32(float %max0, float %sqrt.x)
+
+  store float %med, float addrspace(1)* %outgep
+  ret void
+}
+
+; GCN-LABEL: {{^}}v_test_fmed3_unsafe_sqrt_opt_multi_use_f32:
+; GCN: v_sqrt_f32
+; GCN: v_max_f32
+; GCN: v_min_f32
+define void @v_test_fmed3_unsafe_sqrt_opt_multi_use_f32(float addrspace(1)* %out, float addrspace(1)* %aptr, float addrspace(1)* %bptr, float addrspace(1)* %cptr) #3 {
+  %tid = call i32 @llvm.r600.read.tidig.x()
+  %gep0 = getelementptr float, float addrspace(1)* %aptr, i32 %tid
+  %gep1 = getelementptr float, float addrspace(1)* %bptr, i32 %tid
+  %outgep = getelementptr float, float addrspace(1)* %out, i32 %tid
+  %x = load volatile float, float addrspace(1)* %gep0
+  %y = load volatile float, float addrspace(1)* %gep1
+
+  %sqrt.x = call float @llvm.sqrt.f32(float %x)
+  %max0 = call float @llvm.maxnum.f32(float %y, float 0.0)
+  %med = call float @llvm.minnum.f32(float %sqrt.x, float %max0)
+
+  store volatile float %max0, float addrspace(1)* %outgep
+  store volatile float %med, float addrspace(1)* %outgep
+  ret void
+}
+
+; GCN-LABEL: {{^}}v_test_fmed3_safe_sqrt_opt_f32:
+; GCN: v_sqrt_f32
+; GCN: v_max_f32
+; GCN: v_min_f32
+define void @v_test_fmed3_safe_sqrt_opt_f32(float addrspace(1)* %out, float addrspace(1)* %aptr, float addrspace(1)* %bptr, float addrspace(1)* %cptr) #1 {
+  %tid = call i32 @llvm.r600.read.tidig.x()
+  %gep0 = getelementptr float, float addrspace(1)* %aptr, i32 %tid
+  %gep1 = getelementptr float, float addrspace(1)* %bptr, i32 %tid
+  %outgep = getelementptr float, float addrspace(1)* %out, i32 %tid
+  %x = load volatile float, float addrspace(1)* %gep0
+  %y = load volatile float, float addrspace(1)* %gep1
+
+  %sqrt.x = call float @llvm.sqrt.f32(float %x)
+  %max0 = call float @llvm.maxnum.f32(float %y, float 0.0)
+  %med = call float @llvm.minnum.f32(float %sqrt.x, float %max0)
+
+  store float %med, float addrspace(1)* %outgep
+  ret void
+}
+
 attributes #0 = { nounwind readnone }
 attributes #1 = { nounwind "unsafe-fp-math"="false" "no-nans-fp-math"="false" }
 attributes #2 = { nounwind "unsafe-fp-math"="false" "no-nans-fp-math"="true" }
+attributes #3 = { nounwind "unsafe-fp-math"="true" "no-nans-fp-math"="true" }
