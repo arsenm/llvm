@@ -2202,6 +2202,23 @@ static SDValue performFPMed3ImmCombine(SelectionDAG &DAG,
                      Var, SDValue(K0, 0), SDValue(K1, 0));
 }
 
+static SDValue performUnsafeFMedSqrtOpt(SelectionDAG &DAG,
+                                        SDLoc SL,
+                                        SDValue Op0,
+                                        SDValue Op1) {
+  assert(Op0.getOpcode() == ISD::FSQRT);
+
+  if (Op1.getOpcode() != ISD::FMAXNUM || !Op1.hasOneUse())
+    return SDValue();
+
+  ConstantFPSDNode *Zero = dyn_cast<ConstantFPSDNode>(Op1.getOperand(1));
+  if (!Zero || !Zero->isZero())
+    return SDValue();
+
+  return DAG.getNode(AMDGPUISD::FMED3, SL, Zero->getValueType(0),
+                     Op1.getOperand(0), SDValue(Zero, 0), Op0);
+}
+
 SDValue SITargetLowering::performMinMaxCombine(SDNode *N,
                                                DAGCombinerInfo &DCI) const {
   SelectionDAG &DAG = DCI.DAG;
@@ -2258,6 +2275,18 @@ SDValue SITargetLowering::performMinMaxCombine(SDNode *N,
       N->getValueType(0) == MVT::f32 && Op0.hasOneUse()) {
     if (SDValue Res = performFPMed3ImmCombine(DAG, SDLoc(N), Op0, Op1))
       return Res;
+  }
+
+  if (Opc == ISD::FMINNUM && DAG.getTarget().Options.UnsafeFPMath) {
+    if (Op0.getOpcode() == ISD::FSQRT) {
+      // fmin(sqrt(x), fmax(y, 0)) -> fmed3(y, 0, sqrt(x))
+      if (SDValue Res = performUnsafeFMedSqrtOpt(DAG, SDLoc(N), Op0, Op1))
+        return Res;
+    } else if (Op1.getOpcode() == ISD::FSQRT) {
+      // fmin(fmax(y, 0), sqrt(x)) -> fmed3(y, 0, sqrt(x))
+      if (SDValue Res = performUnsafeFMedSqrtOpt(DAG, SDLoc(N), Op1, Op0))
+        return Res;
+    }
   }
 
   return SDValue();
