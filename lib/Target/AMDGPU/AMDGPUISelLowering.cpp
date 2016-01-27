@@ -3085,6 +3085,23 @@ void AMDGPUTargetLowering::computeKnownBitsForTargetNode(
 
     break;
   }
+  case AMDGPUISD::SMIN3:
+  case AMDGPUISD::SMAX3:
+  case AMDGPUISD::SMED3:
+  case AMDGPUISD::UMIN3:
+  case AMDGPUISD::UMAX3:
+  case AMDGPUISD::UMED3: {
+    APInt Op0Zero, Op0One;
+    APInt Op1Zero, Op1One;
+    APInt Op2Zero, Op2One;
+    DAG.computeKnownBits(Op.getOperand(0), Op0Zero, Op0One, Depth + 1);
+    DAG.computeKnownBits(Op.getOperand(1), Op1Zero, Op1One, Depth + 1);
+    DAG.computeKnownBits(Op.getOperand(2), Op2Zero, Op2One, Depth + 1);
+
+    KnownZero = Op0Zero & Op1Zero & Op2Zero;
+    KnownOne = Op0One & Op1One & Op2One;
+    break;
+  }
   }
 }
 
@@ -3115,6 +3132,27 @@ unsigned AMDGPUTargetLowering::ComputeNumSignBitsForTargetNode(
   case AMDGPUISD::CARRY:
   case AMDGPUISD::BORROW:
     return 31;
+
+  case AMDGPUISD::SMIN3:
+  case AMDGPUISD::SMAX3:
+  case AMDGPUISD::SMED3:
+  case AMDGPUISD::UMIN3:
+  case AMDGPUISD::UMAX3:
+  case AMDGPUISD::UMED3: {
+    unsigned Tmp0 = DAG.ComputeNumSignBits(Op.getOperand(0), Depth + 1);
+    if (Tmp0 == 1)
+      return 1;  // Early out.
+
+    unsigned Tmp1 = DAG.ComputeNumSignBits(Op.getOperand(1), Depth + 1);
+    if (Tmp1 == 1)
+      return 1;  // Early out.
+
+    unsigned Tmp2 = DAG.ComputeNumSignBits(Op.getOperand(2), Depth + 1);
+    if (Tmp1 == 2)
+      return 1;  // Early out.
+
+    return std::min(Tmp0, std::min(Tmp1, Tmp2));
+  }
 
   default:
     return 1;
