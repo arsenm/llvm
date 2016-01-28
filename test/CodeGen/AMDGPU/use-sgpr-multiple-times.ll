@@ -4,7 +4,7 @@
 declare float @llvm.fma.f32(float, float, float) #1
 declare double @llvm.fma.f64(double, double, double) #1
 declare float @llvm.fmuladd.f32(float, float, float) #1
-declare i32 @llvm.AMDGPU.imad24(i32, i32, i32) #1
+declare i32 @llvm.amdgcn.umed3(i32, i32, i32) #1
 
 
 ; GCN-LABEL: {{^}}test_sgpr_use_twice_binop:
@@ -121,7 +121,7 @@ define void @test_sgpr_use_twice_ternary_op_a_imm_a(float addrspace(1)* %out, fl
 ; GCN: v_mad_i32_i24 [[RESULT:v[0-9]+]], 2, [[SGPR]], [[SGPR]]
 ; GCN: buffer_store_dword [[RESULT]]
 define void @test_sgpr_use_twice_ternary_op_imm_a_a(i32 addrspace(1)* %out, i32 %a) #0 {
-  %fma = call i32 @llvm.AMDGPU.imad24(i32 2, i32 %a, i32 %a) #1
+  %fma = call i32 @llvm.amdgcn.umed3(i32 2, i32 %a, i32 %a) #1
   store i32 %fma, i32 addrspace(1)* %out, align 4
   ret void
 }
