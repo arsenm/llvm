@@ -381,6 +381,8 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(TargetMachine &TM,
   setTargetDAGCombine(ISD::SRA);
   setTargetDAGCombine(ISD::SRL);
   setTargetDAGCombine(ISD::MUL);
+  setTargetDAGCombine(ISD::MULHS);
+  setTargetDAGCombine(ISD::MULHU);
   setTargetDAGCombine(ISD::SELECT);
   setTargetDAGCombine(ISD::SELECT_CC);
   setTargetDAGCombine(ISD::STORE);
@@ -2605,6 +2607,40 @@ SDValue AMDGPUTargetLowering::performMulCombine(SDNode *N,
   return DAG.getSExtOrTrunc(Mul, DL, VT);
 }
 
+SDValue AMDGPUTargetLowering::performMulHiCombine(SDNode *N,
+                                                  DAGCombinerInfo &DCI) const {
+  EVT VT = N->getValueType(0);
+
+  if (VT.isVector() || VT.getSizeInBits() > 32)
+    return SDValue();
+
+  SDValue N0 = N->getOperand(0);
+  SDValue N1 = N->getOperand(1);
+  SelectionDAG &DAG = DCI.DAG;
+  SDLoc DL(N);
+
+  // All targets with mul24 have the equivalent mulhi24
+  if (N->getOpcode() == ISD::MULHU && Subtarget->hasMulU24() &&
+      isU24(N0, DAG) && isU24(N1, DAG)) {
+    N0 = DAG.getZExtOrTrunc(N0, DL, MVT::i32);
+    N1 = DAG.getZExtOrTrunc(N1, DL, MVT::i32);
+    SDValue MulHi = DAG.getNode(AMDGPUISD::MULHI_U24, DL, MVT::i32, N0, N1);
+    return DAG.getSExtOrTrunc(MulHi, DL, VT);
+  }
+
+  if (N->getOpcode() == ISD::MULHS && Subtarget->hasMulI24() &&
+      isI24(N0, DAG) && isI24(N1, DAG)) {
+    N0 = DAG.getSExtOrTrunc(N0, DL, MVT::i32);
+    N1 = DAG.getSExtOrTrunc(N1, DL, MVT::i32);
+    SDValue MulHi = DAG.getNode(AMDGPUISD::MULHI_I24, DL, MVT::i32, N0, N1);
+    return DAG.getSExtOrTrunc(MulHi, DL, VT);
+  }
+
+
+  return SDValue();
+
+}
+
 static bool isNegativeOne(SDValue Val) {
   if (ConstantSDNode *C = dyn_cast<ConstantSDNode>(Val))
     return C->isAllOnesValue();
@@ -2735,6 +2771,9 @@ SDValue AMDGPUTargetLowering::PerformDAGCombine(SDNode *N,
   }
   case ISD::MUL:
     return performMulCombine(N, DCI);
+  case ISD::MULHS:
+  case ISD::MULHU:
+    return performMulHiCombine(N, DCI);
   case AMDGPUISD::MUL_I24:
   case AMDGPUISD::MUL_U24: {
     SDValue N0 = N->getOperand(0);
@@ -2962,6 +3001,8 @@ const char* AMDGPUTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(FFBH_U32)
   NODE_NAME_CASE(MUL_U24)
   NODE_NAME_CASE(MUL_I24)
+  NODE_NAME_CASE(MULHI_U24)
+  NODE_NAME_CASE(MULHI_I24)
   NODE_NAME_CASE(MAD_U24)
   NODE_NAME_CASE(MAD_I24)
   NODE_NAME_CASE(TEXTURE_FETCH)

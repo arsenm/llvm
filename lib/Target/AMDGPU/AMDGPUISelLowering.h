@@ -74,6 +74,7 @@ protected:
   SDValue performSraCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performSrlCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performMulCombine(SDNode *N, DAGCombinerInfo &DCI) const;
+  SDValue performMulHiCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performCtlzCombine(SDLoc SL, SDValue Cond, SDValue LHS, SDValue RHS,
                              DAGCombinerInfo &DCI) const;
   SDValue performSelectCombine(SDNode *N, DAGCombinerInfo &DCI) const;
@@ -284,6 +285,8 @@ enum NodeType : unsigned {
   FFBH_U32, // ctlz with -1 if input is zero.
   MUL_U24,
   MUL_I24,
+  MULHI_U24,
+  MULHI_I24,
   MAD_U24,
   MAD_I24,
   TEXTURE_FETCH,

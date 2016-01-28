@@ -1462,7 +1462,7 @@ defm V_MUL_I32_I24 : VOP2Inst <vop2<0x9, 0x6>, "v_mul_i32_i24",
 >;
 
 defm V_MUL_HI_I32_I24 : VOP2Inst <vop2<0xa,0x7>, "v_mul_hi_i32_i24",
-  VOP_I32_I32_I32, int_amdgcn_smulhi24
+  VOP_I32_I32_I32, AMDGPUmulhi_i24
 >;
 
 defm V_MUL_U32_U24 : VOP2Inst <vop2<0xb, 0x8>, "v_mul_u32_u24",
@@ -1470,7 +1470,7 @@ defm V_MUL_U32_U24 : VOP2Inst <vop2<0xb, 0x8>, "v_mul_u32_u24",
 >;
 
 defm V_MUL_HI_U32_U24 : VOP2Inst <vop2<0xc,0x9>, "v_mul_hi_u32_u24",
-  VOP_I32_I32_I32, int_amdgcn_umulhi24
+  VOP_I32_I32_I32, AMDGPUmulhi_u24
 >;
 
 defm V_MIN_F32 : VOP2Inst <vop2<0xf, 0xa>, "v_min_f32", VOP_F32_F32_F32,
