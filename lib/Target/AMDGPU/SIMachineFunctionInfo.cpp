@@ -84,8 +84,11 @@ SIMachineFunctionInfo::SIMachineFunctionInfo(const MachineFunction &MF)
   if (F->hasFnAttribute("amdgpu-work-group-id-y"))
     WorkGroupIDY = true;
 
-  if (F->hasFnAttribute("amdgpu-work-group-id-z"))
+  if (F->hasFnAttribute("amdgpu-work-group-id-z")) {
+    // Z implies Y is enabled.
+    WorkGroupIDY = true;
     WorkGroupIDZ = true;
+  }
 
   if (F->hasFnAttribute("amdgpu-work-item-id-y"))
     WorkItemIDY = true;

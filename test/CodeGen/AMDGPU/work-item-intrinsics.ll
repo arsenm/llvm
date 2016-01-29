@@ -175,7 +175,7 @@ entry:
 ; FUNC-LABEL: {{^}}tgid_z:
 ; HSA: compute_pgm_rsrc2_user_sgpr = 6
 ; HSA: compute_pgm_rsrc2_tgid_x_en = 1
-; HSA: compute_pgm_rsrc2_tgid_y_en = 0
+; HSA: compute_pgm_rsrc2_tgid_y_en = 1
 ; HSA: compute_pgm_rsrc2_tgid_z_en = 1
 ; HSA: compute_pgm_rsrc2_tg_size_en = 0
 ; HSA: compute_pgm_rsrc2_tidig_comp_cnt = 0
@@ -190,15 +190,15 @@ entry:
 ; HSA: enable_sgpr_grid_workgroup_count_y = 0
 ; HSA: enable_sgpr_grid_workgroup_count_z = 0
 
-; GCN-NOHSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s3{{$}}
-; HSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s7{{$}}
+; GCN-NOHSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s4{{$}}
+; HSA: v_mov_b32_e32 [[VVAL:v[0-9]+]], s8{{$}}
 ; GCN-NOHSA: buffer_store_dword [[VVAL]]
 ; HSA: flat_store_dword [[VVAL]]
 
 ; HSA: COMPUTE_PGM_RSRC2:USER_SGPR: 6
 ; GCN-NOHSA: COMPUTE_PGM_RSRC2:USER_SGPR: 2
 ; GCN: COMPUTE_PGM_RSRC2:TGID_X_EN: 1
-; GCN: COMPUTE_PGM_RSRC2:TGID_Y_EN: 0
+; GCN: COMPUTE_PGM_RSRC2:TGID_Y_EN: 1
 ; GCN: COMPUTE_PGM_RSRC2:TGID_Z_EN: 1
 ; GCN: COMPUTE_PGM_RSRC2:TIDIG_COMP_CNT: 0
 define void @tgid_z(i32 addrspace(1)* %out) {
