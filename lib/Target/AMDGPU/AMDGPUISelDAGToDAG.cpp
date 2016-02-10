@@ -1047,6 +1047,14 @@ bool AMDGPUDAGToDAGISel::SelectMUBUFAddr64(SDValue Addr, SDValue &SRsrc,
   return SelectMUBUFAddr64(Addr, SRsrc, VAddr, SOffset, Offset, GLC, SLC, TFE);
 }
 
+static bool isFrameIndex(SDValue Op, SDValue &FI) {
+  if (Op.getOpcode() != ISD::AssertZext)
+    return false;
+
+  FI = Op.getOperand(0);
+  return FI.getOpcode() == ISD::TargetFrameIndex;
+}
+
 bool AMDGPUDAGToDAGISel::SelectMUBUFScratch(SDValue Addr, SDValue &Rsrc,
                                             SDValue &VAddr, SDValue &SOffset,
                                             SDValue &ImmOffset) const {
@@ -1062,6 +1070,19 @@ bool AMDGPUDAGToDAGISel::SelectMUBUFScratch(SDValue Addr, SDValue &Rsrc,
   if (CurDAG->isBaseWithConstantOffset(Addr)) {
     SDValue N0 = Addr.getOperand(0);
     SDValue N1 = Addr.getOperand(1);
+
+    /*
+    SDValue FI;
+    if (isFrameIndex(N0, FI)) {
+      ConstantSDNode *C1 = cast<ConstantSDNode>(N1);
+      if (isLegalMUBUFImmOffset(C1)) {
+        VAddr = FI;
+        ImmOffset = CurDAG->getTargetConstant(C1->getZExtValue(), DL, MVT::i16);
+        return true;
+      }
+    }
+    */
+
     // Offsets in vaddr must be positive.
     if (CurDAG->SignBitIsZero(N0)) {
       ConstantSDNode *C1 = cast<ConstantSDNode>(N1);
