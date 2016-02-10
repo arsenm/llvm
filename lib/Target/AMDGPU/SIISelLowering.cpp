@@ -2602,7 +2602,7 @@ SDValue SITargetLowering::PerformDAGCombine(SDNode *N,
 
     // TODO: We could also do this for multiplies.
     unsigned AS = MemNode->getAddressSpace();
-    if (Ptr.getOpcode() == ISD::SHL && AS != AMDGPUAS::PRIVATE_ADDRESS) {
+    if (Ptr.getOpcode() == ISD::SHL) {
       SDValue NewPtr = performSHLPtrCombine(Ptr.getNode(), AS, DCI);
       if (NewPtr) {
         SmallVector<SDValue, 8> NewOps(MemNode->op_begin(), MemNode->op_end());
