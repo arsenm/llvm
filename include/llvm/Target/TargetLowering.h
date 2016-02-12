@@ -2877,6 +2877,8 @@ public:
 
   SDValue scalarizeVectorLoad(LoadSDNode *LD, SelectionDAG &DAG) const;
 
+  SDValue scalarizeVectorStore(StoreSDNode *LD, SelectionDAG &DAG) const;
+
   //===--------------------------------------------------------------------===//
   // Instruction Emitting Hooks
   //
