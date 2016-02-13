@@ -324,6 +324,10 @@ public:
     return isAmdHsaOS() ? 0 : 36;
   }
 
+  unsigned getKernargSegmentPtrAlignment() const {
+    return 256;
+  }
+
   unsigned getMaxNumUserSGPRs() const {
     return 16;
   }

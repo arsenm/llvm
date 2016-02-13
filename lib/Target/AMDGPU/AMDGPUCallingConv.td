@@ -110,6 +110,7 @@ def CC_R600 : CallingConv<[
 
 // Calling convention for compute kernels
 def CC_AMDGPU_Kernel : CallingConv<[
+//  CCIfType<[i16], CCPromoteToType<i32>>,
   CCCustom<"allocateStack">
 ]>;
 

@@ -31,11 +31,20 @@
 #include "SIInstrInfo.h"
 using namespace llvm;
 
+
 static bool allocateStack(unsigned ValNo, MVT ValVT, MVT LocVT,
-                      CCValAssign::LocInfo LocInfo,
-                      ISD::ArgFlagsTy ArgFlags, CCState &State) {
-  unsigned Offset = State.AllocateStack(ValVT.getStoreSize(),
-                                        ArgFlags.getOrigAlign());
+                          CCValAssign::LocInfo LocInfo,
+                          ISD::ArgFlagsTy ArgFlags, CCState &State) {
+  const DataLayout &DL = State.getMachineFunction().getDataLayout();
+
+  Type *ValTy = EVT(ValVT).getTypeForEVT(State.getContext());
+
+  // XXX - What is orig align supposed to mean? It seem to be completely broken
+  // for any split vectors after the first component.
+  unsigned Align = std::max(DL.getABITypeAlignment(ValTy),
+                            ArgFlags.getOrigAlign());
+
+  unsigned Offset = State.AllocateStack(ValVT.getStoreSize(), Align);
   State.addLoc(CCValAssign::getMem(ValNo, ValVT, Offset, LocVT, LocInfo));
 
   return true;

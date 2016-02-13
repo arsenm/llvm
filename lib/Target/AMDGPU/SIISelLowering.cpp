@@ -548,7 +548,8 @@ bool SITargetLowering::isTypeDesirableForOp(unsigned Op, EVT VT) const {
 
 SDValue SITargetLowering::LowerParameter(SelectionDAG &DAG, EVT VT, EVT MemVT,
                                          SDLoc SL, SDValue Chain,
-                                         unsigned Offset, bool Signed) const {
+                                         unsigned Offset, unsigned Align,
+                                         bool Signed) const {
   const DataLayout &DL = DAG.getDataLayout();
   MachineFunction &MF = DAG.getMachineFunction();
   const SIRegisterInfo *TRI =
@@ -567,18 +568,29 @@ SDValue SITargetLowering::LowerParameter(SelectionDAG &DAG, EVT VT, EVT MemVT,
   SDValue PtrOffset = DAG.getUNDEF(PtrVT);
   MachinePointerInfo PtrInfo(UndefValue::get(PtrTy));
 
-  unsigned Align = DL.getABITypeAlignment(Ty);
-
   ISD::LoadExtType ExtTy = Signed ? ISD::SEXTLOAD : ISD::ZEXTLOAD;
   if (MemVT.isFloatingPoint())
     ExtTy = ISD::EXTLOAD;
 
-  return DAG.getLoad(ISD::UNINDEXED, ExtTy,
-                     VT, SL, Chain, Ptr, PtrOffset, PtrInfo, MemVT,
-                     false, // isVolatile
-                     true, // isNonTemporal
-                     true, // isInvariant
-                     Align); // Alignment
+  EVT LoadVT = VT.bitsGE(MemVT) ? VT : MemVT;
+
+  SDValue Load = DAG.getLoad(
+    ISD::UNINDEXED, ExtTy,
+    LoadVT, SL, Chain, Ptr, PtrOffset, PtrInfo, MemVT,
+    false, // isVolatile
+    true, // isNonTemporal
+    true, // isInvariant
+    Align); // Alignment
+
+  if (LoadVT == VT)
+    return Load;
+
+  SDValue Ops[] = {
+    DAG.getNode(ISD::TRUNCATE, SL, VT, Load),
+    Load.getValue(1)
+  };
+
+  return DAG.getMergeValues(Ops, SL);
 }
 
 SDValue SITargetLowering::LowerFormalArguments(
@@ -725,10 +737,19 @@ SDValue SITargetLowering::LowerFormalArguments(
       EVT MemVT = Splits[i].VT;
       const unsigned Offset = Subtarget->getExplicitKernelArgOffset() +
                               VA.getLocMemOffset();
+
+
+      // We already correctly aligned the offset when the argument was
+      // allocated. Figure out the alignment of the load from there.
+      unsigned Align
+        = MinAlign(Subtarget->getKernargSegmentPtrAlignment(), Offset);
+
       // The first 36 bytes of the input buffer contains information about
       // thread group and global sizes.
       SDValue Arg = LowerParameter(DAG, VT, MemVT,  DL, Chain,
-                                   Offset, Ins[i].Flags.isSExt());
+                                   Offset,
+                                   Align,
+                                   Ins[i].Flags.isSExt());
       Chains.push_back(Arg.getValue(1));
 
       auto *ParamTy =
@@ -1335,8 +1356,10 @@ SDValue SITargetLowering::lowerImplicitZextParam(SelectionDAG &DAG,
                                                  MVT VT,
                                                  unsigned Offset) const {
   SDLoc SL(Op);
+
+  // FIXME: Get alignment from somewhere. Base pointer should be 256 aligned.
   SDValue Param = LowerParameter(DAG, MVT::i32, MVT::i32, SL,
-                                 DAG.getEntryNode(), Offset, false);
+                                 DAG.getEntryNode(), Offset, 4, false);
   // The local size values will have the hi 16-bits as zero.
   return DAG.getNode(ISD::AssertZext, SL, MVT::i32, Param,
                      DAG.getValueType(VT));
@@ -1399,37 +1422,37 @@ SDValue SITargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
       return emitNonHSAIntrinsicError(DAG, VT);
 
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::NGROUPS_X, false);
+                          SI::KernelInputOffsets::NGROUPS_X, 4, false);
   case Intrinsic::r600_read_ngroups_y:
     if (Subtarget->isAmdHsaOS())
       return emitNonHSAIntrinsicError(DAG, VT);
 
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::NGROUPS_Y, false);
+                          SI::KernelInputOffsets::NGROUPS_Y, 4, false);
   case Intrinsic::r600_read_ngroups_z:
     if (Subtarget->isAmdHsaOS())
       return emitNonHSAIntrinsicError(DAG, VT);
 
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::NGROUPS_Z, false);
+                          SI::KernelInputOffsets::NGROUPS_Z, 4, false);
   case Intrinsic::r600_read_global_size_x:
     if (Subtarget->isAmdHsaOS())
       return emitNonHSAIntrinsicError(DAG, VT);
 
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::GLOBAL_SIZE_X, false);
+                          SI::KernelInputOffsets::GLOBAL_SIZE_X, 4, false);
   case Intrinsic::r600_read_global_size_y:
     if (Subtarget->isAmdHsaOS())
       return emitNonHSAIntrinsicError(DAG, VT);
 
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::GLOBAL_SIZE_Y, false);
+                          SI::KernelInputOffsets::GLOBAL_SIZE_Y, 4, false);
   case Intrinsic::r600_read_global_size_z:
     if (Subtarget->isAmdHsaOS())
       return emitNonHSAIntrinsicError(DAG, VT);
 
     return LowerParameter(DAG, VT, VT, DL, DAG.getEntryNode(),
-                          SI::KernelInputOffsets::GLOBAL_SIZE_Z, false);
+                          SI::KernelInputOffsets::GLOBAL_SIZE_Z, 4, false);
   case Intrinsic::r600_read_local_size_x:
     if (Subtarget->isAmdHsaOS())
       return emitNonHSAIntrinsicError(DAG, VT);
