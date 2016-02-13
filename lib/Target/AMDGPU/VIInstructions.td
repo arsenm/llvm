@@ -116,8 +116,81 @@ def : Pat <
 def : Pat <
   (int_amdgcn_mov_dpp i32:$src, imm:$dpp_ctrl, imm:$bound_ctrl,
                       imm:$bank_mask, imm:$row_mask),
-  (V_MOV_B32_dpp $src, (as_i32imm $dpp_ctrl), (as_i1imm $bound_ctrl),
-                       (as_i32imm $bank_mask), (as_i32imm $row_mask))
+  (i32 (V_MOV_B32_dpp $src, (as_i32imm $dpp_ctrl), (as_i1imm $bound_ctrl),
+                            (as_i32imm $bank_mask), (as_i32imm $row_mask)))
+>;
+
+//===----------------------------------------------------------------------===//
+// i16 Patterns
+//===----------------------------------------------------------------------===//
+
+def : Pat <
+  (i16 imm:$imm),
+  (S_MOV_B32 imm:$imm)
+>;
+
+def : Pat<
+  (i32 (anyext i16:$src)),
+  (COPY $src)
+>;
+
+// FIXME: We need to use COPY_TO_REGCLASS to work-around the fact that
+// REG_SEQUENCE patterns don't support instructions with multiple
+// outputs.
+def : Pat<
+  (i64 (zext i16:$src)),
+    (REG_SEQUENCE SReg_64,
+      (i32 (COPY_TO_REGCLASS (S_AND_B32 $src, (i32 0xffff)), SGPR_32)), sub0,
+      (S_MOV_B32 (i32 0)), sub1)
+>;
+
+def : Pat <
+  (i64 (sext i16:$src)),
+    (REG_SEQUENCE SReg_64, (i32 (S_SEXT_I32_I16 $src)), sub0,
+    (i32 (COPY_TO_REGCLASS (S_ASHR_I32 (i32 (S_SEXT_I32_I16 $src)), (i32 31)), SGPR_32)), sub1)
+>;
+
+// Same as a 32-bit inreg
+def : Pat<
+  (i32 (sext i16:$src)),
+  (S_SEXT_I32_I16 $src)
+>;
+
+def : Pat<
+  (i16 (trunc i32:$src)),
+  (COPY $src)
+>;
+
+class ZExt_i16_i1_Pat <SDNode ext> : Pat <
+  (i16 (ext i1:$src)),
+  (V_CNDMASK_B32_e64 (i32 0), (i32 1), $src)
+>;
+
+def : ZExt_i16_i1_Pat<zext>;
+
+
+
+def : Pat <
+  (i16 (select i1:$src0, i16:$src1, i16:$src2)),
+  (V_CNDMASK_B32_e64 $src2, $src1, $src0)
+>;
+
+// 16-bit instructions produce a 0 result in the high 16-bits.
+def : Pat <
+  (add i16:$src0, i16:$src1),
+  (V_ADD_U16_e32 $src0, $src1)
+>;
+
+def : Pat <
+  (i32 (zext (add i16:$src0, i16:$src1))),
+  (V_ADD_U16_e32 i16:$src0, i16:$src1)
+>;
+
+def : Pat <
+  (i64 (zext (add i16:$src0, i16:$src1))),
+   (REG_SEQUENCE VReg_64,
+     (V_ADD_U16_e32 i16:$src0, i16:$src1), sub0,
+     (V_MOV_B32_e32 (i32 0)), sub1)
 >;
 
 } // End Predicates = [isVI]

@@ -89,7 +89,7 @@ def SCC_CLASS : RegisterClass<"AMDGPU", [i1], 1, (add SCC)> {
 // TODO: Do we need to set DwarfRegAlias on register tuples?
 
 // SGPR 32-bit registers
-def SGPR_32 : RegisterClass<"AMDGPU", [i32, f32], 32,
+def SGPR_32 : RegisterClass<"AMDGPU", [i32, f32, i16], 32,
                             (add (sequence "SGPR%u", 0, 103))>;
 
 // SGPR 64-bit registers
@@ -136,7 +136,8 @@ def SGPR_512 : RegisterTuples<[sub0, sub1, sub2, sub3, sub4, sub5, sub6, sub7,
                                (add (decimate (shl SGPR_32, 15), 4))]>;
 
 // VGPR 32-bit registers
-def VGPR_32 : RegisterClass<"AMDGPU", [i32, f32], 32,
+// i16 only on VI+
+def VGPR_32 : RegisterClass<"AMDGPU", [i32, f32, i16], 32,
                             (add (sequence "VGPR%u", 0, 255))>;
 
 // VGPR 64-bit registers
@@ -198,7 +199,7 @@ class RegImmMatcher<string name> : AsmOperandClass {
 }
 
 // Register class for all scalar registers (SGPRs + Special Registers)
-def SReg_32 : RegisterClass<"AMDGPU", [i32, f32], 32,
+def SReg_32 : RegisterClass<"AMDGPU", [i32, f32, i16], 32,
   (add SGPR_32, M0, VCC_LO, VCC_HI, EXEC_LO, EXEC_HI, FLAT_SCR_LO, FLAT_SCR_HI)
 >;
 
@@ -287,7 +288,7 @@ def SCSrc_32 : RegInlineOperand<SReg_32> {
 //  VSrc_* Operands with an SGPR, VGPR or a 32-bit immediate
 //===----------------------------------------------------------------------===//
 
-def VS_32 : RegisterClass<"AMDGPU", [i32, f32], 32, (add VGPR_32, SReg_32)>;
+def VS_32 : RegisterClass<"AMDGPU", [i32, f32, i16], 32, (add VGPR_32, SReg_32)>;
 
 def VS_64 : RegisterClass<"AMDGPU", [i64, f64], 32, (add VReg_64, SReg_64)> {
   let CopyCost = 2;

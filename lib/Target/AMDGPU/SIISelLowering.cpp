@@ -254,6 +254,64 @@ SITargetLowering::SITargetLowering(TargetMachine &TM,
   setOperationAction(ISD::FDIV, MVT::f32, Custom);
   setOperationAction(ISD::FDIV, MVT::f64, Custom);
 
+  if (Subtarget->getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS) {
+    setOperationAction(ISD::Constant, MVT::i16, Legal);
+
+    setOperationAction(ISD::ADD, MVT::i16, Legal);
+    setOperationAction(ISD::SUB, MVT::i16, Legal);
+    setOperationAction(ISD::SHL, MVT::i16, Legal);
+    setOperationAction(ISD::SRL, MVT::i16, Legal);
+    setOperationAction(ISD::SRA, MVT::i16, Legal);
+
+    setOperationAction(ISD::SMIN, MVT::i16, Legal);
+    setOperationAction(ISD::SMAX, MVT::i16, Legal);
+    setOperationAction(ISD::UMIN, MVT::i16, Legal);
+    setOperationAction(ISD::UMAX, MVT::i16, Legal);
+
+    setOperationAction(ISD::SETCC, MVT::i16, Legal);
+    setOperationAction(ISD::TRUNCATE, MVT::i16, Legal);
+
+    setOperationAction(ISD::SIGN_EXTEND, MVT::i16, Promote);
+    AddPromotedToType(ISD::SIGN_EXTEND, MVT::i16, MVT::i32);
+
+    setOperationAction(ISD::AND, MVT::i16, Promote);
+    setOperationAction(ISD::OR, MVT::i16, Promote);
+    setOperationAction(ISD::XOR, MVT::i16, Promote);
+
+    setOperationAction(ISD::ROTR, MVT::i16, Promote);
+    setOperationAction(ISD::ROTL, MVT::i16, Promote);
+
+    setOperationAction(ISD::SDIV, MVT::i16, Promote);
+    setOperationAction(ISD::UDIV, MVT::i16, Promote);
+    setOperationAction(ISD::SREM, MVT::i16, Promote);
+    setOperationAction(ISD::UREM, MVT::i16, Promote);
+    setOperationAction(ISD::MUL, MVT::i16, Promote);
+
+    setOperationAction(ISD::BSWAP, MVT::i16, Promote);
+    setOperationAction(ISD::CTTZ, MVT::i16, Promote);
+    setOperationAction(ISD::CTTZ_ZERO_UNDEF, MVT::i16, Promote);
+    setOperationAction(ISD::CTLZ, MVT::i16, Promote);
+    setOperationAction(ISD::CTLZ_ZERO_UNDEF, MVT::i16, Promote);
+
+    setOperationAction(ISD::SELECT, MVT::i16, Legal);
+    setOperationAction(ISD::SELECT_CC, MVT::i16, Expand);
+
+    setOperationAction(ISD::BR_CC, MVT::i16, Expand);
+
+    setOperationAction(ISD::LOAD, MVT::i16, Custom);
+    setOperationAction(ISD::STORE, MVT::i16, Custom);
+
+    setLoadExtAction(ISD::SEXTLOAD, MVT::i32, MVT::i16, Legal);
+    setLoadExtAction(ISD::ZEXTLOAD, MVT::i32, MVT::i16, Legal);
+    setLoadExtAction(ISD::EXTLOAD, MVT::i32, MVT::i16, Legal);
+
+    setLoadExtAction(ISD::SEXTLOAD, MVT::i64, MVT::i16, Expand);
+    setLoadExtAction(ISD::ZEXTLOAD, MVT::i64, MVT::i16, Expand);
+    setLoadExtAction(ISD::EXTLOAD, MVT::i64, MVT::i16, Expand);
+
+    setTruncStoreAction(MVT::i64, MVT::i16, Expand);
+  }
+
   setTargetDAGCombine(ISD::FADD);
   setTargetDAGCombine(ISD::FSUB);
   setTargetDAGCombine(ISD::FMINNUM);
@@ -1678,6 +1736,21 @@ SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   ISD::LoadExtType ExtType = Load->getExtensionType();
   EVT MemVT = Load->getMemoryVT();
 
+  if (MemVT == MVT::i16) {
+    assert(Load->getValueType(0) == MVT::i16);
+
+    SDValue ExtLoad = DAG.getExtLoad(ISD::EXTLOAD, DL, MVT::i32, Load->getChain(),
+                                     Load->getBasePtr(), MVT::i16,
+                                     Load->getMemOperand());
+
+    SDValue Ops[] = {
+      DAG.getNode(ISD::TRUNCATE, DL, MVT::i16, ExtLoad),
+      ExtLoad.getValue(1)
+    };
+
+    return DAG.getMergeValues(Ops, DL);
+  }
+
   if (ExtType == ISD::NON_EXTLOAD && MemVT.getSizeInBits() < 32) {
     assert(MemVT == MVT::i1 && "Only i1 non-extloads expected");
     // FIXME: Copied from PPC
@@ -1941,6 +2014,16 @@ SDValue SITargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   StoreSDNode *Store = cast<StoreSDNode>(Op);
   EVT VT = Store->getMemoryVT();
+
+  if (VT == MVT::i16) {
+    SDValue Ext = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i32, Store->getValue());
+
+    return DAG.getTruncStore(Store->getChain(), DL,
+                             Ext,
+                             Store->getBasePtr(),
+                             MVT::i16,
+                             Store->getMemOperand());
+  }
 
   if (VT == MVT::i1) {
     return DAG.getTruncStore(Store->getChain(), DL,
