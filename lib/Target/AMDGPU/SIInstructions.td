@@ -2049,13 +2049,13 @@ let Predicates = [isGCN] in {
 
 def : Pat <
   (int_AMDGPU_kilp),
-  (SI_KILL 0xbf800000)
+  (SI_KILL (i32 0xbf800000))
 >;
 
 /* int_SI_vs_load_input */
 def : Pat<
   (SIload_input v4i32:$tlst, imm:$attr_offset, i32:$buf_idx_vgpr),
-  (BUFFER_LOAD_FORMAT_XYZW_IDXEN $buf_idx_vgpr, $tlst, 0, imm:$attr_offset, 0, 0, 0)
+  (BUFFER_LOAD_FORMAT_XYZW_IDXEN $buf_idx_vgpr, v4i32:$tlst, (i32 0), imm:$attr_offset, 0, 0, 0)
 >;
 
 def : Pat <
@@ -2133,7 +2133,7 @@ def : Pat <
   (i64 (ctpop i64:$src)),
     (i64 (REG_SEQUENCE SReg_64,
      (i32 (COPY_TO_REGCLASS (S_BCNT1_I32_B64 $src), SReg_32)), sub0,
-     (S_MOV_B32 0), sub1))
+     (S_MOV_B32 (i32 0)), sub1))
 >;
 
 def : Pat <
@@ -2555,7 +2555,7 @@ def : BitConvert <v16f32, v16i32, VReg_512>;
 def : Pat <
   (AMDGPUclamp (VOP3Mods0Clamp f32:$src0, i32:$src0_modifiers, i32:$omod),
                (f32 FP_ZERO), (f32 FP_ONE)),
-  (V_ADD_F32_e64 $src0_modifiers, $src0, 0, 0, 1, $omod)
+  (V_ADD_F32_e64 $src0_modifiers, $src0, 0, (i32 0), 1, $omod)
 >;
 
 /********** ================================ **********/
@@ -2566,7 +2566,7 @@ def : Pat <
 
 def : Pat <
   (fneg (fabs f32:$src)),
-  (S_OR_B32 $src, 0x80000000) // Set sign bit
+  (S_OR_B32 $src, (i32 0x80000000)) // Set sign bit
 >;
 
 // FIXME: Should use S_OR_B32
@@ -2576,18 +2576,18 @@ def : Pat <
     (i32 (EXTRACT_SUBREG f64:$src, sub0)),
     sub0,
     (V_OR_B32_e32 (EXTRACT_SUBREG f64:$src, sub1),
-                  (V_MOV_B32_e32 0x80000000)), // Set sign bit.
+                  (V_MOV_B32_e32 (i32 0x80000000))), // Set sign bit.
     sub1)
 >;
 
 def : Pat <
   (fabs f32:$src),
-  (V_AND_B32_e32 $src, (V_MOV_B32_e32 0x7fffffff))
+  (V_AND_B32_e32 $src, (V_MOV_B32_e32 (i32 0x7fffffff)))
 >;
 
 def : Pat <
   (fneg f32:$src),
-  (V_XOR_B32_e32 $src, (V_MOV_B32_e32 0x80000000))
+  (V_XOR_B32_e32 $src, (V_MOV_B32_e32 (i32 0x80000000)))
 >;
 
 def : Pat <
@@ -2596,7 +2596,7 @@ def : Pat <
     (i32 (EXTRACT_SUBREG f64:$src, sub0)),
     sub0,
     (V_AND_B32_e32 (EXTRACT_SUBREG f64:$src, sub1),
-                   (V_MOV_B32_e32 0x7fffffff)), // Set sign bit.
+                   (V_MOV_B32_e32 (i32 0x7fffffff))), // Set sign bit.
      sub1)
 >;
 
@@ -2606,7 +2606,7 @@ def : Pat <
     (i32 (EXTRACT_SUBREG f64:$src, sub0)),
     sub0,
     (V_XOR_B32_e32 (EXTRACT_SUBREG f64:$src, sub1),
-                   (V_MOV_B32_e32 0x80000000)),
+                   (V_MOV_B32_e32 (i32 0x80000000))),
     sub1)
 >;
 
@@ -2695,21 +2695,21 @@ def : Ext32Pat <anyext>;
 // Offset in an 32-bit VGPR
 def : Pat <
   (SIload_constant v4i32:$sbase, i32:$voff),
-  (BUFFER_LOAD_DWORD_OFFEN $voff, $sbase, 0, 0, 0, 0, 0)
+  (BUFFER_LOAD_DWORD_OFFEN $voff, $sbase, (i32 0), 0, 0, 0, 0)
 >;
 
 // The multiplication scales from [0,1] to the unsigned integer range
 def : Pat <
   (AMDGPUurecip i32:$src0),
   (V_CVT_U32_F32_e32
-    (V_MUL_F32_e32 CONST.FP_UINT_MAX_PLUS_1,
+    (V_MUL_F32_e32 (i32 CONST.FP_UINT_MAX_PLUS_1),
                    (V_RCP_IFLAG_F32_e32 (V_CVT_F32_U32_e32 $src0))))
 >;
 
 def : Pat <
   (int_SI_tid),
-  (V_MBCNT_HI_U32_B32_e64 0xffffffff,
-                          (V_MBCNT_LO_U32_B32_e64 0xffffffff, 0))
+  (V_MBCNT_HI_U32_B32_e64 (i32 0xffffffff),
+                          (V_MBCNT_LO_U32_B32_e64 (i32 0xffffffff), (i32 0)))
 >;
 
 //===----------------------------------------------------------------------===//
@@ -2991,39 +2991,39 @@ defm : SI_INDIRECT_Pattern <v16i32, i32, "V16">;
 //===----------------------------------------------------------------------===//
 
 def : Pat<(i32 (sext_inreg i32:$src, i1)),
-  (S_BFE_I32 i32:$src, 65536)>; // 0 | 1 << 16
+  (S_BFE_I32 i32:$src, (i32 65536))>; // 0 | 1 << 16
 
 // Handle sext_inreg in i64
 def : Pat <
   (i64 (sext_inreg i64:$src, i1)),
-  (S_BFE_I64 i64:$src, 0x10000) // 0 | 1 << 16
+  (S_BFE_I64 i64:$src, (i32 0x10000)) // 0 | 1 << 16
 >;
 
 def : Pat <
   (i64 (sext_inreg i64:$src, i8)),
-  (S_BFE_I64 i64:$src, 0x80000) // 0 | 8 << 16
+  (S_BFE_I64 i64:$src, (i32 0x80000)) // 0 | 8 << 16
 >;
 
 def : Pat <
   (i64 (sext_inreg i64:$src, i16)),
-  (S_BFE_I64 i64:$src, 0x100000) // 0 | 16 << 16
+  (S_BFE_I64 i64:$src, (i32 0x100000)) // 0 | 16 << 16
 >;
 
 def : Pat <
   (i64 (sext_inreg i64:$src, i32)),
-  (S_BFE_I64 i64:$src, 0x200000) // 0 | 32 << 16
+  (S_BFE_I64 i64:$src, (i32 0x200000)) // 0 | 32 << 16
 >;
 
 class ZExt_i64_i32_Pat <SDNode ext> : Pat <
   (i64 (ext i32:$src)),
-  (REG_SEQUENCE SReg_64, $src, sub0, (S_MOV_B32 0), sub1)
+  (REG_SEQUENCE SReg_64, $src, sub0, (S_MOV_B32 (i32 0)), sub1)
 >;
 
 class ZExt_i64_i1_Pat <SDNode ext> : Pat <
   (i64 (ext i1:$src)),
     (REG_SEQUENCE VReg_64,
       (V_CNDMASK_B32_e64 (i32 0), (i32 1), $src), sub0,
-      (S_MOV_B32 0), sub1)
+      (S_MOV_B32 (i32 0)), sub1)
 >;
 
 
@@ -3037,14 +3037,14 @@ def : ZExt_i64_i1_Pat<anyext>;
 def : Pat <
   (i64 (sext i32:$src)),
     (REG_SEQUENCE SReg_64, $src, sub0,
-    (i32 (COPY_TO_REGCLASS (S_ASHR_I32 $src, 31), SGPR_32)), sub1)
+    (i32 (COPY_TO_REGCLASS (S_ASHR_I32 $src, (i32 31)), SGPR_32)), sub1)
 >;
 
 def : Pat <
   (i64 (sext i1:$src)),
   (REG_SEQUENCE VReg_64,
-    (V_CNDMASK_B32_e64 0, -1, $src), sub0,
-    (V_CNDMASK_B32_e64 0, -1, $src), sub1)
+    (V_CNDMASK_B32_e64 (i32 0), (i32 -1), $src), sub0,
+    (V_CNDMASK_B32_e64 (i32 0), (i32 -1), $src), sub1)
 >;
 
 // If we need to perform a logical operation on i1 values, we need to
@@ -3070,12 +3070,12 @@ def : Pat <
 
 def : Pat <
   (f32 (sint_to_fp i1:$src)),
-  (V_CNDMASK_B32_e64 (i32 0), CONST.FP32_NEG_ONE, $src)
+  (V_CNDMASK_B32_e64 (i32 0), (i32 CONST.FP32_NEG_ONE), $src)
 >;
 
 def : Pat <
   (f32 (uint_to_fp i1:$src)),
-  (V_CNDMASK_B32_e64 (i32 0), CONST.FP32_ONE, $src)
+  (V_CNDMASK_B32_e64 (i32 0), (i32 CONST.FP32_ONE), $src)
 >;
 
 def : Pat <
@@ -3099,20 +3099,20 @@ def : Pat <
 
 def : Pat <
   (i1 (trunc i32:$a)),
-  (V_CMP_EQ_I32_e64 (S_AND_B32 (i32 1), $a), 1)
+  (V_CMP_EQ_I32_e64 (S_AND_B32 (i32 1), $a), (i32 1))
 >;
 
 def : Pat <
   (i1 (trunc i64:$a)),
   (V_CMP_EQ_I32_e64 (S_AND_B32 (i32 1),
-                    (EXTRACT_SUBREG $a, sub0)), 1)
+                    (EXTRACT_SUBREG $a, sub0)), (i32 1))
 >;
 
 def : Pat <
   (i32 (bswap i32:$a)),
-  (V_BFI_B32 (S_MOV_B32 0x00ff00ff),
-             (V_ALIGNBIT_B32 $a, $a, 24),
-             (V_ALIGNBIT_B32 $a, $a, 8))
+  (V_BFI_B32 (S_MOV_B32 (i32 0x00ff00ff)),
+             (V_ALIGNBIT_B32 $a, $a, (i32 24)),
+             (V_ALIGNBIT_B32 $a, $a, (i32 8)))
 >;
 
 def : Pat <
@@ -3128,7 +3128,7 @@ multiclass BFMPatterns <ValueType vt, InstSI BFM, InstSI MOV> {
 
   def : Pat <
     (vt (add (vt (shl 1, vt:$a)), -1)),
-    (BFM $a, (MOV 0))
+    (BFM $a, (MOV (i32 0)))
   >;
 }
 
@@ -3161,7 +3161,7 @@ def : Pat <
           (V_MOV_B64_PSEUDO 0x3fefffffffffffff),
           DSTCLAMP.NONE, DSTOMOD.NONE),
       $x,
-      (V_CMP_CLASS_F64_e64 SRCMODS.NONE, $x, 3/*NaN*/))
+      (V_CMP_CLASS_F64_e64 SRCMODS.NONE, $x, (i32 3/*NaN*/)))
 >;
 
 // Convert floor(x) to (x - fract(x))
@@ -3179,7 +3179,7 @@ def : Pat <
              (V_MOV_B64_PSEUDO 0x3fefffffffffffff),
              DSTCLAMP.NONE, DSTOMOD.NONE),
          $x,
-         (V_CMP_CLASS_F64_e64 SRCMODS.NONE, $x, 3/*NaN*/)),
+         (V_CMP_CLASS_F64_e64 SRCMODS.NONE, $x, (i32 3 /*NaN*/))),
       DSTCLAMP.NONE, DSTOMOD.NONE)
 >;
 
