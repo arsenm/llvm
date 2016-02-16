@@ -2575,7 +2575,7 @@ def : Pat <
   (REG_SEQUENCE VReg_64,
     (i32 (EXTRACT_SUBREG f64:$src, sub0)),
     sub0,
-    (V_OR_B32_e32 (EXTRACT_SUBREG f64:$src, sub1),
+    (V_OR_B32_e32 (i32 (EXTRACT_SUBREG f64:$src, sub1)),
                   (V_MOV_B32_e32 (i32 0x80000000))), // Set sign bit.
     sub1)
 >;
@@ -2595,7 +2595,7 @@ def : Pat <
   (REG_SEQUENCE VReg_64,
     (i32 (EXTRACT_SUBREG f64:$src, sub0)),
     sub0,
-    (V_AND_B32_e32 (EXTRACT_SUBREG f64:$src, sub1),
+    (V_AND_B32_e32 (i32 (EXTRACT_SUBREG f64:$src, sub1)),
                    (V_MOV_B32_e32 (i32 0x7fffffff))), // Set sign bit.
      sub1)
 >;
@@ -2605,8 +2605,8 @@ def : Pat <
   (REG_SEQUENCE VReg_64,
     (i32 (EXTRACT_SUBREG f64:$src, sub0)),
     sub0,
-    (V_XOR_B32_e32 (EXTRACT_SUBREG f64:$src, sub1),
-                   (V_MOV_B32_e32 (i32 0x80000000))),
+    (V_XOR_B32_e32 (i32 (EXTRACT_SUBREG f64:$src, sub1)),
+                   (i32 (V_MOV_B32_e32 (i32 0x80000000)))),
     sub1)
 >;
 
@@ -2661,21 +2661,21 @@ def : POW_Common <V_LOG_F32_e32, V_EXP_F32_e32, V_MUL_LEGACY_F32_e32>;
 def : Pat <
   (int_AMDGPU_cube v4f32:$src),
   (REG_SEQUENCE VReg_128,
-    (V_CUBETC_F32 0 /* src0_modifiers */, (EXTRACT_SUBREG $src, sub0),
-                  0 /* src1_modifiers */, (EXTRACT_SUBREG $src, sub1),
-                  0 /* src2_modifiers */, (EXTRACT_SUBREG $src, sub2),
+    (V_CUBETC_F32 0 /* src0_modifiers */, (f32 (EXTRACT_SUBREG $src, sub0)),
+                  0 /* src1_modifiers */, (f32 (EXTRACT_SUBREG $src, sub1)),
+                  0 /* src2_modifiers */, (f32 (EXTRACT_SUBREG $src, sub2)),
                   0 /* clamp */, 0 /* omod */), sub0,
-    (V_CUBESC_F32 0 /* src0_modifiers */, (EXTRACT_SUBREG $src, sub0),
-                  0 /* src1_modifiers */,(EXTRACT_SUBREG $src, sub1),
-                  0 /* src2_modifiers */,(EXTRACT_SUBREG $src, sub2),
+    (V_CUBESC_F32 0 /* src0_modifiers */, (f32 (EXTRACT_SUBREG $src, sub0)),
+                  0 /* src1_modifiers */,(f32 (EXTRACT_SUBREG $src, sub1)),
+                  0 /* src2_modifiers */,(f32 (EXTRACT_SUBREG $src, sub2)),
                   0 /* clamp */, 0 /* omod */), sub1,
-    (V_CUBEMA_F32 0 /* src1_modifiers */,(EXTRACT_SUBREG $src, sub0),
-                  0 /* src1_modifiers */,(EXTRACT_SUBREG $src, sub1),
-                  0 /* src1_modifiers */,(EXTRACT_SUBREG $src, sub2),
+    (V_CUBEMA_F32 0 /* src1_modifiers */,(f32 (EXTRACT_SUBREG $src, sub0)),
+                  0 /* src1_modifiers */,(f32 (EXTRACT_SUBREG $src, sub1)),
+                  0 /* src1_modifiers */,(f32 (EXTRACT_SUBREG $src, sub2)),
                   0 /* clamp */, 0 /* omod */), sub2,
-    (V_CUBEID_F32 0 /* src1_modifiers */,(EXTRACT_SUBREG $src, sub0),
-                  0 /* src1_modifiers */,(EXTRACT_SUBREG $src, sub1),
-                  0 /* src1_modifiers */,(EXTRACT_SUBREG $src, sub2),
+    (V_CUBEID_F32 0 /* src1_modifiers */,(f32 (EXTRACT_SUBREG $src, sub0)),
+                  0 /* src1_modifiers */,(f32 (EXTRACT_SUBREG $src, sub1)),
+                  0 /* src1_modifiers */,(f32 (EXTRACT_SUBREG $src, sub2)),
                   0 /* clamp */, 0 /* omod */), sub3)
 >;
 
@@ -2766,8 +2766,8 @@ def : DSWritePat <DS_WRITE_B64, v2i32, si_store_local_align8>;
 def : Pat <
   (si_store_local v2i32:$value, (DS64Bit4ByteAligned i32:$ptr, i8:$offset0,
                                                                i8:$offset1)),
-  (DS_WRITE2_B32 $ptr, (EXTRACT_SUBREG $value, sub0),
-                       (EXTRACT_SUBREG $value, sub1), $offset0, $offset1,
+  (DS_WRITE2_B32 $ptr, (i32 (EXTRACT_SUBREG $value, sub0)),
+                       (i32 (EXTRACT_SUBREG $value, sub1)), $offset0, $offset1,
                        (i1 0))
 >;
 
@@ -3105,7 +3105,7 @@ def : Pat <
 def : Pat <
   (i1 (trunc i64:$a)),
   (V_CMP_EQ_I32_e64 (S_AND_B32 (i32 1),
-                    (EXTRACT_SUBREG $a, sub0)), (i32 1))
+                    (i32 (EXTRACT_SUBREG $a, sub0))), (i32 1))
 >;
 
 def : Pat <
