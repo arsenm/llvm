@@ -1867,6 +1867,9 @@ bool TreePatternNode::ApplyTypeConstraints(TreePattern &TP, bool NotRegisters) {
         return false;
       }
 
+      // TODO: Should verify that the output register size matches N * the input
+      // size.
+
       if (!isOperandClass(getChild(0), "RegisterClass")) {
         TP.error("REG_SEQUENCE requires a RegisterClass for first operand!");
         return false;
@@ -1878,6 +1881,11 @@ bool TreePatternNode::ApplyTypeConstraints(TreePattern &TP, bool NotRegisters) {
           TP.error("REG_SEQUENCE requires a SubRegIndex for operand " +
                    itostr(I + 1) + "!");
           return false;
+        }
+
+        if (I > 1) {
+          assert(getChild(I)->getNumTypes() == 1 && "FIXME: Unhandled");
+          MadeChange |= getChild(I)->UpdateNodeType(0, getChild(1)->getExtType(0), TP);
         }
       }
     }
