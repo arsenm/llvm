@@ -1353,6 +1353,15 @@ X86TargetLowering::X86TargetLowering(const X86TargetMachine &TM,
     setOperationAction(ISD::LOAD,               MVT::v16i32, Legal);
     setOperationAction(ISD::LOAD,               MVT::v16i1, Legal);
 
+    setOperationAction(ISD::LOAD, MVT::v8i1, Promote);
+    AddPromotedToType(ISD::LOAD, MVT::v8i1, MVT::i8);
+
+    setOperationAction(ISD::LOAD, MVT::v32i1, Promote);
+    AddPromotedToType(ISD::LOAD, MVT::v32i1, MVT::i32);
+
+    setOperationAction(ISD::LOAD, MVT::v64i1, Promote);
+    AddPromotedToType(ISD::LOAD, MVT::v64i1, MVT::i64);
+
     setOperationAction(ISD::FADD,               MVT::v16f32, Legal);
     setOperationAction(ISD::FSUB,               MVT::v16f32, Legal);
     setOperationAction(ISD::FMUL,               MVT::v16f32, Legal);
