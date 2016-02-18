@@ -62,6 +62,10 @@ SITargetLowering::SITargetLowering(TargetMachine &TM,
   addRegisterClass(MVT::v16i32, &AMDGPU::SReg_512RegClass);
   addRegisterClass(MVT::v16f32, &AMDGPU::VReg_512RegClass);
 
+  // TODO: Subtarget feature for i16
+  if (Subtarget->getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS)
+    addRegisterClass(MVT::i16, &AMDGPU::SReg_32RegClass);
+
   computeRegisterProperties(STI.getRegisterInfo());
 
   setOperationAction(ISD::VECTOR_SHUFFLE, MVT::v8i32, Expand);
