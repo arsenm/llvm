@@ -1655,6 +1655,7 @@ static SDValue extractF64Exponent(SDValue Hi, const SDLoc &SL,
   const unsigned FractBits = 52;
   const unsigned ExpBits = 11;
 
+  // TODO: Use instruction on hardware where it is fast.
   SDValue ExpPart = DAG.getNode(AMDGPUISD::BFE_U32, SL, MVT::i32,
                                 Hi,
                                 DAG.getConstant(FractBits - 32, SL, MVT::i32),
