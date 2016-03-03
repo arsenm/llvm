@@ -254,6 +254,93 @@ unsigned AMDGPUTTIImpl::getMaxInterleaveFactor(unsigned VF) {
   return 64;
 }
 
+// Helper function for getIntrinsicCost and getIntrinsicInstrCost.
+int AMDGPUTTIImpl::getSimpleIntrinsicCost(MVT::SimpleValueType VT,
+                                          unsigned IID) const {
+  switch (IID) {
+  case Intrinsic::fma: {
+    if (VT == MVT::f32) {
+      if (ST->hasFastFMAF32())
+        return getFullRateInstrCost();
+    } else if (VT == MVT::f16) {
+      if (ST->has16BitInsts())
+        return getFullRateInstrCost();
+
+      // TODO: Really need cost of conversions + f32 FMA
+    } else if (VT == MVT::v2f16) {
+      llvm_unreachable("packed types handled separately");
+    }
+
+    return getQuarterRateInstrCost();
+  }
+  case Intrinsic::floor: {
+    const int FullRateCost = getFullRateInstrCost();
+    if (VT == MVT::f32 || VT == MVT::f16)
+      return FullRateCost;
+
+    const int FP64RateCost = get64BitInstrCost();
+    if (ST->getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS)
+      return FP64RateCost;
+
+    int Cost = getSimpleIntrinsicCost(VT, Intrinsic::trunc);
+    Cost += 2 * FullRateCost; // setcc x2 i32
+    Cost += FullRateCost; // and i1
+    Cost += 2 * FullRateCost; // select
+    Cost += FP64RateCost; // fadd
+
+    return Cost;
+  }
+  case Intrinsic::trunc: {
+    const int FullRateCost = getFullRateInstrCost();
+    if (VT == MVT::f32 || VT == MVT::f16)
+      return FullRateCost;
+
+    const int FP64RateCost = get64BitInstrCost();
+    if (ST->getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS)
+      return FP64RateCost;
+
+    int Cost = FullRateCost; // bfe i32
+    Cost += FullRateCost; // sub i32
+    Cost += FP64RateCost; // sra i64
+    Cost += 2 * FullRateCost; // not i64
+    Cost += FullRateCost; // and i32
+    Cost += 2 * FullRateCost; // setcc i32 x2
+    Cost += 2 * FullRateCost; // and i64
+    Cost += 4 * FullRateCost; // select x2 i64
+
+    return Cost;
+  }
+  case Intrinsic::ctlz:
+  case Intrinsic::cttz: {
+    // FIXME: This sees the legalized type, so doesn't work correctly for
+    // i8/i16.
+    const int FullRateCost = getFullRateInstrCost();
+    if (VT == MVT::i32)
+      return FullRateCost;
+    // i64 requires 2 instructions. Illegal types require an additional add.
+    return 2 * FullRateCost;
+  }
+  case Intrinsic::amdgcn_workitem_id_x:
+  case Intrinsic::amdgcn_workitem_id_y:
+  case Intrinsic::amdgcn_workitem_id_z:
+  case Intrinsic::amdgcn_workgroup_id_x:
+  case Intrinsic::amdgcn_workgroup_id_y:
+  case Intrinsic::amdgcn_workgroup_id_z:
+  case Intrinsic::amdgcn_kernarg_segment_ptr:
+  case Intrinsic::amdgcn_implicitarg_ptr:
+  case Intrinsic::amdgcn_implicit_buffer_ptr:
+  case Intrinsic::amdgcn_queue_ptr:
+  case Intrinsic::amdgcn_dispatch_ptr:
+  case Intrinsic::amdgcn_dispatch_id:
+  case Intrinsic::amdgcn_groupstaticsize:
+  case Intrinsic::amdgcn_unreachable:
+  case Intrinsic::amdgcn_wave_barrier:
+    return 0;
+  default:
+    return -1;
+  }
+}
+
 int AMDGPUTTIImpl::getArithmeticInstrCost(
     unsigned Opcode, Type *Ty, TTI::OperandValueKind Opd1Info,
     TTI::OperandValueKind Opd2Info, TTI::OperandValueProperties Opd1PropInfo,

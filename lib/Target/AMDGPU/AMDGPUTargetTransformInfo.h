@@ -59,6 +59,8 @@ class AMDGPUTTIImpl final : public BasicTTIImplBase<AMDGPUTTIImpl> {
       getHalfRateInstrCost() : getQuarterRateInstrCost();
   }
 
+  int getSimpleIntrinsicCost(MVT::SimpleValueType VT, unsigned IID) const;
+
 public:
   explicit AMDGPUTTIImpl(const AMDGPUTargetMachine *TM, const Function &F)
     : BaseT(TM, F.getParent()->getDataLayout()),
@@ -105,6 +107,14 @@ public:
 
   int getMemoryOpCost(unsigned Opcode, Type *Src, unsigned Alignment,
                       unsigned AddressSpace, const Instruction *I = nullptr);
+
+  unsigned getIntrinsicInstrCost(Intrinsic::ID IID, Type *RetTy,
+                                 ArrayRef<Type *> Tys,
+                                 FastMathFlags FMF,
+                                 unsigned ScalarizationCostPassed = UINT_MAX);
+  int getIntrinsicInstrCost(Intrinsic::ID IID, Type *RetTy,
+                            ArrayRef<Value *> Args, FastMathFlags FMF,
+                            unsigned VF = 1);
 
   bool isSourceOfDivergence(const Value *V) const;
 
