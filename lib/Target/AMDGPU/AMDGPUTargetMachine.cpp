@@ -257,6 +257,13 @@ const SISubtarget *GCNTargetMachine::getSubtargetImpl(const Function &F) const {
 
 namespace {
 
+// Option to disable vectorizer for tests.
+static cl::opt<bool> EnableLoadStoreVectorizer(
+  "amdgpu-load-store-vectorizer",
+  cl::desc("Enable load store vectorizer"),
+  cl::init(true),
+  cl::Hidden);
+
 class AMDGPUPassConfig : public TargetPassConfig {
 public:
   AMDGPUPassConfig(TargetMachine *TM, PassManagerBase &PM)
