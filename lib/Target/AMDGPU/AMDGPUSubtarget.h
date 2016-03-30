@@ -226,9 +226,20 @@ public:
     return EnableUnsafeDSOffsetFolding;
   }
 
+  bool canAlwaysUseDSOffset() const {
+    return getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS ||
+           unsafeDSOffsetFoldingEnabled();
+  }
+
   bool dumpCode() const {
     return DumpCode;
   }
+
+  unsigned getWavefrontSize() const {
+    return WavefrontSize;
+  }
+
+  unsigned getStackEntrySize() const;
 
   /// Return the amount of LDS that can be used that will not restrict the
   /// occupancy lower than WaveCount.
