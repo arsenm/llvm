@@ -670,7 +670,7 @@ public:
 
   /// Return true if the specified load with extension is legal on this target.
   bool isLoadExtLegal(unsigned ExtType, EVT ValVT, EVT MemVT) const {
-    return getLoadExtAction(ExtType, ValVT, MemVT) == Legal;
+    return isTypeLegal(ValVT) && getLoadExtAction(ExtType, ValVT, MemVT) == Legal;
   }
 
   /// Return true if the specified load with extension is legal or custom
