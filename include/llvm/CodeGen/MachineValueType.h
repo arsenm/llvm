@@ -57,65 +57,73 @@ class MVT {
       LAST_FP_VALUETYPE  = ppcf128,
 
       v2i1           =  13,   //    2 x i1
-      v4i1           =  14,   //    4 x i1
-      v8i1           =  15,   //    8 x i1
-      v16i1          =  16,   //   16 x i1
-      v32i1          =  17,   //   32 x i1
-      v64i1          =  18,   //   64 x i1
-      v512i1         =  19,   //  512 x i1
-      v1024i1        =  20,   // 1024 x i1
+      v3i1           =  14,   //    3 x i1
+      v4i1           =  15,   //    4 x i1
+      v8i1           =  16,   //    8 x i1
+      v16i1          =  17,   //   16 x i1
+      v32i1          =  18,   //   32 x i1
+      v64i1          =  19,   //   64 x i1
+      v512i1         =  20,   //  512 x i1
+      v1024i1        =  21,   // 1024 x i1
 
-      v1i8           =  21,   //  1 x i8
-      v2i8           =  22,   //  2 x i8
-      v4i8           =  23,   //  4 x i8
-      v8i8           =  24,   //  8 x i8
-      v16i8          =  25,   // 16 x i8
-      v32i8          =  26,   // 32 x i8
-      v64i8          =  27,   // 64 x i8
-      v128i8         =  28,   //128 x i8
-      v256i8         =  29,   //256 x i8
+      v1i8           =  22,   //  1 x i8
+      v2i8           =  23,   //  2 x i8
+      v3i8           =  24,   //  3 x i8
+      v4i8           =  25,   //  4 x i8
+      v8i8           =  26,   //  8 x i8
+      v16i8          =  27,   // 16 x i8
+      v32i8          =  28,   // 32 x i8
+      v64i8          =  29,   // 64 x i8
+      v128i8         =  30,   //128 x i8
+      v256i8         =  31,   //256 x i8
 
-      v1i16          =  30,   //  1 x i16
-      v2i16          =  31,   //  2 x i16
-      v4i16          =  32,   //  4 x i16
-      v8i16          =  33,   //  8 x i16
-      v16i16         =  34,   // 16 x i16
-      v32i16         =  35,   // 32 x i16
-      v64i16         =  36,   // 64 x i16
-      v128i16        =  37,   //128 x i16
+      v1i16          =  32,   //  1 x i16
+      v2i16          =  33,   //  2 x i16
+      v3i16          =  34,   //  3 x i16
+      v4i16          =  35,   //  4 x i16
+      v8i16          =  36,   //  8 x i16
+      v16i16         =  37,   // 16 x i16
+      v32i16         =  38,   // 32 x i16
+      v64i16         =  39,   // 64 x i16
+      v128i16        =  40,   //128 x i16
 
-      v1i32          =  38,   //  1 x i32
-      v2i32          =  39,   //  2 x i32
-      v4i32          =  40,   //  4 x i32
-      v8i32          =  41,   //  8 x i32
-      v16i32         =  42,   // 16 x i32
-      v32i32         =  43,   // 32 x i32
-      v64i32         =  44,   // 64 x i32
+      v1i32          =  41,   //  1 x i32
+      v2i32          =  42,   //  2 x i32
+      v3i32          =  43,   //  3 x i32
+      v4i32          =  44,   //  4 x i32
+      v8i32          =  45,   //  8 x i32
+      v16i32         =  46,   // 16 x i32
+      v32i32         =  47,   // 32 x i32
+      v64i32         =  48,   // 64 x i32
 
-      v1i64          =  45,   //  1 x i64
-      v2i64          =  46,   //  2 x i64
-      v4i64          =  47,   //  4 x i64
-      v8i64          =  48,   //  8 x i64
-      v16i64         =  49,   // 16 x i64
-      v32i64         =  50,   // 32 x i64
+      v1i64          =  49,   //  1 x i64
+      v2i64          =  50,   //  2 x i64
+      v3i64          =  51,   //  3 x i64
+      v4i64          =  52,   //  4 x i64
+      v8i64          =  53,   //  8 x i64
+      v16i64         =  54,   // 16 x i64
+      v32i64         =  55,   // 32 x i64
 
-      v1i128         =  51,   //  1 x i128
+      v1i128         =  56,   //  1 x i128
 
       FIRST_INTEGER_VECTOR_VALUETYPE = v2i1,
       LAST_INTEGER_VECTOR_VALUETYPE = v1i128,
 
-      v2f16          =  52,   //  2 x f16
-      v4f16          =  53,   //  4 x f16
-      v8f16          =  54,   //  8 x f16
-      v1f32          =  55,   //  1 x f32
-      v2f32          =  56,   //  2 x f32
-      v4f32          =  57,   //  4 x f32
-      v8f32          =  58,   //  8 x f32
-      v16f32         =  59,   // 16 x f32
-      v1f64          =  60,   //  1 x f64
-      v2f64          =  61,   //  2 x f64
-      v4f64          =  62,   //  4 x f64
-      v8f64          =  63,   //  8 x f64
+      v2f16          =  57,   //  2 x f16
+      v3f16          =  58,   //  3 x f16
+      v4f16          =  59,   //  4 x f16
+      v8f16          =  60,   //  8 x f16
+      v1f32          =  61,   //  1 x f32
+      v2f32          =  62,   //  2 x f32
+      v3f32          =  63,   //  3 x f32
+      v4f32          =  64,   //  4 x f32
+      v8f32          =  65,   //  8 x f32
+      v16f32         =  66,   // 16 x f32
+      v1f64          =  67,   //  1 x f64
+      v2f64          =  68,   //  2 x f64
+      v3f64          =  69,   //  3 x f64
+      v4f64          =  70,   //  4 x f64
+      v8f64          =  71,   //  8 x f64
 
       FIRST_FP_VECTOR_VALUETYPE = v2f16,
       LAST_FP_VECTOR_VALUETYPE = v8f64,
@@ -123,18 +131,18 @@ class MVT {
       FIRST_VECTOR_VALUETYPE = v2i1,
       LAST_VECTOR_VALUETYPE  = v8f64,
 
-      x86mmx         =  64,   // This is an X86 MMX value
+      x86mmx         =  72,   // This is an X86 MMX value
 
-      Glue           =  65,   // This glues nodes together during pre-RA sched
+      Glue           =  73,   // This glues nodes together during pre-RA sched
 
-      isVoid         =  66,   // This has no value
+      isVoid         =  74,   // This has no value
 
-      Untyped        =  67,   // This value takes a register, but has
+      Untyped        =  75,   // This value takes a register, but has
                               // unspecified type.  The register class
                               // will be determined by the opcode.
 
       FIRST_VALUETYPE = 0,    // This is always the beginning of the list.
-      LAST_VALUETYPE =  68,   // This always remains at the end of the list.
+      LAST_VALUETYPE =  76,   // This always remains at the end of the list.
 
       // This is the current maximum for LAST_VALUETYPE.
       // MVT::MAX_ALLOWED_VALUETYPE is used for asserts and to size bit vectors
@@ -315,6 +323,7 @@ class MVT {
       default:
         llvm_unreachable("Not a vector MVT!");
       case v2i1:
+      case v3i1:
       case v4i1:
       case v8i1:
       case v16i1:
@@ -324,6 +333,7 @@ class MVT {
       case v1024i1: return i1;
       case v1i8:
       case v2i8:
+      case v3i8:
       case v4i8:
       case v8i8:
       case v16i8:
@@ -333,6 +343,7 @@ class MVT {
       case v256i8: return i8;
       case v1i16:
       case v2i16:
+      case v3i16:
       case v4i16:
       case v8i16:
       case v16i16:
@@ -341,6 +352,7 @@ class MVT {
       case v128i16: return i16;
       case v1i32:
       case v2i32:
+      case v3i32:
       case v4i32:
       case v8i32:
       case v16i32:
@@ -348,21 +360,25 @@ class MVT {
       case v64i32: return i32;
       case v1i64:
       case v2i64:
+      case v3i64:
       case v4i64:
       case v8i64:
       case v16i64:
       case v32i64: return i64;
       case v1i128: return i128;
       case v2f16:
+      case v3f16:
       case v4f16:
       case v8f16: return f16;
       case v1f32:
       case v2f32:
+      case v3f32:
       case v4f32:
       case v8f32:
       case v16f32: return f32;
       case v1f64:
       case v2f64:
+      case v3f64:
       case v4f64:
       case v8f64: return f64;
       }
@@ -408,6 +424,14 @@ class MVT {
       case v4f16:
       case v4f32:
       case v4f64: return 4;
+      case v3i1:
+      case v3i8:
+      case v3i16:
+      case v3i32:
+      case v3i64:
+      case v3f16:
+      case v3f32:
+      case v3f64: return 3;
       case v2i1:
       case v2i8:
       case v2i16:
@@ -447,6 +471,7 @@ class MVT {
         llvm_unreachable("Value type is metadata.");
       case i1  :  return 1;
       case v2i1:  return 2;
+      case v3i1:  return 3;
       case v4i1:  return 4;
       case i8  :
       case v1i8:
@@ -456,6 +481,7 @@ class MVT {
       case v16i1:
       case v2i8:
       case v1i16: return 16;
+      case v3i8: return 24;
       case f32 :
       case i32 :
       case v32i1:
@@ -464,6 +490,8 @@ class MVT {
       case v2f16:
       case v1f32:
       case v1i32: return 32;
+      case v3i16:
+      case v3f16: return 48;
       case x86mmx:
       case f64 :
       case i64 :
@@ -476,6 +504,8 @@ class MVT {
       case v2f32:
       case v1f64: return 64;
       case f80 :  return 80;
+      case v3i32:
+      case v3f32: return 96;
       case f128:
       case ppcf128:
       case i128:
@@ -487,6 +517,8 @@ class MVT {
       case v8f16:
       case v4f32:
       case v2f64: return 128;
+      case v3i64:
+      case v3f64: return 192;
       case v32i8:
       case v16i16:
       case v8i32:
@@ -591,6 +623,7 @@ class MVT {
         break;
       case MVT::i1:
         if (NumElements == 2)    return MVT::v2i1;
+        if (NumElements == 3)    return MVT::v3i1;
         if (NumElements == 4)    return MVT::v4i1;
         if (NumElements == 8)    return MVT::v8i1;
         if (NumElements == 16)   return MVT::v16i1;
@@ -602,6 +635,7 @@ class MVT {
       case MVT::i8:
         if (NumElements == 1)   return MVT::v1i8;
         if (NumElements == 2)   return MVT::v2i8;
+        if (NumElements == 3)   return MVT::v3i8;
         if (NumElements == 4)   return MVT::v4i8;
         if (NumElements == 8)   return MVT::v8i8;
         if (NumElements == 16)  return MVT::v16i8;
@@ -613,6 +647,7 @@ class MVT {
       case MVT::i16:
         if (NumElements == 1)   return MVT::v1i16;
         if (NumElements == 2)   return MVT::v2i16;
+        if (NumElements == 3)   return MVT::v3i16;
         if (NumElements == 4)   return MVT::v4i16;
         if (NumElements == 8)   return MVT::v8i16;
         if (NumElements == 16)  return MVT::v16i16;
@@ -623,6 +658,7 @@ class MVT {
       case MVT::i32:
         if (NumElements == 1)  return MVT::v1i32;
         if (NumElements == 2)  return MVT::v2i32;
+        if (NumElements == 3)  return MVT::v3i32;
         if (NumElements == 4)  return MVT::v4i32;
         if (NumElements == 8)  return MVT::v8i32;
         if (NumElements == 16) return MVT::v16i32;
@@ -632,6 +668,7 @@ class MVT {
       case MVT::i64:
         if (NumElements == 1)  return MVT::v1i64;
         if (NumElements == 2)  return MVT::v2i64;
+        if (NumElements == 3)  return MVT::v3i64;
         if (NumElements == 4)  return MVT::v4i64;
         if (NumElements == 8)  return MVT::v8i64;
         if (NumElements == 16) return MVT::v16i64;
@@ -642,12 +679,14 @@ class MVT {
         break;
       case MVT::f16:
         if (NumElements == 2)  return MVT::v2f16;
+        if (NumElements == 3)  return MVT::v3f16;
         if (NumElements == 4)  return MVT::v4f16;
         if (NumElements == 8)  return MVT::v8f16;
         break;
       case MVT::f32:
         if (NumElements == 1)  return MVT::v1f32;
         if (NumElements == 2)  return MVT::v2f32;
+        if (NumElements == 3)  return MVT::v3f32;
         if (NumElements == 4)  return MVT::v4f32;
         if (NumElements == 8)  return MVT::v8f32;
         if (NumElements == 16) return MVT::v16f32;
@@ -655,6 +694,7 @@ class MVT {
       case MVT::f64:
         if (NumElements == 1)  return MVT::v1f64;
         if (NumElements == 2)  return MVT::v2f64;
+        if (NumElements == 3)  return MVT::v3f64;
         if (NumElements == 4)  return MVT::v4f64;
         if (NumElements == 8)  return MVT::v8f64;
         break;

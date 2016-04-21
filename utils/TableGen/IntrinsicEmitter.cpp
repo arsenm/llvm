@@ -201,7 +201,8 @@ enum IIT_Info {
   IIT_VEC_OF_PTRS_TO_ELT = 33,
   IIT_I128 = 34,
   IIT_V512 = 35,
-  IIT_V1024 = 36
+  IIT_V1024 = 36,
+  IIT_V3 = 37
 };
 
 
@@ -311,6 +312,7 @@ static void EncodeFixedType(Record *R, std::vector<unsigned char> &ArgCodes,
     default: PrintFatalError("unhandled vector type width in intrinsic!");
     case 1: Sig.push_back(IIT_V1); break;
     case 2: Sig.push_back(IIT_V2); break;
+    case 3: Sig.push_back(IIT_V3); break;
     case 4: Sig.push_back(IIT_V4); break;
     case 8: Sig.push_back(IIT_V8); break;
     case 16: Sig.push_back(IIT_V16); break;
