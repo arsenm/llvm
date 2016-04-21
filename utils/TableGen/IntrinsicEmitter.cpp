@@ -214,7 +214,8 @@ enum IIT_Info {
   IIT_VEC_OF_ANYPTRS_TO_ELT = 34,
   IIT_I128 = 35,
   IIT_V512 = 36,
-  IIT_V1024 = 37
+  IIT_V1024 = 37,
+  IIT_V3 = 38
 };
 
 static void EncodeFixedValueType(MVT::SimpleValueType VT,
@@ -332,6 +333,7 @@ static void EncodeFixedType(Record *R, std::vector<unsigned char> &ArgCodes,
     default: PrintFatalError("unhandled vector type width in intrinsic!");
     case 1: Sig.push_back(IIT_V1); break;
     case 2: Sig.push_back(IIT_V2); break;
+    case 3: Sig.push_back(IIT_V3); break;
     case 4: Sig.push_back(IIT_V4); break;
     case 8: Sig.push_back(IIT_V8); break;
     case 16: Sig.push_back(IIT_V16); break;

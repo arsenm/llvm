@@ -5,24 +5,11 @@
 define <3 x i8 > @foo(<3 x i8>%x, <3 x i8>%a, <3 x i8>%b) {
 ; CHECK-LABEL: foo:
 ; CHECK:       # BB#0:
-; CHECK-NEXT:    vmovd %edi, %xmm0
-; CHECK-NEXT:    vpinsrd $1, %esi, %xmm0, %xmm0
-; CHECK-NEXT:    vpinsrd $2, %edx, %xmm0, %xmm0
-; CHECK-NEXT:    vpslld $24, %xmm0, %xmm0
-; CHECK-NEXT:    vpsrad $24, %xmm0, %xmm0
-; CHECK-NEXT:    vmovd %ecx, %xmm1
-; CHECK-NEXT:    vpinsrd $1, %r8d, %xmm1, %xmm1
-; CHECK-NEXT:    vpinsrd $2, %r9d, %xmm1, %xmm1
-; CHECK-NEXT:    vpslld $24, %xmm1, %xmm1
-; CHECK-NEXT:    vpsrad $24, %xmm1, %xmm1
+; CHECK-NEXT:    vpmovsxbd %xmm0, %xmm0
+; CHECK-NEXT:    vpmovsxbd %xmm1, %xmm1
 ; CHECK-NEXT:    vpcmpgtd %xmm0, %xmm1, %k0
 ; CHECK-NEXT:    vpmovm2d %k0, %xmm0
-; CHECK-NEXT:    vpextrb $0, %xmm0, %eax
-; CHECK-NEXT:    vpextrb $4, %xmm0, %edx
-; CHECK-NEXT:    vpextrb $8, %xmm0, %ecx
-; CHECK-NEXT:    # kill: %AL<def> %AL<kill> %EAX<kill>
-; CHECK-NEXT:    # kill: %DL<def> %DL<kill> %EDX<kill>
-; CHECK-NEXT:    # kill: %CL<def> %CL<kill> %ECX<kill>
+; CHECK-NEXT:    vpshufb {{.*#+}} xmm0 = xmm0[0,4,8,u,u,u,u,u,u,u,u,u,u,u,u,u]
 ; CHECK-NEXT:    retq
   %cmp.i = icmp slt <3 x i8> %x, %a
   %res = sext <3 x i1> %cmp.i to <3 x i8>
