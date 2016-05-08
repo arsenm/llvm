@@ -638,7 +638,7 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
       // If this is an unaligned load and the target doesn't support it,
       // expand it.
       if (!TLI.allowsMemoryAccess(*DAG.getContext(), DL, MemVT, AS, Align)) {
-        std::tie(RVal, RChain) =  TLI.expandUnalignedLoad(LD, DAG);
+        std::tie(RVal, RChain) = TLI.expandUnalignedLoad(LD, DAG);
       }
       break;
     }
