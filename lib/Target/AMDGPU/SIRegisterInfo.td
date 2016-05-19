@@ -152,6 +152,12 @@ def SGPR_64Regs : RegisterTuples<[sub0, sub1],
                              [(add (decimate SGPR_32, 2)),
                               (add (decimate (shl SGPR_32, 1), 2))]>;
 
+// SGPR 96-bit registers. No operations use these, but for symmetry with 96-bit VGPRs.
+def SGPR_96Regs : RegisterTuples<[sub0, sub1, sub2],
+                            [(add (decimate SGPR_32, 3)),
+                             (add (decimate (shl SGPR_32, 1), 3)),
+                             (add (decimate (shl SGPR_32, 2), 3))]>;
+
 // SGPR 128-bit registers
 def SGPR_128Regs : RegisterTuples<[sub0, sub1, sub2, sub3],
                               [(add (decimate SGPR_32, 4)),
@@ -319,6 +325,13 @@ def SReg_64 : RegisterClass<"AMDGPU", [v2i32, i64, f64, i1], 32,
 // Requires 2 s_mov_b64 to copy
 let CopyCost = 2 in {
 
+// There are no 3-component scalar instructions, but this is needed
+// for symmetry with VGPRs.
+def SGPR_96 : RegisterClass<"AMDGPU", [v3i32, v3f32], 32,
+  (add SGPR_96Regs)> {
+  let AllocationPriority = 3; // XXX - Should this be allocatable?
+}
+
 def SGPR_128 : RegisterClass<"AMDGPU", [v4i32, v16i8, v2i64], 32, (add SGPR_128Regs)> {
   let AllocationPriority = 10;
 }
@@ -355,7 +368,7 @@ def VReg_64 : RegisterClass<"AMDGPU", [i64, f64, v2i32, v2f32], 32, (add VGPR_64
   let AllocationPriority = 2;
 }
 
-def VReg_96 : RegisterClass<"AMDGPU", [untyped], 32, (add VGPR_96)> {
+def VReg_96 : RegisterClass<"AMDGPU", [v3i32, v3f32], 32, (add VGPR_96)> {
   let Size = 96;
 
   // Requires 3 v_mov_b32 to copy

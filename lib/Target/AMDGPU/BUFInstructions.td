@@ -684,7 +684,7 @@ defm BUFFER_LOAD_DWORDX2 : MUBUF_Pseudo_Loads <
   "buffer_load_dwordx2", VReg_64, v2i32, mubuf_load
 >;
 defm BUFFER_LOAD_DWORDX3 : MUBUF_Pseudo_Loads <
-  "buffer_load_dwordx3", VReg_96, untyped, mubuf_load
+  "buffer_load_dwordx3", VReg_96, v3i32, mubuf_load
 >;
 defm BUFFER_LOAD_DWORDX4 : MUBUF_Pseudo_Loads <
   "buffer_load_dwordx4", VReg_128, v4i32, mubuf_load
@@ -702,7 +702,7 @@ defm BUFFER_STORE_DWORDX2 : MUBUF_Pseudo_Stores <
   "buffer_store_dwordx2", VReg_64, v2i32, global_store
 >;
 defm BUFFER_STORE_DWORDX3 : MUBUF_Pseudo_Stores <
-  "buffer_store_dwordx3", VReg_96, untyped, global_store
+  "buffer_store_dwordx3", VReg_96, v3i32, global_store
 >;
 defm BUFFER_STORE_DWORDX4 : MUBUF_Pseudo_Stores <
   "buffer_store_dwordx4", VReg_128, v4i32, global_store
@@ -825,9 +825,6 @@ let SubtargetPredicate = isCIVI in {
 //===----------------------------------------------------------------------===//
 // Instruction definitions for CI and newer.
 //===----------------------------------------------------------------------===//
-// Remaining instructions:
-// BUFFER_LOAD_DWORDX3
-// BUFFER_STORE_DWORDX3
 
 def BUFFER_WBINVL1_VOL : MUBUF_Invalidate <"buffer_wbinvl1_vol",
                                            int_amdgcn_buffer_wbinvl1_vol>;
