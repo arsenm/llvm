@@ -11,7 +11,7 @@
 # CHECK: S_CBRANCH_EXECNZ %bb.1, implicit %exec
 
 # CHECK: bb.2:
-# CHECK: liveins: %sgpr6_sgpr7, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr4, %sgpr5, %sgpr6, %sgpr7, %sgpr4_sgpr5, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr2_vgpr3, %vgpr0_vgpr1_vgpr2, %vgpr1_vgpr2, %vgpr1_vgpr2_vgpr3, %sgpr0_sgpr1, %sgpr0, %sgpr1{{$}}
+# CHECK: liveins: %sgpr6_sgpr7, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr4, %sgpr5, %sgpr6, %sgpr7, %sgpr4_sgpr5, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr0_vgpr1_vgpr2, %vgpr2_vgpr3, %vgpr1_vgpr2_vgpr3, %vgpr1_vgpr2, %sgpr0_sgpr1, %sgpr0, %sgpr1{{$}}
 
 
 --- |
@@ -113,7 +113,7 @@ body:             |
 # CHECK: S_CBRANCH_EXECNZ %bb.1, implicit %exec
 
 # CHECK: bb.2:
-# CHECK: liveins: %sgpr6_sgpr7, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr4, %sgpr5, %sgpr6, %sgpr7, %sgpr4_sgpr5, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr2_vgpr3, %vgpr0_vgpr1_vgpr2, %vgpr1_vgpr2, %vgpr1_vgpr2_vgpr3, %sgpr0_sgpr1, %sgpr0, %sgpr1
+# CHECK: liveins: %sgpr6_sgpr7, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr4, %sgpr5, %sgpr6, %sgpr7, %sgpr4_sgpr5, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr0_vgpr1_vgpr2, %vgpr2_vgpr3, %vgpr1_vgpr2_vgpr3, %vgpr1_vgpr2, %sgpr0_sgpr1, %sgpr0, %sgpr1{{$}}
 
 name:            extract_undef_neg_offset_vgpr
 alignment:       0
@@ -168,7 +168,7 @@ body:             |
 # CHECK: S_CBRANCH_EXECNZ %bb.1, implicit %exec
 
 # CHECK: bb.2:
-# CHECK: liveins: %sgpr6_sgpr7, %sgpr7, %sgpr4_sgpr5, %sgpr5, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr6, %sgpr4, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr2_vgpr3, %vgpr0_vgpr1_vgpr2, %vgpr1_vgpr2, %vgpr1_vgpr2_vgpr3, %vgpr4, %sgpr0_sgpr1, %sgpr0, %sgpr1
+# CHECK: liveins: %sgpr6_sgpr7, %sgpr4, %sgpr4_sgpr5, %sgpr5, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr7, %sgpr6, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr0_vgpr1_vgpr2, %vgpr2_vgpr3, %vgpr1_vgpr2_vgpr3, %vgpr1_vgpr2, %vgpr4, %sgpr0_sgpr1, %sgpr0, %sgpr1
 
 name:            insert_undef_offset_vgpr
 alignment:       0
@@ -225,7 +225,7 @@ body:             |
 # CHECK: S_CBRANCH_EXECNZ %bb.1, implicit %exec
 
 # CHECK: bb.2:
-# CHECK: liveins: %sgpr6_sgpr7, %sgpr7, %sgpr4_sgpr5, %sgpr5, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr6, %sgpr4, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr2_vgpr3, %vgpr0_vgpr1_vgpr2, %vgpr1_vgpr2, %vgpr1_vgpr2_vgpr3, %vgpr4, %sgpr0_sgpr1, %sgpr0, %sgpr1{{$}}
+# CHECK: liveins: %sgpr6_sgpr7, %sgpr4, %sgpr4_sgpr5, %sgpr5, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr7, %sgpr6, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr0_vgpr1_vgpr2, %vgpr2_vgpr3, %vgpr1_vgpr2_vgpr3, %vgpr1_vgpr2, %vgpr4, %sgpr0_sgpr1, %sgpr0, %sgpr1{{$}}
 
 name:            insert_undef_neg_offset_vgpr
 alignment:       0
@@ -281,7 +281,7 @@ body:             |
 # CHECK: S_CBRANCH_EXECNZ %bb.1, implicit %exec
 
 # CHECK: bb.2:
-# CHECK: liveins: %sgpr6_sgpr7, %sgpr7, %sgpr4_sgpr5, %sgpr5, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr6, %sgpr4, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr2_vgpr3, %vgpr0_vgpr1_vgpr2, %vgpr1_vgpr2, %vgpr1_vgpr2_vgpr3, %vgpr4, %sgpr0_sgpr1, %sgpr0, %sgpr1{{$}}
+# CHECK: liveins: %sgpr6_sgpr7, %sgpr4, %sgpr4_sgpr5, %sgpr5, %sgpr4_sgpr5_sgpr6_sgpr7, %sgpr7, %sgpr6, %vgpr0_vgpr1_vgpr2_vgpr3, %vgpr0, %vgpr1, %vgpr2, %vgpr3, %vgpr0_vgpr1, %vgpr0_vgpr1_vgpr2, %vgpr2_vgpr3, %vgpr1_vgpr2_vgpr3, %vgpr1_vgpr2, %vgpr4, %sgpr0_sgpr1, %sgpr0, %sgpr1{{$}}
 
 name:            insert_undef_value_offset_vgpr
 alignment:       0

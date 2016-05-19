@@ -65,6 +65,11 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::v2i32, &AMDGPU::SReg_64RegClass);
   addRegisterClass(MVT::v2f32, &AMDGPU::VReg_64RegClass);
 
+  if (Subtarget->getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS) {
+    addRegisterClass(MVT::v3i32, &AMDGPU::SGPR_96RegClass);
+    addRegisterClass(MVT::v3f32, &AMDGPU::SGPR_96RegClass);
+  }
+
   addRegisterClass(MVT::v2i64, &AMDGPU::SReg_128RegClass);
   addRegisterClass(MVT::v2f64, &AMDGPU::SReg_128RegClass);
 
