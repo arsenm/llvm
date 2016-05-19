@@ -1,5 +1,5 @@
-; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=FUNC %s
-; RUN: llc -march=amdgcn -mcpu=tonga -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=FUNC -check-prefix=SI %s
+; RUN: llc -march=amdgcn -mcpu=tonga -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=VI -check-prefix=FUNC %s
 ; RUN: llc -march=r600 -mcpu=redwood < %s | FileCheck -check-prefix=EG -check-prefix=FUNC %s
 
 ; FUNC-LABEL: {{^}}load_f32_local:
@@ -27,10 +27,12 @@ entry:
   ret void
 }
 
-; FIXME: should this do a read2_b64?
 ; FUNC-LABEL: {{^}}local_load_v3f32:
-; GCN-DAG: ds_read_b32 v{{[0-9]+}}, v{{[0-9]+}} offset:8
-; GCN-DAG: ds_read_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+$}}
+; SI-DAG: ds_read_b32 v{{[0-9]+}}, v{{[0-9]+}} offset:8
+; SI-DAG: ds_read_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+$}}
+
+; VI: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset1:1{{$}}
+
 ; GCN: s_waitcnt
 ; GCN-DAG: ds_write_b64
 ; GCN-DAG: ds_write_b32 v{{[0-9]+}}, v{{[0-9]+}} offset:8{{$}}

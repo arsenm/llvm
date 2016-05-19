@@ -147,7 +147,15 @@ define amdgpu_kernel void @merge_global_store_4_constants_f32(float addrspace(1)
 }
 
 ; GCN-LABEL: {{^}}merge_global_store_4_constants_mixed_i32_f32:
-; GCN-AA: buffer_store_dwordx4 v
+; GCN-NOAA: buffer_store_dword v
+; GCN-NOAA: buffer_store_dword v
+; GCN-NOAA: buffer_store_dword v
+; GCN-NOAA: buffer_store_dword v
+
+; GCN-AA-DAG: buffer_store_dwordx2
+; GCN-AA-DAG: buffer_store_dword v
+; GCN-AA-DAG: buffer_store_dword v
+
 ; GCN: s_endpgm
 define amdgpu_kernel void @merge_global_store_4_constants_mixed_i32_f32(float addrspace(1)* %out) #0 {
   %out.gep.1 = getelementptr float, float addrspace(1)* %out, i32 1
@@ -572,9 +580,9 @@ define amdgpu_kernel void @merge_global_store_6_constants_i32(i32 addrspace(1)* 
 }
 
 ; GCN-LABEL: {{^}}merge_global_store_7_constants_i32:
-; GCN: buffer_store_dwordx4
-; GCN: buffer_store_dwordx2
-; GCN: buffer_store_dword v
+; GCN-DAG: buffer_store_dwordx4
+; GCN-DAG: buffer_store_dwordx2
+; GCN-DAG: buffer_store_dword v
 define amdgpu_kernel void @merge_global_store_7_constants_i32(i32 addrspace(1)* %out) {
   store i32 34, i32 addrspace(1)* %out, align 4
   %idx1 = getelementptr inbounds i32, i32 addrspace(1)* %out, i64 1

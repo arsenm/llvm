@@ -111,6 +111,10 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::v2i32, &AMDGPU::SReg_64RegClass);
   addRegisterClass(MVT::v2f32, &AMDGPU::VReg_64RegClass);
 
+  addRegisterClass(MVT::v3i32, &AMDGPU::SGPR_96RegClass);
+  addRegisterClass(MVT::v3f32, &AMDGPU::SGPR_96RegClass);
+
+
   addRegisterClass(MVT::v2i64, &AMDGPU::SReg_128RegClass);
   addRegisterClass(MVT::v2f64, &AMDGPU::SReg_128RegClass);
 
@@ -942,6 +946,8 @@ SDValue SITargetLowering::lowerKernargMemParameter(
   // TODO: Since there is no x3 scalar load, this should probably just do the x4
   // load and extract the subvector.
   SDValue Val = Load;
+
+#if 0
   if (MemVT.isVector() && MemVT.getVectorNumElements() == 3) {
     Val = DAG.getNode(ISD::INSERT_SUBVECTOR,
                        SL, VT,
@@ -949,6 +955,7 @@ SDValue SITargetLowering::lowerKernargMemParameter(
                        Val,
                        DAG.getConstant(0, SL, MVT::i32));
   }
+#endif
 
   Val = convertArgType(DAG, VT, MemVT, SL, Val, Signed, Arg);
   return DAG.getMergeValues({ Val, Load.getValue(1) }, SL);
