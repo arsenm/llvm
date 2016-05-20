@@ -1553,12 +1553,14 @@ SDValue DAGTypeLegalizer::SplitVecOp_VSELECT(SDNode *N, unsigned OpNo) {
 
   SDValue Lo, Hi;
   GetSplitVector(N->getOperand(0), Lo, Hi);
+#if 0
   assert(Lo.getValueType() == Hi.getValueType() &&
          "Lo and Hi have differing types");
+#endif
 
   EVT LoOpVT, HiOpVT;
   std::tie(LoOpVT, HiOpVT) = DAG.GetSplitDestVTs(Src0VT);
-  assert(LoOpVT == HiOpVT && "Asymmetric vector split?");
+//  assert(LoOpVT == HiOpVT && "Asymmetric vector split?");
 
   SDValue LoOp0, HiOp0, LoOp1, HiOp1, LoMask, HiMask;
   std::tie(LoOp0, HiOp0) = DAG.SplitVector(Src0, DL);

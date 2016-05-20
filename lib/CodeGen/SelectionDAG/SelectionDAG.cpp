@@ -7094,7 +7094,11 @@ std::pair<EVT, EVT> SelectionDAG::GetSplitDestVTs(const EVT &VT) const {
     LoVT = HiVT = TLI->getTypeToTransformTo(*getContext(), VT);
   } else {
     unsigned NumElements = VT.getVectorNumElements();
-    assert(!(NumElements & 1) && "Splitting vector, but not in half!");
+
+    // SplitVector will insert an extra undef element.
+    if (NumElements & 1)
+      ++NumElements;
+
     LoVT = HiVT = EVT::getVectorVT(*getContext(), VT.getVectorElementType(),
                                    NumElements/2);
   }
@@ -7106,15 +7110,33 @@ std::pair<EVT, EVT> SelectionDAG::GetSplitDestVTs(const EVT &VT) const {
 std::pair<SDValue, SDValue>
 SelectionDAG::SplitVector(const SDValue &N, const SDLoc &DL, const EVT &LoVT,
                           const EVT &HiVT) {
-  assert(LoVT.getVectorNumElements() + HiVT.getVectorNumElements() <=
-         N.getValueType().getVectorNumElements() &&
+  unsigned LoElts = LoVT.getVectorNumElements();
+  unsigned HiElts = HiVT.getVectorNumElements();
+  unsigned DestElts = N.getValueType().getVectorNumElements();
+
+#if 1
+  assert((((DestElts & 1) && (LoElts + HiElts + 1) == DestElts) ||
+          LoElts + HiElts == DestElts + 1) &&
          "More vector elements requested than available!");
+#endif
+
+
+  EVT IdxVT = TLI->getVectorIdxTy(getDataLayout());
+
   SDValue Lo, Hi;
-  Lo = getNode(ISD::EXTRACT_SUBVECTOR, DL, LoVT, N,
-               getConstant(0, DL, TLI->getVectorIdxTy(getDataLayout())));
+
+  SDValue ZeroIdx = getConstant(0, DL, IdxVT);
+  Lo = getNode(ISD::EXTRACT_SUBVECTOR, DL, LoVT, N, ZeroIdx);
+
+
   Hi = getNode(ISD::EXTRACT_SUBVECTOR, DL, HiVT, N,
-               getConstant(LoVT.getVectorNumElements(), DL,
-                           TLI->getVectorIdxTy(getDataLayout())));
+               getConstant(LoElts, DL, IdxVT));
+
+  if ((DestElts & 1) == 0)
+    return std::make_pair(Lo, Hi);
+
+  Hi = getNode(ISD::INSERT_SUBVECTOR, DL, LoVT, getUNDEF(LoVT), Hi, ZeroIdx);
+
   return std::make_pair(Lo, Hi);
 }
 
