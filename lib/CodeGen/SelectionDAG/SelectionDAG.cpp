@@ -7094,9 +7094,16 @@ std::pair<EVT, EVT> SelectionDAG::GetSplitDestVTs(const EVT &VT) const {
     LoVT = HiVT = TLI->getTypeToTransformTo(*getContext(), VT);
   } else {
     unsigned NumElements = VT.getVectorNumElements();
-    assert(!(NumElements & 1) && "Splitting vector, but not in half!");
-    LoVT = HiVT = EVT::getVectorVT(*getContext(), VT.getVectorElementType(),
-                                   NumElements/2);
+    //assert(!(NumElements & 1) && "Splitting vector, but not in half!");
+    EVT EltVT = VT.getVectorElementType();
+    if (NumElements & 1) {
+      unsigned HiElts = NumElements / 2;
+      unsigned LowElts = NumElements - HiElts;
+      LoVT = EVT::getVectorVT(*getContext(), EltVT, LowElts);
+      HiVT = EVT::getVectorVT(*getContext(), EltVT, HiElts);
+    } else {
+      LoVT = HiVT = EVT::getVectorVT(*getContext(), EltVT, NumElements / 2);
+    }
   }
   return std::make_pair(LoVT, HiVT);
 }
