@@ -591,6 +591,22 @@ foreach Index = 0-2 in {
 }
 
 foreach Index = 0-3 in {
+  def Extract_Element_v3i32_#Index : Extract_Element <
+    i32, v3i32, Index, !cast<SubRegIndex>(sub#Index)
+  >;
+  def Insert_Element_v3i32_#Index : Insert_Element <
+    i32, v3i32, Index, !cast<SubRegIndex>(sub#Index)
+  >;
+
+  def Extract_Element_v3f32_#Index : Extract_Element <
+    f32, v3f32, Index, !cast<SubRegIndex>(sub#Index)
+  >;
+  def Insert_Element_v3f32_#Index : Insert_Element <
+    f32, v3f32, Index, !cast<SubRegIndex>(sub#Index)
+  >;
+}
+
+foreach Index = 0-3 in {
   def Extract_Element_v4i32_#Index : Extract_Element <
     i32, v4i32, Index, !cast<SubRegIndex>(sub#Index)
   >;
@@ -677,6 +693,10 @@ def : BitConvert <f64, v2i32, VReg_64>;
 def : BitConvert <v2i32, f64, VReg_64>;
 def : BitConvert <v4i32, v4f32, VReg_128>;
 def : BitConvert <v4f32, v4i32, VReg_128>;
+
+// 96-bit bitcast
+def : BitConvert <v3i32, v3f32, SGPR_96>;
+def : BitConvert <v3f32, v3i32, SGPR_96>;
 
 // 128-bit bitcast
 def : BitConvert <v2i64, v4i32, SReg_128>;
