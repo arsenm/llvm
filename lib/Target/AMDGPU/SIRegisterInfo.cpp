@@ -679,6 +679,7 @@ const TargetRegisterClass *SIRegisterInfo::getPhysRegClass(unsigned Reg) const {
     &AMDGPU::SReg_256RegClass,
     &AMDGPU::VReg_512RegClass,
     &AMDGPU::SReg_512RegClass,
+    &AMDGPU::SGPR_96RegClass,
     &AMDGPU::SCC_CLASSRegClass,
   };
 
@@ -740,6 +741,8 @@ const TargetRegisterClass *SIRegisterInfo::getEquivalentSGPRClass(
     return &AMDGPU::SGPR_32RegClass;
   case 8:
     return &AMDGPU::SReg_64RegClass;
+  case 12:
+    return &AMDGPU::SGPR_96RegClass;
   case 16:
     return &AMDGPU::SReg_128RegClass;
   case 32:
@@ -764,6 +767,8 @@ const TargetRegisterClass *SIRegisterInfo::getSubRegClass(
       return &AMDGPU::SGPR_32RegClass;
     case 2:
       return &AMDGPU::SReg_64RegClass;
+    case 3:
+      return &AMDGPU::SGPR_96RegClass;
     case 4:
       return &AMDGPU::SReg_128RegClass;
     case 8:
