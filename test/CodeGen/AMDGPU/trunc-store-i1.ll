@@ -1,4 +1,4 @@
-; RUN: llc -march=amdgcn -mcpu=SI -verify-machineinstrs< %s | FileCheck -check-prefix=SI %s
+; RUN: llc -march=amdgcn -verify-machineinstrs< %s | FileCheck -check-prefix=SI %s
 ; RUN: llc -march=amdgcn -mcpu=tonga -verify-machineinstrs< %s | FileCheck -check-prefix=SI %s
 
 
@@ -29,5 +29,12 @@ define void @global_truncstore_i64_to_i1(i1 addrspace(1)* %out, i64 %val) nounwi
 define void @global_truncstore_i16_to_i1(i1 addrspace(1)* %out, i16 %val) nounwind {
   %trunc = trunc i16 %val to i1
   store i1 %trunc, i1 addrspace(1)* %out, align 1
+  ret void
+}
+
+; SI-LABEL: {{^}}global_truncstore_v3i64_to_v3i1:
+define void @global_truncstore_v3i64_to_v3i1(<3 x i1> addrspace(1)* %out, <3 x i64> %val) nounwind {
+  %trunc = trunc <3 x i64> %val to <3 x i1>
+  store <3 x i1> %trunc, <3 x i1> addrspace(1)* %out
   ret void
 }

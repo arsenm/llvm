@@ -233,6 +233,10 @@ defm FLAT_ATOMIC_DEC_X2 : FLAT_ATOMIC <
   flat<0x5d, 0x6c>, "flat_atomic_dec_x2", VReg_64, i64, atomic_dec_flat
 >;
 
+defm BUFFER_STORE_DWORDX3 : MUBUF_Store_Helper <
+  mubuf<0x1f, 0x1e>, "buffer_store_dwordx3", VReg_96, v3i32, global_store
+>;
+
 } // End SubtargetPredicate = isCIVI
 
 // CI Only flat instructions
@@ -285,6 +289,7 @@ def : FlatLoadPat <FLAT_LOAD_USHORT, flat_az_extloadi16, i32>;
 def : FlatLoadPat <FLAT_LOAD_SSHORT, flat_sextloadi16, i32>;
 def : FlatLoadPat <FLAT_LOAD_DWORD, flat_load, i32>;
 def : FlatLoadPat <FLAT_LOAD_DWORDX2, flat_load, v2i32>;
+def : FlatLoadPat <FLAT_LOAD_DWORDX3, flat_load, v3i32>;
 def : FlatLoadPat <FLAT_LOAD_DWORDX4, flat_load, v4i32>;
 
 def : FlatLoadAtomicPat <FLAT_LOAD_DWORD, atomic_flat_load, i32>;
