@@ -981,6 +981,10 @@ void TargetLoweringBase::setJumpIsExpensive(bool isExpensive) {
 
 TargetLoweringBase::LegalizeKind
 TargetLoweringBase::getTypeConversion(LLVMContext &Context, EVT VT) const {
+  if (VT.isVector() && !VT.isPow2VectorType())
+    goto vectors;
+
+
   // If this is a simple type, use the ComputeRegisterProp mechanism.
   if (VT.isSimple()) {
     MVT SVT = VT.getSimpleVT();
@@ -1021,6 +1025,7 @@ TargetLoweringBase::getTypeConversion(LLVMContext &Context, EVT VT) const {
                         EVT::getIntegerVT(Context, VT.getSizeInBits() / 2));
   }
 
+vectors:
   // Handle vector types.
   unsigned NumElts = VT.getVectorNumElements();
   EVT EltVT = VT.getVectorElementType();
