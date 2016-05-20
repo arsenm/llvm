@@ -449,10 +449,6 @@ bool DAGTypeLegalizer::ScalarizeVectorOperand(SDNode *N, unsigned OpNo) {
     case ISD::EXTRACT_VECTOR_ELT:
       Res = ScalarizeVecOp_EXTRACT_VECTOR_ELT(N);
       break;
-    case ISD::INSERT_SUBVECTOR:
-      assert(OpNo == 1 && "insert into 1-vectors not handled");
-      Res = ScalarizeVecOp_INSERT_SUBVECTOR(N);
-      break;
     case ISD::VSELECT:
       Res = ScalarizeVecOp_VSELECT(N);
       break;
@@ -521,15 +517,6 @@ SDValue DAGTypeLegalizer::ScalarizeVecOp_EXTRACT_VECTOR_ELT(SDNode *N) {
   return Res;
 }
 
-SDValue DAGTypeLegalizer::ScalarizeVecOp_INSERT_SUBVECTOR(SDNode *N) {
-  SDValue Res = GetScalarizedVector(N->getOperand(1));
-
-  return DAG.getNode(ISD::INSERT_VECTOR_ELT, SDLoc(N),
-                     N->getValueType(0),
-                     N->getOperand(0),
-                     Res,
-                     N->getOperand(2));
-}
 
 /// ScalarizeVecOp_VSELECT - If the input condition is a vector that needs to be
 /// scalarized, it must be <1 x i1>, so just convert to a normal ISD::SELECT
