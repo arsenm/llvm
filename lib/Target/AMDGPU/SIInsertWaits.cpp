@@ -188,6 +188,16 @@ bool SIInsertWaits::hasOutstandingLGKM() const {
   return WaitedOn.Named.LGKM != LastIssued.Named.LGKM;
 }
 
+static bool hasGlobalMemOperand(const MachineInstr &MI) {
+  if (!MI.hasOneMemOperand())
+    return false;
+
+  MachineMemOperand *MMO = *MI.memoperands_begin();
+  unsigned AS = MMO->getAddrSpace();
+  return AS == AMDGPUAS::GLOBAL_ADDRESS ||
+         AS == AMDGPUAS::CONSTANT_ADDRESS;
+}
+
 Counters SIInsertWaits::getHwCounts(MachineInstr &MI) {
   uint64_t TSFlags = MI.getDesc().TSFlags;
   Counters Result = { { 0, 0, 0 } };
@@ -217,6 +227,11 @@ Counters SIInsertWaits::getHwCounts(MachineInstr &MI) {
         // XXX - What is the right value?
         Result.Named.LGKM = 1;
       }
+    } else if (TII->isFLAT(MI)) {
+      // If we know the pointer is not accessing a flat address, we don't need
+      // to wait for lgkm.
+      if (!hasGlobalMemOperand(MI))
+        Result.Named.LGKM = 1;
     } else {
       // DS
       Result.Named.LGKM = 1;
