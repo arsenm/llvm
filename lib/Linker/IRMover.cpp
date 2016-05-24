@@ -10,6 +10,7 @@
 #include "LinkDiagnosticInfo.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallString.h"
+#include "llvm/ADT/StringSet.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DebugInfo.h"
@@ -1116,6 +1117,27 @@ void IRLinker::linkNamedMDNodes() {
     if (&NMD == SrcModFlags)
       continue;
     NamedMDNode *DestNMD = DstM.getOrInsertNamedMetadata(NMD.getName());
+
+    if (NMD.getName() == "llvm.ident") {
+      StringSet<> UniqueIdents;
+
+      // Unique the compiler IDs linked together.
+      for (const MDNode *DestID : DestNMD->operands()) {
+        if (const MDString *VerStr
+            = cast_or_null<MDString>(DestID->getOperand(0)))
+          UniqueIdents.insert(VerStr->getString());
+      }
+
+      for (const MDNode *Op : NMD.operands()) {
+        if (const MDString *VerStr = cast_or_null<MDString>(Op->getOperand(0))) {
+          if (UniqueIdents.insert(VerStr->getString()).second)
+            DestNMD->addOperand(Mapper.mapMDNode(*Op));
+        }
+      }
+
+      continue;
+    }
+
     // Add Src elements into Dest node.
     for (const MDNode *Op : NMD.operands())
       DestNMD->addOperand(Mapper.mapMDNode(*Op));
