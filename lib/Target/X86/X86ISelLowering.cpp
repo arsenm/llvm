@@ -2027,13 +2027,6 @@ Value *X86TargetLowering::getSafeStackPointerLocation(IRBuilder<> &IRB) const {
       Type::getInt8PtrTy(IRB.getContext())->getPointerTo(AddressSpace));
 }
 
-bool X86TargetLowering::isNoopAddrSpaceCast(unsigned SrcAS,
-                                            unsigned DestAS) const {
-  assert(SrcAS != DestAS && "Expected different address spaces!");
-
-  return SrcAS < 256 && DestAS < 256;
-}
-
 //===----------------------------------------------------------------------===//
 //               Return Value Calling Convention Implementation
 //===----------------------------------------------------------------------===//

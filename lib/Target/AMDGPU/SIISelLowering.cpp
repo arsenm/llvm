@@ -484,18 +484,6 @@ EVT SITargetLowering::getOptimalMemOpType(uint64_t Size, unsigned DstAlign,
   return MVT::Other;
 }
 
-static bool isFlatGlobalAddrSpace(unsigned AS) {
-  return AS == AMDGPUAS::GLOBAL_ADDRESS ||
-    AS == AMDGPUAS::FLAT_ADDRESS ||
-    AS == AMDGPUAS::CONSTANT_ADDRESS;
-}
-
-bool SITargetLowering::isNoopAddrSpaceCast(unsigned SrcAS,
-                                           unsigned DestAS) const {
-  return isFlatGlobalAddrSpace(SrcAS) && isFlatGlobalAddrSpace(DestAS);
-}
-
-
 bool SITargetLowering::isMemOpUniform(const SDNode *N) const {
   const MemSDNode *MemNode = cast<MemSDNode>(N);
   const Value *Ptr = MemNode->getMemOperand()->getValue();
@@ -2181,7 +2169,7 @@ SDValue SITargetLowering::LowerATOMIC_CMP_SWAP(SDValue Op, SelectionDAG &DAG) co
   unsigned AS = AtomicNode->getAddressSpace();
 
   // No custom lowering required for local address space
-  if (!isFlatGlobalAddrSpace(AS))
+  if (!AMDGPUAS::isFlatGlobalAddrSpace(AS))
     return Op;
 
   // Non-local address space requires custom lowering for atomic compare

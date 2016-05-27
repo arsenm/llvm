@@ -220,6 +220,12 @@ public:
 
 } // End of anonymous namespace
 
+bool AMDGPUTargetMachine::isNoopAddrSpaceCast(unsigned SrcAS,
+                                              unsigned DestAS) const {
+  return AMDGPUAS::isFlatGlobalAddrSpace(SrcAS) &&
+         AMDGPUAS::isFlatGlobalAddrSpace(DestAS);
+}
+
 TargetIRAnalysis AMDGPUTargetMachine::getTargetIRAnalysis() {
   return TargetIRAnalysis([this](const Function &F) {
     return TargetTransformInfo(

@@ -1097,11 +1097,6 @@ public:
   /// returns the address of that location. Otherwise, returns nullptr.
   virtual Value *getSafeStackPointerLocation(IRBuilder<> &IRB) const;
 
-  /// Returns true if a cast between SrcAS and DestAS is a noop.
-  virtual bool isNoopAddrSpaceCast(unsigned SrcAS, unsigned DestAS) const {
-    return false;
-  }
-
   /// Return true if the pointer arguments to CI should be aligned by aligning
   /// the object whose address is being passed. If so then MinSize is set to the
   /// minimum size the object must be to be aligned and PrefAlign is set to the

@@ -165,6 +165,12 @@ enum AddressSpaces : unsigned {
   UNKNOWN_ADDRESS_SPACE = ~0u
 };
 
+inline bool isFlatGlobalAddrSpace(unsigned AS) {
+  return AS == AMDGPUAS::GLOBAL_ADDRESS ||
+    AS == AMDGPUAS::FLAT_ADDRESS ||
+    AS == AMDGPUAS::CONSTANT_ADDRESS;
+}
+
 } // namespace AMDGPUAS
 
 #endif

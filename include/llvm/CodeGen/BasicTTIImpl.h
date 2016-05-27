@@ -362,8 +362,9 @@ public:
       return 0;
 
     if (Opcode == Instruction::AddrSpaceCast &&
-        TLI->isNoopAddrSpaceCast(Src->getPointerAddressSpace(),
-                                 Dst->getPointerAddressSpace()))
+        TLI->getTargetMachine().isNoopAddrSpaceCast(
+          Src->getPointerAddressSpace(),
+          Dst->getPointerAddressSpace()))
       return 0;
 
     // If the cast is marked as legal (or promote) then assume low cost.

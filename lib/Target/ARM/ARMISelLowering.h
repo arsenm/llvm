@@ -384,12 +384,6 @@ namespace llvm {
     /// specified value type.
     const TargetRegisterClass *getRegClassFor(MVT VT) const override;
 
-    /// Returns true if a cast between SrcAS and DestAS is a noop.
-    bool isNoopAddrSpaceCast(unsigned SrcAS, unsigned DestAS) const override {
-      // Addrspacecasts are always noops.
-      return true;
-    }
-
     bool shouldAlignPointerArgs(CallInst *CI, unsigned &MinSize,
                                 unsigned &PrefAlign) const override;
 

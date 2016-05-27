@@ -220,6 +220,13 @@ X86TargetMachine::getSubtargetImpl(const Function &F) const {
   return I.get();
 }
 
+bool X86TargetMachine::isNoopAddrSpaceCast(unsigned SrcAS,
+                                           unsigned DestAS) const {
+  assert(SrcAS != DestAS && "Expected different address spaces!");
+
+  return SrcAS < 256 && DestAS < 256;
+}
+
 //===----------------------------------------------------------------------===//
 // Command line options for x86
 //===----------------------------------------------------------------------===//

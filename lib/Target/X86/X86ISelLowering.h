@@ -251,7 +251,7 @@ namespace llvm {
       /// in order to obtain suitable precision.
       FRSQRT, FRCP,
       FRSQRTS, FRCPS,
-   
+
       // Thread Local Storage.
       TLSADDR,
 
@@ -981,8 +981,6 @@ namespace llvm {
 
     SDValue BuildFILD(SDValue Op, EVT SrcVT, SDValue Chain, SDValue StackSlot,
                       SelectionDAG &DAG) const;
-
-    bool isNoopAddrSpaceCast(unsigned SrcAS, unsigned DestAS) const override;
 
     /// \brief Customize the preferred legalization strategy for certain types.
     LegalizeTypeAction getPreferredVectorAction(EVT VT) const override;

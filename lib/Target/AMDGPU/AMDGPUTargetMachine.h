@@ -55,6 +55,8 @@ public:
   TargetLoweringObjectFile *getObjFileLowering() const override {
     return TLOF.get();
   }
+
+  bool isNoopAddrSpaceCast(unsigned SrcAS, unsigned DestAS) const override;
 };
 
 //===----------------------------------------------------------------------===//

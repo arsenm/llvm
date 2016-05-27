@@ -45,6 +45,12 @@ public:
     return TLOF.get();
   }
 
+  /// Returns true if a cast between SrcAS and DestAS is a noop.
+  bool isNoopAddrSpaceCast(unsigned SrcAS, unsigned DestAS) const override {
+    // Addrspacecasts are always noops.
+    return true;
+  }
+
 private:
   AArch64Subtarget Subtarget;
 };
