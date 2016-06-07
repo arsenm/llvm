@@ -2581,6 +2581,20 @@ SDValue AMDGPUTargetLowering::PerformDAGCombine(SDNode *N,
     break;
   case ISD::BITCAST: {
     EVT DestVT = N->getValueType(0);
+    SDValue Src = N->getOperand(0);
+#if 0
+    // Push casts into vector elements. This tends to eliminate nodes from
+    // casting between fp and int vectors.
+    if (Src.getOpcode() == ISD::BUILD_VECTOR && DestVT.isVector() &&
+        Src.getOperand(0).getValueType().isVector()) {
+      EVT DestEltVT = DestVT.getVectorElementType();
+      SmallVector<SDValue, 8> CastElts;
+      for (SDValue SrcElt : Src->ops())
+        CastElts.push_back(DAG.getNode(ISD::BITCAST, DL, DestEltVT, SrcElt));
+
+      return DAG.getNode(ISD::BUILD_VECTOR, DL, DestVT, CastElts);
+    }
+#endif
     if (DestVT.getSizeInBits() != 64 && !DestVT.isVector())
       break;
 
@@ -2588,7 +2602,6 @@ SDValue AMDGPUTargetLowering::PerformDAGCombine(SDNode *N,
     //
     // v2i32 (bitcast i64:k) -> build_vector lo_32(k), hi_32(k)
     // TODO: Generalize and move to DAGCombiner
-    SDValue Src = N->getOperand(0);
     if (ConstantSDNode *C = dyn_cast<ConstantSDNode>(Src)) {
       assert(Src.getValueType() == MVT::i64);
       SDLoc SL(N);
