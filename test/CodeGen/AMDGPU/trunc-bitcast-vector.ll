@@ -81,8 +81,9 @@ define void @trunc_i32_bitcast_v4i8(i8 addrspace(1)* %out, <4 x i8> addrspace(1)
 }
 
 ; CHECK-LABEL: {{^}}trunc_i24_bitcast_v3i8:
-; CHECK: buffer_load_dword [[VAL:v[0-9]+]]
-; CHECK: buffer_store_byte [[VAL]]
+; CHECK: buffer_load_ubyte [[VAL:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, 0{{$}}
+; CHECK: s_waitcnt
+; CHECK: buffer_store_byte [[VAL]], off, s{{\[[0-9]+:[0-9]+\]}}, 0{{$}}
 define void @trunc_i24_bitcast_v3i8(i8 addrspace(1)* %out, <3 x i8> addrspace(1)* %in) {
   %ld = load <3 x i8>, <3 x i8> addrspace(1)* %in
   %bc = bitcast <3 x i8> %ld to i24

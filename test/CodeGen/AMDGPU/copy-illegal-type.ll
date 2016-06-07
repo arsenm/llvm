@@ -90,7 +90,9 @@ define void @test_copy_v4i8_x2_extra_use(<4 x i8> addrspace(1)* %out0, <4 x i8> 
 }
 
 ; FUNC-LABEL: {{^}}test_copy_v3i8_align4:
-; SI: buffer_load_dword
+; SI-DAG: buffer_load_ushort v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, 0{{$}}
+; SI-DAG: buffer_load_ubyte v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, 0 offset:2{{$}}
+; SI: s_waitcnt
 ; SI-DAG: buffer_store_short v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, 0{{$}}
 ; SI-DAG: buffer_store_byte v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, 0 offset:2{{$}}
 ; SI: s_endpgm

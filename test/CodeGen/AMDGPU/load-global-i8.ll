@@ -30,10 +30,14 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}global_load_v3i8:
-; GCN-NOHSA: buffer_load_dword v
-; GCN-HSA: flat_load_dword v
+; GCN-NOHSA-DAG: buffer_load_ushort v
+; GCN-NOHSA-DAG: buffer_load_ubyte v
 
-; EG-DAG: VTX_READ_32
+; GCN-HSA-DAG: flat_load_ushort v
+; GCN-HSA-DAG: flat_load_ubyte v
+
+; EG-DAG: VTX_READ_16
+; EG-DAG: VTX_READ_8
 define void @global_load_v3i8(<3 x i8> addrspace(1)* %out, <3 x i8> addrspace(1)* %in) #0 {
 entry:
   %ld = load <3 x i8>, <3 x i8> addrspace(1)* %in
@@ -151,11 +155,13 @@ define void @global_sextload_v2i8_to_v2i32(<2 x i32> addrspace(1)* %out, <2 x i8
 }
 
 ; FUNC-LABEL: {{^}}global_zextload_v3i8_to_v3i32:
-; GCN-NOHSA: buffer_load_dword v
-; GCN-HSA: flat_load_dword v
+; GCN-NOHSA-DAG: buffer_load_ushort v
+; GCN-NOHSA-DAG: buffer_load_ubyte v
+
+; GCN-HSA-DAG: flat_load_ushort v
+; GCN-HSA-DAG: flat_load_ubyte v
 
 ; GCN-DAG: v_bfe_u32 v{{[0-9]+}}, v{{[0-9]+}}, 8, 8
-; GCN-DAG: v_bfe_u32 v{{[0-9]+}}, v{{[0-9]+}}, 16, 8
 ; GCN-DAG: v_and_b32_e32 v{{[0-9]+}}, 0xff,
 define void @global_zextload_v3i8_to_v3i32(<3 x i32> addrspace(1)* %out, <3 x i8> addrspace(1)* %in) #0 {
 entry:
@@ -166,12 +172,14 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}global_sextload_v3i8_to_v3i32:
-; GCN-NOHSA: buffer_load_dword v
-; GCN-HSA: flat_load_dword v
+; GCN-NOHSA-DAG: buffer_load_ushort v
+; GCN-NOHSA-DAG: buffer_load_ubyte v
+
+; GCN-HSA-DAG: flat_load_ushort v
+; GCN-HSA-DAG: flat_load_ubyte v
 
 ; GCN-DAG: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 8, 8
 ; GCN-DAG: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 0, 8
-; GCN-DAG: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 16, 8
 define void @global_sextload_v3i8_to_v3i32(<3 x i32> addrspace(1)* %out, <3 x i8> addrspace(1)* %in) #0 {
 entry:
   %ld = load <3 x i8>, <3 x i8> addrspace(1)* %in

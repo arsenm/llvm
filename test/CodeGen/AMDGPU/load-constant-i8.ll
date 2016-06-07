@@ -29,9 +29,14 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}constant_load_v3i8:
-; GCN: s_load_dword s
+; GCN-NOHSA-DAG: buffer_load_ushort
+; GCN-NOHSA-DAG: buffer_load_ubyte
 
-; EG-DAG: VTX_READ_32
+; GCN-HSA-DAG: flat_load_ushort
+; GCN-HSA-DAG: flat_load_ubyte
+
+; EG-DAG: VTX_READ_16
+; EG-DAG: VTX_READ_8
 define void @constant_load_v3i8(<3 x i8> addrspace(1)* %out, <3 x i8> addrspace(2)* %in) #0 {
 entry:
   %ld = load <3 x i8>, <3 x i8> addrspace(2)* %in
@@ -148,11 +153,15 @@ define void @constant_sextload_v2i8_to_v2i32(<2 x i32> addrspace(1)* %out, <2 x 
 }
 
 ; FUNC-LABEL: {{^}}constant_zextload_v3i8_to_v3i32:
-; GCN: s_load_dword s
+; GCN-NOHSA-DAG: buffer_load_ushort
+; GCN-NOHSA-DAG: buffer_load_ubyte
 
-; GCN-DAG: s_bfe_u32
-; GCN-DAG: s_bfe_u32
-; GCN-DAG: s_and_b32
+; GCN-HSA-DAG: flat_load_ushort
+; GCN-HSA-DAG: flat_load_ubyte
+
+; GCN-DAG: v_bfe_u32
+; GCN-DAG: v_bfe_u32
+; GCN-DAG: v_and_b32
 define void @constant_zextload_v3i8_to_v3i32(<3 x i32> addrspace(1)* %out, <3 x i8> addrspace(2)* %in) #0 {
 entry:
   %ld = load <3 x i8>, <3 x i8> addrspace(2)* %in
@@ -162,11 +171,15 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}constant_sextload_v3i8_to_v3i32:
-; GCN: s_load_dword s
+; GCN-NOHSA-DAG: buffer_load_ushort
+; GCN-NOHSA-DAG: buffer_load_ubyte
 
-; GCN-DAG: s_bfe_i32
-; GCN-DAG: s_bfe_i32
-; GCN-DAG: s_bfe_i32
+; GCN-HSA-DAG: flat_load_ushort
+; GCN-HSA-DAG: flat_load_ubyte
+
+; GCN: v_bfe_i32
+; GCN: v_bfe_i32
+; GCN: v_bfe_i32
 define void @constant_sextload_v3i8_to_v3i32(<3 x i32> addrspace(1)* %out, <3 x i8> addrspace(2)* %in) #0 {
 entry:
   %ld = load <3 x i8>, <3 x i8> addrspace(2)* %in

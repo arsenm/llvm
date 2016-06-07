@@ -30,9 +30,11 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_load_v3i8:
-; GCN: ds_read_b32
+; GCN-DAG: ds_read_u16 v{{[0-9]+}}, v{{[0-9]+$}}
+; GCN-DAG: ds_read_u8 v{{[0-9]+}}, v{{[0-9]+}} offset:2{{$}}
 
-; EG: DS_READ_RET
+; EG-DAG: LDS_UBYTE_READ_RET
+; EG-DAG: LDS_USHORT_READ_RET
 define void @local_load_v3i8(<3 x i8> addrspace(3)* %out, <3 x i8> addrspace(3)* %in) #0 {
 entry:
   %ld = load <3 x i8>, <3 x i8> addrspace(3)* %in
@@ -152,11 +154,14 @@ define void @local_sextload_v2i8_to_v2i32(<2 x i32> addrspace(3)* %out, <2 x i8>
 }
 
 ; FUNC-LABEL: {{^}}local_zextload_v3i8_to_v3i32:
-; GCN: ds_read_b32
+; GCN-DAG: ds_read_u16
+; GCN-DAG: ds_read_u8
 
 ; GCN-DAG: v_bfe_u32 v{{[0-9]+}}, v{{[0-9]+}}, 8, 8
-; GCN-DAG: v_bfe_u32 v{{[0-9]+}}, v{{[0-9]+}}, 16, 8
 ; GCN-DAG: v_and_b32_e32 v{{[0-9]+}}, 0xff,
+
+; GCN-DAG: ds_write_b64
+; GCN-DAG: ds_write_b32
 define void @local_zextload_v3i8_to_v3i32(<3 x i32> addrspace(3)* %out, <3 x i8> addrspace(3)* %in) #0 {
 entry:
   %ld = load <3 x i8>, <3 x i8> addrspace(3)* %in
@@ -165,18 +170,20 @@ entry:
   ret void
 }
 
+; FIXME: Not doing i8 extload for high component, sext_inreg after zextload.
 ; FUNC-LABEL: {{^}}local_sextload_v3i8_to_v3i32:
 ; GCN-NOT: s_wqm_b64
 ; GCN: s_mov_b32 m0
-; GCN: ds_read_b32
 
-; GCN-DAG: v_bfe_i32
-; GCN-DAG: v_bfe_i32
-; GCN-DAG: v_bfe_i32
-; GCN-DAG: v_bfe_i32
+; GCN-DAG: ds_read_u16
+; GCN-DAG: ds_read_u8
+
+; GCN: v_bfe_i32
+; GCN-DAG: ds_write_b32
+; GCN: v_bfe_i32
+; GCN: v_bfe_i32
 
 ; GCN-DAG: ds_write_b64
-; GCN-DAG: ds_write_b32
 
 define void @local_sextload_v3i8_to_v3i32(<3 x i32> addrspace(3)* %out, <3 x i8> addrspace(3)* %in) #0 {
 entry:

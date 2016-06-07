@@ -26,12 +26,15 @@ define void @load_v2i8_to_v2f32(<2 x float> addrspace(1)* noalias %out, <2 x i8>
   ret void
 }
 
+; FIXME: Packing high byte
 ; SI-LABEL: {{^}}load_v3i8_to_v3f32:
-; SI: buffer_load_dword [[VAL:v[0-9]+]]
-; SI-NOT: v_cvt_f32_ubyte3_e32
-; SI-DAG: v_cvt_f32_ubyte2_e32 v{{[0-9]+}}, [[VAL]]
-; SI-DAG: v_cvt_f32_ubyte1_e32 v[[HIRESULT:[0-9]+]], [[VAL]]
-; SI-DAG: v_cvt_f32_ubyte0_e32 v[[LORESULT:[0-9]+]], [[VAL]]
+; SI-DAG: buffer_load_ushort [[VAL01:v[0-9]+]]
+; SI-DAG: buffer_load_ubyte [[VAL2:v[0-9]+]]
+; SI-DAG: v_lshlrev_b32_e32 [[SHIFT_VAL2:v[0-9]+]], 16, [[VAL2]]
+; SI-DAG: v_or_b32_e32 [[PACKEDVAL:v[0-9]+]], [[VAL01]], [[SHIFT_VAL2]]
+; SI-DAG: v_cvt_f32_ubyte2_e32 v{{[0-9]+}}, [[PACKEDVAL]]
+; SI-DAG: v_cvt_f32_ubyte1_e32 v[[HIRESULT:[0-9]+]], [[PACKEDVAL]]
+; SI-DAG: v_cvt_f32_ubyte0_e32 v[[LORESULT:[0-9]+]], [[PACKEDVAL]]
 ; SI: buffer_store_dwordx2 v{{\[}}[[LORESULT]]:[[HIRESULT]]{{\]}},
 define void @load_v3i8_to_v3f32(<3 x float> addrspace(1)* noalias %out, <3 x i8> addrspace(1)* noalias %in) nounwind {
   %load = load <3 x i8>, <3 x i8> addrspace(1)* %in, align 4
