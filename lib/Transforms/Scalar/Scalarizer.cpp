@@ -16,6 +16,7 @@
 
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/Analysis/VectorUtils.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstVisitor.h"
 #include "llvm/Pass.h"
@@ -99,6 +100,15 @@ struct BinarySplitter {
   BinaryOperator &BO;
 };
 
+struct CallSplitter {
+  CallSplitter(CallInst &CI) : CI(CI) {}
+  Value *operator()(IRBuilder<> &Builder, Function *F, ArrayRef<Value *> Ops,
+                    const Twine &Name) const {
+    return Builder.CreateCall(F, Ops, Name);
+  }
+  CallInst &CI;
+};
+
 // Information about a load or store that we're scalarizing.
 struct VectorLayout {
   VectorLayout() : VecTy(nullptr), ElemTy(nullptr), VecAlign(0), ElemSize(0) {}
@@ -148,6 +158,7 @@ public:
   bool visitPHINode(PHINode &);
   bool visitLoadInst(LoadInst &);
   bool visitStoreInst(StoreInst &);
+  bool visitCallInst(CallInst &I);
 
   static void registerOptions() {
     // This is disabled by default because having separate loads and stores
@@ -168,6 +179,8 @@ private:
   bool finish();
 
   template<typename T> bool splitBinary(Instruction &, const T &);
+
+  bool splitCall(CallInst &CI, const CallSplitter &Split);
 
   ScatterMap Scattered;
   GatherList Gathered;
@@ -391,6 +404,73 @@ bool Scalarizer::splitBinary(Instruction &I, const Splitter &Split) {
     Res[Elem] = Split(Builder, Op0[Elem], Op1[Elem],
                       I.getName() + ".i" + Twine(Elem));
   gather(&I, Res);
+  return true;
+}
+
+static bool isTriviallyScalariable(Intrinsic::ID ID) {
+  return isTriviallyVectorizable(ID);
+}
+
+// All of the current scalarizable intrinsics only have one mangled type.
+static Function *getScalarIntrinsicDeclaration(Module *M,
+                                               Intrinsic::ID ID,
+                                               VectorType *Ty) {
+  return Intrinsic::getDeclaration(M, ID, { Ty->getScalarType() });
+}
+
+bool Scalarizer::splitCall(CallInst &CI, const CallSplitter &Split) {
+  VectorType *VT = dyn_cast<VectorType>(CI.getType());
+  if (!VT)
+    return false;
+
+  Function *F = CI.getCalledFunction();
+  if (!F)
+    return false;
+
+  Intrinsic::ID ID = F->getIntrinsicID();
+  if (ID == Intrinsic::not_intrinsic || !isTriviallyScalariable(ID))
+    return false;
+
+  unsigned NumElems = VT->getNumElements();
+  unsigned NumArgs = CI.getNumArgOperands();
+
+  ValueVector ScalarOperands(NumArgs);
+  SmallVector<Scatterer, 8> Scattered(NumArgs);
+
+  Scattered.resize(NumArgs);
+  for (unsigned I = 0; I != NumArgs; ++I) {
+    if (hasVectorInstrinsicScalarOpd(ID, I))
+      ScalarOperands[I] = CI.getOperand(I);
+    else {
+      Scattered[I] = scatter(&CI, CI.getOperand(I));
+      assert(Scattered[I].size() == NumElems && "mismatched call operands");
+    }
+  }
+
+  ValueVector Res;
+  ValueVector ScalarCallOps;
+
+  Res.resize(NumElems);
+  ScalarCallOps.resize(NumArgs);
+
+  Function *NewIntrin = getScalarIntrinsicDeclaration(F->getParent(), ID, VT);
+  IRBuilder<> Builder(&CI);
+
+  for (unsigned Elem = 0; Elem < NumElems; ++Elem) {
+    ScalarCallOps.clear();
+
+    for (unsigned J = 0; J != NumArgs; ++J) {
+      if (hasVectorInstrinsicScalarOpd(ID, J))
+        ScalarCallOps.push_back(ScalarOperands[J]);
+      else
+        ScalarCallOps.push_back(Scattered[J][Elem]);
+    }
+
+    Res[Elem] = Split(Builder, NewIntrin, ScalarCallOps,
+                      CI.getName() + ".i" + Twine(Elem));
+  }
+
+  gather(&CI, Res);
   return true;
 }
 
@@ -640,6 +720,10 @@ bool Scalarizer::visitStoreInst(StoreInst &SI) {
   }
   transferMetadata(&SI, Stores);
   return true;
+}
+
+bool Scalarizer::visitCallInst(CallInst &CI) {
+  return splitCall(CI, CallSplitter(CI));
 }
 
 // Delete the instructions that we scalarized.  If a full vector result
