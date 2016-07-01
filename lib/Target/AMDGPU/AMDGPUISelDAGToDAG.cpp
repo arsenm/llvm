@@ -94,9 +94,8 @@ private:
                                        SDValue& Offset);
   bool SelectADDRVTX_READ(SDValue Addr, SDValue &Base, SDValue &Offset);
   bool SelectADDRIndirect(SDValue Addr, SDValue &Base, SDValue &Offset);
-
-  bool isDSBasePtrFoldingLegal(const SDValue &BasePtr) const;
-  bool isDSOffsetLegal(unsigned Offset, unsigned OffsetBits) const;
+  bool isDSOffsetLegal(const SDValue &Base, unsigned Offset,
+                       unsigned OffsetBits) const;
   bool SelectDS1Addr1Offset(SDValue Ptr, SDValue &Base, SDValue &Offset) const;
   bool SelectDS64Bit4ByteAligned(SDValue Ptr, SDValue &Base, SDValue &Offset0,
                                  SDValue &Offset1) const;
@@ -700,20 +699,19 @@ void AMDGPUDAGToDAGISel::SelectDIV_SCALE(SDNode *N) {
   CurDAG->SelectNodeTo(N, Opc, VT, MVT::i1, Ops);
 }
 
-bool AMDGPUDAGToDAGISel::isDSBasePtrFoldingLegal(const SDValue &BasePtr) const {
-  // On Southern Islands instruction the pointer add of the DS offset uses a
-  // 16-bit adder, so this is only safe if we know we will get the same result
-  // as with a 32-bit add. We avoid the different overflow case by avoiding
-  // using a negative base pointer value with an immediate offset.
-  return Subtarget->canAlwaysUseDSOffset() || CurDAG->SignBitIsZero(BasePtr);
-}
-
-bool AMDGPUDAGToDAGISel::isDSOffsetLegal(unsigned Offset,
+bool AMDGPUDAGToDAGISel::isDSOffsetLegal(const SDValue &Base, unsigned Offset,
                                          unsigned OffsetBits) const {
   if ((OffsetBits == 16 && !isUInt<16>(Offset)) ||
       (OffsetBits == 8 && !isUInt<8>(Offset)))
     return false;
-  return true;
+
+  if (Subtarget->getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS ||
+      Subtarget->unsafeDSOffsetFoldingEnabled())
+    return true;
+
+  // On Southern Islands instruction with a negative base value and an offset
+  // don't seem to work.
+  return CurDAG->SignBitIsZero(Base);
 }
 
 bool AMDGPUDAGToDAGISel::SelectDS1Addr1Offset(SDValue Addr, SDValue &Base,
@@ -723,8 +721,7 @@ bool AMDGPUDAGToDAGISel::SelectDS1Addr1Offset(SDValue Addr, SDValue &Base,
     SDValue N0 = Addr.getOperand(0);
     SDValue N1 = Addr.getOperand(1);
     ConstantSDNode *C1 = cast<ConstantSDNode>(N1);
-    if (isDSOffsetLegal(C1->getSExtValue(), 16) &&
-        isDSBasePtrFoldingLegal(N0)) {
+    if (isDSOffsetLegal(N0, C1->getSExtValue(), 16)) {
       // (add n0, c0)
       Base = N0;
       Offset = CurDAG->getTargetConstant(C1->getZExtValue(), DL, MVT::i16);
@@ -743,7 +740,7 @@ bool AMDGPUDAGToDAGISel::SelectDS1Addr1Offset(SDValue Addr, SDValue &Base,
         SDValue Sub = CurDAG->getNode(ISD::SUB, DL, MVT::i32,
                                       Zero, Addr.getOperand(1));
 
-        if (isDSOffsetLegal(ByteOffset, 16) && isDSBasePtrFoldingLegal(Sub)) {
+        if (isDSOffsetLegal(Sub, ByteOffset, 16)) {
           MachineSDNode *MachineSub
             = CurDAG->getMachineNode(AMDGPU::V_SUB_I32_e32, DL, MVT::i32,
                                      Zero, Addr.getOperand(1));
@@ -784,9 +781,6 @@ bool AMDGPUDAGToDAGISel::SelectDS64Bit4ByteAligned(SDValue Addr, SDValue &Base,
                                                    SDValue &Offset1) const {
   SDLoc DL(Addr);
 
-  if (!isDSBasePtrFoldingLegal(Addr))
-    return false;
-
   if (CurDAG->isBaseWithConstantOffset(Addr)) {
     SDValue N0 = Addr.getOperand(0);
     SDValue N1 = Addr.getOperand(1);
@@ -794,8 +788,7 @@ bool AMDGPUDAGToDAGISel::SelectDS64Bit4ByteAligned(SDValue Addr, SDValue &Base,
     unsigned DWordOffset0 = C1->getZExtValue() / 4;
     unsigned DWordOffset1 = DWordOffset0 + 1;
     // (add n0, c0)
-    if (isDSOffsetLegal(DWordOffset1, 8) &&
-        isDSBasePtrFoldingLegal(N0)) {
+    if (isDSOffsetLegal(N0, DWordOffset1, 8)) {
       Base = N0;
       Offset0 = CurDAG->getTargetConstant(DWordOffset0, DL, MVT::i8);
       Offset1 = CurDAG->getTargetConstant(DWordOffset1, DL, MVT::i8);
@@ -817,7 +810,7 @@ bool AMDGPUDAGToDAGISel::SelectDS64Bit4ByteAligned(SDValue Addr, SDValue &Base,
         SDValue Sub = CurDAG->getNode(ISD::SUB, DL, MVT::i32,
                                       Zero, Addr.getOperand(1));
 
-        if (isDSOffsetLegal(DWordOffset1, 8) && isDSBasePtrFoldingLegal(Sub)) {
+        if (isDSOffsetLegal(Sub, DWordOffset1, 8)) {
           MachineSDNode *MachineSub
             = CurDAG->getMachineNode(AMDGPU::V_SUB_I32_e32, DL, MVT::i32,
                                      Zero, Addr.getOperand(1));
