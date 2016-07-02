@@ -488,6 +488,8 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(const TargetMachine &TM,
   setTargetDAGCombine(ISD::MUL);
   setTargetDAGCombine(ISD::SELECT);
   setTargetDAGCombine(ISD::SELECT_CC);
+  setTargetDAGCombine(ISD::EXTRACT_VECTOR_ELT);
+  setTargetDAGCombine(ISD::INSERT_VECTOR_ELT);
   setTargetDAGCombine(ISD::STORE);
   setTargetDAGCombine(ISD::FADD);
   setTargetDAGCombine(ISD::FSUB);
@@ -2571,6 +2573,82 @@ SDValue AMDGPUTargetLowering::performSelectCombine(SDNode *N,
   return performCtlzCombine(SDLoc(N), Cond, True, False, DCI);
 }
 
+
+SDValue AMDGPUTargetLowering::performInsertVectorEltCombine(
+  SDNode *N, DAGCombinerInfo &DCI) const {
+  SDValue Idx = N->getOperand(2);
+  if (isa<ConstantSDNode>(Idx))
+    return SDValue();
+
+  EVT VecVT = N->getValueType(0);
+  if (VecVT.getVectorNumElements() != 2)
+    return SDValue();
+
+  SDValue InsertVal = N->getOperand(1);
+  EVT VT = InsertVal.getValueType();
+
+  SelectionDAG &DAG = DCI.DAG;
+  EVT SetCCVT = getSetCCResultType(DAG.getDataLayout(),
+                                   *DAG.getContext(), MVT::i32);
+
+  SDValue SrcVec = N->getOperand(0);
+
+  // Expand v2 dynamic index extract into a compare + select on the index.
+  // insert_vector_elt v2i32:x, y, z ->
+  //   build_vector
+  //     (select (z == 0), y, (extract_vector_elt x, 0)),
+  //     (select (z == 0), (extract_vector_elt x, 1), y)
+
+  SDLoc SL(N);
+
+  const SDValue Zero = DAG.getConstant(0, SL, MVT::i32);
+  const SDValue One = DAG.getConstant(1, SL, MVT::i32);
+
+  SDValue IsZero = DAG.getSetCC(SL, SetCCVT, Idx, Zero, ISD::SETEQ);
+
+  SDValue Elt0 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, SL, VT, SrcVec, Zero);
+  SDValue Elt1 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, SL, VT, SrcVec, One);
+
+  SDValue Sel0 = DAG.getNode(ISD::SELECT, SL, VT, IsZero, InsertVal, Elt0);
+  SDValue Sel1 = DAG.getNode(ISD::SELECT, SL, VT, IsZero, Elt1, InsertVal);
+
+  return DAG.getBuildVector(VecVT, SL, { Sel0, Sel1 });
+}
+
+SDValue AMDGPUTargetLowering::performExtractVectorEltCombine(
+  SDNode *N, DAGCombinerInfo &DCI) const {
+  SDValue Idx = N->getOperand(1);
+  if (isa<ConstantSDNode>(Idx))
+    return SDValue();
+
+  SDValue SrcVec = N->getOperand(0);
+  EVT VecVT = SrcVec.getValueType();
+  if (VecVT.getVectorNumElements() != 2)
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+
+  EVT VT = N->getValueType(0);
+  EVT SetCCVT = getSetCCResultType(DAG.getDataLayout(),
+                                   *DAG.getContext(), MVT::i32);
+
+  // Expand v2 dynamic index extract into a compare + select on the index.
+  // extract_vector_elt v2i32:x, y ->
+  //   select (y == 0), (extract_vector_elt x, 0), (extract_vector_elt x, 1)
+
+  SDLoc SL(N);
+
+  const SDValue Zero = DAG.getConstant(0, SL, MVT::i32);
+  const SDValue One = DAG.getConstant(1, SL, MVT::i32);
+
+  SDValue IsZero = DAG.getSetCC(SL, SetCCVT, Idx, Zero, ISD::SETEQ);
+  SDValue Elt0 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, SL, VT,
+                             SrcVec, Zero);
+  SDValue Elt1 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, SL, VT,
+                              SrcVec, One);
+  return DAG.getNode(ISD::SELECT, SL, VT, IsZero, Elt0, Elt1);
+}
+
 SDValue AMDGPUTargetLowering::PerformDAGCombine(SDNode *N,
                                                 DAGCombinerInfo &DCI) const {
   SelectionDAG &DAG = DCI.DAG;
@@ -2647,6 +2725,10 @@ SDValue AMDGPUTargetLowering::PerformDAGCombine(SDNode *N,
   }
   case ISD::SELECT:
     return performSelectCombine(N, DCI);
+  case ISD::INSERT_VECTOR_ELT:
+    return performInsertVectorEltCombine(N, DCI);
+  case ISD::EXTRACT_VECTOR_ELT:
+    return performExtractVectorEltCombine(N, DCI);
   case AMDGPUISD::BFE_I32:
   case AMDGPUISD::BFE_U32: {
     assert(!N->getValueType(0).isVector() &&
