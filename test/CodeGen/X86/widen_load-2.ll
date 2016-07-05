@@ -87,12 +87,9 @@ define void @add12i32(%i32vec12*  sret %ret, %i32vec12* %ap, %i32vec12* %bp)  {
 define void @add3i16(%i16vec3* nocapture sret %ret, %i16vec3* %ap, %i16vec3* %bp) nounwind {
 ; CHECK-LABEL: add3i16:
 ; CHECK:       # BB#0:
-; CHECK-NEXT:    pmovzxwd {{.*#+}} xmm0 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero
-; CHECK-NEXT:    pmovzxwd {{.*#+}} xmm1 = mem[0],zero,mem[1],zero,mem[2],zero,mem[3],zero
-; CHECK-NEXT:    paddd %xmm0, %xmm1
-; CHECK-NEXT:    pextrw $4, %xmm1, 4(%rdi)
-; CHECK-NEXT:    pshufb {{.*#+}} xmm1 = xmm1[0,1,4,5,8,9,12,13,8,9,12,13,12,13,14,15]
-; CHECK-NEXT:    pmovzxdq {{.*#+}} xmm0 = xmm1[0],zero,xmm1[1],zero
+; CHECK-NEXT:    movdqa (%rsi), %xmm0
+; CHECK-NEXT:    paddw (%rdx), %xmm0
+; CHECK-NEXT:    pextrw $2, %xmm0, 4(%rdi)
 ; CHECK-NEXT:    movd %xmm0, (%rdi)
 ; CHECK-NEXT:    movq %rdi, %rax
 ; CHECK-NEXT:    retq
@@ -166,12 +163,9 @@ define void @add18i16(%i16vec18* nocapture sret %ret, %i16vec18* %ap, %i16vec18*
 define void @add3i8(%i8vec3* nocapture sret %ret, %i8vec3* %ap, %i8vec3* %bp) nounwind {
 ; CHECK-LABEL: add3i8:
 ; CHECK:       # BB#0:
-; CHECK-NEXT:    pmovzxbd {{.*#+}} xmm0 = mem[0],zero,zero,zero,mem[1],zero,zero,zero,mem[2],zero,zero,zero,mem[3],zero,zero,zero
-; CHECK-NEXT:    pmovzxbd {{.*#+}} xmm1 = mem[0],zero,zero,zero,mem[1],zero,zero,zero,mem[2],zero,zero,zero,mem[3],zero,zero,zero
-; CHECK-NEXT:    paddd %xmm0, %xmm1
-; CHECK-NEXT:    pextrb $8, %xmm1, 2(%rdi)
-; CHECK-NEXT:    pshufb {{.*#+}} xmm1 = xmm1[0,4,8,12,u,u,u,u,u,u,u,u,u,u,u,u]
-; CHECK-NEXT:    pmovzxwq {{.*#+}} xmm0 = xmm1[0],zero,zero,zero,xmm1[1],zero,zero,zero
+; CHECK-NEXT:    movdqa (%rsi), %xmm0
+; CHECK-NEXT:    paddb (%rdx), %xmm0
+; CHECK-NEXT:    pextrb $2, %xmm0, 2(%rdi)
 ; CHECK-NEXT:    movd %xmm0, %eax
 ; CHECK-NEXT:    movw %ax, (%rdi)
 ; CHECK-NEXT:    movq %rdi, %rax
@@ -210,26 +204,16 @@ define void @add31i8(%i8vec31* nocapture sret %ret, %i8vec31* %ap, %i8vec31* %bp
 define void @rot(%i8vec3pack* nocapture sret %result, %i8vec3pack* %X, %i8vec3pack* %rot) nounwind {
 ; CHECK-LABEL: rot:
 ; CHECK:       # BB#0: # %entry
-; CHECK-NEXT:    movdqa {{.*#+}} xmm0 = <0,4,8,128,u,u,u,u,u,u,u,u,u,u,u,u>
-; CHECK-NEXT:    movdqa {{.*#+}} xmm1 = <158,158,158,u>
-; CHECK-NEXT:    pshufb %xmm0, %xmm1
-; CHECK-NEXT:    pmovzxwq {{.*#+}} xmm1 = xmm1[0],zero,zero,zero,xmm1[1],zero,zero,zero
-; CHECK-NEXT:    movd %xmm1, %eax
+; CHECK-NEXT:    movl {{.*}}(%rip), %eax
 ; CHECK-NEXT:    movw %ax, (%rsi)
 ; CHECK-NEXT:    movb $-98, 2(%rsi)
-; CHECK-NEXT:    movdqa {{.*#+}} xmm1 = <1,1,1,u>
-; CHECK-NEXT:    pshufb %xmm0, %xmm1
-; CHECK-NEXT:    pmovzxwq {{.*#+}} xmm0 = xmm1[0],zero,zero,zero,xmm1[1],zero,zero,zero
-; CHECK-NEXT:    movd %xmm0, %eax
+; CHECK-NEXT:    movl {{.*}}(%rip), %eax
 ; CHECK-NEXT:    movw %ax, (%rdx)
 ; CHECK-NEXT:    movb $1, 2(%rdx)
-; CHECK-NEXT:    pmovzxbd {{.*#+}} xmm0 = mem[0],zero,zero,zero,mem[1],zero,zero,zero,mem[2],zero,zero,zero,mem[3],zero,zero,zero
-; CHECK-NEXT:    movdqa %xmm0, %xmm1
-; CHECK-NEXT:    psrld $1, %xmm1
-; CHECK-NEXT:    pblendw {{.*#+}} xmm1 = xmm1[0,1,2,3,4,5],xmm0[6,7]
-; CHECK-NEXT:    pextrb $8, %xmm1, 2(%rdi)
-; CHECK-NEXT:    pshufb {{.*#+}} xmm1 = xmm1[0,4,8,12,u,u,u,u,u,u,u,u,u,u,u,u]
-; CHECK-NEXT:    pmovzxwq {{.*#+}} xmm0 = xmm1[0],zero,zero,zero,xmm1[1],zero,zero,zero
+; CHECK-NEXT:    movd {{.*#+}} xmm0 = mem[0],zero,zero,zero
+; CHECK-NEXT:    psrlw $1, %xmm0
+; CHECK-NEXT:    pand {{.*}}(%rip), %xmm0
+; CHECK-NEXT:    pextrb $2, %xmm0, 2(%rdi)
 ; CHECK-NEXT:    movd %xmm0, %eax
 ; CHECK-NEXT:    movw %ax, (%rdi)
 ; CHECK-NEXT:    movq %rdi, %rax

@@ -988,7 +988,7 @@ TargetLoweringBase::getTypeConversion(LLVMContext &Context, EVT VT) const {
     MVT NVT = TransformToType[SVT.SimpleTy];
     LegalizeTypeAction LA = ValueTypeActions.getTypeAction(SVT);
 
-    assert((LA == TypeLegal || LA == TypeSoftenFloat ||
+    assert((LA == TypeLegal || LA == TypeSoftenFloat || LA == TypeWidenVector ||
             ValueTypeActions.getTypeAction(NVT) != TypePromoteInteger) &&
            "Promote may not follow Expand or Promote");
 

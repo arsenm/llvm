@@ -4,7 +4,7 @@
 
 define i8 @foo(<4 x i8>* %V) {
 ; CHECK-LABEL: foo:
-; CHECK: pand
+; CHECK: andps
 ; CHECK: ret
 entry:
   %Vp = bitcast <4 x i8>* %V to <3 x i8>*
