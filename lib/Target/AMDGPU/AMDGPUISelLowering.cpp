@@ -255,8 +255,9 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::FREM, MVT::f32, Custom);
   setOperationAction(ISD::FREM, MVT::f64, Custom);
 
-  // v_mad_f32 does not support denormals according to some sources.
-  if (!Subtarget->hasFP32Denormals())
+  // v_mad_f32 does not support denormals, but use it if they are enabled and we
+  // are allowed to reduce mad precision.
+  if (!Subtarget->hasFP32Denormals() || TM.Options.LessPreciseFPMAD())
     setOperationAction(ISD::FMAD, MVT::f32, Legal);
 
   // Expand to fneg + fadd.

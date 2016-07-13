@@ -1519,7 +1519,7 @@ bool SITargetLowering::isFMAFasterThanFMulAndFAdd(EVT VT) const {
     // mad available which returns the same result as the separate operations
     // which we should prefer over fma. We can't use this if we want to support
     // denormals, so only report this in these cases.
-    return Subtarget->hasFP32Denormals() && Subtarget->hasFastFMAF32();
+    return Subtarget->hasFastFMAF32() && !isOperationLegal(ISD::FMAD, MVT::f32);
   case MVT::f64:
     return true;
   default:

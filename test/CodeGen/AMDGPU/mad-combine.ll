@@ -568,5 +568,30 @@ define void @aggressive_combine_to_mad_fsub_3_f32(float addrspace(1)* noalias %o
   ret void
 }
 
+; FUNC-LABEL: {{^}}less_precise_fpmad_combine_to_mad_f32_0:
+; SI-DAG: buffer_load_dword [[A:v[0-9]+]], v{{\[[0-9]+:[0-9]+\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0 addr64{{$}}
+; SI-DAG: buffer_load_dword [[B:v[0-9]+]], v{{\[[0-9]+:[0-9]+\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0 addr64 offset:4{{$}}
+; SI-DAG: buffer_load_dword [[C:v[0-9]+]], v{{\[[0-9]+:[0-9]+\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0 addr64 offset:8{{$}}
+
+; SI: v_mac_f32_e32 [[C]], [[B]], [[A]]
+; SI: buffer_store_dword [[C]]
+define void @less_precise_fpmad_combine_to_mad_f32_0(float addrspace(1)* noalias %out, float addrspace(1)* noalias %in) #2 {
+  %tid = tail call i32 @llvm.amdgcn.workitem.id.x() #0
+  %gep.0 = getelementptr float, float addrspace(1)* %in, i32 %tid
+  %gep.1 = getelementptr float, float addrspace(1)* %gep.0, i32 1
+  %gep.2 = getelementptr float, float addrspace(1)* %gep.0, i32 2
+  %gep.out = getelementptr float, float addrspace(1)* %out, i32 %tid
+
+  %a = load volatile float, float addrspace(1)* %gep.0
+  %b = load volatile float, float addrspace(1)* %gep.1
+  %c = load volatile float, float addrspace(1)* %gep.2
+
+  %mul = fmul float %a, %b
+  %fma = fadd float %mul, %c
+  store float %fma, float addrspace(1)* %gep.out
+  ret void
+}
+
 attributes #0 = { nounwind readnone }
-attributes #1 = { nounwind }
+attributes #1 = { nounwind "less-precise-fpmad"="false" }
+attributes #2 = { nounwind "less-precise-fpmad"="true" }
