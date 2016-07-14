@@ -2100,6 +2100,20 @@ bool SIInstrInfo::verifyInstruction(const MachineInstr &MI,
     }
   }
 
+  if (Desc.getOpcode() == AMDGPU::EXP || Desc.getOpcode() == AMDGPU::EXP_DONE) {
+    unsigned En = getNamedOperand(MI, AMDGPU::OpName::en)->getImm();
+    int Src3Idx = AMDGPU::getNamedOperandIdx(Opcode, AMDGPU::OpName::src3);
+    const int OpIndices[] = { Src0Idx, Src1Idx, Src2Idx, Src3Idx };
+
+    for (int I = 0; I < 4; ++I) {
+      if ((En & (1 << I)) == 0 &&
+          MI.getOperand(OpIndices[I]).getReg() != AMDGPU::NoRegister) {
+        ErrInfo = "disabled export src has register set";
+        return false;
+      }
+    }
+  }
+
   // Make sure we aren't losing exec uses in the td files. This mostly requires
   // being careful when using let Uses to try to add other use registers.
   if (shouldReadExec(MI)) {
