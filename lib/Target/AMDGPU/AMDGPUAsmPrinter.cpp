@@ -380,6 +380,7 @@ void AMDGPUAsmPrinter::getSIProgramInfo(SIProgramInfo &ProgInfo,
         case AMDGPU::EXEC_HI:
         case AMDGPU::SCC:
         case AMDGPU::M0:
+        case AMDGPU::NoRegister:
           continue;
 
         case AMDGPU::VCC:
