@@ -446,6 +446,51 @@ public:
                                 const MachineInstr &MI1,
                                 const MachineRegisterInfo *MRI = nullptr) const;
 
+  /// \returns true if a branch from an instruction with opcode \p BranchOpc
+  ///  bytes is capable of jumping to a position \p BrOffset bytes away.
+  virtual bool isBranchOffsetInRange(unsigned BranchOpc,
+                                     int64_t BrOffset) const {
+    llvm_unreachable("target did not implement");
+  }
+
+  /// \returns The block that branch instruction \p MI jumps to.
+  virtual MachineBasicBlock *getBranchDestBlock(const MachineInstr &MI) const {
+    llvm_unreachable("target did not implement");
+  }
+
+  /// Change the destination block of branch \p BranchInstr to be \p NewDestBB.
+  virtual void setBranchDestBlock(MachineInstr &BranchInst,
+                                  MachineBasicBlock &NewDestBB) const {
+    llvm_unreachable("target did not implement");
+  }
+
+  /// Insert a conditional branch instruction in \p SrcBB at point \p InsPt to
+  /// \p NewDestBB using the inverted condition of conditinoal branch \p OldBr.
+  ///
+  /// \returns The number of bytes added to the block.
+  virtual unsigned insertInvertedConditionalBranch(
+    MachineBasicBlock &SrcBB,
+    MachineBasicBlock::iterator InsPt,
+    const DebugLoc &DL,
+    const MachineInstr &OldBr,
+    MachineBasicBlock &NewDestBB) const {
+    llvm_unreachable("target did not implement");
+  }
+
+  /// Insert an unconditional branch at the end of \p MBB to \p NewDestBB.  \p
+  /// BrOffset indicates the offset of \p NewDestBB relative to the offset of
+  /// the position to insert the new branch. If \BrOffset is 0, any
+  /// unconditional branch is assumed to be legal.
+  ///
+  /// \returns The number of bytes added to the block.
+  virtual unsigned insertUnconditionalBranch(MachineBasicBlock &MBB,
+                                             MachineBasicBlock &NewDestBB,
+                                             const DebugLoc &DL,
+                                             int64_t BrOffset = 0,
+                                             RegScavenger *RS = nullptr) const {
+    llvm_unreachable("target did not implement");
+  }
+
   /// Analyze the branching code at the end of MBB, returning
   /// true if it cannot be understood (e.g. it's a switch dispatch or isn't
   /// implemented for a target).  Upon success, this returns false and returns

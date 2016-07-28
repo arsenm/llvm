@@ -225,7 +225,8 @@ unsigned AArch64InstrInfo::insertInvertedConditionalBranch(
 unsigned AArch64InstrInfo::insertUnconditionalBranch(MachineBasicBlock &MBB,
                                                      MachineBasicBlock &DestBB,
                                                      const DebugLoc &DL,
-                                                     int64_t) const {
+                                                     int64_t,
+                                                     RegScavenger *RS) const {
   MachineInstr *MI = BuildMI(&MBB, DL, get(AArch64::B))
     .addMBB(&DestBB);
 
