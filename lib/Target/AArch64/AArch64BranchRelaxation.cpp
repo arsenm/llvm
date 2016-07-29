@@ -84,7 +84,7 @@ class AArch64BranchRelaxation : public MachineFunctionPass {
                                      const DebugLoc &DL) const;
 
   bool fixupConditionalBranch(MachineInstr &MI);
-  void computeBlockSize(const MachineBasicBlock &MBB);
+  uint64_t computeBlockSize(const MachineBasicBlock &MBB) const;
   unsigned getInstrOffset(const MachineInstr &MI) const;
   void dumpBBs();
   void verify();
@@ -157,19 +157,18 @@ void AArch64BranchRelaxation::scanFunction() {
   // alignment assumptions, as we don't know for sure the size of any
   // instructions in the inline assembly.
   for (MachineBasicBlock &MBB : *MF)
-    computeBlockSize(MBB);
+    BlockInfo[MBB.getNumber()].Size = computeBlockSize(MBB);
 
   // Compute block offsets and known bits.
   adjustBlockOffsets(*MF->begin());
 }
 
 /// computeBlockSize - Compute the size for MBB.
-/// This function updates BlockInfo directly.
-void AArch64BranchRelaxation::computeBlockSize(const MachineBasicBlock &MBB) {
-  unsigned Size = 0;
+uint64_t AArch64BranchRelaxation::computeBlockSize(const MachineBasicBlock &MBB) const {
+  uint64_t Size = 0;
   for (const MachineInstr &MI : MBB)
     Size += TII->getInstSizeInBytes(MI);
-  BlockInfo[MBB.getNumber()].Size = Size;
+  return Size;
 }
 
 /// getInstrOffset - Return the current offset of the specified machine
@@ -238,11 +237,11 @@ AArch64BranchRelaxation::splitBlockBeforeInstr(MachineInstr &MI) {
   // the new jump we added.  (It should be possible to do this without
   // recounting everything, but it's very confusing, and this is rarely
   // executed.)
-  computeBlockSize(*OrigBB);
+  BlockInfo[OrigBB->getNumber()].Size = computeBlockSize(*OrigBB);
 
-  // Figure out how large the NewMBB is.  As the second half of the original
+  // Figure out how large the NewMBB is. As the second half of the original
   // block, it may contain a tablejump.
-  computeBlockSize(*NewBB);
+  BlockInfo[NewBB->getNumber()].Size = computeBlockSize(*NewBB);
 
   // All BBOffsets following these blocks must be modified.
   adjustBlockOffsets(*OrigBB);
