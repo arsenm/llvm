@@ -28,6 +28,13 @@
 
 using namespace llvm;
 
+// Must be at least 4 to be able to branch over minimum unconditional branch
+// code. This is only for making it possible to write reasonably small tests for
+// long branches.
+static cl::opt<unsigned>
+BranchOffsetBits("amdgpu-s-branch-bits", cl::ReallyHidden, cl::init(16),
+                 cl::desc("Restrict range of branch instructions (DEBUG)"));
+
 SIInstrInfo::SIInstrInfo(const SISubtarget &ST)
   : AMDGPUInstrInfo(ST), RI(), ST(ST) {}
 
@@ -1061,6 +1068,167 @@ bool SIInstrInfo::findCommutedOpIndices(MachineInstr &MI, unsigned &SrcOpIdx0,
     return false;
 
   return fixCommutedOpIndices(SrcOpIdx0, SrcOpIdx1, Src0Idx, Src1Idx);
+}
+
+bool SIInstrInfo::isBranchOffsetInRange(unsigned BranchOp,
+                                        int64_t BrOffset) const {
+  // BranchRelaxation should never have to check s_setpc_b64 because its dest
+  // block is unanalyzable.
+  assert(BranchOp != AMDGPU::S_SETPC_B64);
+
+  // Convert to dwords.
+  BrOffset /= 4;
+
+  // The branch instructions do PC += signext(SIMM16 * 4) + 4, so the offset is
+  // from the next instruction.
+  BrOffset -= 1;
+
+  return isIntN(BranchOffsetBits, BrOffset);
+}
+
+MachineBasicBlock *SIInstrInfo::getBranchDestBlock(
+  const MachineInstr &MI) const {
+  if (MI.getOpcode() == AMDGPU::S_SETPC_B64) {
+    // This would be a difficult analysis to perform, but can always be legal so
+    // there's no need to analyze it.
+    return nullptr;
+  }
+
+  return MI.getOperand(0).getMBB();
+}
+
+void SIInstrInfo::setBranchDestBlock(MachineInstr &MI,
+                                     MachineBasicBlock &NewDestBB) const {
+  return MI.getOperand(0).setMBB(&NewDestBB);
+}
+
+static unsigned getInverseBrOpcode(unsigned Opc) {
+  switch (Opc) {
+  case AMDGPU::S_CBRANCH_SCC0:
+    return AMDGPU::S_CBRANCH_SCC1;
+  case AMDGPU::S_CBRANCH_SCC1:
+    return AMDGPU::S_CBRANCH_SCC0;
+  case AMDGPU::S_CBRANCH_VCCZ:
+    return AMDGPU::S_CBRANCH_VCCNZ;
+  case AMDGPU::S_CBRANCH_VCCNZ:
+    return AMDGPU::S_CBRANCH_VCCZ;
+  case AMDGPU::S_CBRANCH_EXECNZ:
+    return AMDGPU::S_CBRANCH_EXECZ;
+  case AMDGPU::S_CBRANCH_EXECZ:
+    return AMDGPU::S_CBRANCH_EXECNZ;
+  default:
+    llvm_unreachable("invalid conditional branch opcode");
+  }
+}
+
+unsigned SIInstrInfo::insertInvertedConditionalBranch(
+  MachineBasicBlock &SrcBB, MachineBasicBlock::iterator InsPt,
+  const DebugLoc &DL, const MachineInstr &OldBr,
+  MachineBasicBlock &DestBB) const {
+  BuildMI(SrcBB, InsPt, DL, get(getInverseBrOpcode(OldBr.getOpcode())))
+    .addMBB(&DestBB);
+  return 4;
+}
+
+unsigned SIInstrInfo::insertUnconditionalBranch(MachineBasicBlock &MBB,
+                                                MachineBasicBlock &DestBB,
+                                                const DebugLoc &DL,
+                                                int64_t BrOffset,
+                                                RegScavenger *RS) const {
+  if (isIntN(BranchOffsetBits, (BrOffset / 4) - 1)) {
+    BuildMI(&MBB, DL, get(AMDGPU::S_BRANCH))
+      .addMBB(&DestBB);
+    return 4;
+  }
+
+  assert(RS && "RegScavenger required for long branching");
+  assert(MBB.empty() &&
+         "new block should be inserted for expanding unconditional branch");
+  assert(MBB.pred_size() == 1);
+
+  MachineFunction *MF = MBB.getParent();
+  MachineRegisterInfo &MRI = MF->getRegInfo();
+
+  // FIXME: Virtual register workaround for RegScavenger not working with empty
+  // blocks.
+  unsigned PCReg = MRI.createVirtualRegister(&AMDGPU::SReg_64RegClass);
+
+  auto I = MBB.end();
+
+  // We need to compute the offset relative to the instruction immediately after
+  // s_getpc_b64. Insert pc arithmetic code before last terminator.
+  MachineInstr *GetPC = BuildMI(MBB, I, DL, get(AMDGPU::S_GETPC_B64), PCReg);
+
+  // TODO: Handle > 32-bit block address.
+  if (BrOffset >= 0) {
+    BuildMI(MBB, I, DL, get(AMDGPU::S_ADD_U32))
+      .addReg(PCReg, RegState::Define, AMDGPU::sub0)
+      .addReg(PCReg, 0, AMDGPU::sub0)
+      .addMBB(&DestBB, AMDGPU::TF_LONG_BRANCH_FORWARD);
+    BuildMI(MBB, I, DL, get(AMDGPU::S_ADDC_U32))
+      .addReg(PCReg, RegState::Define, AMDGPU::sub1)
+      .addReg(PCReg, 0, AMDGPU::sub1)
+      .addImm(0);
+  } else {
+    // Backwards branch.
+    BuildMI(MBB, I, DL, get(AMDGPU::S_SUB_U32))
+      .addReg(PCReg, RegState::Define, AMDGPU::sub0)
+      .addReg(PCReg, 0, AMDGPU::sub0)
+      .addMBB(&DestBB, AMDGPU::TF_LONG_BRANCH_BACKWARD);
+    BuildMI(MBB, I, DL, get(AMDGPU::S_SUBB_U32))
+      .addReg(PCReg, RegState::Define, AMDGPU::sub1)
+      .addReg(PCReg, 0, AMDGPU::sub1)
+      .addImm(0);
+  }
+
+  // Insert the indirect branch after the other terminator.
+  BuildMI(&MBB, DL, get(AMDGPU::S_SETPC_B64))
+    .addReg(PCReg);
+
+  // FIXME: If spilling is necessary, this will fail because this scavenger has
+  // no emergency stack slots. It is non-trivial to spill in this situation,
+  // because the restore code needs to be specially placed after the
+  // jump. BranchRelaxation then needs to be made aware of the newly inserted
+  // block.
+  //
+  // If a spill is needed for the pc register pair, we need to insert a spill
+  // restore block right before the destination block, and insert a short branch
+  // into the old destination block's fallthrough predecessor.
+  // e.g.:
+  //
+  // s_cbranch_scc0 skip_long_branch:
+  //
+  // long_branch_bb:
+  //   spill s[8:9]
+  //   s_getpc_b64 s[8:9]
+  //   s_add_u32 s8, s8, restore_bb
+  //   s_addc_u32 s9, s9, 0
+  //   s_setpc_b64 s[8:9]
+  //
+  // skip_long_branch:
+  //   foo;
+  //
+  // .....
+  //
+  // dest_bb_fallthrough_predecessor:
+  // bar;
+  // s_branch dest_bb
+  //
+  // restore_bb:
+  //  restore s[8:9]
+  //  fallthrough dest_bb
+  ///
+  // dest_bb:
+  //   buzz;
+
+  RS->enterBasicBlockEnd(MBB);
+  unsigned Scav = RS->scavengeRegister(&AMDGPU::SReg_64RegClass,
+                                       MachineBasicBlock::iterator(GetPC), 0);
+  MRI.replaceRegWith(PCReg, Scav);
+  MRI.clearVirtRegs();
+  RS->setRegUsed(Scav);
+
+  return 4 + 8 + 4 + 4;
 }
 
 unsigned SIInstrInfo::getBranchOpcode(SIInstrInfo::BranchPredicate Cond) {

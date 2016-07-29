@@ -585,6 +585,7 @@ void GCNPassConfig::addPreEmitPass() {
   addPass(createSIShrinkInstructionsPass());
   addPass(createSILowerControlFlowPass());
   addPass(createSIDebuggerInsertNopsPass());
+  addPass(&BranchRelaxationPassID);
 }
 
 TargetPassConfig *GCNTargetMachine::createPassConfig(PassManagerBase &PM) {

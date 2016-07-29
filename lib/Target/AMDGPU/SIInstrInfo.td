@@ -764,16 +764,18 @@ multiclass SOP1_64 <sop1 op, string opName, list<dag> pattern> : SOP1_m <
 
 // no input, 64-bit output.
 multiclass SOP1_64_0 <sop1 op, string opName, list<dag> pattern> {
-  def "" : SOP1_Pseudo <opName, (outs SReg_64:$sdst), (ins), pattern>;
+  let Size = 4 in {
+    def "" : SOP1_Pseudo <opName, (outs SReg_64:$sdst), (ins), pattern>;
 
-  def _si : SOP1_Real_si <op, opName, (outs SReg_64:$sdst), (ins),
-    opName#" $sdst"> {
-    let src0 = 0;
-  }
+    def _si : SOP1_Real_si <op, opName, (outs SReg_64:$sdst), (ins),
+      opName#" $sdst"> {
+      let src0 = 0;
+    }
 
-  def _vi : SOP1_Real_vi <op, opName, (outs SReg_64:$sdst), (ins),
-    opName#" $sdst"> {
-    let src0 = 0;
+    def _vi : SOP1_Real_vi <op, opName, (outs SReg_64:$sdst), (ins),
+      opName#" $sdst"> {
+      let src0 = 0;
+    }
   }
 }
 

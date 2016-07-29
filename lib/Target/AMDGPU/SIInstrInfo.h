@@ -149,6 +149,27 @@ public:
   bool findCommutedOpIndices(MachineInstr &MI, unsigned &SrcOpIdx1,
                              unsigned &SrcOpIdx2) const override;
 
+  bool isBranchOffsetInRange(unsigned BranchOpc,
+                             int64_t BrOffset) const override;
+
+  MachineBasicBlock *getBranchDestBlock(const MachineInstr &MI) const override;
+
+  void setBranchDestBlock(MachineInstr &BranchInst,
+                          MachineBasicBlock &NewDestBB) const override;
+
+  unsigned insertInvertedConditionalBranch(
+    MachineBasicBlock &SrcBB,
+    MachineBasicBlock::iterator InsPt,
+    const DebugLoc &DL,
+    const MachineInstr &OldBr ,
+    MachineBasicBlock &NewDestBB) const override;
+
+  unsigned insertUnconditionalBranch(MachineBasicBlock &MBB,
+                                     MachineBasicBlock &NewDestBB,
+                                     const DebugLoc &DL,
+                                     int64_t BrOffset = 0,
+                                     RegScavenger *RS = nullptr) const override;
+
   bool analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
                      MachineBasicBlock *&FBB,
                      SmallVectorImpl<MachineOperand> &Cond,
@@ -580,6 +601,12 @@ namespace AMDGPU {
   const uint64_t RSRC_ELEMENT_SIZE_SHIFT = (32 + 19);
   const uint64_t RSRC_INDEX_STRIDE_SHIFT = (32 + 21);
   const uint64_t RSRC_TID_ENABLE = UINT64_C(1) << (32 + 23);
+
+  // For MachineOperands.
+  enum TargetFlags {
+    TF_LONG_BRANCH_FORWARD = 1 << 0,
+    TF_LONG_BRANCH_BACKWARD = 1 << 1
+  };
 } // End namespace AMDGPU
 
 namespace SI {
