@@ -465,7 +465,7 @@ public:
   }
 
   /// Insert a conditional branch instruction in \p SrcBB at point \p InsPt to
-  /// \p NewDestBB using the inverted condition of conditinoal branch \p OldBr.
+  /// \p DestBB using the inverted condition of conditinoal branch \p OldBr.
   ///
   /// \returns The number of bytes added to the block.
   virtual unsigned insertInvertedConditionalBranch(
@@ -473,18 +473,18 @@ public:
     MachineBasicBlock::iterator InsPt,
     const DebugLoc &DL,
     const MachineInstr &OldBr,
-    MachineBasicBlock &NewDestBB) const {
+    MachineBasicBlock &DestBB) const {
     llvm_unreachable("target did not implement");
   }
 
-  /// Insert an unconditional branch at the end of \p MBB to \p NewDestBB.  \p
+  /// Insert an unconditional branch at the end of \p MBB to \p DestBB.  \p
   /// BrOffset indicates the offset of \p NewDestBB relative to the offset of
   /// the position to insert the new branch. If \BrOffset is 0, any
   /// unconditional branch is assumed to be legal.
   ///
   /// \returns The number of bytes added to the block.
   virtual unsigned insertUnconditionalBranch(MachineBasicBlock &MBB,
-                                             MachineBasicBlock &NewDestBB,
+                                             MachineBasicBlock &DestBB,
                                              const DebugLoc &DL,
                                              int64_t BrOffset = 0,
                                              RegScavenger *RS = nullptr) const {
