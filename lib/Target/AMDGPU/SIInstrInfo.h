@@ -353,6 +353,14 @@ public:
     return get(Opcode).TSFlags & SIInstrFlags::Gather4;
   }
 
+  static bool isTransient(const MachineInstr &MI) {
+    return MI.getDesc().TSFlags & SIInstrFlags::Transient;
+  }
+
+  bool isTransient(uint16_t Opcode) const {
+    return get(Opcode).TSFlags & SIInstrFlags::Transient;
+  }
+
   static bool isFLAT(const MachineInstr &MI) {
     return MI.getDesc().TSFlags & SIInstrFlags::FLAT;
   }

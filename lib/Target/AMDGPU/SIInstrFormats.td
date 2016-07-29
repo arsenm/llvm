@@ -60,6 +60,9 @@ class InstSI <dag outs, dag ins, string asm = "",
   // use it as unsigned.
   field bits<1> SOPKZext = 0;
 
+  // Instruction is purely a pseudo and has no impact on code size.
+  field bits<1> Transient = 0;
+
   // These need to be kept in sync with the enum in SIInstrFlags.
   let TSFlags{0} = VM_CNT;
   let TSFlags{1} = EXP_CNT;
@@ -94,6 +97,7 @@ class InstSI <dag outs, dag ins, string asm = "",
   let TSFlags{26} = Gather4;
   let TSFlags{27} = DisableWQM;
   let TSFlags{28} = SOPKZext;
+  let TSFlags{29} = Transient;
 
   let SchedRW = [Write32Bit];
 
