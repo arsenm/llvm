@@ -1948,6 +1948,8 @@ multiclass SI_SPILL_VGPR <RegisterClass vgpr_class> {
            SReg_32:$scratch_offset, i32imm:$offset)> {
       let mayStore = 1;
       let mayLoad = 0;
+      // (2 * 4) + (8 * num_subregs) bytes maximum
+      let Size = !add(!shl(!srl(vgpr_class.Size, 5), 3), 8);
     }
 
     def _RESTORE : PseudoInstSI <
@@ -1956,6 +1958,9 @@ multiclass SI_SPILL_VGPR <RegisterClass vgpr_class> {
            i32imm:$offset)> {
       let mayStore = 0;
       let mayLoad = 1;
+
+      // (2 * 4) + (8 * num_subregs) bytes maximum
+      let Size = !add(!shl(!srl(vgpr_class.Size, 5), 3), 8);
     }
   } // End UseNamedOperandTable = 1, VGPRSpill = 1
 }
