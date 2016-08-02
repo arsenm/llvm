@@ -142,10 +142,37 @@ public:
                         LiveIntervals *LIS = nullptr) const override;
 
   /// \returns true if a branch from an instruction with opcode \p BranchOpc
-  /// located at \p BrOffset bytes is capable of jumping to a position at \p
-  /// DestOffset.
-  bool isBranchInRange(unsigned BranchOpc, uint64_t BrOffset,
-                       uint64_t DestOffset) const;
+  ///  bytes is capable of jumping to a position \p BrOffset bytes away.
+  bool isBranchOffsetInRange(unsigned BranchOpc,
+                             int64_t BrOffset) const override;
+
+  /// \returns The block that branch instruction \p MI jumps to.
+  MachineBasicBlock *getBranchDestBlock(const MachineInstr &MI) const;
+
+  /// Change the destination block of branch \p BranchInstr to be \p NewDestBB.
+  void setBranchDestBlock(MachineInstr &BranchInst,
+                          MachineBasicBlock &NewDestBB) const;
+
+  /// Insert a conditional branch instruction in \p SrcBB at point \p InsPt to
+  /// \p NewDestBB using the inverted condition of conditinoal branch \p OldBr.
+  ///
+  /// \returns The number of bytes added to the block.
+  unsigned insertInvertedConditionalBranch(MachineBasicBlock &SrcBB,
+                                           MachineBasicBlock::iterator InsPt,
+                                           const DebugLoc &DL,
+                                           const MachineInstr &OldBr,
+                                           MachineBasicBlock &NewDestBB) const;
+
+  /// Insert an unconditional branch at the end of \p MBB to \p NewDestBB.  \p
+  /// BrOffset indicates the offset of \p NewDestBB relative to the offset of
+  /// the position to insert the new branch. If \BrOffset is 0, any
+  /// unconditional branch is assumed to be legal.
+  ///
+  /// \returns The number of bytes added to the block.
+  unsigned insertUnconditionalBranch(MachineBasicBlock &MBB,
+                                     MachineBasicBlock &DestBB,
+                                     const DebugLoc &DL,
+                                     int64_t BrOffset = 0) const;
 
   bool analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
                      MachineBasicBlock *&FBB,

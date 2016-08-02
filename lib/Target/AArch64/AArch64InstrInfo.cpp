@@ -111,6 +111,8 @@ static unsigned getBranchDisplacementBits(unsigned Opc) {
   switch (Opc) {
   default:
     llvm_unreachable("unexpected opcode!");
+  case AArch64::B:
+    return 64;
   case AArch64::TBNZW:
   case AArch64::TBZW:
   case AArch64::TBNZX:
@@ -126,30 +128,108 @@ static unsigned getBranchDisplacementBits(unsigned Opc) {
   }
 }
 
-static unsigned getBranchMaxDisplacementBytes(unsigned Opc) {
-  if (Opc == AArch64::B)
-    return -1;
-
-  unsigned Bits = getBranchDisplacementBits(Opc);
-  unsigned MaxOffs = ((1 << (Bits - 1)) - 1) << 2;
-
-  // Verify the displacement bits options have sane values.
-  // XXX: Is there a better place for this?
-  assert(MaxOffs >= 8 &&
-         "max branch displacement must be enough to jump"
-         "over conditional branch expansion");
-
-  return MaxOffs;
+bool AArch64InstrInfo::isBranchOffsetInRange(unsigned BranchOp,
+                                             int64_t BrOffset) const {
+  unsigned Bits = getBranchDisplacementBits(BranchOp);
+  assert(Bits >= 3 && "max branch displacement must be enough to jump"
+                      "over conditional branch expansion");
+  return isIntN(Bits, BrOffset / 4);
 }
 
-bool AArch64InstrInfo::isBranchInRange(unsigned BranchOp, uint64_t BrOffset,
-                                       uint64_t DestOffset) const {
-  unsigned MaxOffs = getBranchMaxDisplacementBytes(BranchOp);
+MachineBasicBlock *AArch64InstrInfo::getBranchDestBlock(
+  const MachineInstr &MI) const {
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("unexpected opcode!");
+  case AArch64::B:
+    return MI.getOperand(0).getMBB();
+  case AArch64::TBZW:
+  case AArch64::TBNZW:
+  case AArch64::TBZX:
+  case AArch64::TBNZX:
+    return MI.getOperand(2).getMBB();
+  case AArch64::CBZW:
+  case AArch64::CBNZW:
+  case AArch64::CBZX:
+  case AArch64::CBNZX:
+  case AArch64::Bcc:
+    return MI.getOperand(1).getMBB();
+  }
+}
 
-  // Branch before the Dest.
-  if (BrOffset <= DestOffset)
-    return (DestOffset - BrOffset <= MaxOffs);
-  return (BrOffset - DestOffset <= MaxOffs);
+void AArch64InstrInfo::setBranchDestBlock(MachineInstr &MI,
+                                          MachineBasicBlock &NewDestBB) const {
+  unsigned OpNum = 0;
+  unsigned Opc = MI.getOpcode();
+
+  if (Opc != AArch64::B) {
+    OpNum = (Opc == AArch64::TBZW ||
+             Opc == AArch64::TBNZW ||
+             Opc == AArch64::TBZX ||
+             Opc == AArch64::TBNZX) ? 2 : 1;
+  }
+
+  MI.getOperand(OpNum).setMBB(&NewDestBB);
+}
+
+static unsigned getOppositeConditionOpcode(unsigned Opc) {
+  switch (Opc) {
+  default:
+    llvm_unreachable("unexpected opcode!");
+  case AArch64::TBNZW:   return AArch64::TBZW;
+  case AArch64::TBNZX:   return AArch64::TBZX;
+  case AArch64::TBZW:    return AArch64::TBNZW;
+  case AArch64::TBZX:    return AArch64::TBNZX;
+  case AArch64::CBNZW:   return AArch64::CBZW;
+  case AArch64::CBNZX:   return AArch64::CBZX;
+  case AArch64::CBZW:    return AArch64::CBNZW;
+  case AArch64::CBZX:    return AArch64::CBNZX;
+  case AArch64::Bcc:     return AArch64::Bcc; // Condition is an operand for Bcc.
+  }
+}
+
+static inline void invertBccCondition(MachineInstr &MI) {
+  assert(MI.getOpcode() == AArch64::Bcc && "Unexpected opcode!");
+  MachineOperand &CCOp = MI.getOperand(0);
+
+  AArch64CC::CondCode CC = static_cast<AArch64CC::CondCode>(CCOp.getImm());
+  CCOp.setImm(AArch64CC::getInvertedCondCode(CC));
+}
+
+unsigned AArch64InstrInfo::insertInvertedConditionalBranch(
+  MachineBasicBlock &SrcMBB,
+  MachineBasicBlock::iterator InsPt,
+  const DebugLoc &DL,
+  const MachineInstr &OldBr,
+  MachineBasicBlock &NewDestBB) const {
+  unsigned OppositeCondOpc = getOppositeConditionOpcode(OldBr.getOpcode());
+
+  MachineInstrBuilder MIB =
+    BuildMI(SrcMBB, InsPt, DL, get(OppositeCondOpc))
+    .addOperand(OldBr.getOperand(0));
+
+  unsigned Opc = OldBr.getOpcode();
+
+  if (Opc == AArch64::TBZW || Opc == AArch64::TBNZW ||
+      Opc == AArch64::TBZX || Opc == AArch64::TBNZX)
+    MIB.addOperand(OldBr.getOperand(1));
+
+  if (OldBr.getOpcode() == AArch64::Bcc)
+    invertBccCondition(*MIB);
+
+  MIB.addMBB(&NewDestBB);
+
+  return getInstSizeInBytes(*MIB);
+}
+
+unsigned AArch64InstrInfo::insertUnconditionalBranch(MachineBasicBlock &MBB,
+                                                     MachineBasicBlock &DestBB,
+                                                     const DebugLoc &DL,
+                                                     int64_t) const {
+  MachineInstr *MI = BuildMI(&MBB, DL, get(AArch64::B))
+    .addMBB(&DestBB);
+
+  return getInstSizeInBytes(*MI);
 }
 
 // Branch analysis.
