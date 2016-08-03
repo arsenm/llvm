@@ -162,6 +162,9 @@ enum AddressSpaces : unsigned {
   CONSTANT_BUFFER_14 = 22,
   CONSTANT_BUFFER_15 = 23,
 
+  // Pseudo address space to give export instructions a MachineMemOperand.
+  EXPORT_ADDRESS = 24,
+
   // Some places use this if the address space can't be determined.
   UNKNOWN_ADDRESS_SPACE = ~0u
 };

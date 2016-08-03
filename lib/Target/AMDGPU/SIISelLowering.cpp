@@ -2702,9 +2702,19 @@ SDValue SITargetLowering::LowerINTRINSIC_VOID(SDValue Op,
       Op.getOperand(10) // src3
     };
 
+    Type *Int8Ty = Type::getInt8Ty(*DAG.getContext());
+    PointerType *PtrTy = PointerType::get(Int8Ty, AMDGPUAS::EXPORT_ADDRESS);
+
+    // Dummy MMO that aliases nothing.
+    MachineMemOperand *MMO = MF.getMachineMemOperand(
+      MachinePointerInfo(UndefValue::get(PtrTy)),
+      MachineMemOperand::MOStore, 16, 4);
+
     unsigned Opc = Done->isNullValue() ?
       AMDGPUISD::EXPORT : AMDGPUISD::EXPORT_DONE;
-    return DAG.getNode(Opc, DL, Op->getVTList(), Ops);
+
+    return DAG.getMemIntrinsicNode(Opc, DL, Op->getVTList(), Ops,
+                                   MVT::v4i32, MMO);
   }
   default:
     return SDValue();
