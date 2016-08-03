@@ -1554,6 +1554,10 @@ bool SIInstrInfo::areMemAccessesTriviallyDisjoint(MachineInstr &MIa,
   if (MIa.hasUnmodeledSideEffects() || MIb.hasUnmodeledSideEffects())
     return false;
 
+  if (MIa.getOpcode() == AMDGPU::EXP || MIa.getOpcode() == AMDGPU::EXP_DONE ||
+      MIb.getOpcode() == AMDGPU::EXP || MIb.getOpcode() == AMDGPU::EXP_DONE)
+    return true;
+
   // XXX - Can we relax this between address spaces?
   if (MIa.hasOrderedMemoryRef() || MIb.hasOrderedMemoryRef())
     return false;
