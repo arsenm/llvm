@@ -32,7 +32,7 @@ using namespace llvm;
 // code. This is only for making it possible to write reasonably small tests for
 // long branches.
 static cl::opt<unsigned>
-BranchOffsetBits("amdgpu-s-branch-bits", cl::ReallyHidden, cl::init(16),
+BranchOffsetBits("amdgpu-s-branch-bits", cl::ReallyHidden, cl::init(4),
                  cl::desc("Restrict range of branch instructions (DEBUG)"));
 
 SIInstrInfo::SIInstrInfo(const SISubtarget &ST)
@@ -1166,7 +1166,16 @@ unsigned SIInstrInfo::insertIndirectBranch(MachineBasicBlock &MBB,
 
   RS->enterBasicBlockEnd(MBB);
   unsigned Scav = RS->scavengeRegister(&AMDGPU::SReg_64RegClass,
-                                       MachineBasicBlock::iterator(GetPC), 0);
+                                       MachineBasicBlock::iterator(GetPC), 0, false);
+  if (Scav == AMDGPU::NoRegister) {
+    MBB.erase(MBB.begin(), MBB.end());
+    MRI.clearVirtRegs();
+    BuildMI(&MBB, DL, get(AMDGPU::S_ENDPGM));
+    LLVMContext &Ctx = MF->getFunction()->getParent()->getContext();
+    Ctx.emitError("failed to scavenge register");
+    return 4;
+  }
+
   MRI.replaceRegWith(PCReg, Scav);
   MRI.clearVirtRegs();
   RS->setRegUsed(Scav);

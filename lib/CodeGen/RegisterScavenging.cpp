@@ -409,7 +409,8 @@ static unsigned getFrameIndexOperandNum(MachineInstr &MI) {
 
 unsigned RegScavenger::scavengeRegister(const TargetRegisterClass *RC,
                                         MachineBasicBlock::iterator I,
-                                        int SPAdj) {
+                                        int SPAdj,
+                                        bool FailFatal) {
   MachineInstr &MI = *I;
   const MachineFunction &MF = *MI.getParent()->getParent();
   // Consider all allocatable registers in the register class initially
@@ -487,11 +488,16 @@ unsigned RegScavenger::scavengeRegister(const TargetRegisterClass *RC,
     // Spill the scavenged register before I.
     int FI = Scavenged[SI].FrameIndex;
     if (FI < FIB || FI >= FIE) {
-      std::string Msg = std::string("Error while trying to spill ") +
+      if (FailFatal) {
+        std::string Msg = std::string("Error while trying to spill ") +
           TRI->getName(SReg) + " from class " + TRI->getRegClassName(RC) +
           ": Cannot scavenge register without an emergency spill slot!";
-      report_fatal_error(Msg.c_str());
+        report_fatal_error(Msg.c_str());
+      }
+
+      return 0;
     }
+
     TII->storeRegToStackSlot(*MBB, I, SReg, true, Scavenged[SI].FrameIndex,
                              RC, TRI);
     MachineBasicBlock::iterator II = std::prev(I);

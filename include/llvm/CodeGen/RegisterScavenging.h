@@ -158,9 +158,11 @@ public:
   /// adjustment due to call frame, it's passed along to eliminateFrameIndex().
   /// Returns the scavenged register.
   unsigned scavengeRegister(const TargetRegisterClass *RegClass,
-                            MachineBasicBlock::iterator I, int SPAdj);
-  unsigned scavengeRegister(const TargetRegisterClass *RegClass, int SPAdj) {
-    return scavengeRegister(RegClass, MBBI, SPAdj);
+                            MachineBasicBlock::iterator I, int SPAdj,
+                            bool FailFatal = true);
+  unsigned scavengeRegister(const TargetRegisterClass *RegClass, int SPAdj,
+                            bool FailFatal = true) {
+    return scavengeRegister(RegClass, MBBI, SPAdj, FailFatal);
   }
 
   /// Tell the scavenger a register is used.
