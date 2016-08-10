@@ -445,8 +445,24 @@ bool BranchRelaxation::relaxBranchInstructions() {
       if (MI.isConditionalBranch()) {
         if (MachineBasicBlock *DestBB = TII->getBranchDestBlock(MI)) {
           if (!isBlockInRange(MI, *DestBB)) {
-            fixupConditionalBranch(MI);
-            ++NumConditionalRelaxed;
+            if (Next != MBB.end() && Next->isConditionalBranch()) {
+              // If there are multiple conditional branches, this isn't an
+              // analyzable block. Split later terminators into a new block so
+              // each one will be analyzable.
+
+              MachineBasicBlock *NewBB = splitBlockBeforeInstr(*Next);
+              NewBB->transferSuccessors(&MBB);
+              MBB.addSuccessor(NewBB);
+              MBB.addSuccessor(DestBB);
+
+              // Cleanup potential unconditional branch to successor block.
+              NewBB->updateTerminator();
+              MBB.updateTerminator();
+            } else {
+              fixupConditionalBranch(MI);
+              ++NumConditionalRelaxed;
+            }
+
             Changed = true;
 
             // This may have modified all of the terminators, so start over.
