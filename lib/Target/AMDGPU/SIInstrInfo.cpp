@@ -1105,6 +1105,17 @@ bool SIInstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
 
     if (MaskDestBB && MaskDestBB != TBB)
       return true;
+
+    if (AllowModify) {
+      ++I;
+      MachineBasicBlock::iterator Next;
+      for (; I != MBB.end(); I = Next) {
+        llvm_unreachable("need to delete insts");
+        Next = std::next(I);
+        I->eraseFromParent();
+      }
+    }
+
     return false;
   }
 
@@ -1129,6 +1140,18 @@ bool SIInstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
   if (I->getOpcode() == AMDGPU::S_BRANCH) {
     TBB = CondBB;
     FBB = I->getOperand(0).getMBB();
+
+
+    if (AllowModify) {
+      ++I;
+      MachineBasicBlock::iterator Next;
+      for (; I != MBB.end(); I = Next) {
+        llvm_unreachable("need to delete insts");
+        Next = std::next(I);
+        I->eraseFromParent();
+      }
+    }
+
     return false;
   }
 
