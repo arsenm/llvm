@@ -1088,13 +1088,23 @@ bool SIInstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
                                 SmallVectorImpl<MachineOperand> &Cond,
                                 bool AllowModify) const {
   MachineBasicBlock::iterator I = MBB.getFirstTerminator();
-
   if (I == MBB.end())
     return false;
+
+  MachineBasicBlock *MaskDestBB = nullptr;
+  if (I->getOpcode() == AMDGPU::SI_MASK_BRANCH) {
+    MaskDestBB = I->getOperand(0).getMBB();
+
+    if (++I == MBB.end())
+      return true;
+  }
 
   if (I->getOpcode() == AMDGPU::S_BRANCH) {
     // Unconditional Branch
     TBB = I->getOperand(0).getMBB();
+
+    if (MaskDestBB && MaskDestBB != TBB)
+      return true;
     return false;
   }
 
@@ -1103,6 +1113,9 @@ bool SIInstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
     return true;
 
   MachineBasicBlock *CondBB = I->getOperand(0).getMBB();
+  if (MaskDestBB && MaskDestBB != CondBB)
+    return true;
+
   Cond.push_back(MachineOperand::CreateImm(Pred));
 
   ++I;
