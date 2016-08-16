@@ -333,6 +333,7 @@ public:
 #endif
   void addFastRegAlloc(FunctionPass *RegAllocPass) override;
   void addOptimizedRegAlloc(FunctionPass *RegAllocPass) override;
+  void addPostRegAlloc() override;
   void addPreRegAlloc() override;
   void addPostRegAlloc() override;
   void addPreSched2() override;
@@ -582,6 +583,7 @@ void GCNPassConfig::addOptimizedRegAlloc(FunctionPass *RegAllocPass) {
 void GCNPassConfig::addPostRegAlloc() {
   addPass(&SIOptimizeExecMaskingID);
   TargetPassConfig::addPostRegAlloc();
+  addPass(&SIInsertSkipsPassID);
 }
 
 void GCNPassConfig::addPreSched2() {
@@ -600,7 +602,7 @@ void GCNPassConfig::addPreEmitPass() {
 
   addPass(createSIInsertWaitsPass());
   addPass(createSIShrinkInstructionsPass());
-  addPass(&SIInsertSkipsPassID);
+  //addPass(&SIInsertSkipsPassID);
   addPass(createSIDebuggerInsertNopsPass());
 }
 
