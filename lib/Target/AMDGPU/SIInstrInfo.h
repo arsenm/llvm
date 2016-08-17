@@ -631,6 +631,12 @@ public:
   /// to read a VGPR.
   bool canReadVGPR(const MachineInstr &MI, unsigned OpNo) const;
 
+  /// Create a copy from SGPR virtual register \p SReg to an equivalent VGPR
+  /// class. \returns the new virtual register.
+  unsigned copyToVGPR(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
+                      const DebugLoc &DL, MachineRegisterInfo &MRI,
+                      unsigned SReg) const;
+
   /// \brief Legalize the \p OpIndex operand of this instruction by inserting
   /// a MOV.  For example:
   /// ADD_I32_e32 VGPR0, 15

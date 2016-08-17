@@ -2353,6 +2353,20 @@ bool SIInstrInfo::canReadVGPR(const MachineInstr &MI, unsigned OpNo) const {
   }
 }
 
+unsigned SIInstrInfo::copyToVGPR(MachineBasicBlock &MBB,
+                                 MachineBasicBlock::iterator I,
+                                 const DebugLoc &DL, MachineRegisterInfo &MRI,
+                                 unsigned SReg) const {
+  const TargetRegisterClass *SrcRC = MRI.getRegClass(SReg);
+  const TargetRegisterClass *DstRC = RI.getEquivalentVGPRClass(SrcRC);
+
+  unsigned DstReg = MRI.createVirtualRegister(DstRC);
+  BuildMI(MBB, I, DL, get(AMDGPU::COPY), DstReg)
+    .addReg(SReg);
+
+  return DstReg;
+}
+
 void SIInstrInfo::legalizeOpWithMove(MachineInstr &MI, unsigned OpIdx) const {
   MachineBasicBlock::iterator I = MI;
   MachineBasicBlock *MBB = MI.getParent();
