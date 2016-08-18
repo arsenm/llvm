@@ -54,6 +54,7 @@ class SISchedMachineModel : SchedMachineModel {
   let IssueWidth = 1;
   let PostRAScheduler = 1;
 
+  // There is no branch prediction.
   // FIXME:Approximate 2 * branch cost.  Try to hack around bad
   // early-ifcvt heuristics. These need improvement to avoid the OOE
   // heuristics.

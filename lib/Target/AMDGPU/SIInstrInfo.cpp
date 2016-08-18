@@ -1362,6 +1362,8 @@ bool SIInstrInfo::canInsertSelect(const MachineBasicBlock &MBB,
                                   unsigned TrueReg, unsigned FalseReg,
                                   int &CondCycles,
                                   int &TrueCycles, int &FalseCycles) const {
+  CondCycles = 0;
+
   switch (Cond[0].getImm()) {
   case VCCNZ:
   case VCCZ: {
@@ -1389,7 +1391,7 @@ bool SIInstrInfo::canInsertSelect(const MachineBasicBlock &MBB,
     if (NumInsts % 2 == 0)
       NumInsts /= 2;
 
-    CondCycles = TrueCycles = FalseCycles = NumInsts; // ???
+    TrueCycles = FalseCycles = NumInsts; // ???
     return RI.isSGPRClass(RC);
   }
   default:
