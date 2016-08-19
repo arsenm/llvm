@@ -70,6 +70,7 @@ private:
   const SIRegisterInfo *TRI;
   const SIInstrInfo *TII;
   LiveIntervals *LIS;
+  MachineRegisterInfo *MRI;
 
   void emitIf(MachineInstr &MI);
   void emitElse(MachineInstr &MI);
@@ -86,7 +87,8 @@ public:
     MachineFunctionPass(ID),
     TRI(nullptr),
     TII(nullptr),
-    LIS(nullptr) {}
+    LIS(nullptr),
+    MRI(nullptr) {}
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
@@ -127,11 +129,12 @@ void SILowerControlFlow::emitIf(MachineInstr &MI) {
     BuildMI(MBB, I, DL, TII->get(AMDGPU::S_AND_SAVEEXEC_B64), SaveExecReg)
     .addOperand(Cond);
 
+#if 0
   MachineInstr *Xor =
     BuildMI(MBB, I, DL, TII->get(AMDGPU::S_XOR_B64), SaveExecReg)
     .addReg(AMDGPU::EXEC)
     .addReg(SaveExecReg);
-
+#endif
   // Insert a pseudo terminator to help keep the verifier happy. This will also
   // be used later when inserting skips.
   MachineInstr *NewBr =
@@ -146,7 +149,7 @@ void SILowerControlFlow::emitIf(MachineInstr &MI) {
 
 
   LIS->ReplaceMachineInstrInMaps(MI, *AndSaveExec);
-  LIS->InsertMachineInstrInMaps(*Xor);
+//  LIS->InsertMachineInstrInMaps(*Xor);
   LIS->InsertMachineInstrInMaps(*NewBr);
 
   MI.eraseFromParent();
@@ -162,35 +165,31 @@ void SILowerControlFlow::emitElse(MachineInstr &MI) {
   MachineBasicBlock &MBB = *MI.getParent();
   const DebugLoc &DL = MI.getDebugLoc();
 
+  MachineBasicBlock *DestBB = MI.getOperand(2).getMBB();
   unsigned DstReg = MI.getOperand(0).getReg();
   assert(MI.getOperand(0).getSubReg() == AMDGPU::NoSubRegister);
 
-  bool ExecModified = MI.getOperand(3).getImm() != 0;
-  MachineBasicBlock::iterator Start = MBB.begin();
+  unsigned SrcReg = MI.getOperand(1).getReg();
+  assert(SrcReg == DstReg);
 
-  // This must be inserted before phis and any spill code inserted before the
-  // else.
-  MachineInstr *OrSaveExec =
-    BuildMI(MBB, Start, DL, TII->get(AMDGPU::S_OR_SAVEEXEC_B64), DstReg)
-    .addOperand(MI.getOperand(1)); // Saved EXEC
-  MachineBasicBlock *DestBB = MI.getOperand(2).getMBB();
+  MachineInstr *AndN2 =
+    BuildMI(MBB, &MI, DL, TII->get(AMDGPU::S_ANDN2_B64), AMDGPU::EXEC)
+    .addReg(DstReg)
+    .addReg(AMDGPU::EXEC);
 
-  MachineBasicBlock::iterator ElsePt(MI);
-
+  bool ExecModified = (MI.getOperand(3).getImm() != 0);
   if (ExecModified) {
+    // Adjust the saved exec to account for the modifications during the flow
+    // block that contains the ELSE. This can happen when WQM mode is switched
+    // off.
     MachineInstr *And =
-      BuildMI(MBB, ElsePt, DL, TII->get(AMDGPU::S_AND_B64), DstReg)
+      BuildMI(MBB, &MI, DL, TII->get(AMDGPU::S_AND_B64), DstReg)
       .addReg(AMDGPU::EXEC)
-      .addReg(DstReg);
+      .addReg(SrcReg);
 
     if (LIS)
       LIS->InsertMachineInstrInMaps(*And);
   }
-
-  MachineInstr *Xor =
-    BuildMI(MBB, ElsePt, DL, TII->get(AMDGPU::S_XOR_B64), AMDGPU::EXEC)
-    .addReg(AMDGPU::EXEC)
-    .addReg(DstReg);
 
   MachineBasicBlock::iterator Term = MBB.getFirstTerminator();
   // Insert a pseudo terminator to help keep the verifier happy.
@@ -207,9 +206,8 @@ void SILowerControlFlow::emitElse(MachineInstr &MI) {
   LIS->RemoveMachineInstrFromMaps(MI);
   MI.eraseFromParent();
 
-  LIS->InsertMachineInstrInMaps(*OrSaveExec);
+  LIS->InsertMachineInstrInMaps(*AndN2);
 
-  LIS->InsertMachineInstrInMaps(*Xor);
   LIS->InsertMachineInstrInMaps(*Branch);
 
   // src reg is tied to dst reg.
@@ -240,7 +238,24 @@ void SILowerControlFlow::emitIfBreak(MachineInstr &MI) {
 }
 
 void SILowerControlFlow::emitElseBreak(MachineInstr &MI) {
+  MachineBasicBlock &MBB = *MI.getParent();
+  const DebugLoc &DL = MI.getDebugLoc();
+
+  unsigned SaveExecReg = MI.getOperand(1).getReg();
+  unsigned XorSaveExecReg = MRI->createVirtualRegister(&AMDGPU::SReg_64RegClass);
+
+  MachineInstr *Xor =
+    BuildMI(MBB, &MI, DL, TII->get(AMDGPU::S_XOR_B64), XorSaveExecReg)
+    .addReg(AMDGPU::EXEC)
+    .addReg(SaveExecReg);
+
   MI.setDesc(TII->get(AMDGPU::S_OR_B64));
+  MI.getOperand(1).setReg(XorSaveExecReg);
+
+  if (LIS) {
+    LIS->InsertMachineInstrInMaps(*Xor);
+    LIS->createAndComputeVirtRegInterval(XorSaveExecReg);
+  }
 }
 
 void SILowerControlFlow::emitLoop(MachineInstr &MI) {
@@ -269,9 +284,9 @@ void SILowerControlFlow::emitEndCf(MachineInstr &MI) {
   const DebugLoc &DL = MI.getDebugLoc();
 
   MachineBasicBlock::iterator InsPt = MBB.begin();
+
   MachineInstr *NewMI =
-    BuildMI(MBB, InsPt, DL, TII->get(AMDGPU::S_OR_B64), AMDGPU::EXEC)
-    .addReg(AMDGPU::EXEC)
+    BuildMI(MBB, InsPt, DL, TII->get(AMDGPU::S_MOV_B64), AMDGPU::EXEC)
     .addOperand(MI.getOperand(0));
 
   if (LIS)
@@ -287,6 +302,7 @@ bool SILowerControlFlow::runOnMachineFunction(MachineFunction &MF) {
   const SISubtarget &ST = MF.getSubtarget<SISubtarget>();
   TII = ST.getInstrInfo();
   TRI = &TII->getRegisterInfo();
+  MRI = &MF.getRegInfo();
 
   // This doesn't actually need LiveIntervals, but we can preserve them.
   LIS = getAnalysisIfAvailable<LiveIntervals>();
