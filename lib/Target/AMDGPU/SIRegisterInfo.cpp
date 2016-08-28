@@ -462,8 +462,8 @@ void SIRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
           // frame index, we should delete the frame index when all references to
           // it are fixed.
         } else {
-
           bool FlipExec = (MI->getOpcode() == AMDGPU::SI_SPILL_S64_SAVE);
+          MFI->setHasSpilledVGPRs();
 
           // Spill SGPR to a frame index.
           // FIXME we should use S_STORE_DWORD here for VI.
