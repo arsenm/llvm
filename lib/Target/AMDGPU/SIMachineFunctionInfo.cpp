@@ -108,7 +108,10 @@ SIMachineFunctionInfo::SIMachineFunctionInfo(const MachineFunction &MF)
   if (WorkItemIDZ)
     WorkItemIDY = true;
 
-  bool MaySpill = ST.isVGPRSpillingEnabled(*F);
+  bool MaySpill = ST.isVGPRSpillingEnabled(*F) ||
+    MF.getTarget().getOptLevel() == CodeGenOpt::None;
+
+  // FIXME: New stack objects can be created during legalization.
   bool HasStackObjects = FrameInfo.hasStackObjects();
 
   if (HasStackObjects || MaySpill)
