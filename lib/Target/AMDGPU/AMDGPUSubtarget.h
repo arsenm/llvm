@@ -540,6 +540,8 @@ public:
 
   /// Return the maximum number of waves per SIMD for kernels using \p VGPRs VGPRs
   unsigned getOccupancyWithNumVGPRs(unsigned VGPRs) const;
+
+  unsigned getMaxNumSGPRs() const;
 };
 
 } // End namespace llvm
