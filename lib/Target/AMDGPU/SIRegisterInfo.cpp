@@ -462,11 +462,14 @@ void SIRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
           // frame index, we should delete the frame index when all references to
           // it are fixed.
         } else {
+
+          bool FlipExec = (MI->getOpcode() == AMDGPU::SI_SPILL_S64_SAVE);
+
           // Spill SGPR to a frame index.
           // FIXME we should use S_STORE_DWORD here for VI.
           MachineInstrBuilder Mov
             = BuildMI(*MBB, MI, DL, TII->get(AMDGPU::V_MOV_B32_e32), TmpReg)
-            .addReg(SubReg, SubKillState);
+            .addReg(SubReg, FlipExec ? 0 : SubKillState);
 
 
           // There could be undef components of a spilled super register.
@@ -476,7 +479,7 @@ void SIRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
             unsigned SuperKillState = 0;
             if (i + 1 == e)
               SuperKillState |= getKillRegState(IsKill);
-            Mov.addReg(SuperReg, RegState::Implicit | SuperKillState);
+            Mov.addReg(SuperReg, RegState::Implicit | (FlipExec ? 0 : SuperKillState));
           }
 
           unsigned Size = FrameInfo.getObjectSize(Index);
@@ -486,13 +489,38 @@ void SIRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
           MachineMemOperand *MMO
               = MF->getMachineMemOperand(PtrInfo, MachineMemOperand::MOStore,
                                          Size, Align);
+
+
+
           BuildMI(*MBB, MI, DL, TII->get(AMDGPU::SI_SPILL_V32_SAVE))
-                  .addReg(TmpReg, RegState::Kill)         // src
-                  .addFrameIndex(Index)                   // vaddr
-                  .addReg(MFI->getScratchRSrcReg())       // srrsrc
-                  .addReg(MFI->getScratchWaveOffsetReg()) // soffset
-                  .addImm(i * 4)                          // offset
-                  .addMemOperand(MMO);
+            .addReg(TmpReg, getKillRegState(!FlipExec))         // src
+            .addFrameIndex(Index)                   // vaddr
+            .addReg(MFI->getScratchRSrcReg())       // srsrc
+            .addReg(MFI->getScratchWaveOffsetReg()) // soffset
+            .addImm(i * 4)                          // offset
+            .addMemOperand(MMO);
+
+          if (MI->getOpcode() == AMDGPU::SI_SPILL_S64_SAVE) {
+            BuildMI(*MBB, MI, DL, TII->get(AMDGPU::S_NOT_B64), AMDGPU::EXEC)
+              .addReg(AMDGPU::EXEC);
+
+            MachineInstrBuilder Mov
+              = BuildMI(*MBB, MI, DL, TII->get(AMDGPU::V_MOV_B32_e32), TmpReg)
+              .addReg(SubReg, SubKillState);
+
+            BuildMI(*MBB, MI, DL, TII->get(AMDGPU::SI_SPILL_V32_SAVE))
+              .addReg(TmpReg, RegState::Kill)         // src
+              .addFrameIndex(Index)                   // vaddr
+              .addReg(MFI->getScratchRSrcReg())       // srsrc
+              .addReg(MFI->getScratchWaveOffsetReg()) // soffset
+              .addImm(i * 4)                          // offset
+              .addMemOperand(MMO);
+            BuildMI(*MBB, MI, DL, TII->get(AMDGPU::S_NOT_B64), AMDGPU::EXEC)
+              .addReg(AMDGPU::EXEC);
+          }
+
+          //LLVMContext &Ctx = MF->getFunction()->getContext();
+          //Ctx.emitError("SGPR spill to memory is not reliable");
         }
       }
       MI->eraseFromParent();
@@ -536,6 +564,7 @@ void SIRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
           // Restore SGPR from a stack slot.
           // FIXME: We should use S_LOAD_DWORD here for VI.
 
+          bool FlipExec = MI->getOpcode() == AMDGPU::SI_SPILL_S64_RESTORE;
           unsigned Align = FrameInfo.getObjectAlignment(Index);
           unsigned Size = FrameInfo.getObjectSize(Index);
 
@@ -551,10 +580,32 @@ void SIRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
                   .addReg(MFI->getScratchWaveOffsetReg()) // soffset
                   .addImm(i * 4)                          // offset
                   .addMemOperand(MMO);
+
+          if (FlipExec) {
+            BuildMI(*MBB, MI, DL, TII->get(AMDGPU::S_NOT_B64), AMDGPU::EXEC)
+              .addReg(AMDGPU::EXEC);
+
+            BuildMI(*MBB, MI, DL, TII->get(AMDGPU::SI_SPILL_V32_RESTORE), TmpReg)
+              .addFrameIndex(Index)                   // frame_idx
+              .addReg(MFI->getScratchRSrcReg())       // scratch_rsrc
+              .addReg(MFI->getScratchWaveOffsetReg()) // scratch_offset
+              .addImm(i * 4)                          // offset
+              .addMemOperand(MMO);
+
+            BuildMI(*MBB, MI, DL, TII->get(AMDGPU::S_NOT_B64), AMDGPU::EXEC)
+              .addReg(AMDGPU::EXEC);
+
+            // readfirstlane returns lane 0 when exec is all 0. We've forced
+            // loading all items, so that should always be valid now.
+          }
+
           BuildMI(*MBB, MI, DL,
                   TII->get(AMDGPU::V_READFIRSTLANE_B32), SubReg)
-                  .addReg(TmpReg, RegState::Kill)
-                  .addReg(MI->getOperand(0).getReg(), RegState::ImplicitDefine);
+            .addReg(TmpReg, RegState::Kill)
+            .addReg(MI->getOperand(0).getReg(), RegState::ImplicitDefine);
+
+          //LLVMContext &Ctx = MF->getFunction()->getContext();
+          //Ctx.emitError("SGPR spill to memory is not reliable");
         }
       }
 
