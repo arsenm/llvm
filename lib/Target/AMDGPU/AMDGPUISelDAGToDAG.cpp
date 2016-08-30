@@ -1375,6 +1375,7 @@ void AMDGPUDAGToDAGISel::SelectBRCOND(SDNode *N) {
 
   SDLoc SL(N);
 
+  // FIXME: This is wrong
   SDNode *MaskedCond =
         CurDAG->getMachineNode(AMDGPU::S_AND_B64, SL, MVT::i1,
                                CurDAG->getRegister(AMDGPU::EXEC, MVT::i1),

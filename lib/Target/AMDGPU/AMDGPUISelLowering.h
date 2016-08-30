@@ -283,6 +283,7 @@ enum NodeType : unsigned {
   SAMPLEB,
   SAMPLED,
   SAMPLEL,
+  LOOP_EXEC,
 
   // These cvt_f32_ubyte* nodes need to remain consecutive and in order.
   CVT_F32_UBYTE0,

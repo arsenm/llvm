@@ -160,6 +160,7 @@ bool SIAnnotateControlFlow::doInitialization(Module &M) {
 
   Loop = M.getOrInsertFunction(
     LoopIntrinsic, Boolean, Int64, (Type *)nullptr);
+  //cast<Function>(Loop)->setDoesNotAccessMemory();
 
   EndCf = M.getOrInsertFunction(
     EndCfIntrinsic, Void, Int64, (Type *)nullptr);

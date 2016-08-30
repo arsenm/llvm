@@ -117,6 +117,10 @@ def SIpc_add_rel_offset : SDNode<"AMDGPUISD::PC_ADD_REL_OFFSET",
   SDTypeProfile<1, 1, [SDTCisVT<0, iPTR>, SDTCisSameAs<0,1>]>
 >;
 
+def SIloop_exec : SDNode<"AMDGPUISD::LOOP_EXEC",
+  SDTypeProfile<0, 2, [SDTCisVT<0, OtherVT>, SDTCIsVT<1, i64>]>, [SDNPHasChain]
+>;
+
 //===----------------------------------------------------------------------===//
 // PatFrags for global memory operations
 //===----------------------------------------------------------------------===//
