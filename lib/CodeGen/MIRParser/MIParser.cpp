@@ -440,8 +440,18 @@ bool MIParser::parseBasicBlockLiveins(MachineBasicBlock &MBB) {
     unsigned Reg = 0;
     if (parseRegister(Reg))
       return true;
-    MBB.addLiveIn(Reg);
     lex();
+
+    LaneBitmask LaneMask = ~0u;
+    if (consumeIfPresent(MIToken::colon)) {
+      if (Token.isNot(MIToken::IntegerLiteral))
+        return error("expected an integer literal for lane mask");
+      if (getUnsigned(LaneMask))
+        return true;
+      lex();
+    }
+
+    MBB.addLiveIn(Reg, LaneMask);
   } while (consumeIfPresent(MIToken::comma));
   return false;
 }

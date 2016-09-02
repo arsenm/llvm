@@ -437,6 +437,22 @@ static Cursor maybeLexHexFloatingPointLiteral(Cursor C, MIToken &Token) {
   return C;
 }
 
+static Cursor maybeLexHexIntegerLiteral(Cursor C, MIToken &Token) {
+  if (C.peek() != '0' || C.peek(1) != 'x')
+    return None;
+
+  C.advance(2); // Skip '0x'
+
+  Cursor Range = C;
+  while (isxdigit(C.peek()))
+    C.advance();
+
+  StringRef StrVal = Range.upto(C);
+  Token.reset(MIToken::IntegerLiteral, StrVal)
+    .setIntegerValue(APSInt(APInt(64, StrVal, 16)));
+  return C;
+}
+
 static Cursor lexFloatingPointLiteral(Cursor Range, Cursor C, MIToken &Token) {
   C.advance();
   // Skip over [0-9]*([eE][-+]?[0-9]+)?
@@ -608,6 +624,8 @@ StringRef llvm::lexMIToken(StringRef Source, MIToken &Token,
   if (Cursor R = maybeLexGlobalValue(C, Token, ErrorCallback))
     return R.remaining();
   if (Cursor R = maybeLexExternalSymbol(C, Token, ErrorCallback))
+    return R.remaining();
+  if (Cursor R = maybeLexHexIntegerLiteral(C, Token))
     return R.remaining();
   if (Cursor R = maybeLexHexFloatingPointLiteral(C, Token))
     return R.remaining();

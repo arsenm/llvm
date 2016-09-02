@@ -1,0 +1,59 @@
+# RUN: llc -verify-machineinstrs -march=amdgcn -run-pass none -o - %s | FIleCheck %s
+--- |
+  target datalayout = "e-p:32:32-p1:64:64-p2:64:64-p3:32:32-p4:64:64-p5:32:32-i64:64-v16:16-v24:32-v32:32-v48:64-v96:128-v192:256-v256:256-v512:512-v1024:1024-v2048:2048-n32:64"
+
+  define void @lane_mask_livein(i32 addrspace(1)* %out, i32 %cond) #0 {
+  entry:
+    br i1 undef, label %if, label %endif
+
+  if:
+    store i32 0, i32 addrspace(1)* undef
+    br label %endif
+
+  endif:
+    ret void
+  }
+
+  attributes #0 = { nounwind }
+
+...
+---
+# CHECK-LABEL: name: lane_mask_livein
+# CHECK: bb.0.entry:
+# CHECK: liveins: %vgpr0, %sgpr0_sgpr1
+
+# CHECK:  bb.1.if:
+# CHECK: liveins: %sgpr0_sgpr1, %sgpr2_sgpr3, %sgpr4_sgpr5_sgpr6_sgpr7:0x0000000F
+
+# CHECK: bb.2.endif:
+# CHECK: liveins: %sgpr4_sgpr5_sgpr6_sgpr7:0x00000001, %sgpr2_sgpr3
+
+name:            lane_mask_livein
+alignment:       0
+tracksRegLiveness: true
+liveins:
+  - { reg: '%sgpr0_sgpr1' }
+  - { reg: '%vgpr0' }
+body:             |
+  bb.0.entry:
+    successors: %bb.1.if, %bb.3.endif
+    liveins: %vgpr0, %sgpr0_sgpr1
+    S_CMP_LT_I32 killed %sgpr0, 1, implicit-def %scc
+    S_CBRANCH_SCC1 %bb.3.endif, implicit killed %scc
+
+  bb.1.if:
+    successors: %bb.3.endif
+    liveins: %sgpr0_sgpr1, %sgpr2_sgpr3, %sgpr4_sgpr5_sgpr6_sgpr7:0x0000000F
+    %sgpr4_sgpr5 = S_LOAD_DWORDX2_IMM %sgpr0_sgpr1, 36 :: (non-temporal invariant load 8 from `i64 addrspace(2)* undef`)
+    %sgpr0 = S_LOAD_DWORD_IMM killed %sgpr0_sgpr1, 44 :: (non-temporal invariant load 4 from `i32 addrspace(2)* undef`)
+    %sgpr7 = S_MOV_B32 61440
+    %sgpr6 = S_MOV_B32 -1
+    %vgpr0 = V_MOV_B32_e32 0, implicit %exec
+    BUFFER_STORE_DWORD_OFFSET killed %vgpr0, %sgpr4_sgpr5_sgpr6_sgpr7, 0, 0, 0, 0, 0, implicit %exec :: (store 4 into %ir.out)
+
+
+  bb.3.endif:
+    liveins: %sgpr4_sgpr5_sgpr6_sgpr7:0x00000001, %sgpr2_sgpr3
+    S_ENDPGM
+
+...
