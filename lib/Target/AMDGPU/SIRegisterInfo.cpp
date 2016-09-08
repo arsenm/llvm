@@ -258,6 +258,28 @@ void SIRegisterInfo::resolveFrameIndex(MachineInstr &MI, unsigned BaseReg,
   }
 #endif
 
+#if 0
+  if (MI.getOpcode() == AMDGPU::V_MOV_B32_e32) {
+    assert(Offset >= -16 && Offset <= 64);
+    MachineRegisterInfo &MRI = MF->getRegInfo();
+
+    unsigned UnusedCarry = MRI.createVirtualRegister(&AMDGPU::SReg_64RegClass);
+    const DebugLoc &DL = MI.getDebugLoc();
+
+
+    // In the case the instruction already had an immediate offset, here only
+    // the requested new offset is added because we are leaving the original
+    // immediate in place.
+    BuildMI(*MBB, MI, DL, TII->get(AMDGPU::V_ADD_I32_e64), MI.getOperand(0).getReg())
+      .addReg(UnusedCarry, RegState::Define | RegState::Dead)
+      .addImm(Offset)
+      .addReg(BaseReg);
+
+    MI.eraseFromParent();
+    return;
+  }
+#endif
+
   MachineOperand *FIOp = TII->getNamedOperand(MI, AMDGPU::OpName::vaddr);
   assert(FIOp && FIOp->isFI() && "frame index must be address operand");
 
@@ -274,7 +296,19 @@ void SIRegisterInfo::resolveFrameIndex(MachineInstr &MI, unsigned BaseReg,
 bool SIRegisterInfo::isFrameOffsetLegal(const MachineInstr *MI,
                                         unsigned BaseReg,
                                         int64_t Offset) const {
-  return SIInstrInfo::isMUBUF(*MI) && isUInt<12>(Offset);
+  switch (MI->getOpcode()) {
+#if 0
+  case AMDGPU::V_ADD_I32_e32:
+  case AMDGPU::V_ADD_I32_e64:
+  case AMDGPU::V_SUB_I32_e32:
+  case AMDGPU::V_SUB_I32_e64:
+  case AMDGPU::V_MOV_B32_e32:
+    return Offset >= -16 && Offset <= 64;
+#endif
+  default:
+    return SIInstrInfo::isMUBUF(*MI) && isUInt<12>(Offset);
+  }
+
 }
 
 const TargetRegisterClass *SIRegisterInfo::getPointerRegClass(
