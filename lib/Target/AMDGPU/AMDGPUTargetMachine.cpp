@@ -502,6 +502,8 @@ bool GCNPassConfig::addPreISel() {
 }
 
 void GCNPassConfig::addMachineSSAOptimization() {
+  addPass(&SIFoldOperandsID);
+  addPass(&SIFoldOperandsID);
   TargetPassConfig::addMachineSSAOptimization();
 
   // We want to fold operands after PeepholeOptimizer has run (or as part of

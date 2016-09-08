@@ -2362,6 +2362,12 @@ bool SIInstrInfo::isOperandLegal(const MachineInstr &MI, unsigned OpIdx,
     }
   }
 
+  if (MO->isFI() && isMUBUF(MI) &&
+      OpIdx == AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::vaddr)) {
+    dbgs() << "REPORTING LEGAL TO FOLD FI INTO MUBUF\n";
+    return true;
+  }
+
   if (MO->isReg()) {
     assert(DefinedRC);
     return isLegalRegOperand(MRI, OpInfo, *MO);

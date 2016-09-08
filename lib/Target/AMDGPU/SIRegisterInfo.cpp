@@ -202,7 +202,8 @@ int64_t SIRegisterInfo::getFrameIndexInstrOffset(const MachineInstr *MI,
 }
 
 bool SIRegisterInfo::needsFrameBaseReg(MachineInstr *MI, int64_t Offset) const {
-  return true;
+  //return true;r
+  return MI->mayLoadOrStore();
 }
 
 void SIRegisterInfo::materializeFrameBaseRegister(MachineBasicBlock *MBB,

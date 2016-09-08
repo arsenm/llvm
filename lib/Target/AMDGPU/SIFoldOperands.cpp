@@ -206,6 +206,8 @@ static bool tryAddToFoldList(std::vector<FoldCandidate> &FoldList,
       return false;
   }
 
+  DEBUG(dbgs() << "Fold candidate: " << *MI);
+
   FoldList.push_back(FoldCandidate(MI, OpNo, OpToFold));
   return true;
 }
