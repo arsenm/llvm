@@ -274,7 +274,12 @@ entry:
 ; R600-CHECK: MOV
 ; R600-CHECK: [[CHAN:[XYZW]]]+
 ; R600-NOT: [[CHAN]]+
-; SI: v_mov_b32_e32 v3
+
+; SI: v_mov_b32_e32 [[FI0:v[0-9]+]], 0 ; encoding
+
+; SI-DAG: buffer_store_byte v{{[0-9]+}}, [[FI0]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:1 ; encoding
+; SI-DAG: buffer_store_byte v{{[0-9]+}}, [[FI0]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen ; encoding
+; SI-DAG: buffer_store_byte v{{[0-9]+}}, [[FI0]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:2 ; encoding
 define void @no_overlap(i32 addrspace(1)* %out, i32 %in) #0 {
 entry:
   %0 = alloca [3 x i8], align 1

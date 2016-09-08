@@ -56,7 +56,6 @@ public:
   void PostprocessISelDAG() override;
 
 private:
-  SDValue foldFrameIndex(SDValue N) const;
   bool isInlineImmediate(const SDNode *N) const;
   bool FoldOperand(SDValue &Src, SDValue &Sel, SDValue &Neg, SDValue &Abs,
                    const R600InstrInfo *TII);
@@ -929,12 +928,6 @@ bool AMDGPUDAGToDAGISel::SelectMUBUFAddr64(SDValue Addr, SDValue &SRsrc,
   return SelectMUBUFAddr64(Addr, SRsrc, VAddr, SOffset, Offset, GLC, SLC, TFE);
 }
 
-SDValue AMDGPUDAGToDAGISel::foldFrameIndex(SDValue N) const {
-  if (auto FI = dyn_cast<FrameIndexSDNode>(N))
-    return CurDAG->getTargetFrameIndex(FI->getIndex(), FI->getValueType(0));
-  return N;
-}
-
 bool AMDGPUDAGToDAGISel::SelectMUBUFScratch(SDValue Addr, SDValue &Rsrc,
                                             SDValue &VAddr, SDValue &SOffset,
                                             SDValue &ImmOffset) const {
@@ -954,14 +947,14 @@ bool AMDGPUDAGToDAGISel::SelectMUBUFScratch(SDValue Addr, SDValue &Rsrc,
     // Offsets in vaddr must be positive.
     ConstantSDNode *C1 = cast<ConstantSDNode>(N1);
     if (isLegalMUBUFImmOffset(C1)) {
-      VAddr = foldFrameIndex(N0);
+      VAddr = N0;
       ImmOffset = CurDAG->getTargetConstant(C1->getZExtValue(), DL, MVT::i16);
       return true;
     }
   }
 
   // (node)
-  VAddr = foldFrameIndex(Addr);
+  VAddr = Addr;
   ImmOffset = CurDAG->getTargetConstant(0, DL, MVT::i16);
   return true;
 }

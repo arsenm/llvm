@@ -18,6 +18,7 @@
 ; CHECK-DAG: v_add_i32_e32 [[LO_OFF:v[0-9]+]], vcc, 0, [[BYTES]]
 
 ; CHECK: buffer_load_dword {{v[0-9]+}}, [[LO_OFF]], {{s\[[0-9]+:[0-9]+\]}}, {{s[0-9]+}} offen
+; CHECK: buffer_store_dword v{{[0-9]+}}, [[HI_BASE_FI]], {{s\[[0-9]+:[0-9]+\]}}, {{s[0-9]+}} offen offset:{{[0-9]+}}
 ; CHECK: buffer_load_dword {{v[0-9]+}}, [[HI_OFF]], {{s\[[0-9]+:[0-9]+\]}}, {{s[0-9]+}} offen
 define amdgpu_ps float @main(i32 %idx) {
 main_body:

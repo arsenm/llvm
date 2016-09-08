@@ -17,7 +17,7 @@ entry:
 ; GCN: buffer_store_dword v{{[0-9]+}}, off,
 ; GCN: v_mov_b32_e32 [[ZERO0:v[0-9]+]], 0{{$}}
 ; GCN: v_mov_b32_e32 [[VLDSPTR:v[0-9]+]], [[LDSPTR]]
-; GCN: ds_write_b32  [[VLDSPTR]], [[ZERO0]]
+; GCN: ds_write_b32  [[VLDSPTR]], [[ZERO]]
 define void @stored_fi_to_lds(float* addrspace(3)* %ptr) #0 {
   %tmp = alloca float
   store float 4.0, float *%tmp
@@ -28,15 +28,14 @@ define void @stored_fi_to_lds(float* addrspace(3)* %ptr) #0 {
 ; Offset is applied
 ; GCN-LABEL: {{^}}stored_fi_to_lds_2_small_objects:
 ; GCN-DAG: v_mov_b32_e32 [[ZERO:v[0-9]+]], 0{{$}}
+; GCN-DAG: v_mov_b32_e32 [[FI1:v[0-9]+]], 4{{$}}
 ; GCN-DAG: buffer_store_dword v{{[0-9]+}}, [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
-; GCN-DAG: buffer_store_dword v{{[0-9]+}}, [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:4{{$}}
+; GCN-DAG: buffer_store_dword v{{[0-9]+}}, [[FI1]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
 
 ; GCN-DAG: s_load_dword [[LDSPTR:s[0-9]+]]
 
 ; GCN-DAG: v_mov_b32_e32 [[VLDSPTR:v[0-9]+]], [[LDSPTR]]
 ; GCN: ds_write_b32  [[VLDSPTR]], [[ZERO]]
-
-; GCN-DAG: v_mov_b32_e32 [[FI1:v[0-9]+]], 4{{$}}
 ; GCN: ds_write_b32  [[VLDSPTR]], [[FI1]]
 define void @stored_fi_to_lds_2_small_objects(float* addrspace(3)* %ptr) #0 {
   %tmp0 = alloca float
@@ -70,10 +69,9 @@ define void @stored_fi_to_self() #0 {
 ; GCN: buffer_store_dword [[K0]], [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
 
 ; GCN-DAG: v_mov_b32_e32 [[K1:v[0-9]+]], 0x4d2{{$}}
-; GCN: buffer_store_dword [[K1]], [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:2048{{$}}
-
-; GCN: v_mov_b32_e32 [[OFFSETK:v[0-9]+]], 0x800{{$}}
-; GCN: buffer_store_dword [[OFFSETK]], [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:2048{{$}}
+; GCN-DAG: v_mov_b32_e32 [[OFFSETK:v[0-9]+]], 0x800{{$}}
+; GCN: buffer_store_dword [[K1]], [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
+; GCN: buffer_store_dword [[OFFSETK]], [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
 define void @stored_fi_to_self_offset() #0 {
   %tmp0 = alloca [512 x i32]
   %tmp1 = alloca i32*
@@ -90,16 +88,17 @@ define void @stored_fi_to_self_offset() #0 {
 }
 
 ; GCN-LABEL: {{^}}stored_fi_to_fi:
-; GCN: v_mov_b32_e32 [[ZERO:v[0-9]+]], 0{{$}}
-; GCN: buffer_store_dword v{{[0-9]+}}, [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
-; GCN: buffer_store_dword v{{[0-9]+}}, [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:4{{$}}
-; GCN: buffer_store_dword v{{[0-9]+}}, [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:8{{$}}
+; GCN-DAG: v_mov_b32_e32 [[ZERO:v[0-9]+]], 0{{$}}
+; GCN-DAG: v_mov_b32_e32 [[FI1:v[0-9]+]], 4{{$}}
 
-; GCN: v_mov_b32_e32 [[FI1:v[0-9]+]], 4{{$}}
-; GCN: buffer_store_dword [[FI1]], [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:8{{$}}
+; GCN-DAG: buffer_store_dword v{{[0-9]+}}, [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
+; GCN-AG: buffer_store_dword v{{[0-9]+}}, [[FI1]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
+; GCN-DAG: buffer_store_dword v{{[0-9]+}}, [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
 
 ; GCN: v_mov_b32_e32 [[FI2:v[0-9]+]], 8{{$}}
-; GCN: buffer_store_dword [[FI2]], [[ZERO]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:4{{$}}
+
+; GCN: buffer_store_dword [[FI1]], [[FI2]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
+; GCN: buffer_store_dword [[FI2]], [[FI1]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
 define void @stored_fi_to_fi() #0 {
   %tmp0 = alloca i32*
   %tmp1 = alloca i32*
@@ -129,14 +128,19 @@ define void @stored_fi_to_global(float* addrspace(1)* %ptr) #0 {
 
 ; Offset is applied
 ; GCN-LABEL: {{^}}stored_fi_to_global_2_small_objects:
-; GCN: buffer_store_dword v{{[0-9]+}}, v{{[0-9]+}}, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen
-; GCN: buffer_store_dword v{{[0-9]+}}, v{{[0-9]+}}, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen
-; GCN: buffer_store_dword v{{[0-9]+}}, v{{[0-9]+}}, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen
 
-; GCN: v_mov_b32_e32 [[FI1:v[0-9]+]], 4{{$}}
-; GCN: buffer_store_dword [[FI1]], off, s{{\[[0-9]+:[0-9]+\]}}, 0{{$}}
+; GCN: v_mov_b32_e32 [[FI0:v[0-9]+]], 0{{$}}
+; GCN: v_mov_b32_e32 [[ZERO:v[0-9]+]], 0{{$}}
 
+; GCN: buffer_store_dword [[ZERO]], [[FI0]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen
+
+; GCN-DAG: v_mov_b32_e32 [[FI1:v[0-9]+]], 4{{$}}
 ; GCN-DAG: v_mov_b32_e32 [[FI2:v[0-9]+]], 8{{$}}
+; GCN: buffer_store_dword [[ZERO]], [[FI1]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen
+; GCN: buffer_store_dword [[ZERO]], [[FI2]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen
+
+
+; GCN: buffer_store_dword [[FI1]], off, s{{\[[0-9]+:[0-9]+\]}}, 0{{$}}
 ; GCN: buffer_store_dword [[FI2]], off, s{{\[[0-9]+:[0-9]+\]}}, 0{{$}}
 define void @stored_fi_to_global_2_small_objects(float* addrspace(1)* %ptr) #0 {
   %tmp0 = alloca float
