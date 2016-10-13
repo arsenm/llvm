@@ -129,6 +129,7 @@ private:
   void replaceFrameIndices(MachineBasicBlock *BB, MachineFunction &Fn,
                            int &SPAdj);
   void insertPrologEpilogCode(MachineFunction &Fn);
+  void insertPrologEpilogCodePostFE(MachineFunction &Fn);
 };
 } // namespace
 
@@ -225,6 +226,8 @@ bool PEI::runOnMachineFunction(MachineFunction &Fn) {
       // Clear any vregs created by virtual scavenging.
       Fn.getRegInfo().clearVirtRegs();
   }
+
+  insertPrologEpilogCodePostFE(Fn);
 
   // Warn on stack size when we exceeds the given limit.
   MachineFrameInfo &MFI = Fn.getFrameInfo();
@@ -1002,6 +1005,13 @@ void PEI::insertPrologEpilogCode(MachineFunction &Fn) {
   if (Fn.getFunction()->getCallingConv() == CallingConv::HiPE)
     for (MachineBasicBlock *SaveBlock : SaveBlocks)
       TFI.adjustForHiPEPrologue(Fn, *SaveBlock);
+}
+
+void PEI::insertPrologEpilogCodePostFE(MachineFunction &Fn) {
+  const TargetFrameLowering &TFI = *Fn.getSubtarget().getFrameLowering();
+
+  for (MachineBasicBlock *SaveBlock : SaveBlocks)
+    TFI.emitProloguePostFE(Fn, *SaveBlock);
 }
 
 /// replaceFrameIndices - Replace all MO_FrameIndex operands with physical
