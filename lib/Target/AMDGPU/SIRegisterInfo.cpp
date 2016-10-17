@@ -687,6 +687,7 @@ bool SIRegisterInfo::spillSGPR(MachineBasicBlock::iterator MI,
         .addReg(MFI->getScratchWaveOffsetReg()) // soffset
         .addImm(i * 4)                          // offset
         .addMemOperand(MMO);
+      MFI->setHasSpilledVGPRs();
     }
   }
 
