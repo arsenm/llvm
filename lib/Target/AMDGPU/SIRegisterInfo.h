@@ -78,15 +78,21 @@ public:
   const TargetRegisterClass *getPointerRegClass(
     const MachineFunction &MF, unsigned Kind = 0) const override;
 
-  void spillSGPR(MachineBasicBlock::iterator MI,
-                 int FI, RegScavenger *RS) const;
+  /// If \p OnlyToVGPR is true, this will only succeed if this
+  bool spillSGPR(MachineBasicBlock::iterator MI,
+                 int FI, RegScavenger *RS,
+                 bool OnlyToVGPR = false) const;
 
-  void restoreSGPR(MachineBasicBlock::iterator MI,
-                   int FI, RegScavenger *RS) const;
+  bool restoreSGPR(MachineBasicBlock::iterator MI,
+                   int FI, RegScavenger *RS,
+                   bool OnlyToVGPR = false) const;
 
   void eliminateFrameIndex(MachineBasicBlock::iterator MI, int SPAdj,
                            unsigned FIOperandNum,
                            RegScavenger *RS) const override;
+
+  bool eliminateSGPRToVGPRSpillFrameIndex(MachineBasicBlock::iterator MI,
+                                          int FI, RegScavenger *RS) const;
 
   unsigned getHWRegIndex(unsigned Reg) const {
     return getEncodingValue(Reg) & 0xff;
