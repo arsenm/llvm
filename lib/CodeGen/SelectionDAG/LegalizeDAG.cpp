@@ -3008,15 +3008,37 @@ bool SelectionDAGLegalize::ExpandNode(SDNode *Node) {
   case ISD::VACOPY:
     Results.push_back(DAG.expandVACopy(Node));
     break;
-  case ISD::EXTRACT_VECTOR_ELT:
-    if (Node->getOperand(0).getValueType().getVectorNumElements() == 1)
+  case ISD::EXTRACT_VECTOR_ELT: {
+    SDValue Vec = Node->getOperand(0);
+    unsigned NElts = Vec.getValueType().getVectorNumElements();
+    if (NElts == 1) {
       // This must be an access of the only element.  Return it.
       Tmp1 = DAG.getNode(ISD::BITCAST, dl, Node->getValueType(0),
                          Node->getOperand(0));
-    else
+    } else if (NElts == 2 &&
+               !isa<ConstantSDNode>(Node->getOperand(1))) {
+      SDValue Idx = Node->getOperand(1);
+      // Only 0 or 1 is a valid index, turn into select of extracted elements.
+      EVT IdxVT = Idx.getValueType();
+      EVT SetCCVT = getSetCCResultType(IdxVT);
+      SDValue Zero = DAG.getConstant(0, dl, IdxVT);
+      SDValue One = DAG.getConstant(1, dl, IdxVT);
+
+      SDValue Cmp = DAG.getSetCC(dl, SetCCVT, Idx, Zero, ISD::SETEQ);
+
+      EVT EltVT = Node->getValueType(0);
+
+      SDValue Elt0 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, dl, EltVT, Vec, Zero);
+      SDValue Elt1 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, dl, EltVT, Vec, One);
+
+      Tmp1 = DAG.getNode(ISD::SELECT, dl, EltVT, Cmp, Elt0, Elt1);
+    } else {
       Tmp1 = ExpandExtractFromVectorThroughStack(SDValue(Node, 0));
+    }
+
     Results.push_back(Tmp1);
     break;
+  }
   case ISD::EXTRACT_SUBVECTOR:
     Results.push_back(ExpandExtractFromVectorThroughStack(SDValue(Node, 0)));
     break;
