@@ -617,14 +617,28 @@ template <unsigned N>
 void AMDGPUInstPrinter::printExpSrcN(const MCInst *MI, unsigned OpNo,
                                      const MCSubtargetInfo &STI,
                                      raw_ostream &O) {
-  int EnIdx = AMDGPU::getNamedOperandIdx(MI->getOpcode(), AMDGPU::OpName::en);
+  int Opc = MI->getOpcode();
+  int ComprIdx = AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::compr);
+  int EnIdx = AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::en);
   unsigned En = MI->getOperand(EnIdx).getImm();
+  unsigned Compr = MI->getOperand(ComprIdx).getImm();
+
 
   // FIXME: What do we do with compr? The meaning of en changes depending on if
   // compr is set.
+  int16_t OpIdx = static_cast<int16_t>(OpNo);
+  if (Compr) {
+    // print src0, src0, src1, src1
+    if (OpIdx == AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::src1)) {
+      OpIdx = AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::src0);
+    } else if (OpIdx == AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::src2) ||
+               OpIdx == AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::src3)) {
+      OpIdx = AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::src1);
+    }
+  }
 
   if (En & (1 << N))
-    printRegOperand(MI->getOperand(OpNo).getReg(), O, MRI);
+    printRegOperand(MI->getOperand(OpIdx).getReg(), O, MRI);
   else
     O << "off";
 }
