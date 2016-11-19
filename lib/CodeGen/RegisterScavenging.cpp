@@ -315,9 +315,10 @@ bool RegScavenger::isRegUsed(unsigned Reg, bool includeReserved) const {
   return false;
 }
 
-unsigned RegScavenger::FindUnusedReg(const TargetRegisterClass *RC) const {
+unsigned RegScavenger::FindUnusedReg(const TargetRegisterClass *RC,
+                                     bool IncludeReserved) const {
   for (unsigned Reg : *RC) {
-    if (!isRegUsed(Reg)) {
+    if (!isRegUsed(Reg, IncludeReserved)) {
       DEBUG(dbgs() << "Scavenger found unused reg: " << TRI->getName(Reg) <<
             "\n");
       return Reg;

@@ -128,7 +128,8 @@ public:
 
   /// Find an unused register of the specified register class.
   /// Return 0 if none is found.
-  unsigned FindUnusedReg(const TargetRegisterClass *RegClass) const;
+  unsigned FindUnusedReg(const TargetRegisterClass *RegClass,
+                         bool IncludeReserved = true) const;
 
   /// Add a scavenging frame index.
   void addScavengingFrameIndex(int FI) {
