@@ -508,6 +508,26 @@ void SIRegisterInfo::buildSpillLoadStore(MachineBasicBlock::iterator MI,
   }
 }
 
+/// Swap contents of \p X and \p Y without an intermediate.
+static void emitRegSwap(const SIInstrInfo *TII,
+                        MachineBasicBlock *MBB,
+                        MachineBasicBlock::iterator I,
+                        const DebugLoc &DL,
+                        unsigned X,
+                        unsigned Y) {
+
+  const MCInstrDesc &Xor = TII->get(AMDGPU::S_XOR_B32);
+  BuildMI(*MBB, I, DL, Xor, X)
+    .addReg(X)
+    .addReg(Y);
+  BuildMI(*MBB, I, DL, Xor, Y)
+    .addReg(X)
+    .addReg(Y);
+  BuildMI(*MBB, I, DL, Xor, X)
+    .addReg(X)
+    .addReg(Y);
+}
+
 void SIRegisterInfo::spillSGPR(MachineBasicBlock::iterator MI,
                                int Index,
                                RegScavenger *RS) const {
@@ -527,17 +547,30 @@ void SIRegisterInfo::spillSGPR(MachineBasicBlock::iterator MI,
 
   bool SpillToSMEM = ST.hasScalarStores() && EnableSpillSGPRToSMEM;
 
+  RS->setRegUsed(SuperReg);
   assert(SuperReg != AMDGPU::M0 && "m0 should never spill");
 
   const unsigned EltSize = 4;
   unsigned OffsetReg = AMDGPU::M0;
   unsigned M0CopyReg = AMDGPU::NoRegister;
+  unsigned BaseOffsetReg = MFI->getScratchWaveOffsetReg();
 
   if (SpillToSMEM) {
     if (RS->isRegUsed(AMDGPU::M0)) {
-      M0CopyReg = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
-      BuildMI(*MBB, MI, DL, TII->get(AMDGPU::COPY), M0CopyReg)
-        .addReg(AMDGPU::M0);
+      M0CopyReg = RS->FindUnusedReg(&AMDGPU::SReg_32_XM0RegClass, false);
+      assert(M0CopyReg != SuperReg);
+      if (M0CopyReg != AMDGPU::NoRegister) {
+        BuildMI(*MBB, MI, DL, TII->get(AMDGPU::COPY), M0CopyReg)
+          .addReg(AMDGPU::M0);
+      } else {
+        dbgs() << "Desperate scavenging\n";
+        // If there's no free registers, swap m0 and the scratch wave offset
+        // reg. Because of the restriction that the scalar buffer offset must be
+        // an immediate or m0, we won't need it. Swap with m0, and
+        // increment/decrement m0 to avoid needing the extra reg.
+        BaseOffsetReg = OffsetReg;
+        emitRegSwap(TII, MBB, MI, DL, AMDGPU::M0, BaseOffsetReg);
+      }
     }
   }
 
@@ -546,7 +579,7 @@ void SIRegisterInfo::spillSGPR(MachineBasicBlock::iterator MI,
   for (unsigned i = 0, e = NumSubRegs; i < e; ++i) {
     unsigned SubReg = NumSubRegs == 1 ?
       SuperReg : getSubReg(SuperReg, getSubRegFromChannel(i));
-
+    assert(!MRI.isReserved(SubReg));
     if (SpillToSMEM) {
       int64_t FrOffset = FrameInfo.getObjectOffset(Index);
       unsigned Align = FrameInfo.getObjectAlignment(Index);
@@ -633,7 +666,17 @@ void SIRegisterInfo::spillSGPR(MachineBasicBlock::iterator MI,
   if (M0CopyReg != AMDGPU::NoRegister) {
     BuildMI(*MBB, MI, DL, TII->get(AMDGPU::COPY), AMDGPU::M0)
       .addReg(M0CopyReg, RegState::Kill);
+  } else if (BaseOffsetReg == OffsetReg) {
+    int64_t FrOffset = FrameInfo.getObjectOffset(Index);
+    int64_t FinalOffset = ST.getWavefrontSize() * FrOffset +
+      4 * (NumSubRegs - 1) * ST.getWavefrontSize();
+    BuildMI(*MBB, MI, DL, TII->get(AMDGPU::S_SUB_U32), OffsetReg)
+      .addReg(OffsetReg)
+      .addImm(FinalOffset);
+
+    emitRegSwap(TII, MBB, MI, DL, AMDGPU::M0, OffsetReg);
   }
+
 
   MI->eraseFromParent();
   MFI->addToSpilledSGPRs(NumSubRegs);
@@ -659,12 +702,26 @@ void SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI,
 
   unsigned OffsetReg = AMDGPU::M0;
   unsigned M0CopyReg = AMDGPU::NoRegister;
+  unsigned BaseOffsetReg = MFI->getScratchWaveOffsetReg();
+  bool ReuseOffsetReg = false;
+
+  RS->setRegUsed(SuperReg);
 
   if (SpillToSMEM) {
     if (RS->isRegUsed(AMDGPU::M0)) {
-      M0CopyReg = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
-      BuildMI(*MBB, MI, DL, TII->get(AMDGPU::COPY), M0CopyReg)
-        .addReg(AMDGPU::M0);
+      M0CopyReg = RS->FindUnusedReg(&AMDGPU::SReg_32_XM0RegClass, false);
+      assert(M0CopyReg != SuperReg);
+      if (M0CopyReg != AMDGPU::NoRegister) {
+        BuildMI(*MBB, MI, DL, TII->get(AMDGPU::COPY), M0CopyReg)
+          .addReg(AMDGPU::M0);
+      } else {
+        // If there's no free registers, swap m0 and the scratch wave offset
+        // reg. Because of the restriction that the scalar buffer offset must be
+        // an immediate or m0, we won't need it. Swap with m0, and
+        // increment/decrement m0 to avoid needing the extra reg.
+        BaseOffsetReg = OffsetReg;
+        emitRegSwap(TII, MBB, MI, DL, AMDGPU::M0, BaseOffsetReg);
+      }
     }
   }
 
@@ -676,6 +733,7 @@ void SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI,
   for (unsigned i = 0, e = NumSubRegs; i < e; ++i) {
     unsigned SubReg = NumSubRegs == 1 ?
       SuperReg : getSubReg(SuperReg, getSubRegFromChannel(i));
+    assert(!MRI.isReserved(SubReg));
 
     if (SpillToSMEM) {
       unsigned Align = FrameInfo.getObjectAlignment(Index);
@@ -685,15 +743,26 @@ void SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI,
         = MF->getMachineMemOperand(PtrInfo, MachineMemOperand::MOLoad,
                                    EltSize, MinAlign(Align, EltSize * i));
 
-      // Add i * 4 offset
-      int64_t Offset = ST.getWavefrontSize() * (FrOffset + 4 * i);
+      int64_t Offset;
+      if (BaseOffsetReg == OffsetReg) {
+        if (i == 0)
+          Offset = ST.getWavefrontSize() * FrOffset + (4 * i) * ST.getWavefrontSize();
+        else
+          Offset = 4 * i * ST.getWavefrontSize();
+      } else {
+        // Add i * 4 offset
+        Offset = ST.getWavefrontSize() * (FrOffset + 4 * i);
+      }
+
       if (Offset != 0) {
         BuildMI(*MBB, MI, DL, TII->get(AMDGPU::S_ADD_U32), OffsetReg)
-          .addReg(MFI->getScratchWaveOffsetReg())
+          .addReg(BaseOffsetReg)
           .addImm(Offset);
       } else {
-        BuildMI(*MBB, MI, DL, TII->get(AMDGPU::S_MOV_B32), OffsetReg)
-          .addReg(MFI->getScratchWaveOffsetReg());
+        if (BaseOffsetReg != OffsetReg){
+          BuildMI(*MBB, MI, DL, TII->get(AMDGPU::S_MOV_B32), OffsetReg)
+            .addReg(BaseOffsetReg);
+        }
       }
 
       auto MIB =
@@ -753,6 +822,14 @@ void SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI,
   if (M0CopyReg != AMDGPU::NoRegister) {
     BuildMI(*MBB, MI, DL, TII->get(AMDGPU::COPY), AMDGPU::M0)
       .addReg(M0CopyReg, RegState::Kill);
+  } else if (BaseOffsetReg == OffsetReg) {
+    int64_t FinalOffset = ST.getWavefrontSize() * FrOffset +
+      4 * (NumSubRegs - 1) * ST.getWavefrontSize();
+    BuildMI(*MBB, MI, DL, TII->get(AMDGPU::S_SUB_U32), OffsetReg)
+      .addReg(OffsetReg)
+      .addImm(FinalOffset);
+
+    emitRegSwap(TII, MBB, MI, DL, AMDGPU::M0, OffsetReg);
   }
 
   MI->eraseFromParent();
