@@ -472,6 +472,10 @@ public:
   // assumes that it will.
   bool isLiteralConstantLike(const MachineOperand &MO, unsigned OpSize) const;
 
+  /// \returns true if the object \p FI has already had its offset determined to
+  /// be a valid inline immediate value.
+  bool isFrameIndexPreAllocInlineImm(const MachineFrameInfo &MFI, int FI) const;
+
   bool isImmOperandLegal(const MachineInstr &MI, unsigned OpNo,
                          const MachineOperand &MO) const;
 
