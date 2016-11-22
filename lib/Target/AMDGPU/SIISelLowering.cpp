@@ -1735,6 +1735,35 @@ MachineBasicBlock *SITargetLowering::EmitInstrWithCustomInserter(
   }
 
   switch (MI.getOpcode()) {
+  case AMDGPU::SI_DEFAULT_BUFFER_RSRC: {
+    const SIInstrInfo *TII = getSubtarget()->getInstrInfo();
+    const SIRegisterInfo &TRI = TII->getRegisterInfo();
+    MachineRegisterInfo &MRI = BB->getParent()->getRegInfo();
+
+    unsigned Sub2 = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
+    unsigned Sub3 = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
+    unsigned SrcPtrReg = MI.getOperand(1).getReg();
+    uint64_t RSrc = TII->getDefaultRsrcDataFormat();
+    const DebugLoc &DL = MI.getDebugLoc();
+
+    BuildMI(*BB, MI, DL, TII->get(AMDGPU::S_MOV_B32), Sub2)
+      .addImm(Lo_32(RSrc));
+    BuildMI(*BB, MI, DL, TII->get(AMDGPU::S_MOV_B32), Sub3)
+      .addImm(Hi_32(RSrc));
+
+    unsigned DstReg = MI.getOperand(0).getReg();
+    BuildMI(*BB, MI, DL, TII->get(AMDGPU::REG_SEQUENCE), DstReg)
+      .addReg(SrcPtrReg, 0, AMDGPU::sub0)
+      .addImm(AMDGPU::sub0)
+      .addReg(SrcPtrReg, 0, AMDGPU::sub1)
+      .addImm(AMDGPU::sub1)
+      .addReg(Sub2)
+      .addImm(AMDGPU::sub2)
+      .addReg(Sub3)
+      .addImm(AMDGPU::sub3);
+    MI.eraseFromParent();
+    return BB;
+  }
   case AMDGPU::SI_INIT_M0: {
     BuildMI(*BB, MI.getIterator(), MI.getDebugLoc(),
             TII->get(AMDGPU::S_MOV_B32), AMDGPU::M0)

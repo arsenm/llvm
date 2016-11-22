@@ -270,6 +270,14 @@ def SI_INIT_M0 : SPseudoInstSI <(outs), (ins SSrc_b32:$src)> {
   let isReMaterializable = 1;
 }
 
+// Take pointer and wrap in default resource descriptor.
+def SI_DEFAULT_BUFFER_RSRC : SPseudoInstSI <
+  (outs VS_128:$sdst), (ins VS_64:$src0)> {
+  let isReMaterializable = 1;
+  let SchedRW = [WriteSALU];
+  let usesCustomInserter = 1;
+}
+
 def SI_RETURN : SPseudoInstSI <
   (outs), (ins variable_ops), [(AMDGPUreturn)]> {
   let isTerminator = 1;

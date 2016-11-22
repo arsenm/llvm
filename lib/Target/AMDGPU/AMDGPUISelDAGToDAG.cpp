@@ -1046,8 +1046,6 @@ bool AMDGPUDAGToDAGISel::SelectMUBUFOffset(SDValue Addr, SDValue &SRsrc,
                                            SDValue &GLC, SDValue &SLC,
                                            SDValue &TFE) const {
   SDValue Ptr, VAddr, Offen, Idxen, Addr64;
-  const SIInstrInfo *TII =
-    static_cast<const SIInstrInfo *>(Subtarget->getInstrInfo());
 
   if (!SelectMUBUF(Addr, Ptr, VAddr, SOffset, Offset, Offen, Idxen, Addr64,
               GLC, SLC, TFE))
@@ -1056,14 +1054,8 @@ bool AMDGPUDAGToDAGISel::SelectMUBUFOffset(SDValue Addr, SDValue &SRsrc,
   if (!cast<ConstantSDNode>(Offen)->getSExtValue() &&
       !cast<ConstantSDNode>(Idxen)->getSExtValue() &&
       !cast<ConstantSDNode>(Addr64)->getSExtValue()) {
-    uint64_t Rsrc = TII->getDefaultRsrcDataFormat() |
-                    APInt::getAllOnesValue(32).getZExtValue(); // Size
-    SDLoc DL(Addr);
-
-    const SITargetLowering& Lowering =
-      *static_cast<const SITargetLowering*>(getTargetLowering());
-
-    SRsrc = SDValue(Lowering.buildRSRC(*CurDAG, DL, Ptr, 0, Rsrc), 0);
+    SRsrc = SDValue(CurDAG->getMachineNode(AMDGPU::SI_DEFAULT_BUFFER_RSRC,
+                                           SDLoc(Addr), MVT::v4i32, Addr), 0);
     return true;
   }
   return false;

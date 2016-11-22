@@ -2579,6 +2579,30 @@ void SIInstrInfo::legalizeGenericOperand(MachineBasicBlock &InsertMBB,
     FoldImmediate(*Copy, *Def, OpReg, &MRI);
 }
 
+static unsigned offsetToFlatOpcode(unsigned Opc) {
+  switch (Opc) {
+  case AMDGPU::BUFFER_LOAD_DWORD_OFFSET:
+    return AMDGPU::FLAT_LOAD_DWORD;
+  case AMDGPU::BUFFER_LOAD_DWORDX2_OFFSET:
+    return AMDGPU::FLAT_LOAD_DWORDX2;
+  case AMDGPU::BUFFER_LOAD_DWORDX3_OFFSET:
+    return AMDGPU::FLAT_LOAD_DWORDX3;
+  case AMDGPU::BUFFER_LOAD_DWORDX4_OFFSET:
+    return AMDGPU::FLAT_LOAD_DWORDX4;
+  case AMDGPU::BUFFER_STORE_DWORD_OFFSET:
+    return AMDGPU::FLAT_STORE_DWORD;
+  case AMDGPU::BUFFER_STORE_DWORDX2_OFFSET:
+    return AMDGPU::FLAT_STORE_DWORDX2;
+  case AMDGPU::BUFFER_STORE_DWORDX3_OFFSET:
+    return AMDGPU::FLAT_STORE_DWORDX3;
+  case AMDGPU::BUFFER_STORE_DWORDX4_OFFSET:
+    return AMDGPU::FLAT_STORE_DWORDX4;
+  default:
+    llvm_unreachable("unhandled buffer opcode");
+  }
+
+}
+
 void SIInstrInfo::legalizeOperands(MachineInstr &MI) const {
   MachineFunction &MF = *MI.getParent()->getParent();
   MachineRegisterInfo &MRI = MF.getRegInfo();
@@ -2792,80 +2816,163 @@ void SIInstrInfo::legalizeOperands(MachineInstr &MI) const {
     } else {
       // This instructions is the _OFFSET variant, so we need to convert it to
       // ADDR64.
-      assert(MBB.getParent()->getSubtarget<SISubtarget>().getGeneration()
-             < SISubtarget::VOLCANIC_ISLANDS &&
-             "FIXME: Need to emit flat atomics here");
+      if (MBB.getParent()->getSubtarget<SISubtarget>().hasAddr64()) {
+        MachineOperand *VData = getNamedOperand(MI, AMDGPU::OpName::vdata);
+        MachineOperand *Offset = getNamedOperand(MI, AMDGPU::OpName::offset);
+        MachineOperand *SOffset = getNamedOperand(MI, AMDGPU::OpName::soffset);
+        unsigned Addr64Opcode = AMDGPU::getAddr64Inst(MI.getOpcode());
 
-      MachineOperand *VData = getNamedOperand(MI, AMDGPU::OpName::vdata);
-      MachineOperand *Offset = getNamedOperand(MI, AMDGPU::OpName::offset);
-      MachineOperand *SOffset = getNamedOperand(MI, AMDGPU::OpName::soffset);
-      unsigned Addr64Opcode = AMDGPU::getAddr64Inst(MI.getOpcode());
+        // Atomics rith return have have an additional tied operand and are
+        // missing some of the special bits.
+        MachineOperand *VDataIn = getNamedOperand(MI, AMDGPU::OpName::vdata_in);
+        MachineInstr *Addr64;
 
-      // Atomics rith return have have an additional tied operand and are
-      // missing some of the special bits.
-      MachineOperand *VDataIn = getNamedOperand(MI, AMDGPU::OpName::vdata_in);
-      MachineInstr *Addr64;
-
-      if (!VDataIn) {
-        // Regular buffer load / store.
-        MachineInstrBuilder MIB =
+        if (!VDataIn) {
+          // Regular buffer load / store.
+          MachineInstrBuilder MIB =
             BuildMI(MBB, MI, MI.getDebugLoc(), get(Addr64Opcode))
-                .addOperand(*VData)
-                .addReg(AMDGPU::NoRegister) // Dummy value for vaddr.
-                // This will be replaced later
-                // with the new value of vaddr.
-                .addOperand(*SRsrc)
-                .addOperand(*SOffset)
-                .addOperand(*Offset);
+            .addOperand(*VData)
+            .addReg(AMDGPU::NoRegister) // Dummy value for vaddr.
+            // This will be replaced later
+            // with the new value of vaddr.
+            .addOperand(*SRsrc)
+            .addOperand(*SOffset)
+            .addOperand(*Offset);
 
-        // Atomics do not have this operand.
-        if (const MachineOperand *GLC =
-                getNamedOperand(MI, AMDGPU::OpName::glc)) {
-          MIB.addImm(GLC->getImm());
+          // Atomics do not have this operand.
+          if (const MachineOperand *GLC
+                = getNamedOperand(MI, AMDGPU::OpName::glc)) {
+            MIB.addImm(GLC->getImm());
+          }
+
+          MIB.addImm(getNamedImmOperand(MI, AMDGPU::OpName::slc));
+
+          if (const MachineOperand *TFE =
+              getNamedOperand(MI, AMDGPU::OpName::tfe)) {
+            MIB.addImm(TFE->getImm());
+          }
+
+          MIB.setMemRefs(MI.memoperands_begin(), MI.memoperands_end());
+          Addr64 = MIB;
+        } else {
+          // Atomics with return.
+          Addr64 = BuildMI(MBB, MI, MI.getDebugLoc(), get(Addr64Opcode))
+            .addOperand(*VData)
+            .addOperand(*VDataIn)
+            .addReg(AMDGPU::NoRegister) // Dummy value for vaddr.
+            // This will be replaced later
+            // with the new value of vaddr.
+            .addOperand(*SRsrc)
+            .addOperand(*SOffset)
+            .addOperand(*Offset)
+            .addImm(getNamedImmOperand(MI, AMDGPU::OpName::slc))
+            .setMemRefs(MI.memoperands_begin(), MI.memoperands_end());
         }
 
-        MIB.addImm(getNamedImmOperand(MI, AMDGPU::OpName::slc));
+        MI.removeFromParent();
 
-        if (const MachineOperand *TFE =
-                getNamedOperand(MI, AMDGPU::OpName::tfe)) {
-          MIB.addImm(TFE->getImm());
-        }
-
-        MIB.setMemRefs(MI.memoperands_begin(), MI.memoperands_end());
-        Addr64 = MIB;
-      } else {
-        // Atomics with return.
-        Addr64 = BuildMI(MBB, MI, MI.getDebugLoc(), get(Addr64Opcode))
-                     .addOperand(*VData)
-                     .addOperand(*VDataIn)
-                     .addReg(AMDGPU::NoRegister) // Dummy value for vaddr.
-                     // This will be replaced later
-                     // with the new value of vaddr.
-                     .addOperand(*SRsrc)
-                     .addOperand(*SOffset)
-                     .addOperand(*Offset)
-                     .addImm(getNamedImmOperand(MI, AMDGPU::OpName::slc))
-                     .setMemRefs(MI.memoperands_begin(), MI.memoperands_end());
-      }
-
-      MI.removeFromParent();
-
-      // NewVaddr = {NewVaddrHi, NewVaddrLo}
-      BuildMI(MBB, Addr64, Addr64->getDebugLoc(), get(AMDGPU::REG_SEQUENCE),
-              NewVAddr)
+        // NewVaddr = {NewVaddrHi, NewVaddrLo}
+        BuildMI(MBB, Addr64, Addr64->getDebugLoc(), get(AMDGPU::REG_SEQUENCE),
+                NewVAddr)
           .addReg(SRsrcPtr, 0, AMDGPU::sub0)
           .addImm(AMDGPU::sub0)
           .addReg(SRsrcPtr, 0, AMDGPU::sub1)
           .addImm(AMDGPU::sub1);
 
-      VAddr = getNamedOperand(*Addr64, AMDGPU::OpName::vaddr);
-      SRsrc = getNamedOperand(*Addr64, AMDGPU::OpName::srsrc);
-    }
+        VAddr = getNamedOperand(*Addr64, AMDGPU::OpName::vaddr);
+        SRsrc = getNamedOperand(*Addr64, AMDGPU::OpName::srsrc);
+      } else {
+        // Assumes that enable tid bit is not set in the resource descriptor.
+        const MachineOperand *Srsrc = getNamedOperand(MI, AMDGPU::OpName::srsrc);
+        const MachineInstr *RsrcDef = MRI.getVRegDef(Srsrc->getReg());
+        assert(RsrcDef->getOpcode() == AMDGPU::SI_DEFAULT_BUFFER_RSRC &&
+               "unhandled unknown resource descriptor");
+        MachineOperand *VData = getNamedOperand(MI, AMDGPU::OpName::vdata);
+        MachineOperand *Offset = getNamedOperand(MI, AMDGPU::OpName::offset);
+        MachineOperand *SOffset = getNamedOperand(MI, AMDGPU::OpName::soffset);
 
-    // Update the instruction to use NewVaddr
-    VAddr->setReg(NewVAddr);
-    // Update the instruction to use NewSRsrc
-    SRsrc->setReg(NewSRsrc);
+        assert(SOffset != Offset);
+
+        // emit expansion as srsrc:sub0_sub1 + soffset + offset
+        unsigned BasePtrReg = RsrcDef->getOperand(1).getReg();
+
+        unsigned NewVAddrLo = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
+        unsigned NewVAddrHi = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
+
+        unsigned FlatOpc = offsetToFlatOpcode(MI.getOpcode());
+
+        const DebugLoc &DL = MI.getDebugLoc();
+
+        MRI.clearKillFlags(BasePtrReg);
+        // + soffset
+        if (SOffset->isReg()) {
+          BuildMI(MBB, MI, DL, get(AMDGPU::V_ADD_I32_e32), NewVAddrLo)
+            .addOperand(*SOffset)
+            .addReg(BasePtrReg, 0, AMDGPU::sub0);
+
+          BuildMI(MBB, MI, DL, get(AMDGPU::V_ADDC_U32_e32), NewVAddrHi)
+            .addImm(0)
+            .addReg(BasePtrReg, 0, AMDGPU::sub1);
+
+        } else {
+          assert(SOffset->isImm() && SOffset->getImm() == 0);
+
+          BuildMI(MBB, MI, DL, get(AMDGPU::COPY), NewVAddrLo)
+            .addReg(BasePtrReg, 0, AMDGPU::sub0);
+          BuildMI(MBB, MI, DL, get(AMDGPU::COPY), NewVAddrHi)
+            .addReg(BasePtrReg, 0, AMDGPU::sub1);
+        }
+
+        // + offset
+        if (Offset->getImm() != 0) {
+          unsigned TmpLo = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
+          unsigned TmpHi = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
+
+          BuildMI(MBB, MI, DL, get(AMDGPU::V_ADD_I32_e32), TmpLo)
+            .addImm(Offset->getImm())
+            .addReg(NewVAddrLo);
+
+          BuildMI(MBB, MI, DL, get(AMDGPU::V_ADDC_U32_e32), TmpHi)
+            .addImm(0)
+            .addReg(NewVAddrHi);
+
+
+          NewVAddrLo = TmpLo;
+          NewVAddrHi = TmpHi;
+        }
+
+        // NewVaddr = {NewVaddrHi, NewVaddrLo}
+        BuildMI(MBB, MI, MI.getDebugLoc(), get(AMDGPU::REG_SEQUENCE), NewVAddr)
+          .addReg(NewVAddrLo)
+          .addImm(AMDGPU::sub0)
+          .addReg(NewVAddrHi)
+          .addImm(AMDGPU::sub1);
+        if (MI.mayLoad()) {
+          BuildMI(MBB, MI, MI.getDebugLoc(), get(FlatOpc), VData->getReg())
+            .addReg(NewVAddr)
+            .addOperand(*getNamedOperand(MI, AMDGPU::OpName::glc))
+            .addOperand(*getNamedOperand(MI, AMDGPU::OpName::slc))
+            .addOperand(*getNamedOperand(MI, AMDGPU::OpName::tfe))
+            .setMemRefs(MI.memoperands_begin(), MI.memoperands_end());
+        } else {
+          BuildMI(MBB, MI, MI.getDebugLoc(), get(FlatOpc))
+            .addReg(NewVAddr)
+            .addOperand(*VData)
+            .addOperand(*getNamedOperand(MI, AMDGPU::OpName::glc))
+            .addOperand(*getNamedOperand(MI, AMDGPU::OpName::slc))
+            .addOperand(*getNamedOperand(MI, AMDGPU::OpName::tfe))
+            .setMemRefs(MI.memoperands_begin(), MI.memoperands_end());
+        }
+
+        MI.eraseFromParent();
+        return;
+      }
+
+      // Update the instruction to use NewVaddr
+      VAddr->setReg(NewVAddr);
+      // Update the instruction to use NewSRsrc
+      SRsrc->setReg(NewSRsrc);
+    }
   }
 }
 
@@ -2885,6 +2992,10 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     switch (Opcode) {
     default:
       break;
+    case AMDGPU::SI_DEFAULT_BUFFER_RSRC: {
+      addUsersToMoveToVALUWorklist(Inst.getOperand(0).getReg(), MRI, Worklist);
+      continue;
+    }
     case AMDGPU::S_AND_B64:
       splitScalar64BitBinaryOp(Worklist, Inst, AMDGPU::V_AND_B32_e64);
       Inst.eraseFromParent();

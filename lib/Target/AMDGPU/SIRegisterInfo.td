@@ -375,6 +375,10 @@ def VS_64 : RegisterClass<"AMDGPU", [i64, f64], 32, (add VReg_64, SReg_64)> {
   let isAllocatable = 0;
 }
 
+def VS_128 : RegisterClass<"AMDGPU", [v4i32], 32, (add VReg_128, SReg_128)> {
+  let isAllocatable = 0;
+}
+
 //===----------------------------------------------------------------------===//
 //  Register operands
 //===----------------------------------------------------------------------===//
