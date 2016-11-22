@@ -54,9 +54,12 @@ public:
     AU.setPreservesAll();
  }
 
+  bool isClobberedInFunction(LoadInst *Load);
+
   void visitBranchInst(BranchInst &I);
   void visitLoadInst(LoadInst &I);
-  bool isClobberedInFunction(LoadInst * Load);
+  void visitStoreInst(StoreInst &I);
+  void visitAtomicRMWInst(AtomicRMWInst &I);
 };
 
 } // End anonymous namespace
@@ -163,6 +166,24 @@ void AMDGPUAnnotateUniformValues::visitLoadInst(LoadInst &I) {
     if (NotClobbered)
       setNoClobberMetadata(PtrI);
   }
+}
+
+void AMDGPUAnnotateUniformValues::visitStoreInst(StoreInst &I) {
+  Value *Ptr = I.getPointerOperand();
+  if (!DA->isUniform(Ptr))
+    return;
+
+  if (Instruction *PtrI = dyn_cast<Instruction>(Ptr))
+    setUniformMetadata(PtrI);
+}
+
+void AMDGPUAnnotateUniformValues::visitAtomicRMWInst(AtomicRMWInst &I) {
+  Value *Ptr = I.getPointerOperand();
+  if (!DA->isUniform(Ptr))
+    return;
+
+  if (Instruction *PtrI = dyn_cast<Instruction>(Ptr))
+    setUniformMetadata(PtrI);
 }
 
 bool AMDGPUAnnotateUniformValues::doInitialization(Module &M) {
