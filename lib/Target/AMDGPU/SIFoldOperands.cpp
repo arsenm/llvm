@@ -279,7 +279,7 @@ static void foldOperand(MachineOperand &OpToFold, MachineInstr *UseMI,
   }
 
 
-  bool FoldingImm = OpToFold.isImm() || OpToFold.isFI();
+  bool FoldingImm = OpToFold.isImm();
 
   // In order to fold immediates into copies, we need to change the
   // copy to a MOV.
@@ -306,7 +306,7 @@ static void foldOperand(MachineOperand &OpToFold, MachineInstr *UseMI,
       return;
   }
 
-  if (!OpToFold.isImm()) {
+  if (!FoldingImm) {
     tryAddToFoldList(FoldList, UseMI, UseOpIdx, &OpToFold, TII);
 
     // FIXME: We could try to change the instruction from 64-bit to 32-bit
@@ -490,8 +490,6 @@ bool SIFoldOperands::runOnMachineFunction(MachineFunction &MF) {
   const SISubtarget &ST = MF.getSubtarget<SISubtarget>();
 
   MachineRegisterInfo &MRI = MF.getRegInfo();
-  const MachineFrameInfo &MFI = MF.getFrameInfo();
-
   const SIInstrInfo *TII = ST.getInstrInfo();
   const SIRegisterInfo &TRI = TII->getRegisterInfo();
 
@@ -562,9 +560,7 @@ bool SIFoldOperands::runOnMachineFunction(MachineFunction &MF) {
              Use != E; ++Use) {
           MachineInstr *UseMI = Use->getParent();
 
-          if ((OpToFold.isImm() && TII->isInlineConstant(OpToFold, OpSize)) ||
-              (OpToFold.isFI() &&
-               TII->isFrameIndexPreAllocInlineImm(MFI, OpToFold.getIndex()))) {
+          if (TII->isInlineConstant(OpToFold, OpSize)) {
             foldOperand(OpToFold, UseMI, Use.getOperandNo(), FoldList,
                         CopiesToReplace, TII, TRI, MRI);
           } else {

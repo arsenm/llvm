@@ -1748,27 +1748,6 @@ static bool compareMachineOp(const MachineOperand &Op0,
   }
 }
 
-bool SIInstrInfo::isFrameIndexPreAllocInlineImm(const MachineFrameInfo &MFI,
-                                                int FI) const {
-  // Check if LocalStackSlotAllocation has already determined the offset for
-  // this frame index.
-  if (!MFI.getUseLocalStackAllocationBlock() || !MFI.isObjectPreAllocated(FI))
-    return false;
-
-  for (int I = 0, E = MFI.getLocalFrameObjectCount(); I != E; ++I) {
-    int ObjFI;
-    int64_t ObjOffset;
-    std::tie(ObjFI, ObjOffset) = MFI.getLocalFrameObjectMap(I);
-    if (ObjFI == FI) {
-      assert(isUInt<32>(ObjOffset));
-      dbgs() << "Found FI#" << FI << " at offset " << ObjOffset << '\n';
-      return isInlineConstant(APInt(32, ObjOffset));
-    }
-  }
-
-  return false;
-}
-
 bool SIInstrInfo::isImmOperandLegal(const MachineInstr &MI, unsigned OpNo,
                                     const MachineOperand &MO) const {
   const MCOperandInfo &OpInfo = get(MI.getOpcode()).OpInfo[OpNo];
@@ -1781,21 +1760,9 @@ bool SIInstrInfo::isImmOperandLegal(const MachineInstr &MI, unsigned OpNo,
   if (OpInfo.RegClass < 0)
     return false;
 
-  if (MO.isFI()) {
-    assert(AMDGPU::getRegBitWidth(OpInfo.RegClass) == 32);
-
-    if (RI.opCanUseInlineConstant(OpInfo.OperandType) &&
-        isFrameIndexPreAllocInlineImm(MI.getParent()->getParent()->getFrameInfo(),
-                                      MO.getIndex()))
-      return true;
-
+  unsigned OpSize = RI.getRegClass(OpInfo.RegClass)->getSize();
+  if (isLiteralConstant(MO, OpSize))
     return RI.opCanUseLiteralConstant(OpInfo.OperandType);
-  }
-
-  unsigned OpSize = AMDGPU::getRegBitWidth(OpInfo.RegClass) / 8;
-  if (isLiteralConstant(MO, OpSize)) {
-    return RI.opCanUseLiteralConstant(OpInfo.OperandType);
-  }
 
   return RI.opCanUseInlineConstant(OpInfo.OperandType);
 }
