@@ -7113,6 +7113,18 @@ SDValue DAGCombiner::visitSIGN_EXTEND_INREG(SDNode *N) {
   if (N0.isUndef())
     return DAG.getUNDEF(VT);
 
+#if 1
+  if (N0.getOpcode() == ISD::SHL) {
+    // sign_extend_inreg (shl x, 15), i16 -> sra i16, 15
+    if (auto ShiftAmt = dyn_cast<ConstantSDNode>(N0.getOperand(1))) {
+      if (EVTBits == ShiftAmt->getZExtValue() + 1) {
+        AddUsersToWorklist(N);
+        return DAG.getNode(ISD::SRA, SDLoc(N), VT, N0, SDValue(ShiftAmt, 0));
+      }
+    }
+  }
+#endif
+
   // fold (sext_in_reg c1) -> c1
   if (DAG.isConstantIntBuildVectorOrConstantInt(N0))
     return DAG.getNode(ISD::SIGN_EXTEND_INREG, SDLoc(N), VT, N0, N1);
