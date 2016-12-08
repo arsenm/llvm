@@ -194,6 +194,34 @@ bool AMDGPUCodeGenPrepare::needsPromotionToI32(const Type *T) const {
   return needsPromotionToI32(cast<VectorType>(T)->getElementType());
 }
 
+// Return true if the op promoted to i32 should have nsw set.
+static bool promotedOpIsNSW(const Instruction &I) {
+  switch (I.getOpcode()) {
+  case Instruction::Shl:
+  case Instruction::Add:
+  case Instruction::Sub:
+    return true;
+  case Instruction::Mul:
+    return I.hasNoUnsignedWrap();
+  default:
+    return false;
+  }
+}
+
+// Return true if the op promoted to i32 should have nuw set.
+static bool promotedOpIsNUW(const Instruction &I) {
+  switch (I.getOpcode()) {
+  case Instruction::Shl:
+  case Instruction::Add:
+  case Instruction::Mul:
+    return true;
+  case Instruction::Sub:
+    return I.hasNoUnsignedWrap();
+  default:
+    return false;
+  }
+}
+
 bool AMDGPUCodeGenPrepare::promoteUniformOpToI32(BinaryOperator &I) const {
   assert(needsPromotionToI32(I.getType()) &&
          "I does not need promotion to i32");
@@ -218,7 +246,19 @@ bool AMDGPUCodeGenPrepare::promoteUniformOpToI32(BinaryOperator &I) const {
     ExtOp0 = Builder.CreateZExt(I.getOperand(0), I32Ty);
     ExtOp1 = Builder.CreateZExt(I.getOperand(1), I32Ty);
   }
-  ExtRes = copyFlags(I, Builder.CreateBinOp(I.getOpcode(), ExtOp0, ExtOp1));
+
+  ExtRes = Builder.CreateBinOp(I.getOpcode(), ExtOp0, ExtOp1);
+  if (Instruction *Inst = dyn_cast<Instruction>(ExtRes)) {
+    if (promotedOpIsNSW(cast<Instruction>(I)))
+      Inst->setHasNoSignedWrap();
+
+    if (promotedOpIsNUW(cast<Instruction>(I)))
+      Inst->setHasNoUnsignedWrap();
+
+    if (const auto *ExactOp = dyn_cast<PossiblyExactOperator>(&I))
+      Inst->setIsExact(ExactOp->isExact());
+  }
+
   TruncRes = Builder.CreateTrunc(ExtRes, I.getType());
 
   I.replaceAllUsesWith(TruncRes);
