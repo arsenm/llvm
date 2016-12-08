@@ -591,7 +591,11 @@ bool AMDGPUTargetLowering::isTruncateFree(EVT Source, EVT Dest) const {
   unsigned SrcSize = Source.getSizeInBits();
   unsigned DestSize = Dest.getSizeInBits();
 
-  return DestSize < SrcSize && DestSize % 32 == 0 ;
+  if (DestSize == 16 && Subtarget->has16BitInsts())
+    return SrcSize >= 16;
+
+  // XXX - Is the < SrcSize check really necessary?
+  return DestSize < SrcSize && DestSize % 32 == 0;
 }
 
 bool AMDGPUTargetLowering::isTruncateFree(Type *Source, Type *Dest) const {
@@ -600,7 +604,7 @@ bool AMDGPUTargetLowering::isTruncateFree(Type *Source, Type *Dest) const {
   unsigned SrcSize = Source->getScalarSizeInBits();
   unsigned DestSize = Dest->getScalarSizeInBits();
 
-  if (DestSize== 16 && Subtarget->has16BitInsts())
+  if (DestSize == 16 && Subtarget->has16BitInsts())
     return SrcSize >= 32;
 
   return DestSize < SrcSize && DestSize % 32 == 0;
