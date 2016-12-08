@@ -1,4 +1,5 @@
-; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=SI -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=SI -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -mcpu=tonga -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=VI -check-prefix=FUNC %s
 ; RUN: llc -march=r600 -mcpu=cypress -verify-machineinstrs < %s | FileCheck -check-prefix=EG -check-prefix=FUNC %s
 
 declare i32 @llvm.AMDGPU.imax(i32, i32) nounwind readnone
@@ -6,10 +7,10 @@ declare i32 @llvm.r600.read.tidig.x() nounwind readnone
 
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i1_i32:
-; SI: s_load_dword [[ARG:s[0-9]+]],
-; SI: s_bfe_i32 [[SEXTRACT:s[0-9]+]], [[ARG]], 0x10000
-; SI: v_mov_b32_e32 [[EXTRACT:v[0-9]+]], [[SEXTRACT]]
-; SI: buffer_store_dword [[EXTRACT]],
+; GCN: s_load_dword [[ARG:s[0-9]+]],
+; GCN: s_bfe_i32 [[SEXTRACT:s[0-9]+]], [[ARG]], 0x10000
+; GCN: v_mov_b32_e32 [[EXTRACT:v[0-9]+]], [[SEXTRACT]]
+; GCN: buffer_store_dword [[EXTRACT]],
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+\.[XYZW]]], [[ADDR:T[0-9]+.[XYZW]]]
 ; EG: LSHR * [[ADDR]]
@@ -22,10 +23,10 @@ define void @sext_in_reg_i1_i32(i32 addrspace(1)* %out, i32 %in) {
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i8_to_i32:
-; SI: s_add_i32 [[VAL:s[0-9]+]],
-; SI: s_sext_i32_i8 [[EXTRACT:s[0-9]+]], [[VAL]]
-; SI: v_mov_b32_e32 [[VEXTRACT:v[0-9]+]], [[EXTRACT]]
-; SI: buffer_store_dword [[VEXTRACT]],
+; GCN: s_add_i32 [[VAL:s[0-9]+]],
+; GCN: s_sext_i32_i8 [[EXTRACT:s[0-9]+]], [[VAL]]
+; GCN: v_mov_b32_e32 [[VEXTRACT:v[0-9]+]], [[EXTRACT]]
+; GCN: buffer_store_dword [[VEXTRACT]],
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+\.[XYZW]]], [[ADDR:T[0-9]+.[XYZW]]]
 ; EG: ADD_INT
@@ -40,10 +41,10 @@ define void @sext_in_reg_i8_to_i32(i32 addrspace(1)* %out, i32 %a, i32 %b) nounw
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i16_to_i32:
-; SI: s_add_i32 [[VAL:s[0-9]+]],
-; SI: s_sext_i32_i16 [[EXTRACT:s[0-9]+]], [[VAL]]
-; SI: v_mov_b32_e32 [[VEXTRACT:v[0-9]+]], [[EXTRACT]]
-; SI: buffer_store_dword [[VEXTRACT]],
+; GCN: s_add_i32 [[VAL:s[0-9]+]],
+; GCN: s_sext_i32_i16 [[EXTRACT:s[0-9]+]], [[VAL]]
+; GCN: v_mov_b32_e32 [[VEXTRACT:v[0-9]+]], [[EXTRACT]]
+; GCN: buffer_store_dword [[VEXTRACT]],
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+\.[XYZW]]], [[ADDR:T[0-9]+.[XYZW]]]
 ; EG: ADD_INT
@@ -58,10 +59,10 @@ define void @sext_in_reg_i16_to_i32(i32 addrspace(1)* %out, i32 %a, i32 %b) noun
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i8_to_v1i32:
-; SI: s_add_i32 [[VAL:s[0-9]+]],
-; SI: s_sext_i32_i8 [[EXTRACT:s[0-9]+]], [[VAL]]
-; SI: v_mov_b32_e32 [[VEXTRACT:v[0-9]+]], [[EXTRACT]]
-; SI: buffer_store_dword [[VEXTRACT]],
+; GCN: s_add_i32 [[VAL:s[0-9]+]],
+; GCN: s_sext_i32_i8 [[EXTRACT:s[0-9]+]], [[VAL]]
+; GCN: v_mov_b32_e32 [[VEXTRACT:v[0-9]+]], [[EXTRACT]]
+; GCN: buffer_store_dword [[VEXTRACT]],
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+\.[XYZW]]], [[ADDR:T[0-9]+.[XYZW]]]
 ; EG: ADD_INT
@@ -76,11 +77,11 @@ define void @sext_in_reg_i8_to_v1i32(<1 x i32> addrspace(1)* %out, <1 x i32> %a,
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i1_to_i64:
-; SI: s_lshl_b64 [[VAL:s\[[0-9]+:[0-9]+\]]]
-; SI-DAG: s_bfe_i64 s{{\[}}[[SLO:[0-9]+]]:[[SHI:[0-9]+]]{{\]}}, [[VAL]], 0x10000
-; SI-DAG: v_mov_b32_e32 v[[VLO:[0-9]+]], s[[SLO]]
-; SI-DAG: v_mov_b32_e32 v[[VHI:[0-9]+]], s[[SHI]]
-; SI: buffer_store_dwordx2 v{{\[}}[[VLO]]:[[VHI]]{{\]}}
+; GCN: s_lshl_b64 [[VAL:s\[[0-9]+:[0-9]+\]]]
+; GCN-DAG: s_bfe_i64 s{{\[}}[[SLO:[0-9]+]]:[[SHI:[0-9]+]]{{\]}}, [[VAL]], 0x10000
+; GCN-DAG: v_mov_b32_e32 v[[VLO:[0-9]+]], s[[SLO]]
+; GCN-DAG: v_mov_b32_e32 v[[VHI:[0-9]+]], s[[SHI]]
+; GCN: buffer_store_dwordx2 v{{\[}}[[VLO]]:[[VHI]]{{\]}}
 define void @sext_in_reg_i1_to_i64(i64 addrspace(1)* %out, i64 %a, i64 %b) nounwind {
   %c = shl i64 %a, %b
   %shl = shl i64 %c, 63
@@ -90,11 +91,11 @@ define void @sext_in_reg_i1_to_i64(i64 addrspace(1)* %out, i64 %a, i64 %b) nounw
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i8_to_i64:
-; SI: s_lshl_b64 [[VAL:s\[[0-9]+:[0-9]+\]]]
-; SI-DAG: s_bfe_i64 s{{\[}}[[SLO:[0-9]+]]:[[SHI:[0-9]+]]{{\]}}, [[VAL]], 0x80000
-; SI-DAG: v_mov_b32_e32 v[[VLO:[0-9]+]], s[[SLO]]
-; SI-DAG: v_mov_b32_e32 v[[VHI:[0-9]+]], s[[SHI]]
-; SI: buffer_store_dwordx2 v{{\[}}[[VLO]]:[[VHI]]{{\]}}
+; GCN: s_lshl_b64 [[VAL:s\[[0-9]+:[0-9]+\]]]
+; GCN-DAG: s_bfe_i64 s{{\[}}[[SLO:[0-9]+]]:[[SHI:[0-9]+]]{{\]}}, [[VAL]], 0x80000
+; GCN-DAG: v_mov_b32_e32 v[[VLO:[0-9]+]], s[[SLO]]
+; GCN-DAG: v_mov_b32_e32 v[[VHI:[0-9]+]], s[[SHI]]
+; GCN: buffer_store_dwordx2 v{{\[}}[[VLO]]:[[VHI]]{{\]}}
 define void @sext_in_reg_i8_to_i64(i64 addrspace(1)* %out, i64 %a, i64 %b) nounwind {
   %c = shl i64 %a, %b
   %shl = shl i64 %c, 56
@@ -104,11 +105,11 @@ define void @sext_in_reg_i8_to_i64(i64 addrspace(1)* %out, i64 %a, i64 %b) nounw
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i16_to_i64:
-; SI: s_lshl_b64 [[VAL:s\[[0-9]+:[0-9]+\]]]
-; SI-DAG: s_bfe_i64 s{{\[}}[[SLO:[0-9]+]]:[[SHI:[0-9]+]]{{\]}}, [[VAL]], 0x100000
-; SI-DAG: v_mov_b32_e32 v[[VLO:[0-9]+]], s[[SLO]]
-; SI-DAG: v_mov_b32_e32 v[[VHI:[0-9]+]], s[[SHI]]
-; SI: buffer_store_dwordx2 v{{\[}}[[VLO]]:[[VHI]]{{\]}}
+; GCN: s_lshl_b64 [[VAL:s\[[0-9]+:[0-9]+\]]]
+; GCN-DAG: s_bfe_i64 s{{\[}}[[SLO:[0-9]+]]:[[SHI:[0-9]+]]{{\]}}, [[VAL]], 0x100000
+; GCN-DAG: v_mov_b32_e32 v[[VLO:[0-9]+]], s[[SLO]]
+; GCN-DAG: v_mov_b32_e32 v[[VHI:[0-9]+]], s[[SHI]]
+; GCN: buffer_store_dwordx2 v{{\[}}[[VLO]]:[[VHI]]{{\]}}
 
 define void @sext_in_reg_i16_to_i64(i64 addrspace(1)* %out, i64 %a, i64 %b) nounwind {
   %c = shl i64 %a, %b
@@ -119,11 +120,11 @@ define void @sext_in_reg_i16_to_i64(i64 addrspace(1)* %out, i64 %a, i64 %b) noun
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i32_to_i64:
-; SI: s_lshl_b64 [[VAL:s\[[0-9]+:[0-9]+\]]]
-; SI-DAG: s_bfe_i64 s{{\[}}[[SLO:[0-9]+]]:[[SHI:[0-9]+]]{{\]}}, [[VAL]], 0x200000
-; SI-DAG: v_mov_b32_e32 v[[VLO:[0-9]+]], s[[SLO]]
-; SI-DAG: v_mov_b32_e32 v[[VHI:[0-9]+]], s[[SHI]]
-; SI: buffer_store_dwordx2 v{{\[}}[[VLO]]:[[VHI]]{{\]}}
+; GCN: s_lshl_b64 [[VAL:s\[[0-9]+:[0-9]+\]]]
+; GCN-DAG: s_bfe_i64 s{{\[}}[[SLO:[0-9]+]]:[[SHI:[0-9]+]]{{\]}}, [[VAL]], 0x200000
+; GCN-DAG: v_mov_b32_e32 v[[VLO:[0-9]+]], s[[SLO]]
+; GCN-DAG: v_mov_b32_e32 v[[VHI:[0-9]+]], s[[SHI]]
+; GCN: buffer_store_dwordx2 v{{\[}}[[VLO]]:[[VHI]]{{\]}}
 define void @sext_in_reg_i32_to_i64(i64 addrspace(1)* %out, i64 %a, i64 %b) nounwind {
   %c = shl i64 %a, %b
   %shl = shl i64 %c, 32
@@ -134,9 +135,9 @@ define void @sext_in_reg_i32_to_i64(i64 addrspace(1)* %out, i64 %a, i64 %b) noun
 
 ; This is broken on Evergreen for some reason related to the <1 x i64> kernel arguments.
 ; XFUNC-LABEL: {{^}}sext_in_reg_i8_to_v1i64:
-; XSI: s_bfe_i32 [[EXTRACT:s[0-9]+]], {{s[0-9]+}}, 524288
-; XSI: s_ashr_i32 {{v[0-9]+}}, [[EXTRACT]], 31
-; XSI: buffer_store_dword
+; XGCN: s_bfe_i32 [[EXTRACT:s[0-9]+]], {{s[0-9]+}}, 524288
+; XGCN: s_ashr_i32 {{v[0-9]+}}, [[EXTRACT]], 31
+; XGCN: buffer_store_dword
 ; XEG: BFE_INT
 ; XEG: ASHR
 ; define void @sext_in_reg_i8_to_v1i64(<1 x i64> addrspace(1)* %out, <1 x i64> %a, <1 x i64> %b) nounwind {
@@ -150,9 +151,15 @@ define void @sext_in_reg_i32_to_i64(i64 addrspace(1)* %out, i64 %a, i64 %b) noun
 ; FUNC-LABEL: {{^}}v_sext_in_reg_i1_to_i64:
 ; SI: buffer_load_dwordx2
 ; SI: v_lshl_b64 v{{\[}}[[VAL_LO:[0-9]+]]:[[VAL_HI:[0-9]+]]{{\]}}
-; SI: v_bfe_i32 v[[LO:[0-9]+]], v[[VAL_LO]], 0, 1
-; SI: v_ashrrev_i32_e32 v[[HI:[0-9]+]], 31, v[[LO]]
+
+; VI: flat_load_dwordx2
+; VI: v_lshlrev_b64 v{{\[}}[[VAL_LO:[0-9]+]]:[[VAL_HI:[0-9]+]]{{\]}}
+
+; GCN: v_bfe_i32 v[[LO:[0-9]+]], v[[VAL_LO]], 0, 1
+; GCN: v_ashrrev_i32_e32 v[[HI:[0-9]+]], 31, v[[LO]]
+
 ; SI: buffer_store_dwordx2 v{{\[}}[[LO]]:[[HI]]{{\]}}
+; VI: flat_store_dwordx2 v{{\[[0-9]+:[0-9]+\]}}, v{{\[}}[[LO]]:[[HI]]{{\]}}
 define void @v_sext_in_reg_i1_to_i64(i64 addrspace(1)* %out, i64 addrspace(1)* %aptr, i64 addrspace(1)* %bptr) nounwind {
   %tid = call i32 @llvm.r600.read.tidig.x()
   %a.gep = getelementptr i64, i64 addrspace(1)* %aptr, i32 %tid
@@ -171,9 +178,15 @@ define void @v_sext_in_reg_i1_to_i64(i64 addrspace(1)* %out, i64 addrspace(1)* %
 ; FUNC-LABEL: {{^}}v_sext_in_reg_i8_to_i64:
 ; SI: buffer_load_dwordx2
 ; SI: v_lshl_b64 v{{\[}}[[VAL_LO:[0-9]+]]:[[VAL_HI:[0-9]+]]{{\]}}
-; SI: v_bfe_i32 v[[LO:[0-9]+]], v[[VAL_LO]], 0, 8
-; SI: v_ashrrev_i32_e32 v[[HI:[0-9]+]], 31, v[[LO]]
+
+; VI: flat_load_dwordx2
+; VI: v_lshlrev_b64 v{{\[}}[[VAL_LO:[0-9]+]]:[[VAL_HI:[0-9]+]]{{\]}}
+
+; GCN: v_bfe_i32 v[[LO:[0-9]+]], v[[VAL_LO]], 0, 8
+; GCN: v_ashrrev_i32_e32 v[[HI:[0-9]+]], 31, v[[LO]]
+
 ; SI: buffer_store_dwordx2 v{{\[}}[[LO]]:[[HI]]{{\]}}
+; VI: flat_store_dwordx2 v{{\[[0-9]+:[0-9]+\]}}, v{{\[}}[[LO]]:[[HI]]{{\]}}
 define void @v_sext_in_reg_i8_to_i64(i64 addrspace(1)* %out, i64 addrspace(1)* %aptr, i64 addrspace(1)* %bptr) nounwind {
   %tid = call i32 @llvm.r600.read.tidig.x()
   %a.gep = getelementptr i64, i64 addrspace(1)* %aptr, i32 %tid
@@ -192,9 +205,15 @@ define void @v_sext_in_reg_i8_to_i64(i64 addrspace(1)* %out, i64 addrspace(1)* %
 ; FUNC-LABEL: {{^}}v_sext_in_reg_i16_to_i64:
 ; SI: buffer_load_dwordx2
 ; SI: v_lshl_b64 v{{\[}}[[VAL_LO:[0-9]+]]:[[VAL_HI:[0-9]+]]{{\]}}
-; SI: v_bfe_i32 v[[LO:[0-9]+]], v[[VAL_LO]], 0, 16
-; SI: v_ashrrev_i32_e32 v[[HI:[0-9]+]], 31, v[[LO]]
+
+; VI: flat_load_dwordx2
+; VI: v_lshlrev_b64 v{{\[}}[[VAL_LO:[0-9]+]]:[[VAL_HI:[0-9]+]]{{\]}}
+
+; GCN: v_bfe_i32 v[[LO:[0-9]+]], v[[VAL_LO]], 0, 16
+; GCN: v_ashrrev_i32_e32 v[[HI:[0-9]+]], 31, v[[LO]]
+
 ; SI: buffer_store_dwordx2 v{{\[}}[[LO]]:[[HI]]{{\]}}
+; VI: flat_store_dwordx2 v{{\[[0-9]+:[0-9]+\]}}, v{{\[}}[[LO]]:[[HI]]{{\]}}
 define void @v_sext_in_reg_i16_to_i64(i64 addrspace(1)* %out, i64 addrspace(1)* %aptr, i64 addrspace(1)* %bptr) nounwind {
   %tid = call i32 @llvm.r600.read.tidig.x()
   %a.gep = getelementptr i64, i64 addrspace(1)* %aptr, i32 %tid
@@ -213,8 +232,12 @@ define void @v_sext_in_reg_i16_to_i64(i64 addrspace(1)* %out, i64 addrspace(1)* 
 ; FUNC-LABEL: {{^}}v_sext_in_reg_i32_to_i64:
 ; SI: buffer_load_dwordx2
 ; SI: v_lshl_b64 v{{\[}}[[LO:[0-9]+]]:[[HI:[0-9]+]]{{\]}},
-; SI: v_ashrrev_i32_e32 v[[SHR:[0-9]+]], 31, v[[LO]]
-; SI: buffer_store_dwordx2 v{{\[}}[[LO]]:[[SHR]]{{\]}}
+
+; VI: flat_load_dwordx2
+; VI: v_lshlrev_b64 v{{\[}}[[LO:[0-9]+]]:[[HI:[0-9]+]]{{\]}},
+
+; GCN: v_ashrrev_i32_e32 v[[SHR:[0-9]+]], 31, v[[LO]]
+; VI: flat_store_dwordx2 v{{\[[0-9]+:[0-9]+\]}}, v{{\[}}[[LO]]:[[SHR]]{{\]}}
 define void @v_sext_in_reg_i32_to_i64(i64 addrspace(1)* %out, i64 addrspace(1)* %aptr, i64 addrspace(1)* %bptr) nounwind {
   %tid = call i32 @llvm.r600.read.tidig.x()
   %a.gep = getelementptr i64, i64 addrspace(1)* %aptr, i32 %tid
@@ -231,9 +254,9 @@ define void @v_sext_in_reg_i32_to_i64(i64 addrspace(1)* %out, i64 addrspace(1)* 
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i1_in_i32_other_amount:
-; SI-NOT: s_lshl
-; SI-NOT: s_ashr
-; SI: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x190001
+; GCN-NOT: s_lshl
+; GCN-NOT: s_ashr
+; GCN: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x190001
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+\.[XYZW]]], [[ADDR:T[0-9]+.[XYZW]]]
 ; EG-NOT: BFE
@@ -250,11 +273,11 @@ define void @sext_in_reg_i1_in_i32_other_amount(i32 addrspace(1)* %out, i32 %a, 
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_v2i1_in_v2i32_other_amount:
-; SI-NOT: s_lshl
-; SI-NOT: s_ashr
-; SI-DAG: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x190001
-; SI-DAG: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x190001
-; SI: s_endpgm
+; GCN-NOT: s_lshl
+; GCN-NOT: s_ashr
+; GCN-DAG: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x190001
+; GCN-DAG: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x190001
+; GCN: s_endpgm
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+]]{{\.[XYZW][XYZW]}}, [[ADDR:T[0-9]+.[XYZW]]]
 ; EG-NOT: BFE
@@ -274,9 +297,9 @@ define void @sext_in_reg_v2i1_in_v2i32_other_amount(<2 x i32> addrspace(1)* %out
 
 
 ; FUNC-LABEL: {{^}}sext_in_reg_v2i1_to_v2i32:
-; SI: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
-; SI: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
-; SI: buffer_store_dwordx2
+; GCN: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
+; GCN: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
+; GCN: buffer_store_dwordx2
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+]]{{\.[XYZW][XYZW]}}, [[ADDR:T[0-9]+.[XYZW]]]
 ; EG: BFE_INT [[RES]]
@@ -291,11 +314,11 @@ define void @sext_in_reg_v2i1_to_v2i32(<2 x i32> addrspace(1)* %out, <2 x i32> %
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_v4i1_to_v4i32:
-; SI: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
-; SI: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
-; SI: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
-; SI: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
-; SI: buffer_store_dwordx4
+; GCN: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
+; GCN: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
+; GCN: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
+; GCN: s_bfe_i32 {{s[0-9]+}}, {{s[0-9]+}}, 0x10000
+; GCN: buffer_store_dwordx4
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+]]{{\.[XYZW][XYZW][XYZW][XYZW]}}, [[ADDR:T[0-9]+.[XYZW]]]
 ; EG: BFE_INT [[RES]]
@@ -312,9 +335,9 @@ define void @sext_in_reg_v4i1_to_v4i32(<4 x i32> addrspace(1)* %out, <4 x i32> %
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_v2i8_to_v2i32:
-; SI: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
-; SI: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
-; SI: buffer_store_dwordx2
+; GCN: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
+; GCN: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
+; GCN: buffer_store_dwordx2
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+]]{{\.[XYZW][XYZW]}}, [[ADDR:T[0-9]+.[XYZW]]]
 ; EG: BFE_INT [[RES]]
@@ -329,11 +352,11 @@ define void @sext_in_reg_v2i8_to_v2i32(<2 x i32> addrspace(1)* %out, <2 x i32> %
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_v4i8_to_v4i32:
-; SI: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
-; SI: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
-; SI: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
-; SI: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
-; SI: buffer_store_dwordx4
+; GCN: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
+; GCN: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
+; GCN: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
+; GCN: s_sext_i32_i8 {{s[0-9]+}}, {{s[0-9]+}}
+; GCN: buffer_store_dwordx4
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+]]{{\.[XYZW][XYZW][XYZW][XYZW]}}, [[ADDR:T[0-9]+.[XYZW]]]
 ; EG: BFE_INT [[RES]]
@@ -350,9 +373,9 @@ define void @sext_in_reg_v4i8_to_v4i32(<4 x i32> addrspace(1)* %out, <4 x i32> %
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_v2i16_to_v2i32:
-; SI: s_sext_i32_i16 {{s[0-9]+}}, {{s[0-9]+}}
-; SI: s_sext_i32_i16 {{s[0-9]+}}, {{s[0-9]+}}
-; SI: buffer_store_dwordx2
+; GCN: s_sext_i32_i16 {{s[0-9]+}}, {{s[0-9]+}}
+; GCN: s_sext_i32_i16 {{s[0-9]+}}, {{s[0-9]+}}
+; GCN: buffer_store_dwordx2
 
 ; EG: MEM_{{.*}} STORE_{{.*}} [[RES:T[0-9]+]]{{\.[XYZW][XYZW]}}, [[ADDR:T[0-9]+.[XYZW]]]
 ; EG: BFE_INT [[RES]]
@@ -391,10 +414,10 @@ define void @testcase_3(i8 addrspace(1)* %out, i8 %a) nounwind {
 }
 
 ; FUNC-LABEL: {{^}}vgpr_sext_in_reg_v4i8_to_v4i32:
-; SI: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 8
-; SI: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 8
-; SI: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 8
-; SI: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 8
+; GCN: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 8
+; GCN: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 8
+; GCN: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 8
+; GCN: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 8
 define void @vgpr_sext_in_reg_v4i8_to_v4i32(<4 x i32> addrspace(1)* %out, <4 x i32> addrspace(1)* %a, <4 x i32> addrspace(1)* %b) nounwind {
   %loada = load <4 x i32>, <4 x i32> addrspace(1)* %a, align 16
   %loadb = load <4 x i32>, <4 x i32> addrspace(1)* %b, align 16
@@ -406,8 +429,8 @@ define void @vgpr_sext_in_reg_v4i8_to_v4i32(<4 x i32> addrspace(1)* %out, <4 x i
 }
 
 ; FUNC-LABEL: {{^}}vgpr_sext_in_reg_v4i16_to_v4i32:
-; SI: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 16
-; SI: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 16
+; GCN: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 16
+; GCN: v_bfe_i32 [[EXTRACT:v[0-9]+]], {{v[0-9]+}}, 0, 16
 define void @vgpr_sext_in_reg_v4i16_to_v4i32(<4 x i32> addrspace(1)* %out, <4 x i32> addrspace(1)* %a, <4 x i32> addrspace(1)* %b) nounwind {
   %loada = load <4 x i32>, <4 x i32> addrspace(1)* %a, align 16
   %loadb = load <4 x i32>, <4 x i32> addrspace(1)* %b, align 16
@@ -419,10 +442,10 @@ define void @vgpr_sext_in_reg_v4i16_to_v4i32(<4 x i32> addrspace(1)* %out, <4 x 
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_to_illegal_type:
-; SI: buffer_load_sbyte
-; SI: v_max_i32
-; SI-NOT: bfe
-; SI: buffer_store_short
+; GCN: buffer_load_sbyte
+; GCN: v_max_i32
+; GCN-NOT: bfe
+; GCN: buffer_store_short
 define void @sext_in_reg_to_illegal_type(i16 addrspace(1)* nocapture %out, i8 addrspace(1)* nocapture %src) nounwind {
   %tmp5 = load i8, i8 addrspace(1)* %src, align 1
   %tmp2 = sext i8 %tmp5 to i32
@@ -437,8 +460,8 @@ define void @sext_in_reg_to_illegal_type(i16 addrspace(1)* nocapture %out, i8 ad
 declare i32 @llvm.AMDGPU.bfe.i32(i32, i32, i32) nounwind readnone
 
 ; FUNC-LABEL: {{^}}bfe_0_width:
-; SI-NOT: {{[^@]}}bfe
-; SI: s_endpgm
+; GCN-NOT: {{[^@]}}bfe
+; GCN: s_endpgm
 define void @bfe_0_width(i32 addrspace(1)* %out, i32 addrspace(1)* %ptr) nounwind {
   %load = load i32, i32 addrspace(1)* %ptr, align 4
   %bfe = call i32 @llvm.AMDGPU.bfe.i32(i32 %load, i32 8, i32 0) nounwind readnone
@@ -447,9 +470,9 @@ define void @bfe_0_width(i32 addrspace(1)* %out, i32 addrspace(1)* %ptr) nounwin
 }
 
 ; FUNC-LABEL: {{^}}bfe_8_bfe_8:
-; SI: v_bfe_i32
-; SI-NOT: {{[^@]}}bfe
-; SI: s_endpgm
+; GCN: v_bfe_i32
+; GCN-NOT: {{[^@]}}bfe
+; GCN: s_endpgm
 define void @bfe_8_bfe_8(i32 addrspace(1)* %out, i32 addrspace(1)* %ptr) nounwind {
   %load = load i32, i32 addrspace(1)* %ptr, align 4
   %bfe0 = call i32 @llvm.AMDGPU.bfe.i32(i32 %load, i32 0, i32 8) nounwind readnone
@@ -459,8 +482,8 @@ define void @bfe_8_bfe_8(i32 addrspace(1)* %out, i32 addrspace(1)* %ptr) nounwin
 }
 
 ; FUNC-LABEL: {{^}}bfe_8_bfe_16:
-; SI: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 0, 8
-; SI: s_endpgm
+; GCN: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 0, 8
+; GCN: s_endpgm
 define void @bfe_8_bfe_16(i32 addrspace(1)* %out, i32 addrspace(1)* %ptr) nounwind {
   %load = load i32, i32 addrspace(1)* %ptr, align 4
   %bfe0 = call i32 @llvm.AMDGPU.bfe.i32(i32 %load, i32 0, i32 8) nounwind readnone
@@ -471,9 +494,9 @@ define void @bfe_8_bfe_16(i32 addrspace(1)* %out, i32 addrspace(1)* %ptr) nounwi
 
 ; This really should be folded into 1
 ; FUNC-LABEL: {{^}}bfe_16_bfe_8:
-; SI: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 0, 8
-; SI-NOT: {{[^@]}}bfe
-; SI: s_endpgm
+; GCN: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 0, 8
+; GCN-NOT: {{[^@]}}bfe
+; GCN: s_endpgm
 define void @bfe_16_bfe_8(i32 addrspace(1)* %out, i32 addrspace(1)* %ptr) nounwind {
   %load = load i32, i32 addrspace(1)* %ptr, align 4
   %bfe0 = call i32 @llvm.AMDGPU.bfe.i32(i32 %load, i32 0, i32 16) nounwind readnone
@@ -484,9 +507,9 @@ define void @bfe_16_bfe_8(i32 addrspace(1)* %out, i32 addrspace(1)* %ptr) nounwi
 
 ; Make sure there isn't a redundant BFE
 ; FUNC-LABEL: {{^}}sext_in_reg_i8_to_i32_bfe:
-; SI: s_sext_i32_i8 s{{[0-9]+}}, s{{[0-9]+}}
-; SI-NOT: {{[^@]}}bfe
-; SI: s_endpgm
+; GCN: s_sext_i32_i8 s{{[0-9]+}}, s{{[0-9]+}}
+; GCN-NOT: {{[^@]}}bfe
+; GCN: s_endpgm
 define void @sext_in_reg_i8_to_i32_bfe(i32 addrspace(1)* %out, i32 %a, i32 %b) nounwind {
   %c = add i32 %a, %b ; add to prevent folding into extload
   %bfe = call i32 @llvm.AMDGPU.bfe.i32(i32 %c, i32 0, i32 8) nounwind readnone
@@ -507,9 +530,9 @@ define void @sext_in_reg_i8_to_i32_bfe_wrong(i32 addrspace(1)* %out, i32 %a, i32
 }
 
 ; FUNC-LABEL: {{^}}sextload_i8_to_i32_bfe:
-; SI: buffer_load_sbyte
-; SI-NOT: {{[^@]}}bfe
-; SI: s_endpgm
+; GCN: buffer_load_sbyte
+; GCN-NOT: {{[^@]}}bfe
+; GCN: s_endpgm
 define void @sextload_i8_to_i32_bfe(i32 addrspace(1)* %out, i8 addrspace(1)* %ptr) nounwind {
   %load = load i8, i8 addrspace(1)* %ptr, align 1
   %sext = sext i8 %load to i32
@@ -520,10 +543,10 @@ define void @sextload_i8_to_i32_bfe(i32 addrspace(1)* %out, i8 addrspace(1)* %pt
   ret void
 }
 
-; SI: .text
+; GCN: .text
 ; FUNC-LABEL: {{^}}sextload_i8_to_i32_bfe_0:{{.*$}}
-; SI-NOT: {{[^@]}}bfe
-; SI: s_endpgm
+; GCN-NOT: {{[^@]}}bfe
+; GCN: s_endpgm
 define void @sextload_i8_to_i32_bfe_0(i32 addrspace(1)* %out, i8 addrspace(1)* %ptr) nounwind {
   %load = load i8, i8 addrspace(1)* %ptr, align 1
   %sext = sext i8 %load to i32
@@ -535,10 +558,10 @@ define void @sextload_i8_to_i32_bfe_0(i32 addrspace(1)* %out, i8 addrspace(1)* %
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i1_bfe_offset_0:
-; SI-NOT: shr
-; SI-NOT: shl
-; SI: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 0, 1
-; SI: s_endpgm
+; GCN-NOT: shr
+; GCN-NOT: shl
+; GCN: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 0, 1
+; GCN: s_endpgm
 define void @sext_in_reg_i1_bfe_offset_0(i32 addrspace(1)* %out, i32 addrspace(1)* %in) nounwind {
   %x = load i32, i32 addrspace(1)* %in, align 4
   %shl = shl i32 %x, 31
@@ -549,11 +572,11 @@ define void @sext_in_reg_i1_bfe_offset_0(i32 addrspace(1)* %out, i32 addrspace(1
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i1_bfe_offset_1:
-; SI: buffer_load_dword
-; SI-NOT: shl
-; SI-NOT: shr
-; SI: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 1, 1
-; SI: s_endpgm
+; GCN: buffer_load_dword
+; GCN-NOT: shl
+; GCN-NOT: shr
+; GCN: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 1, 1
+; GCN: s_endpgm
 define void @sext_in_reg_i1_bfe_offset_1(i32 addrspace(1)* %out, i32 addrspace(1)* %in) nounwind {
   %x = load i32, i32 addrspace(1)* %in, align 4
   %shl = shl i32 %x, 30
@@ -564,12 +587,12 @@ define void @sext_in_reg_i1_bfe_offset_1(i32 addrspace(1)* %out, i32 addrspace(1
 }
 
 ; FUNC-LABEL: {{^}}sext_in_reg_i2_bfe_offset_1:
-; SI: buffer_load_dword
-; SI-NOT: v_lshl
-; SI-NOT: v_ashr
-; SI: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 0, 2
-; SI: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 1, 2
-; SI: s_endpgm
+; GCN: buffer_load_dword
+; GCN-NOT: v_lshl
+; GCN-NOT: v_ashr
+; GCN: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 0, 2
+; GCN: v_bfe_i32 v{{[0-9]+}}, v{{[0-9]+}}, 1, 2
+; GCN: s_endpgm
 define void @sext_in_reg_i2_bfe_offset_1(i32 addrspace(1)* %out, i32 addrspace(1)* %in) nounwind {
   %x = load i32, i32 addrspace(1)* %in, align 4
   %shl = shl i32 %x, 30
@@ -584,11 +607,16 @@ define void @sext_in_reg_i2_bfe_offset_1(i32 addrspace(1)* %out, i32 addrspace(1
 ; FUNC-LABEL: {{^}}v_sext_in_reg_i1_to_i64_move_use:
 ; SI: buffer_load_dwordx2
 ; SI: v_lshl_b64 v{{\[}}[[VAL_LO:[0-9]+]]:[[VAL_HI:[0-9]+]]{{\]}}
-; SI-DAG: v_bfe_i32 v[[LO:[0-9]+]], v[[VAL_LO]], 0, 1
-; SI-DAG: v_ashrrev_i32_e32 v[[HI:[0-9]+]], 31, v[[LO]]
-; SI-DAG: v_and_b32_e32 v[[RESULT_LO:[0-9]+]], s{{[0-9]+}}, v[[LO]]
-; SI-DAG: v_and_b32_e32 v[[RESULT_HI:[0-9]+]], s{{[0-9]+}}, v[[HI]]
+
+; VI: flat_load_dwordx2
+; VI: v_lshlrev_b64 v{{\[}}[[VAL_LO:[0-9]+]]:[[VAL_HI:[0-9]+]]{{\]}}
+
+; GCN-DAG: v_bfe_i32 v[[LO:[0-9]+]], v[[VAL_LO]], 0, 1
+; GCN-DAG: v_ashrrev_i32_e32 v[[HI:[0-9]+]], 31, v[[LO]]
+; GCN-DAG: v_and_b32_e32 v[[RESULT_LO:[0-9]+]], s{{[0-9]+}}, v[[LO]]
+; GCN-DAG: v_and_b32_e32 v[[RESULT_HI:[0-9]+]], s{{[0-9]+}}, v[[HI]]
 ; SI: buffer_store_dwordx2 v{{\[}}[[RESULT_LO]]:[[RESULT_HI]]{{\]}}
+; VI: flat_store_dwordx2 v{{\[[0-9]+:[0-9]+\]}}, v{{\[}}[[RESULT_LO]]:[[RESULT_HI]]{{\]}}
 define void @v_sext_in_reg_i1_to_i64_move_use(i64 addrspace(1)* %out, i64 addrspace(1)* %aptr, i64 addrspace(1)* %bptr, i64 %s.val) nounwind {
   %tid = call i32 @llvm.r600.read.tidig.x()
   %a.gep = getelementptr i64, i64 addrspace(1)* %aptr, i32 %tid
@@ -609,10 +637,16 @@ define void @v_sext_in_reg_i1_to_i64_move_use(i64 addrspace(1)* %out, i64 addrsp
 ; FUNC-LABEL: {{^}}v_sext_in_reg_i32_to_i64_move_use:
 ; SI: buffer_load_dwordx2
 ; SI: v_lshl_b64 v{{\[}}[[LO:[0-9]+]]:[[HI:[0-9]+]]{{\]}},
-; SI-DAG: v_ashrrev_i32_e32 v[[SHR:[0-9]+]], 31, v[[LO]]
-; SI-DAG: v_and_b32_e32 v[[RESULT_LO:[0-9]+]], s{{[0-9]+}}, v[[LO]]
-; SI-DAG: v_and_b32_e32 v[[RESULT_HI:[0-9]+]], s{{[0-9]+}}, v[[SHR]]
+
+; VI: flat_load_dwordx2
+; VI: v_lshlrev_b64 v{{\[}}[[LO:[0-9]+]]:[[HI:[0-9]+]]{{\]}},
+
+; GCN-DAG: v_ashrrev_i32_e32 v[[SHR:[0-9]+]], 31, v[[LO]]
+; GCN-DAG: v_and_b32_e32 v[[RESULT_LO:[0-9]+]], s{{[0-9]+}}, v[[LO]]
+; GCN-DAG: v_and_b32_e32 v[[RESULT_HI:[0-9]+]], s{{[0-9]+}}, v[[SHR]]
+
 ; SI: buffer_store_dwordx2 v{{\[}}[[RESULT_LO]]:[[RESULT_HI]]{{\]}}
+; VI: flat_store_dwordx2 v{{\[[0-9]+:[0-9]+\]}}, v{{\[}}[[RESULT_LO]]:[[RESULT_HI]]{{\]}}
 define void @v_sext_in_reg_i32_to_i64_move_use(i64 addrspace(1)* %out, i64 addrspace(1)* %aptr, i64 addrspace(1)* %bptr, i64 %s.val) nounwind {
   %tid = call i32 @llvm.r600.read.tidig.x()
   %a.gep = getelementptr i64, i64 addrspace(1)* %aptr, i32 %tid
