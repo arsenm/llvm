@@ -4894,6 +4894,19 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
 
   ConstantSDNode *N1C = isConstOrConstSplat(N1);
 
+
+  if (N1C) {
+    if (N0.getOpcode() == ISD::SIGN_EXTEND_INREG) {
+      unsigned Bits = cast<VTSDNode>(N0.getOperand(1))->getVT().getScalarSizeInBits();
+      if (Bits == N1C->getZExtValue() + 1) {
+        // (srl (sra (srl x, 15), 15), 15)
+
+
+
+      }
+    }
+  }
+
   // fold (srl c1, c2) -> c1 >>u c2
   ConstantSDNode *N0C = getAsNonOpaqueConstant(N0);
   if (N0C && N1C && !N1C->isOpaque())
