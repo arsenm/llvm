@@ -54,6 +54,52 @@ define void @test_no_denormals(float addrspace(1)* %out0, double addrspace(1)* %
   ret void
 }
 
+; GCN-LABEL: {{^}}test_f16_f64_denormals:
+; GCN: FloatMode: 192
+; GCN: IeeeMode: 1
+define void @test_f16_f64_denormals(half addrspace(1)* %out0, double addrspace(1)* %out1) #6 {
+  store half 0.0, half addrspace(1)* %out0
+  store double 0.0, double addrspace(1)* %out1
+  ret void
+}
+
+; GCN-LABEL: {{^}}test_no_f16_f64_denormals:
+; GCN: FloatMode: 0
+; GCN: IeeeMode: 1
+define void @test_no_f16_f64_denormals(half addrspace(1)* %out0, double addrspace(1)* %out1) #7 {
+  store half 0.0, half addrspace(1)* %out0
+  store double 0.0, double addrspace(1)* %out1
+  ret void
+}
+
+; GCN-LABEL: {{^}}test_f32_f16_f64_denormals:
+; GCN: FloatMode: 240
+; GCN: IeeeMode: 1
+define void @test_f32_f16_f64_denormals(half addrspace(1)* %out0, float addrspace(1)* %out1, double addrspace(1)* %out2) #8 {
+  store half 0.0, half addrspace(1)* %out0
+  store float 0.0, float addrspace(1)* %out1
+  store double 0.0, double addrspace(1)* %out2
+  ret void
+}
+
+; GCN-LABEL: {{^}}test_no_f64_denormals_legacy:
+; GCN: FloatMode: 0
+; GCN: IeeeMode: 1
+define void @test_no_f64_denormals_legacy(half addrspace(1)* %out0, double addrspace(1)* %out1) #9 {
+  store half 0.0, half addrspace(1)* %out0
+  store double 0.0, double addrspace(1)* %out1
+  ret void
+}
+
+; GCN-LABEL: {{^}}test_no_f16_denormals_legacy:
+; GCN: FloatMode: 0
+; GCN: IeeeMode: 1
+define void @test_no_f16_denormals_legacy(half addrspace(1)* %out0, double addrspace(1)* %out1) #10 {
+  store half 0.0, half addrspace(1)* %out0
+  store double 0.0, double addrspace(1)* %out1
+  ret void
+}
+
 ; GCN-LABEL: {{^}}kill_gs_const:
 ; GCN: IeeeMode: 0
 define amdgpu_gs void @kill_gs_const() {
@@ -87,4 +133,9 @@ attributes #1 = { nounwind "target-cpu"="fiji" }
 attributes #2 = { nounwind "target-features"="+fp64-denormals" }
 attributes #3 = { nounwind "target-features"="+fp32-denormals" }
 attributes #4 = { nounwind "target-features"="+fp32-denormals,+fp64-denormals" }
-attributes #5 = { nounwind "target-features"="-fp32-denormals,-fp64-denormals" }
+attributes #5 = { nounwind "target-features"="-fp32-denormals,-fp64-fp16-denormals" }
+attributes #6 = { nounwind "target-features"="+fp64-fp16-denormals" }
+attributes #7 = { nounwind "target-features"="-fp64-fp16-denormals" }
+attributes #8 = { nounwind "target-features"="+fp32-denormals,+fp64-fp16-denormals" }
+attributes #9 = { nounwind "target-features"="-fp64-denormals" }
+attributes #10 = { nounwind "target-features"="-fp16-denormals" }
