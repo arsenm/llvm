@@ -5346,6 +5346,78 @@ SDValue DAGCombiner::foldSelectOfConstants(SDNode *N) {
   return SDValue();
 }
 
+static SDValue distributeOpThroughSelect(DAGCombiner *DC,
+                                         unsigned Op,
+                                         const SDLoc &SL,
+                                         SDValue Cond,
+                                         SDValue N1,
+                                         SDValue N2) {
+  SelectionDAG &DAG = DC->getDAG();
+  EVT VT = N1.getValueType();
+
+  SDValue NewSelect = DAG.getNode(ISD::SELECT, SL, VT, Cond,
+                                  N1.getOperand(0), N2.getOperand(0));
+  DC->AddToWorklist(NewSelect.getNode());
+  return DAG.getNode(Op, SL, VT, NewSelect);
+}
+
+// Pull a free FP operation out of a select so it may fold into uses.
+//
+// select c, (fneg x), (fneg y) -> fneg (select c, x, y)
+// select c, (fneg x), k -> fneg (select c, x, (fneg k))
+//
+// select c, (fabs x), (fabs y) -> fabs (select c, x, y)
+// select c, (fabs x), +k -> fabs (select c, x, k)
+static SDValue foldFreeOpFromSelect(DAGCombiner *DC, SDValue N) {
+  SelectionDAG &DAG = DC->getDAG();
+  const TargetLowering &TLI = DAG.getTargetLoweringInfo();
+  SDValue Cond = N.getOperand(0);
+  SDValue LHS = N.getOperand(1);
+  SDValue RHS = N.getOperand(2);
+
+  EVT VT = N.getValueType();
+  if ((LHS.getOpcode() == ISD::FABS && RHS.getOpcode() == ISD::FABS &&
+       TLI.isFAbsFree(VT)) ||
+      (LHS.getOpcode() == ISD::FNEG && RHS.getOpcode() == ISD::FNEG &&
+       TLI.isFNegFree(VT))) {
+    return distributeOpThroughSelect(DC, LHS.getOpcode(),
+                                     SDLoc(N), Cond, LHS, RHS);
+  }
+
+  bool Inv = false;
+  if (RHS.getOpcode() == ISD::FABS || RHS.getOpcode() == ISD::FNEG) {
+    std::swap(LHS, RHS);
+    Inv = true;
+  }
+
+  // TODO: Support vector constants.
+  ConstantFPSDNode *CRHS = dyn_cast<ConstantFPSDNode>(RHS);
+  if ((LHS.getOpcode() == ISD::FNEG || LHS.getOpcode() == ISD::FABS) && CRHS) {
+    SDLoc SL(N);
+    // If one side is an fneg/fabs and the other is a constant, we can push the
+    // fneg/fabs down. If it's an fabs, the constant needs to be non-negative.
+    SDValue NewLHS = LHS.getOperand(0);
+    SDValue NewRHS = RHS;
+
+    // TODO: Skip for operations where other combines can absord the fneg.
+
+    if (LHS.getOpcode() == ISD::FNEG)
+      NewRHS = DAG.getNode(ISD::FNEG, SL, VT, RHS);
+    else if (CRHS->isNegative())
+      return SDValue();
+
+    if (Inv)
+      std::swap(NewLHS, NewRHS);
+
+    SDValue NewSelect = DAG.getNode(ISD::SELECT, SL, VT,
+                                    Cond, NewLHS, NewRHS);
+    DC->AddToWorklist(NewSelect.getNode());
+    return DAG.getNode(LHS.getOpcode(), SL, VT, NewSelect);
+  }
+
+  return SDValue();
+}
+
 SDValue DAGCombiner::visitSELECT(SDNode *N) {
   SDValue N0 = N->getOperand(0);
   SDValue N1 = N->getOperand(1);
@@ -5484,6 +5556,9 @@ SDValue DAGCombiner::visitSELECT(SDNode *N) {
       }
     }
   }
+
+  if (SDValue Folded = foldFreeOpFromSelect(this, SDValue(N, 0)))
+    return Folded;
 
   // fold selects based on a setcc into other things, such as min/max/abs
   if (N0.getOpcode() == ISD::SETCC) {
