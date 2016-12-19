@@ -2585,21 +2585,26 @@ bool llvm::CannotBeNegativeZero(const Value *V, const TargetLibraryInfo *TLI,
 
 bool llvm::CannotBeOrderedLessThanZero(const Value *V,
                                        const TargetLibraryInfo *TLI,
+                                       bool IncludeNeg0,
                                        unsigned Depth) {
-  if (const ConstantFP *CFP = dyn_cast<ConstantFP>(V))
-    return !CFP->getValueAPF().isNegative() || CFP->getValueAPF().isZero();
+  if (const ConstantFP *CFP = dyn_cast<ConstantFP>(V)) {
+    return !CFP->getValueAPF().isNegative() ||
+           (IncludeNeg0 && CFP->getValueAPF().isZero());
+  }
 
   // FIXME: Magic number! At the least, this should be given a name because it's
   // used similarly in CannotBeNegativeZero(). A better fix may be to
   // expose it as a parameter, so it can be used for testing / experimenting.
   if (Depth == MaxDepth)
-    return false;  // Limit search depth.
+    return false; // Limit search depth.
 
   const Operator *I = dyn_cast<Operator>(V);
-  if (!I) return false;
+  if (!I)
+    return false;
 
   switch (I->getOpcode()) {
-  default: break;
+  default:
+    break;
   // Unsigned integers are always nonnegative.
   case Instruction::UIToFP:
     return true;
@@ -2611,26 +2616,35 @@ bool llvm::CannotBeOrderedLessThanZero(const Value *V,
   case Instruction::FAdd:
   case Instruction::FDiv:
   case Instruction::FRem:
-    return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, Depth + 1) &&
-           CannotBeOrderedLessThanZero(I->getOperand(1), TLI, Depth + 1);
+    return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, IncludeNeg0,
+                                       Depth + 1) &&
+           CannotBeOrderedLessThanZero(I->getOperand(1), TLI, IncludeNeg0,
+                                       Depth + 1);
   case Instruction::Select:
-    return CannotBeOrderedLessThanZero(I->getOperand(1), TLI, Depth + 1) &&
-           CannotBeOrderedLessThanZero(I->getOperand(2), TLI, Depth + 1);
+    return CannotBeOrderedLessThanZero(I->getOperand(1), TLI, IncludeNeg0,
+                                       Depth + 1) &&
+           CannotBeOrderedLessThanZero(I->getOperand(2), TLI, IncludeNeg0,
+                                       Depth + 1);
   case Instruction::FPExt:
   case Instruction::FPTrunc:
     // Widening/narrowing never change sign.
-    return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, Depth + 1);
+    return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, IncludeNeg0,
+                                       Depth + 1);
   case Instruction::Call:
     Intrinsic::ID IID = getIntrinsicForCallSite(cast<CallInst>(I), TLI);
     switch (IID) {
     default:
       break;
     case Intrinsic::maxnum:
-      return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, Depth + 1) ||
-             CannotBeOrderedLessThanZero(I->getOperand(1), TLI, Depth + 1);
+      return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, IncludeNeg0,
+                                         Depth + 1) ||
+             CannotBeOrderedLessThanZero(I->getOperand(1), TLI, IncludeNeg0,
+                                         Depth + 1);
     case Intrinsic::minnum:
-      return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, Depth + 1) &&
-             CannotBeOrderedLessThanZero(I->getOperand(1), TLI, Depth + 1);
+      return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, IncludeNeg0,
+                                         Depth + 1) &&
+             CannotBeOrderedLessThanZero(I->getOperand(1), TLI, IncludeNeg0,
+                                         Depth + 1);
     case Intrinsic::exp:
     case Intrinsic::exp2:
     case Intrinsic::fabs:
@@ -2642,12 +2656,14 @@ bool llvm::CannotBeOrderedLessThanZero(const Value *V,
         if (CI->getBitWidth() <= 64 && CI->getSExtValue() % 2u == 0)
           return true;
       }
-      return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, Depth + 1);
+      return CannotBeOrderedLessThanZero(I->getOperand(0), TLI, IncludeNeg0,
+                                         Depth + 1);
     case Intrinsic::fma:
     case Intrinsic::fmuladd:
       // x*x+y is non-negative if y is non-negative.
       return I->getOperand(0) == I->getOperand(1) &&
-             CannotBeOrderedLessThanZero(I->getOperand(2), TLI, Depth + 1);
+             CannotBeOrderedLessThanZero(I->getOperand(2), TLI, IncludeNeg0,
+                                         Depth + 1);
     }
     break;
   }
