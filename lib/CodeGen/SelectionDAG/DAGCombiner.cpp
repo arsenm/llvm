@@ -5342,6 +5342,31 @@ SDValue DAGCombiner::foldSelectOfConstants(SDNode *N) {
   return SDValue();
 }
 
+// If \p LHS and \p RHS are inputs to a select, and both are either constants or
+// a free fabs or fneg, return the opcode.
+static unsigned isFreeOpFromSelect(const TargetLowering &TLI,
+                                   EVT VT, SDValue LHS, SDValue RHS) {
+  unsigned Opc0 = LHS.getOpcode();
+  unsigned Opc1 = RHS.getOpcode();
+  if (Opc0 == ISD::FABS && Opc1 == ISD::FABS)
+    return TLI.isFAbsFree(VT) ? ISD::FABS : 0;
+
+  if (Opc0 == ISD::FNEG && Opc1 == ISD::FNEG)
+    return TLI.isFNegFree(VT) ? ISD::FNEG : 0;
+
+  if ((Opc0 == ISD::FABS && isConstOrConstSplatFP(RHS)) ||
+      (Opc1 == ISD::FABS && isConstOrConstSplatFP(LHS))) {
+    return TLI.isFAbsFree(VT) ? ISD::FABS : 0;
+  }
+
+  if ((Opc0 == ISD::FNEG && isConstOrConstSplatFP(RHS)) ||
+      (Opc1 == ISD::FNEG && isConstOrConstSplatFP(LHS))) {
+    return TLI.isFNegFree(VT) ? ISD::FNEG : 0;
+  }
+
+  return 0;
+}
+
 SDValue DAGCombiner::visitSELECT(SDNode *N) {
   SDValue N0 = N->getOperand(0);
   SDValue N1 = N->getOperand(1);
@@ -5479,6 +5504,27 @@ SDValue DAGCombiner::visitSELECT(SDNode *N) {
                              Cond0, N1, N2);
       }
     }
+  }
+
+  // Pull a free FP operation out of a select so it may fold into uses.
+  //
+  // select c, (fabs x), (fabs y) -> fabs (select c, x, y)
+  // select c, (fabs x), k -> fabs (select c, x, (fabs k))
+  //
+  // select c, (fneg x), (fneg y) -> fneg (select c, x, y)
+  // select c, (fneg x), k -> fneg (select c, x, (fneg k))
+  unsigned FreeOp = isFreeOpFromSelect(TLI, VT, N1, N2);
+  if (FreeOp != 0) {
+    SDLoc SL(N);
+    N1 = (N1.getOpcode() == FreeOp) ?
+          N1.getOperand(0) : DAG.getNode(FreeOp, SL, VT, N1);
+
+    N2 = (N2.getOpcode() == FreeOp) ?
+          N2.getOperand(0) : DAG.getNode(FreeOp, SL, VT, N2);
+
+    SDValue NewSelect = DAG.getNode(ISD::SELECT, SL, VT, N0, N1, N2);
+    AddToWorklist(NewSelect.getNode());
+    return DAG.getNode(FreeOp, SL, VT, NewSelect);
   }
 
   // fold selects based on a setcc into other things, such as min/max/abs
