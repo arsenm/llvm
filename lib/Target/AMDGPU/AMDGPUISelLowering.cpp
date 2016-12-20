@@ -2702,6 +2702,25 @@ SDValue AMDGPUTargetLowering::performSelectCombine(SDNode *N,
   SDValue True = N->getOperand(1);
   SDValue False = N->getOperand(2);
 
+  if (Cond.hasOneUse()) {
+    SelectionDAG &DAG = DCI.DAG;
+    if ((DAG.isConstantValueOfAnyType(True) ||
+         DAG.isConstantValueOfAnyType(True)) &&
+        (!DAG.isConstantValueOfAnyType(False) &&
+         !DAG.isConstantValueOfAnyType(False))) {
+      // Swap cmp + select pair to move constant to false input.
+      // This will allow using VOPC cndmasks more often.
+      // select (setcc x, y), k, x -> select (setcc y, x) x, x
+
+      SDLoc SL(N);
+      ISD::CondCode NewCC = getSetCCInverse(cast<CondCodeSDNode>(CC)->get(),
+                                            VT.isInteger());
+
+      SDValue NewCond = DAG.getSetCC(SL, Cond.getValueType(), LHS, RHS, NewCC);
+      return DAG.getNode(ISD::SELECT, SL, VT, NewCond, False, True);
+    }
+  }
+
   if (VT == MVT::f32 && Cond.hasOneUse()) {
     SDValue MinMax
       = CombineFMinMaxLegacy(SDLoc(N), VT, LHS, RHS, True, False, CC, DCI);
