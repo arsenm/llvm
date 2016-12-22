@@ -177,6 +177,81 @@ define void @v_test_i16_x_sub_64_multi_use(i16 addrspace(1)* %out, i16 addrspace
   ret void
 }
 
+; GCN-LABEL: {{^}}v_test_i64_x_sub_64:
+; GCN: {{buffer|flat}}_load_dwordx2 v{{\[}}[[X_LO:[0-9]+]]:[[X_HI:[0-9]+]]{{\]}}
+; GCN: v_subrev_i32_e32 v{{[0-9]+}}, vcc, 64, v[[X_LO]]
+; GCN: v_subbrev_u32_e32 v{{[0-9]+}}, vcc, 0, v[[X_HI]], vcc
+define void @v_test_i64_x_sub_64(i64 addrspace(1)* %out, i64 addrspace(1)* %in) #0 {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x()
+  %tid.ext = sext i32 %tid to i64
+  %gep = getelementptr inbounds i64, i64 addrspace(1)* %in, i64 %tid.ext
+  %gep.out = getelementptr inbounds i64, i64 addrspace(1)* %out, i64 %tid.ext
+  %x = load i64, i64 addrspace(1)* %gep
+  %result = sub i64 %x, 64
+  store i64 %result, i64 addrspace(1)* %gep.out
+  ret void
+}
+
+; GCN-LABEL: {{^}}v_test_i64_x_sub_neg17:
+; GCN: {{buffer|flat}}_load_dwordx2 v{{\[}}[[X_LO:[0-9]+]]:[[X_HI:[0-9]+]]{{\]}}
+; GCN: v_add_i32_e32 v{{[0-9]+}}, vcc, 17, v[[X_LO]]
+; GCN: v_addc_u32_e32 v{{[0-9]+}}, vcc, 0, v[[X_HI]], vcc
+define void @v_test_i64_x_sub_neg17(i64 addrspace(1)* %out, i64 addrspace(1)* %in) #0 {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x()
+  %tid.ext = sext i32 %tid to i64
+  %gep = getelementptr inbounds i64, i64 addrspace(1)* %in, i64 %tid.ext
+  %gep.out = getelementptr inbounds i64, i64 addrspace(1)* %out, i64 %tid.ext
+  %x = load i64, i64 addrspace(1)* %gep
+  %result = sub i64 %x, -17
+  store i64 %result, i64 addrspace(1)* %gep.out
+  ret void
+}
+
+; GCN-LABEL: {{^}}v_test_i64_x_sub_64_multi_use:
+; GCN: v_subrev_i32_e32 v{{[0-9]+}}, vcc, 64, v{{[0-9]+}}
+; GCN: v_subbrev_u32_e32 v{{[0-9]+}}, vcc, 0, v{{[0-9]+}}, vcc
+; GCN: v_subrev_i32_e32 v{{[0-9]+}}, vcc, 64, v{{[0-9]+}}
+; GCN: v_subbrev_u32_e32 v{{[0-9]+}}, vcc, 0, v{{[0-9]+}}, vcc
+
+define void @v_test_i64_x_sub_64_multi_use(i64 addrspace(1)* %out, i64 addrspace(1)* %in) #0 {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x()
+  %tid.ext = sext i32 %tid to i64
+  %gep = getelementptr inbounds i64, i64 addrspace(1)* %in, i64 %tid.ext
+  %gep.out = getelementptr inbounds i64, i64 addrspace(1)* %out, i64 %tid.ext
+  %x = load volatile i64, i64 addrspace(1)* %gep
+  %y = load volatile i64, i64 addrspace(1)* %gep
+  %result0 = sub i64 %x, 64
+  %result1 = sub i64 %y, 64
+  store volatile i64 %result0, i64 addrspace(1)* %gep.out
+  store volatile i64 %result1, i64 addrspace(1)* %gep.out
+  ret void
+}
+
+; GCN-LABEL: {{^}}s_test_i64_x_sub_64:
+; GCN: s_load_dwordx2 s{{\[}}[[X_LO:[0-9]+]]:[[X_HI:[0-9]+]]{{\]}}
+; GCN: s_sub_u32 s{{[0-9]+}}, s[[X_LO]], 64
+; GCN: s_subb_u32 s{{[0-9]+}}, s[[X_HI]], 0
+define void @s_test_i64_x_sub_64(i64 %x) #0 {
+  %result = sub i64 %x, 64
+  call void asm sideeffect "; use $0", "s"(i64 %result)
+  ret void
+}
+
+; GCN-LABEL: {{^}}s_test_i64_x_sub_64_multi_use:
+; GCN: s_load_dwordx2 s{{\[}}[[X_LO:[0-9]+]]:[[X_HI:[0-9]+]]{{\]}}
+; GCN: s_load_dwordx2 s{{\[}}[[Y_LO:[0-9]+]]:[[Y_HI:[0-9]+]]{{\]}}
+; GCN: s_sub_u32 s{{[0-9]+}}, s[[X_LO]], 64
+; GCN: s_subb_u32 s{{[0-9]+}}, s[[X_HI]], 0
+; GCN: s_sub_u32 s{{[0-9]+}}, s[[Y_LO]], 64
+; GCN: s_subb_u32 s{{[0-9]+}}, s[[Y_HI]], 0
+define void @s_test_i64_x_sub_64_multi_use(i64 %x, i64 %y) #0 {
+  %result0 = sub i64 %x, 64
+  %result1 = sub i64 %y, 64
+  call void asm sideeffect "; use $0", "s"(i64 %result0)
+  call void asm sideeffect "; use $0", "s"(i64 %result1)
+  ret void
+}
+
 declare i32 @llvm.amdgcn.workitem.id.x() #1
 
 attributes #0 = { nounwind }
