@@ -636,6 +636,18 @@ void AMDGPUDAGToDAGISel::SelectADD_SUB_I64(SDNode *N) {
   bool IsAdd =
       (Opcode == ISD::ADD || Opcode == ISD::ADDC || Opcode == ISD::ADDE);
 
+  // Undo sub x, c -> add x, -c canonicalization if it may help code size.
+  ConstantSDNode *CRHS = dyn_cast<ConstantSDNode>(RHS);
+  if (IsAdd && CRHS) {
+    int64_t Val = CRHS->getSExtValue();
+    if (Val < -16 && Val >= -64) {
+      IsAdd = false;
+      SDValue NewK = CurDAG->getTargetConstant(-Val, DL, MVT::i64);
+      auto *Mov = CurDAG->getMachineNode(AMDGPU::S_MOV_B64, DL, MVT::i64, NewK);
+      RHS = SDValue(Mov, 0);
+    }
+  }
+
   SDValue Sub0 = CurDAG->getTargetConstant(AMDGPU::sub0, DL, MVT::i32);
   SDValue Sub1 = CurDAG->getTargetConstant(AMDGPU::sub1, DL, MVT::i32);
 
