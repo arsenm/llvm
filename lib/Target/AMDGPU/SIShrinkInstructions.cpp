@@ -279,6 +279,67 @@ static void shrinkScalarCompare(const SIInstrInfo *TII, MachineInstr &MI) {
   }
 }
 
+static bool shouldChangeImm32(int64_t ImmVal) {
+  // TODO: Neg int value matches fp imm
+  return ImmVal >= -64 && ImmVal <= 16;
+}
+
+// Replace add/sub with a constant with sub/add of the negated constant, since
+// that may allow use of an inline immediate.
+// i.e., undo the canonicalization DAGCombiner uses for sub x, c -> add x, -c
+static bool shrinkAddSubConstant(const SIInstrInfo *TII, MachineInstr &MI) {
+  // TODO: The one special case we shouldn't do this is for 1/2pi which does not
+  // have the corresponding -1/2pi.
+
+  // add x, c -> sub x, -c
+  switch (MI.getOpcode()) {
+  case AMDGPU::V_ADD_I32_e32: {
+    MachineOperand *Src0 = TII->getNamedOperand(MI, AMDGPU::OpName::src0);
+    if (Src0->isImm() && shouldChangeImm32(Src0->getImm())) {
+      MI.setDesc(TII->get(AMDGPU::V_SUBREV_I32_e32));
+      Src0->setImm(-Src0->getImm());
+      return true;
+    }
+
+    return false;
+  }
+  case AMDGPU::S_ADD_I32: {
+    MachineOperand *Src0 = TII->getNamedOperand(MI, AMDGPU::OpName::src0);
+    if (Src0->isImm()) {
+      MI.setDesc(TII->get(AMDGPU::S_SUB_I32));
+      Src0->setImm(-Src0->getImm());
+      MachineInstr *Commuted = TII->commuteInstruction(MI);
+      (void)Commuted;
+      assert(Commuted && "failed to commute");
+      return true;
+    }
+
+    return false;
+  }
+
+#if 0
+  case AMDGPU::V_SUB_I32_e32: {
+    // sub c, x -> add -c, x
+    MachineOperand *Src0 = TII->getNamedOperand(MI, AMDGPU::OpName::src0);
+    if (Src0->isImm()) {
+      MI.setDesc(TII->get(AMDGPU::V_ADD_I32_e32));
+      Src0->setImm(-Src0->getImm());
+      return true;
+    }
+
+    return false;
+  }
+#endif
+  case AMDGPU::S_ADD_U32:
+  case AMDGPU::V_ADD_U16_e32:
+  case AMDGPU::V_SUB_U16_e32:
+  case AMDGPU::V_SUBREV_U16_e32:
+  default:
+    return false;
+  }
+}
+
+
 bool SIShrinkInstructions::runOnMachineFunction(MachineFunction &MF) {
   if (skipFunction(*MF.getFunction()))
     return false;
@@ -408,6 +469,11 @@ bool SIShrinkInstructions::runOnMachineFunction(MachineFunction &MF) {
 
         continue;
       }
+
+#if 0
+      if (shrinkAddSubConstant(TII, MI))
+        continue;
+#endif
 
       if (!TII->hasVALU32BitEncoding(MI.getOpcode()))
         continue;
