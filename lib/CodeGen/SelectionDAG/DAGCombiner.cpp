@@ -5399,20 +5399,33 @@ static SDValue foldFreeOpFromSelect(DAGCombiner *DC, SDValue N) {
     SDValue NewLHS = LHS.getOperand(0);
     SDValue NewRHS = RHS;
 
-    // TODO: Skip for operations where other combines can absord the fneg.
+    // Careful: if the neg can be folded up, don't try to pull it back down.
+    bool ShouldFoldNeg = true;
 
-    if (LHS.getOpcode() == ISD::FNEG)
-      NewRHS = DAG.getNode(ISD::FNEG, SL, VT, RHS);
-    else if (CRHS->isNegative())
-      return SDValue();
+    if (NewLHS.hasOneUse()) {
+      unsigned Opc = NewLHS.getOpcode();
+      if (LHS.getOpcode() == ISD::FNEG &&
+          (Opc == ISD::FADD || Opc == ISD::FSUB || Opc == ISD::FMUL ||
+           Opc == ISD::FMA || Opc == ISD::FMAD))
+        ShouldFoldNeg = false;
+      if (LHS.getOpcode() == ISD::FABS && Opc == ISD::FMUL)
+        ShouldFoldNeg = false;
+    }
 
-    if (Inv)
-      std::swap(NewLHS, NewRHS);
+    if (ShouldFoldNeg) {
+      if (LHS.getOpcode() == ISD::FNEG)
+        NewRHS = DAG.getNode(ISD::FNEG, SL, VT, RHS);
+      else if (CRHS->isNegative())
+        return SDValue();
 
-    SDValue NewSelect = DAG.getNode(ISD::SELECT, SL, VT,
-                                    Cond, NewLHS, NewRHS);
-    DC->AddToWorklist(NewSelect.getNode());
-    return DAG.getNode(LHS.getOpcode(), SL, VT, NewSelect);
+      if (Inv)
+        std::swap(NewLHS, NewRHS);
+
+      SDValue NewSelect = DAG.getNode(ISD::SELECT, SL, VT,
+                                      Cond, NewLHS, NewRHS);
+      DC->AddToWorklist(NewSelect.getNode());
+      return DAG.getNode(LHS.getOpcode(), SL, VT, NewSelect);
+    }
   }
 
   return SDValue();
