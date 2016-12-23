@@ -9682,29 +9682,67 @@ SDValue DAGCombiner::visitFNEG(SDNode *N) {
                          &DAG.getTarget().Options))
     return GetNegatedExpression(N0, DAG, LegalOperations);
 
-  // Transform fneg(bitconvert(x)) -> bitconvert(x ^ sign) to avoid loading
-  // constant pool values.
-  if (!TLI.isFNegFree(VT) &&
-      N0.getOpcode() == ISD::BITCAST &&
-      N0.getNode()->hasOneUse()) {
-    SDValue Int = N0.getOperand(0);
-    EVT IntVT = Int.getValueType();
-    if (IntVT.isInteger() && !IntVT.isVector()) {
-      APInt SignMask;
-      if (N0.getValueType().isVector()) {
-        // For a vector, get a mask such as 0x80... per scalar element
-        // and splat it.
-        SignMask = APInt::getSignBit(N0.getScalarValueSizeInBits());
-        SignMask = APInt::getSplat(IntVT.getSizeInBits(), SignMask);
-      } else {
-        // For a scalar, just generate 0x80...
-        SignMask = APInt::getSignBit(IntVT.getSizeInBits());
+  if (TLI.isFNegFree(VT)) {
+    SDLoc SL(N);
+    unsigned Opc = N0.getOpcode();
+
+    // If the input has multiple uses and we can either fold the negate down,
+    // or the other uses cannot, give up. This both prevents unprofitable
+    // transformations and infinite loops: we won't repeatedly try to
+    // fold around a negate that has no 'good' form.
+    // TODO: Check if users are foldable.
+    if ((Opc == ISD::FADD || Opc == ISD::FMUL || Opc == ISD::FMA) &&
+        !N0.hasOneUse())
+      return SDValue();
+
+    switch (Opc) {
+    case ISD::FADD: {
+      // (fneg (fadd x, y)) -> (fadd (fneg x), (fneg y))
+      SDValue LHS = N0.getOperand(0);
+      SDValue RHS = N0.getOperand(1);
+
+      if (LHS.getOpcode() != ISD::FNEG)
+        LHS = DAG.getNode(ISD::FNEG, SL, VT, LHS);
+      else
+        LHS = LHS.getOperand(0);
+
+      if (RHS.getOpcode() != ISD::FNEG)
+        RHS = DAG.getNode(ISD::FNEG, SL, VT, RHS);
+      else
+        RHS = RHS.getOperand(0);
+
+      SDValue Res = DAG.getNode(ISD::FADD, SL, VT, LHS, RHS);
+      if (!N0.hasOneUse())
+        DAG.ReplaceAllUsesWith(N0, DAG.getNode(ISD::FNEG, SL, VT, Res));
+      return Res;
+    }
+    default:
+      break;
+    }
+  } else {
+    // Transform fneg(bitconvert(x)) -> bitconvert(x ^ sign) to avoid loading
+    // constant pool values.
+    if (N0.getOpcode() == ISD::BITCAST &&
+        N0.getNode()->hasOneUse()) {
+      SDValue Int = N0.getOperand(0);
+      EVT IntVT = Int.getValueType();
+      if (IntVT.isInteger() && !IntVT.isVector()) {
+        APInt SignMask;
+        if (N0.getValueType().isVector()) {
+          // For a vector, get a mask such as 0x80... per scalar element
+          // and splat it.
+          SignMask = APInt::getSignBit(N0.getScalarValueSizeInBits());
+          SignMask = APInt::getSplat(IntVT.getSizeInBits(), SignMask);
+        } else {
+          // For a scalar, just generate 0x80...
+          SignMask = APInt::getSignBit(IntVT.getSizeInBits());
+        }
+        SDLoc DL0(N0);
+        Int = DAG.getNode(ISD::XOR, DL0, IntVT, Int,
+                          DAG.getConstant(SignMask, DL0, IntVT));
+        AddToWorklist(Int.getNode());
+        return DAG.getBitcast(VT, Int);
       }
-      SDLoc DL0(N0);
-      Int = DAG.getNode(ISD::XOR, DL0, IntVT, Int,
-                        DAG.getConstant(SignMask, DL0, IntVT));
-      AddToWorklist(Int.getNode());
-      return DAG.getBitcast(VT, Int);
     }
   }
 
