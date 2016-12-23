@@ -216,6 +216,20 @@ bool ISD::isBuildVectorOfConstantFPSDNodes(const SDNode *N) {
   return true;
 }
 
+bool ISD::isBuildVectorOfPositiveConstantFPSDNodes(const SDNode *N) {
+  if (N->getOpcode() != ISD::BUILD_VECTOR)
+    return false;
+
+  for (const SDValue &Op : N->op_values()) {
+    if (Op.isUndef())
+      continue;
+    ConstantFPSDNode *CFP = dyn_cast<ConstantFPSDNode>(Op);
+    if (!CFP || CFP->isNegative())
+      return false;
+  }
+  return true;
+}
+
 bool ISD::allOperandsUndef(const SDNode *N) {
   // Return false if the node has no operands.
   // This is "logically inconsistent" with the definition of "all" but
@@ -7521,7 +7535,7 @@ bool ShuffleVectorSDNode::isSplatMask(const int *Mask, EVT VT) {
 
 // \brief Returns the SDNode if it is a constant integer BuildVector
 // or constant integer.
-SDNode *SelectionDAG::isConstantIntBuildVectorOrConstantInt(SDValue N) {
+SDNode *SelectionDAG::isConstantIntBuildVectorOrConstantInt(SDValue N) const {
   if (isa<ConstantSDNode>(N))
     return N.getNode();
   if (ISD::isBuildVectorOfConstantSDNodes(N.getNode()))
@@ -7535,9 +7549,19 @@ SDNode *SelectionDAG::isConstantIntBuildVectorOrConstantInt(SDValue N) {
   return nullptr;
 }
 
-SDNode *SelectionDAG::isConstantFPBuildVectorOrConstantFP(SDValue N) {
+SDNode *SelectionDAG::isConstantFPBuildVectorOrConstantFP(SDValue N) const {
   if (isa<ConstantFPSDNode>(N))
     return N.getNode();
+
+  if (ISD::isBuildVectorOfConstantFPSDNodes(N.getNode()))
+    return N.getNode();
+
+  return nullptr;
+}
+
+SDNode *SelectionDAG::isPositiveConstantFPBuildVectorOrConstantFP(SDValue N) const {
+  if (ConstantFPSDNode *CFP = dyn_cast<ConstantFPSDNode>(N))
+    return CFP->isNegative() ? nullptr : N.getNode();
 
   if (ISD::isBuildVectorOfConstantFPSDNodes(N.getNode()))
     return N.getNode();

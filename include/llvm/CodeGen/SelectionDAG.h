@@ -1368,14 +1368,18 @@ public:
   unsigned getEVTAlignment(EVT MemoryVT) const;
 
   /// Test whether the given value is a constant int or similar node.
-  SDNode *isConstantIntBuildVectorOrConstantInt(SDValue N);
+  SDNode *isConstantIntBuildVectorOrConstantInt(SDValue N) const;
 
   /// Test whether the given value is a constant FP or similar node.
-  SDNode *isConstantFPBuildVectorOrConstantFP(SDValue N);
+  SDNode *isConstantFPBuildVectorOrConstantFP(SDValue N) const;
+
+  /// Test whether the given value is a constant FP or similar node with a 0
+  /// sign bit.
+  SDNode *isPositiveConstantFPBuildVectorOrConstantFP(SDValue N) const;
 
   /// \returns true if \p N is any kind of constant or build_vector of
   /// constants, int or float. If a vector, it may not necessarily be a splat.
-  inline bool isConstantValueOfAnyType(SDValue N) {
+  inline bool isConstantValueOfAnyType(SDValue N) const {
     return isConstantIntBuildVectorOrConstantInt(N) ||
            isConstantFPBuildVectorOrConstantFP(N);
   }
