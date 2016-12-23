@@ -98,6 +98,10 @@ namespace ISD {
   /// ConstantFPSDNode or undef.
   bool isBuildVectorOfConstantFPSDNodes(const SDNode *N);
 
+  /// Return true if the specified node is a BUILD_VECTOR node of all
+  /// ConstantFPSDNode with 0 sign bits or undef.
+  bool isBuildVectorOfPositiveConstantFPSDNodes(const SDNode *N);
+
   /// Return true if the node has at least one operand and all operands of the
   /// specified node are ISD::UNDEF.
   bool allOperandsUndef(const SDNode *N);
