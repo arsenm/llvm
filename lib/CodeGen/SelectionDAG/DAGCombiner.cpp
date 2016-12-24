@@ -9773,6 +9773,23 @@ SDValue DAGCombiner::visitFNEG(SDNode *N) {
       SDValue Neg = DAG.getNode(ISD::FNEG, SL, CvtSrc.getValueType(), CvtSrc);
       return DAG.getNode(ISD::FP_EXTEND, SL, VT, Neg);
     }
+    case ISD::FP_ROUND: {
+      SDValue CvtSrc = N0.getOperand(0);
+
+      if (CvtSrc.getOpcode() == ISD::FNEG) {
+        // (fneg (fp_round (fneg x))) -> (fp_round x)
+        return DAG.getNode(ISD::FP_ROUND, SL, VT,
+                           CvtSrc.getOperand(0), N0.getOperand(1));
+      }
+
+      if (N0.hasOneUse()) { // TODO: Check user can fold
+        // (fneg (fp_round x)) -> (fp_round (fneg x))
+        SDValue Neg = DAG.getNode(ISD::FNEG, SL, CvtSrc.getValueType(), CvtSrc);
+        return DAG.getNode(ISD::FP_ROUND, SL, VT, Neg, N0.getOperand(1));
+      }
+
+      break;
+    }
     default:
       break;
     }
