@@ -1066,6 +1066,93 @@ define void @v_fneg_mul_legacy_mul_legacyti_use_fneg_x_f32(float addrspace(1)* %
   ret void
 }
 
+; --------------------------------------------------------------------------------
+; fdiv tests
+; --------------------------------------------------------------------------------
+
+; GCN-LABEL: {{^}}v_fneg_div_f32:
+; GCN: {{buffer|flat}}_load_dword [[A:v[0-9]+]]
+; GCN: {{buffer|flat}}_load_dword [[B:v[0-9]+]]
+; GCN: v_div_scale_f32 v{{[0-9]+}}, s{{\[[0-9]+:[0-9]+\]}}, -[[B]], -[[B]], [[A]]
+; GCN: v_div_scale_f32 v{{[0-9]+}}, vcc, [[A]], -[[B]], [[A]]
+define void @v_fneg_div_f32(float addrspace(1)* %out, float addrspace(1)* %a.ptr, float addrspace(1)* %b.ptr) #0 {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x()
+  %tid.ext = sext i32 %tid to i64
+  %a.gep = getelementptr inbounds float, float addrspace(1)* %a.ptr, i64 %tid.ext
+  %b.gep = getelementptr inbounds float, float addrspace(1)* %b.ptr, i64 %tid.ext
+  %out.gep = getelementptr inbounds float, float addrspace(1)* %out, i64 %tid.ext
+  %a = load volatile float, float addrspace(1)* %a.gep
+  %b = load volatile float, float addrspace(1)* %b.gep
+  %mul = fdiv float %a, %b
+  %fneg = fsub float -0.000000e+00, %mul
+  store float %fneg, float addrspace(1)* %out.gep
+  ret void
+}
+
+; GCN-LABEL: {{^}}v_fneg_div_store_use_div_f32:
+; GCN: {{buffer|flat}}_load_dword [[A:v[0-9]+]]
+; GCN: {{buffer|flat}}_load_dword [[B:v[0-9]+]]
+
+; GCN: v_div_scale_f32 v{{[0-9]+}}, s{{\[[0-9]+:[0-9]+\]}}, [[B]], [[B]], [[A]]
+; GCN: v_div_scale_f32 v{{[0-9]+}}, vcc, [[A]], [[B]], [[A]]
+define void @v_fneg_div_store_use_div_f32(float addrspace(1)* %out, float addrspace(1)* %a.ptr, float addrspace(1)* %b.ptr) #0 {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x()
+  %tid.ext = sext i32 %tid to i64
+  %a.gep = getelementptr inbounds float, float addrspace(1)* %a.ptr, i64 %tid.ext
+  %b.gep = getelementptr inbounds float, float addrspace(1)* %b.ptr, i64 %tid.ext
+  %out.gep = getelementptr inbounds float, float addrspace(1)* %out, i64 %tid.ext
+  %a = load volatile float, float addrspace(1)* %a.gep
+  %b = load volatile float, float addrspace(1)* %b.gep
+  %div = fdiv float %a, %b
+  %fneg = fsub float -0.000000e+00, %div
+  store volatile float %fneg, float addrspace(1)* %out
+  store volatile float %div, float addrspace(1)* %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}v_fneg_div_divti_use_div_f32:
+; GCN: {{buffer|flat}}_load_dword [[A:v[0-9]+]]
+; GCN: {{buffer|flat}}_load_dword [[B:v[0-9]+]]
+
+; GCN: v_div_scale_f32 v{{[0-9]+}}, s{{\[[0-9]+:[0-9]+\]}}, [[B]], [[B]], [[A]]
+; GCN: v_div_scale_f32 v{{[0-9]+}}, vcc, [[A]], [[B]], [[A]]
+define void @v_fneg_div_divti_use_div_f32(float addrspace(1)* %out, float addrspace(1)* %a.ptr, float addrspace(1)* %b.ptr) #0 {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x()
+  %tid.ext = sext i32 %tid to i64
+  %a.gep = getelementptr inbounds float, float addrspace(1)* %a.ptr, i64 %tid.ext
+  %b.gep = getelementptr inbounds float, float addrspace(1)* %b.ptr, i64 %tid.ext
+  %out.gep = getelementptr inbounds float, float addrspace(1)* %out, i64 %tid.ext
+  %a = load volatile float, float addrspace(1)* %a.gep
+  %b = load volatile float, float addrspace(1)* %b.gep
+  %div = fdiv float %a, %b
+  %fneg = fsub float -0.000000e+00, %div
+  %use1 = fdiv float %div, 4.0
+  store volatile float %fneg, float addrspace(1)* %out
+  store volatile float %use1, float addrspace(1)* %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}v_fneg_div_fneg_x_f32:
+; GCN: {{buffer|flat}}_load_dword [[A:v[0-9]+]]
+; GCN: {{buffer|flat}}_load_dword [[B:v[0-9]+]]
+
+; GCN: v_div_scale_f32 v{{[0-9]+}}, s{{\[[0-9]+:[0-9]+\]}}, [[B]], [[B]], [[A]]
+; GCN: v_div_scale_f32 v{{[0-9]+}}, vcc, [[A]], [[B]], [[A]]
+define void @v_fneg_div_fneg_x_f32(float addrspace(1)* %out, float addrspace(1)* %a.ptr, float addrspace(1)* %b.ptr) #0 {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x()
+  %tid.ext = sext i32 %tid to i64
+  %a.gep = getelementptr inbounds float, float addrspace(1)* %a.ptr, i64 %tid.ext
+  %b.gep = getelementptr inbounds float, float addrspace(1)* %b.ptr, i64 %tid.ext
+  %out.gep = getelementptr inbounds float, float addrspace(1)* %out, i64 %tid.ext
+  %a = load volatile float, float addrspace(1)* %a.gep
+  %b = load volatile float, float addrspace(1)* %b.gep
+  %fneg.a = fsub float -0.000000e+00, %a
+  %div = fdiv float %fneg.a, %b
+  %fneg = fsub float -0.000000e+00, %div
+  store volatile float %fneg, float addrspace(1)* %out
+  ret void
+}
+
 declare i32 @llvm.amdgcn.workitem.id.x() #1
 declare float @llvm.fma.f32(float, float, float) #1
 declare float @llvm.fmuladd.f32(float, float, float) #1
