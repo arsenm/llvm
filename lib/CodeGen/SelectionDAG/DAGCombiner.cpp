@@ -9758,6 +9758,21 @@ SDValue DAGCombiner::visitFNEG(SDNode *N) {
         DAG.ReplaceAllUsesWith(N0, DAG.getNode(ISD::FNEG, SL, VT, Res));
       return Res;
     }
+    case ISD::FP_EXTEND: {
+      SDValue CvtSrc = N0.getOperand(0);
+      if (CvtSrc.getOpcode() == ISD::FNEG) {
+        // (fneg (fp_extend (fneg x))) -> (fp_extend x)
+        return DAG.getNode(ISD::FP_EXTEND, SL, VT, CvtSrc.getOperand(0));
+      }
+
+      // (fneg (fp_extend x)) -> (fp_extend (fneg x))
+      //
+      // We want to fold negates through extends so they can be absorbed as
+      // modifiers, so we don't need the same conditions we have for folding
+      // through rounds.
+      SDValue Neg = DAG.getNode(ISD::FNEG, SL, CvtSrc.getValueType(), CvtSrc);
+      return DAG.getNode(ISD::FP_EXTEND, SL, VT, Neg);
+    }
     default:
       break;
     }
