@@ -9691,7 +9691,8 @@ SDValue DAGCombiner::visitFNEG(SDNode *N) {
     // transformations and infinite loops: we won't repeatedly try to
     // fold around a negate that has no 'good' form.
     // TODO: Check if users are foldable.
-    if ((Opc == ISD::FADD || Opc == ISD::FMUL || Opc == ISD::FMA) &&
+    if ((Opc == ISD::FADD || Opc == ISD::FMUL ||
+         Opc == ISD::FMA || Opc == ISD::FMAD) &&
         !N0.hasOneUse())
       return SDValue();
 
@@ -9729,6 +9730,30 @@ SDValue DAGCombiner::visitFNEG(SDNode *N) {
         RHS = DAG.getNode(ISD::FNEG, SL, VT, RHS);
 
       SDValue Res = DAG.getNode(ISD::FMUL, SL, VT, LHS, RHS);
+      if (!N0.hasOneUse())
+        DAG.ReplaceAllUsesWith(N0, DAG.getNode(ISD::FNEG, SL, VT, Res));
+      return Res;
+    }
+    case ISD::FMA:
+    case ISD::FMAD: {
+      // (fneg (fma x, y, z)) -> (fma x, (fneg y), (fneg z))
+      SDValue LHS = N0.getOperand(0);
+      SDValue MHS = N0.getOperand(1);
+      SDValue RHS = N0.getOperand(2);
+
+      if (LHS.getOpcode() == ISD::FNEG)
+        LHS = LHS.getOperand(0);
+      else if (MHS.getOpcode() == ISD::FNEG)
+        MHS = MHS.getOperand(0);
+      else
+        MHS = DAG.getNode(ISD::FNEG, SL, VT, MHS);
+
+      if (RHS.getOpcode() != ISD::FNEG)
+        RHS = DAG.getNode(ISD::FNEG, SL, VT, RHS);
+      else
+        RHS = RHS.getOperand(0);
+
+      SDValue Res = DAG.getNode(Opc, SL, VT, LHS, MHS, RHS);
       if (!N0.hasOneUse())
         DAG.ReplaceAllUsesWith(N0, DAG.getNode(ISD::FNEG, SL, VT, Res));
       return Res;
