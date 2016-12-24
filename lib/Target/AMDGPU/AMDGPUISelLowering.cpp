@@ -2752,8 +2752,8 @@ SDValue AMDGPUTargetLowering::performFNegCombine(SDNode *N,
   // a negate that has no 'good' form.
   //
   // TODO: Check users can fold
-  if ((Opc == ISD::FADD || Opc == ISD::FMUL ||
-       Opc == ISD::FMA || Opc == ISD::FMAD) &&
+  if ((Opc == ISD::FADD || Opc == ISD::FMUL || Opc == ISD::FMA ||
+       Opc == ISD::FMAD || Opc == AMDGPUISD::FMUL_LEGACY) &&
       !N0.hasOneUse())
     return SDValue();
 
@@ -2775,6 +2775,25 @@ SDValue AMDGPUTargetLowering::performFNegCombine(SDNode *N,
     }
 
     return SDValue();
+  }
+  case AMDGPUISD::FMUL_LEGACY: {
+    SDLoc SL(N);
+
+    // (fneg (fmul_legacy x, y)) -> (fmul_legacy x, (fneg y))
+    SDValue LHS = N0.getOperand(0);
+    SDValue RHS = N0.getOperand(1);
+
+    if (LHS.getOpcode() == ISD::FNEG)
+      LHS = LHS.getOperand(0);
+    else if (RHS.getOpcode() == ISD::FNEG)
+      RHS = RHS.getOperand(0);
+    else
+      RHS = DAG.getNode(ISD::FNEG, SL, VT, RHS);
+
+    SDValue Res = DAG.getNode(AMDGPUISD::FMUL_LEGACY, SL, VT, LHS, RHS);
+    if (!N0.hasOneUse())
+      DAG.ReplaceAllUsesWith(N0, DAG.getNode(ISD::FNEG, SL, VT, Res));
+    return Res;
   }
   default:
     return SDValue();
