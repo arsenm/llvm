@@ -333,6 +333,39 @@ void SIFoldOperands::foldOperand(
     if (MovOp == AMDGPU::COPY)
       return;
 
+    if (MovOp == AMDGPU::V_MOV_B64_PSEUDO) {
+      // Replace the copy with a pair of v_mov_b32 and REG_SEQUENCE.
+      unsigned DstLo = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
+      unsigned DstHi = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
+
+      const DebugLoc &DL = UseMI->getDebugLoc();
+      MachineBasicBlock *BB = UseMI->getParent();
+
+      int64_t Src0 = OpToFold.getImm();
+      MachineInstr *MovLo =
+        BuildMI(*BB, UseMI, DL, TII->get(AMDGPU::V_MOV_B32_e32), DstLo)
+        .addImm(Lo_32(Src0));
+
+      MachineInstr *MovHi =
+        BuildMI(*BB, UseMI, DL, TII->get(AMDGPU::V_MOV_B32_e32), DstHi)
+        .addImm(Hi_32(Src0));
+
+      UseMI->setDesc(TII->get(AMDGPU::REG_SEQUENCE));
+      UseMI->RemoveOperand(1);
+      MachineInstrBuilder(*BB->getParent(), UseMI)
+        .addReg(DstLo)
+        .addImm(AMDGPU::sub0)
+        .addReg(DstHi)
+        .addImm(AMDGPU::sub1);
+
+      // Now we try to fold the 32-bit moves into the users of the REG_SEQUENCE.
+      foldOperand(MovLo->getOperand(1), UseMI, 1,
+                  FoldList, CopiesToReplace, TII, TRI, MRI);
+      foldOperand(MovHi->getOperand(1), UseMI, 3,
+                  FoldList, CopiesToReplace, TII, TRI, MRI);
+      return;
+    }
+
     UseMI->setDesc(TII->get(MovOp));
     CopiesToReplace.push_back(UseMI);
   } else {
