@@ -155,8 +155,8 @@ define void @cast_0_flat_to_group_addrspacecast() #0 {
 }
 
 ; HSA-LABEL: {{^}}cast_neg1_group_to_flat_addrspacecast:
-; HSA: v_mov_b32_e32 v[[LO:[0-9]+]], 0{{$}}
 ; HSA: v_mov_b32_e32 v[[K:[0-9]+]], 7{{$}}
+; HSA: v_mov_b32_e32 v[[LO:[0-9]+]], 0{{$}}
 ; HSA: v_mov_b32_e32 v[[HI:[0-9]+]], 0{{$}}
 ; HSA: flat_store_dword v{{\[}}[[LO]]:[[HI]]{{\]}}, v[[K]]
 define void @cast_neg1_group_to_flat_addrspacecast() #0 {

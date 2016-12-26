@@ -334,6 +334,25 @@ void SIFoldOperands::foldOperand(
       return;
 
     if (MovOp == AMDGPU::V_MOV_B64_PSEUDO) {
+      unsigned DstReg = UseMI->getOperand(0).getReg();
+
+      // This is a pain to deal with because it is used for making it easier to
+      // match f64 inline immediate uses. However, if we can't fold it, the
+      // split 32-bit constants may be foldable into the uses.  Try to fold into
+      // the 64-bit uses, then split into the component moves and try to fold
+      // into their uses.
+      for (MachineRegisterInfo::use_iterator
+             RSUse = MRI.use_begin(DstReg), RSE = MRI.use_end();
+           RSUse != RSE; ++RSUse) {
+
+        MachineInstr *RSUseMI = RSUse->getParent();
+        if (RSUse->getSubReg() != AMDGPU::NoRegister)
+          continue;
+
+        foldOperand(OpToFold, RSUseMI, RSUse.getOperandNo(), FoldList,
+                    CopiesToReplace, TII, TRI, MRI);
+      }
+
       // Replace the copy with a pair of v_mov_b32 and REG_SEQUENCE.
       unsigned DstLo = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
       unsigned DstHi = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
