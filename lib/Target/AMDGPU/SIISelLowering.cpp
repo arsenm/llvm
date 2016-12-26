@@ -157,9 +157,6 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ConstantPool, MVT::v2i64, Expand);
 
   setOperationAction(ISD::SELECT, MVT::i1, Promote);
-  setOperationAction(ISD::SELECT, MVT::i64, Custom);
-  setOperationAction(ISD::SELECT, MVT::f64, Promote);
-  AddPromotedToType(ISD::SELECT, MVT::f64, MVT::i64);
 
   setOperationAction(ISD::SELECT_CC, MVT::f32, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i32, Expand);
@@ -1831,26 +1828,36 @@ MachineBasicBlock *SITargetLowering::EmitInstrWithCustomInserter(
     return emitIndirectDst(MI, *BB, *getSubtarget());
   case AMDGPU::SI_KILL:
     return splitKillBlock(MI, BB);
+  case AMDGPU::V_MOV_B64_PSEUDO:
   case AMDGPU::V_CNDMASK_B64_PSEUDO: {
     MachineRegisterInfo &MRI = BB->getParent()->getRegInfo();
 
     unsigned Dst = MI.getOperand(0).getReg();
-    unsigned Src0 = MI.getOperand(1).getReg();
-    unsigned Src1 = MI.getOperand(2).getReg();
     const DebugLoc &DL = MI.getDebugLoc();
-    unsigned SrcCond = MI.getOperand(3).getReg();
 
     unsigned DstLo = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
     unsigned DstHi = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
 
-    BuildMI(*BB, MI, DL, TII->get(AMDGPU::V_CNDMASK_B32_e64), DstLo)
-      .addReg(Src0, 0, AMDGPU::sub0)
-      .addReg(Src1, 0, AMDGPU::sub0)
-      .addReg(SrcCond);
-    BuildMI(*BB, MI, DL, TII->get(AMDGPU::V_CNDMASK_B32_e64), DstHi)
-      .addReg(Src0, 0, AMDGPU::sub1)
-      .addReg(Src1, 0, AMDGPU::sub1)
-      .addReg(SrcCond);
+    if (MI.getOpcode() == AMDGPU::V_CNDMASK_B64_PSEUDO) {
+      unsigned Src0 = MI.getOperand(1).getReg();
+      unsigned Src1 = MI.getOperand(2).getReg();
+      unsigned SrcCond = MI.getOperand(3).getReg();
+
+      BuildMI(*BB, MI, DL, TII->get(AMDGPU::V_CNDMASK_B32_e64), DstLo)
+        .addReg(Src0, 0, AMDGPU::sub0)
+        .addReg(Src1, 0, AMDGPU::sub0)
+        .addReg(SrcCond);
+      BuildMI(*BB, MI, DL, TII->get(AMDGPU::V_CNDMASK_B32_e64), DstHi)
+        .addReg(Src0, 0, AMDGPU::sub1)
+        .addReg(Src1, 0, AMDGPU::sub1)
+        .addReg(SrcCond);
+    } else {
+      uint64_t Src0 = MI.getOperand(1).getImm();
+      BuildMI(*BB, MI, DL, TII->get(AMDGPU::V_MOV_B32_e32), DstLo)
+        .addImm(Lo_32(Src0));
+      BuildMI(*BB, MI, DL, TII->get(AMDGPU::V_MOV_B32_e32), DstHi)
+        .addImm(Hi_32(Src0));
+    }
 
     BuildMI(*BB, MI, DL, TII->get(AMDGPU::REG_SEQUENCE), Dst)
       .addReg(DstLo)
@@ -1954,7 +1961,6 @@ SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::FSIN:
   case ISD::FCOS:
     return LowerTrig(Op, DAG);
-  case ISD::SELECT: return LowerSELECT(Op, DAG);
   case ISD::FDIV: return LowerFDIV(Op, DAG);
   case ISD::ATOMIC_CMP_SWAP: return LowerATOMIC_CMP_SWAP(Op, DAG);
   case ISD::STORE: return LowerSTORE(Op, DAG);
@@ -3098,33 +3104,6 @@ SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   default:
     return SDValue();
   }
-}
-
-SDValue SITargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
-  if (Op.getValueType() != MVT::i64)
-    return SDValue();
-
-  SDLoc DL(Op);
-  SDValue Cond = Op.getOperand(0);
-
-  SDValue Zero = DAG.getConstant(0, DL, MVT::i32);
-  SDValue One = DAG.getConstant(1, DL, MVT::i32);
-
-  SDValue LHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, Op.getOperand(1));
-  SDValue RHS = DAG.getNode(ISD::BITCAST, DL, MVT::v2i32, Op.getOperand(2));
-
-  SDValue Lo0 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, DL, MVT::i32, LHS, Zero);
-  SDValue Lo1 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, DL, MVT::i32, RHS, Zero);
-
-  SDValue Lo = DAG.getSelect(DL, MVT::i32, Cond, Lo0, Lo1);
-
-  SDValue Hi0 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, DL, MVT::i32, LHS, One);
-  SDValue Hi1 = DAG.getNode(ISD::EXTRACT_VECTOR_ELT, DL, MVT::i32, RHS, One);
-
-  SDValue Hi = DAG.getSelect(DL, MVT::i32, Cond, Hi0, Hi1);
-
-  SDValue Res = DAG.getBuildVector(MVT::v2i32, DL, {Lo, Hi});
-  return DAG.getNode(ISD::BITCAST, DL, MVT::i64, Res);
 }
 
 // Catch division cases where we can use shortcuts with rcp and rsq

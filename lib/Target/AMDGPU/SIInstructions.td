@@ -99,7 +99,8 @@ let hasSideEffects = 0, mayLoad = 0, mayStore = 0, Uses = [EXEC] in {
 
 // For use in patterns
 def V_CNDMASK_B64_PSEUDO : VOP3Common <(outs VReg_64:$vdst),
-  (ins VSrc_b64:$src0, VSrc_b64:$src1, SSrc_b64:$src2), "", []> {
+  (ins VCSrc_b64:$src0, VCSrc_b64:$src1, SReg_64:$src2), "",
+  [(set (i64 VReg_64:$vdst), (i64 (select i1:$src2, i64:$src1, i64:$src0)))]> {
   let isPseudo = 1;
   let isCodeGenOnly = 1;
   let usesCustomInserter = 1;
@@ -108,7 +109,9 @@ def V_CNDMASK_B64_PSEUDO : VOP3Common <(outs VReg_64:$vdst),
 // 64-bit vector move instruction.  This is mainly used by the SIFoldOperands
 // pass to enable folding of inline immediates.
 def V_MOV_B64_PSEUDO : VPseudoInstSI <(outs VReg_64:$vdst),
-                                      (ins VSrc_b64:$src0)>;
+                                      (ins VSrc_b64:$src0)> {
+  let usesCustomInserter = 1;
+}
 } // End let hasSideEffects = 0, mayLoad = 0, mayStore = 0, Uses = [EXEC]
 
 def S_TRAP_PSEUDO : VPseudoInstSI <(outs), (ins),
@@ -1058,6 +1061,11 @@ def : Pat <
   (V_BFI_B32 (S_MOV_B32 (i32 0x00ff00ff)),
              (V_ALIGNBIT_B32 $a, $a, (i32 24)),
              (V_ALIGNBIT_B32 $a, $a, (i32 8)))
+>;
+
+def : Pat<
+  (f64 (select i1:$src2, f64:$src1, f64:$src0)),
+  (V_CNDMASK_B64_PSEUDO $src1, $src0, $src2)
 >;
 
 multiclass BFMPatterns <ValueType vt, InstSI BFM, InstSI MOV> {
