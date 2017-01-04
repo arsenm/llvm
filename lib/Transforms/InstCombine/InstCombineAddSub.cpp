@@ -182,6 +182,7 @@ namespace {
     Value *createFAdd(Value *Opnd0, Value *Opnd1);
     Value *createFMul(Value *Opnd0, Value *Opnd1);
     Value *createFDiv(Value *Opnd0, Value *Opnd1);
+    Value *createFMA(Value *Opnd0, Value *Opnd1, Value *Opnd2, bool IsFMulAdd);
     Value *createFNeg(Value *V);
     Value *createNaryFAdd(const AddendVect& Opnds, unsigned InstrQuota);
     void createInstPostProc(Instruction *NewInst, bool NoNumber = false);
@@ -426,9 +427,40 @@ Value *FAddCombine::performFactorization(Instruction *I) {
           I->getOpcode() == Instruction::FSub) && "Expect add/sub");
 
   Instruction *I0 = dyn_cast<Instruction>(I->getOperand(0));
-  Instruction *I1 = dyn_cast<Instruction>(I->getOperand(1));
+  if (!I0)
+    return nullptr;
 
-  if (!I0 || !I1 || I0->getOpcode() != I1->getOpcode())
+  if (IntrinsicInst *II0 = dyn_cast<IntrinsicInst>(I0)) {
+    // TODO: Could handle fsub and insert fneg (or that might be best left to
+    // DAG).
+
+    // (fadd (fma x, y, (fmul u, v), z) -> (fma x, y (fma u, v, z))
+    if (I->getOpcode() == Instruction::FAdd &&
+        II0->hasUnsafeAlgebra() &&
+        (II0->getIntrinsicID() == Intrinsic::fma ||
+         II0->getIntrinsicID() == Intrinsic::fmuladd) &&
+        II0->hasOneUse()) {
+      bool IsFMulAdd = II0->getIntrinsicID() == Intrinsic::fmuladd;
+
+      Value *U, *V;
+      Value *FMA2 = II0->getArgOperand(2);
+      if (!FMA2->hasOneUse() ||
+          !match(FMA2, m_FMul(m_Value(U), m_Value(V))) ||
+          !cast<BinaryOperator>(FMA2)->hasUnsafeAlgebra())
+        return nullptr;
+
+      Value *X = II0->getArgOperand(0);
+      Value *Y = II0->getArgOperand(1);
+      Value *Z = I->getOperand(1);
+      Value *FMAUVZ = createFMA(U, V, Z, IsFMulAdd);
+      return createFMA(X, Y, FMAUVZ, IsFMulAdd);
+    }
+
+    return nullptr;
+  }
+
+  Instruction *I1 = dyn_cast<Instruction>(I->getOperand(1));
+  if (!I1 || I0->getOpcode() != I1->getOpcode())
     return nullptr;
 
   bool isMpy = false;
@@ -764,6 +796,18 @@ Value *FAddCombine::createFMul(Value *Opnd0, Value *Opnd1) {
 
 Value *FAddCombine::createFDiv(Value *Opnd0, Value *Opnd1) {
   Value *V = Builder->CreateFDiv(Opnd0, Opnd1);
+  if (Instruction *I = dyn_cast<Instruction>(V))
+    createInstPostProc(I);
+  return V;
+}
+
+Value *FAddCombine::createFMA(Value *Opnd0, Value *Opnd1, Value *Opnd2,
+                              bool FMulAdd) {
+  Module *M = Builder->GetInsertBlock()->getParent()->getParent();
+  Intrinsic::ID Opc = FMulAdd ? Intrinsic::fmuladd : Intrinsic::fma;
+  Value *F = Intrinsic::getDeclaration(M, Opc, Opnd0->getType());
+
+  Value *V = Builder->CreateCall(F, { Opnd0, Opnd1, Opnd2 });
   if (Instruction *I = dyn_cast<Instruction>(V))
     createInstPostProc(I);
   return V;
