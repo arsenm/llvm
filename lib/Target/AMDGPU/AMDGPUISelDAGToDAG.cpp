@@ -114,14 +114,13 @@ private:
                          SDValue &SLC) const;
   bool SelectMUBUFScratch(SDValue Addr, SDValue &RSrc, SDValue &VAddr,
                           SDValue &SOffset, SDValue &ImmOffset) const;
-  bool SelectMUBUFOffset(SDNode *Parent, SDValue Addr,
-                         SDValue &SRsrc, SDValue &SOffset,
+  bool SelectMUBUFOffset(SDValue Addr, SDValue &SRsrc, SDValue &SOffset,
                          SDValue &Offset, SDValue &GLC, SDValue &SLC,
                          SDValue &TFE) const;
-  bool SelectMUBUFOffset(SDNode *Parent, SDValue Addr, SDValue &SRsrc,
-                         SDValue &Soffset, SDValue &Offset, SDValue &SLC) const;
-  bool SelectMUBUFOffset(SDNode *Parent, SDValue Addr, SDValue &SRsrc,
-                         SDValue &Soffset, SDValue &Offset) const;
+  bool SelectMUBUFOffset(SDValue Addr, SDValue &SRsrc, SDValue &Soffset,
+                         SDValue &Offset, SDValue &SLC) const;
+  bool SelectMUBUFOffset(SDValue Addr, SDValue &SRsrc, SDValue &Soffset,
+                         SDValue &Offset) const;
   bool SelectMUBUFConstant(SDValue Constant,
                            SDValue &SOffset,
                            SDValue &ImmOffset) const;
@@ -1042,52 +1041,47 @@ bool AMDGPUDAGToDAGISel::SelectMUBUFScratch(SDValue Addr, SDValue &Rsrc,
   return true;
 }
 
-bool AMDGPUDAGToDAGISel::SelectMUBUFOffset(SDNode *Parent,
-                                           SDValue Addr,
-                                           SDValue &SRsrc,
+bool AMDGPUDAGToDAGISel::SelectMUBUFOffset(SDValue Addr, SDValue &SRsrc,
                                            SDValue &SOffset, SDValue &Offset,
                                            SDValue &GLC, SDValue &SLC,
                                            SDValue &TFE) const {
   SDValue Ptr, VAddr, Offen, Idxen, Addr64;
-  const SISubtarget *ST = static_cast<const SISubtarget *>(Subtarget);
-  const SIInstrInfo *TII = ST->getInstrInfo();
+  const SIInstrInfo *TII =
+    static_cast<const SIInstrInfo *>(Subtarget->getInstrInfo());
 
-  if (ST->hasAddr64() || ST->getTargetLowering()->isMemOpUniform(Parent)) {
-    if (!SelectMUBUF(Addr, Ptr, VAddr, SOffset, Offset, Offen, Idxen, Addr64,
-                     GLC, SLC, TFE))
-      return false;
+  if (!SelectMUBUF(Addr, Ptr, VAddr, SOffset, Offset, Offen, Idxen, Addr64,
+              GLC, SLC, TFE))
+    return false;
 
-    if (!cast<ConstantSDNode>(Offen)->getSExtValue() &&
-        !cast<ConstantSDNode>(Idxen)->getSExtValue() &&
-        !cast<ConstantSDNode>(Addr64)->getSExtValue()) {
-      uint64_t Rsrc = TII->getDefaultRsrcDataFormat() |
-        APInt::getAllOnesValue(32).getZExtValue(); // Size
-      SDLoc DL(Addr);
+  if (!cast<ConstantSDNode>(Offen)->getSExtValue() &&
+      !cast<ConstantSDNode>(Idxen)->getSExtValue() &&
+      !cast<ConstantSDNode>(Addr64)->getSExtValue()) {
+    uint64_t Rsrc = TII->getDefaultRsrcDataFormat() |
+                    APInt::getAllOnesValue(32).getZExtValue(); // Size
+    SDLoc DL(Addr);
 
-      const SITargetLowering *Lowering = ST->getTargetLowering();
+    const SITargetLowering& Lowering =
+      *static_cast<const SITargetLowering*>(getTargetLowering());
 
-      SRsrc = SDValue(Lowering->buildRSRC(*CurDAG, DL, Ptr, 0, Rsrc), 0);
-      return true;
-    }
+    SRsrc = SDValue(Lowering.buildRSRC(*CurDAG, DL, Ptr, 0, Rsrc), 0);
+    return true;
   }
-
   return false;
 }
 
-bool AMDGPUDAGToDAGISel::SelectMUBUFOffset(SDNode *Parent, SDValue Addr,
-                                           SDValue &SRsrc, SDValue &Soffset,
-                                           SDValue &Offset) const {
+bool AMDGPUDAGToDAGISel::SelectMUBUFOffset(SDValue Addr, SDValue &SRsrc,
+                                           SDValue &Soffset, SDValue &Offset
+                                           ) const {
   SDValue GLC, SLC, TFE;
 
-  return SelectMUBUFOffset(Parent, Addr, SRsrc, Soffset, Offset, GLC, SLC, TFE);
+  return SelectMUBUFOffset(Addr, SRsrc, Soffset, Offset, GLC, SLC, TFE);
 }
-bool AMDGPUDAGToDAGISel::SelectMUBUFOffset(SDNode *Parent, SDValue Addr,
-                                           SDValue &SRsrc, SDValue &Soffset,
-                                           SDValue &Offset,
+bool AMDGPUDAGToDAGISel::SelectMUBUFOffset(SDValue Addr, SDValue &SRsrc,
+                                           SDValue &Soffset, SDValue &Offset,
                                            SDValue &SLC) const {
   SDValue GLC, TFE;
 
-  return SelectMUBUFOffset(Parent, Addr, SRsrc, Soffset, Offset, GLC, SLC, TFE);
+  return SelectMUBUFOffset(Addr, SRsrc, Soffset, Offset, GLC, SLC, TFE);
 }
 
 bool AMDGPUDAGToDAGISel::SelectMUBUFConstant(SDValue Constant,
@@ -1523,7 +1517,7 @@ void AMDGPUDAGToDAGISel::SelectATOMIC_CMP_SWAP(SDNode *N) {
 
   if (!CmpSwap) {
     SDValue SRsrc, SOffset, Offset, SLC;
-    if (SelectMUBUFOffset(Mem, Mem->getBasePtr(), SRsrc, SOffset, Offset, SLC)) {
+    if (SelectMUBUFOffset(Mem->getBasePtr(), SRsrc, SOffset, Offset, SLC)) {
       unsigned Opcode = Is32 ? AMDGPU::BUFFER_ATOMIC_CMPSWAP_RTN_OFFSET :
         AMDGPU::BUFFER_ATOMIC_CMPSWAP_X2_RTN_OFFSET;
 

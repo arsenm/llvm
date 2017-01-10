@@ -274,7 +274,7 @@ lookupCandidateBaseReg(unsigned BaseReg,
 }
 
 bool LocalStackSlotPass::insertFrameReferenceRegisters(MachineFunction &Fn) {
-  // Scan the function's instruction`s looking for frame index references.
+  // Scan the function's instructions looking for frame index references.
   // For each, ask the target if it wants a virtual base register for it
   // based on what we can tell it about where the local will end up in the
   // stack frame. If it wants one, re-use a suitable one we've previously
