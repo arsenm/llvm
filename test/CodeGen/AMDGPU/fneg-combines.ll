@@ -779,10 +779,10 @@ define void @v_fneg_fp_extend_store_use_fneg_f32_to_f64(double addrspace(1)* %ou
 
 ; GCN-LABEL: {{^}}v_fneg_multi_use_fp_extend_fneg_f32_to_f64:
 ; GCN: {{buffer|flat}}_load_dword [[A:v[0-9]+]]
-; GCN-DAG: v_cvt_f64_f32_e32 v{{\[}}[[CVT_LO:[0-9]+]]:[[CVT_HI:[0-9]+]]{{\]}}, [[A]]
-; GCN-DAG: v_xor_b32_e32 v[[FNEG_A:[0-9]+]], 0x80000000, v[[CVT_HI]]
-; GCN: buffer_store_dwordx2 v{{\[[0-9]+}}:[[FNEG_A]]{{\]}}
-; GCN: buffer_store_dwordx2 v{{\[}}[[CVT_LO]]:[[CVT_HI]]{{\]}}
+; GCN-DAG: v_cvt_f64_f32_e32 [[CVT:v\[[0-9]+:[0-9]+\]]], [[A]]
+; GCN-DAG: v_add_f64 [[FNEG_A:v\[[0-9]+:[0-9]+\]]], -0, -[[CVT]]
+; GCN: buffer_store_dwordx2 [[FNEG_A]]
+; GCN: buffer_store_dwordx2 [[CVT]]
 define void @v_fneg_multi_use_fp_extend_fneg_f32_to_f64(double addrspace(1)* %out, float addrspace(1)* %a.ptr) #0 {
   %tid = call i32 @llvm.amdgcn.workitem.id.x()
   %tid.ext = sext i32 %tid to i64
@@ -798,10 +798,10 @@ define void @v_fneg_multi_use_fp_extend_fneg_f32_to_f64(double addrspace(1)* %ou
 
 ; GCN-LABEL: {{^}}v_fneg_multi_foldable_use_fp_extend_fneg_f32_to_f64:
 ; GCN: {{buffer|flat}}_load_dword [[A:v[0-9]+]]
-; GCN-DAG: v_cvt_f64_f32_e32 v{{\[}}[[CVT_LO:[0-9]+]]:[[CVT_HI:[0-9]+]]{{\]}}, [[A]]
-; GCN-DAG: v_xor_b32_e32 v[[FNEG_A:[0-9]+]], 0x80000000, v[[CVT_HI]]
-; GCN-DAG: v_mul_f64 [[MUL:v\[[0-9]+:[0-9]+\]]], v{{\[}}[[CVT_LO]]:[[CVT_HI]]{{\]}}, 4.0
-; GCN: buffer_store_dwordx2 v{{\[[0-9]+}}:[[FNEG_A]]{{\]}}
+; GCN-DAG: v_cvt_f64_f32_e32 [[CVT:v\[[0-9]+:[0-9]+\]]], [[A]]
+; GCN-DAG: v_add_f64 [[FNEG_A:v\[[0-9]+:[0-9]+\]]], -0, -[[CVT]]
+; GCN-DAG: v_mul_f64 [[MUL:v\[[0-9]+:[0-9]+\]]], [[CVT]], 4.0
+; GCN: buffer_store_dwordx2 [[FNEG_A]]
 ; GCN: buffer_store_dwordx2 [[MUL]]
 define void @v_fneg_multi_foldable_use_fp_extend_fneg_f32_to_f64(double addrspace(1)* %out, float addrspace(1)* %a.ptr) #0 {
   %tid = call i32 @llvm.amdgcn.workitem.id.x()
@@ -887,10 +887,9 @@ define void @v_fneg_fp_round_fneg_f64_to_f32(float addrspace(1)* %out, double ad
 ; GCN-LABEL: {{^}}v_fneg_fp_round_store_use_fneg_f64_to_f32:
 ; GCN: {{buffer|flat}}_load_dwordx2 v{{\[}}[[A_LO:[0-9]+]]:[[A_HI:[0-9]+]]{{\]}}
 ; GCN-DAG: v_cvt_f32_f64_e32 [[RESULT:v[0-9]+]], v{{\[}}[[A_LO]]:[[A_HI]]{{\]}}
-; GCN-DAG: v_xor_b32_e32 v[[NEG_A_HI:[0-9]+]], 0x80000000, v[[A_HI]]
-; GCN-DAG: v_mov_b32_e32 v[[NEG_A_LO:[0-9]+]], v[[A_LO]]
+; GCN-DAG: v_add_f64 [[FNEG_A:v\[[0-9]+:[0-9]+\]]], -0, -[[A]]
 ; GCN: buffer_store_dword [[RESULT]]
-; GCN: buffer_store_dwordx2 v{{\[}}[[NEG_A_LO]]:[[NEG_A_HI]]{{\]}}
+; GCN: buffer_store_dwordx2 [[FNEG_A]]
 define void @v_fneg_fp_round_store_use_fneg_f64_to_f32(float addrspace(1)* %out, double addrspace(1)* %a.ptr) #0 {
   %tid = call i32 @llvm.amdgcn.workitem.id.x()
   %tid.ext = sext i32 %tid to i64
