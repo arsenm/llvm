@@ -664,7 +664,12 @@ def : Pat <
 
 def : Pat <
   (fneg f64:$src),
-  (V_ADD_F64 SRCMODS.NEG, 0, SRCMODS.NEG, $src, DSTCLAMP.NONE, DSTOMOD.NONE)
+  (REG_SEQUENCE VReg_64,
+    (i32 (EXTRACT_SUBREG f64:$src, sub0)),
+    sub0,
+    (V_XOR_B32_e32 (i32 (EXTRACT_SUBREG f64:$src, sub1)),
+                   (i32 (V_MOV_B32_e32 (i32 0x80000000)))),
+    sub1)
 >;
 
 def : Pat <

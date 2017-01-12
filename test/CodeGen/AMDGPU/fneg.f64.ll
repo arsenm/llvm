@@ -1,18 +1,17 @@
-; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=SI -check-prefix=GCN -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -mcpu=SI -verify-machineinstrs < %s | FileCheck -check-prefix=SI -check-prefix=GCN -check-prefix=FUNC %s
 ; RUN: llc -march=amdgcn -mcpu=tonga -verify-machineinstrs < %s | FileCheck -check-prefix=VI -check-prefix=GCN -check-prefix=FUNC %s
 
 ; FUNC-LABEL: {{^}}fneg_f64:
-; GCN: v_add_f64 v{{\[[0-9]+:[0-9]+\]}}, -0, -s{{\[[0-9]+:[0-9]+\]}}
+; GCN: v_xor_b32
 define void @fneg_f64(double addrspace(1)* %out, double %in) {
   %fneg = fsub double -0.000000e+00, %in
   store double %fneg, double addrspace(1)* %out
   ret void
 }
 
-; TODO: Doing xor would reduce code size
 ; FUNC-LABEL: {{^}}fneg_v2f64:
-; GCN: v_add_f64 v{{\[[0-9]+:[0-9]+\]}}, -0, -s{{\[[0-9]+:[0-9]+\]}}
-; GCN: v_add_f64 v{{\[[0-9]+:[0-9]+\]}}, -0, -s{{\[[0-9]+:[0-9]+\]}}
+; GCN: v_xor_b32
+; GCN: v_xor_b32
 define void @fneg_v2f64(<2 x double> addrspace(1)* nocapture %out, <2 x double> %in) {
   %fneg = fsub <2 x double> <double -0.000000e+00, double -0.000000e+00>, %in
   store <2 x double> %fneg, <2 x double> addrspace(1)* %out
@@ -25,10 +24,10 @@ define void @fneg_v2f64(<2 x double> addrspace(1)* nocapture %out, <2 x double> 
 ; R600: -PV
 ; R600: -PV
 
-; GCN: v_add_f64 v{{\[[0-9]+:[0-9]+\]}}, -0, -s{{\[[0-9]+:[0-9]+\]}}
-; GCN: v_add_f64 v{{\[[0-9]+:[0-9]+\]}}, -0, -s{{\[[0-9]+:[0-9]+\]}}
-; GCN: v_add_f64 v{{\[[0-9]+:[0-9]+\]}}, -0, -s{{\[[0-9]+:[0-9]+\]}}
-; GCN: v_add_f64 v{{\[[0-9]+:[0-9]+\]}}, -0, -s{{\[[0-9]+:[0-9]+\]}}
+; GCN: v_xor_b32
+; GCN: v_xor_b32
+; GCN: v_xor_b32
+; GCN: v_xor_b32
 define void @fneg_v4f64(<4 x double> addrspace(1)* nocapture %out, <4 x double> %in) {
   %fneg = fsub <4 x double> <double -0.000000e+00, double -0.000000e+00, double -0.000000e+00, double -0.000000e+00>, %in
   store <4 x double> %fneg, <4 x double> addrspace(1)* %out
