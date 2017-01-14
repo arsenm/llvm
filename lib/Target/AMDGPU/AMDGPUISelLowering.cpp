@@ -2800,8 +2800,10 @@ static SDValue foldFreeOpFromSelect(TargetLowering::DAGCombinerInfo &DCI,
   SDValue RHS = N.getOperand(2);
 
   EVT VT = N.getValueType();
-  if ((LHS.getOpcode() == ISD::FABS && RHS.getOpcode() == ISD::FABS) ||
-      (LHS.getOpcode() == ISD::FNEG && RHS.getOpcode() == ISD::FNEG)) {
+  if (((LHS.getOpcode() == ISD::FABS && RHS.getOpcode() == ISD::FABS) ||
+       (LHS.getOpcode() == ISD::FNEG && RHS.getOpcode() == ISD::FNEG)) &&
+      (!LHS.hasOneUse() || !RHS.hasOneUse() ||
+       allUsesHaveSourceMods(N.getNode()))) {
     return distributeOpThroughSelect(DCI, LHS.getOpcode(),
                                      SDLoc(N), Cond, LHS, RHS);
   }
@@ -2814,7 +2816,8 @@ static SDValue foldFreeOpFromSelect(TargetLowering::DAGCombinerInfo &DCI,
 
   // TODO: Support vector constants.
   ConstantFPSDNode *CRHS = dyn_cast<ConstantFPSDNode>(RHS);
-  if ((LHS.getOpcode() == ISD::FNEG || LHS.getOpcode() == ISD::FABS) && CRHS) {
+  if (CRHS && (LHS.getOpcode() == ISD::FNEG || LHS.getOpcode() == ISD::FABS) &&
+      allUsesHaveSourceMods(N.getNode())) {
     SDLoc SL(N);
     // If one side is an fneg/fabs and the other is a constant, we can push the
     // fneg/fabs down. If it's an fabs, the constant needs to be non-negative.

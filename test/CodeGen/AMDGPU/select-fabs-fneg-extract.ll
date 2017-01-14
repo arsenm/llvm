@@ -810,14 +810,12 @@ define void @select_fneg_posk_src_fmad_f32(i32 %c) #0 {
   ret void
 }
 
-; FIXME: This one should fold to rcp
 ; GCN-LABEL: {{^}}select_fneg_posk_src_rcp_f32:
 ; GCN: buffer_load_dword [[X:v[0-9]+]]
 
-; GCN: v_rcp_f32_e32 [[RCP:v[0-9]+]], [[X]]
-; GCN: v_cndmask_b32_e32 [[SELECT:v[0-9]+]], -2.0, [[RCP]], vcc
-; GCN: v_xor_b32_e32 [[NEG_SELECT:v[0-9]+]], 0x80000000, [[SELECT]]
-; GCN-NEXT: buffer_store_dword [[NEG_SELECT]]
+; GCN: v_rcp_f32_e64 [[RCP:v[0-9]+]], -[[X]]
+; GCN: v_cndmask_b32_e32 [[SELECT:v[0-9]+]], 2.0, [[RCP]], vcc
+; GCN-NEXT: buffer_store_dword [[SELECT]]
 define void @select_fneg_posk_src_rcp_f32(i32 %c) #0 {
   %x = load volatile float, float addrspace(1)* undef
   %y = load volatile float, float addrspace(1)* undef
