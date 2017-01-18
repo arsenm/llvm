@@ -2824,9 +2824,12 @@ static SDValue foldFreeOpFromSelect(TargetLowering::DAGCombinerInfo &DCI,
   }
 
   // TODO: Support vector constants.
+  // TODO: Should this check if users have modifiers?
   ConstantFPSDNode *CRHS = dyn_cast<ConstantFPSDNode>(RHS);
-  if (CRHS && (LHS.getOpcode() == ISD::FNEG || LHS.getOpcode() == ISD::FABS) &&
-      allUsesHaveSourceMods(N.getNode())) {
+  if (CRHS && (LHS.getOpcode() == ISD::FNEG || LHS.getOpcode() == ISD::FABS)
+
+      /*&&
+        allUsesHaveSourceMods(N.getNode())*/) {
     SDLoc SL(N);
     // If one side is an fneg/fabs and the other is a constant, we can push the
     // fneg/fabs down. If it's an fabs, the constant needs to be non-negative.
