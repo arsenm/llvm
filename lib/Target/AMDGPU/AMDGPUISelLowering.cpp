@@ -1036,10 +1036,19 @@ SDValue AMDGPUTargetLowering::combineFMinMaxLegacy(const SDLoc &DL, EVT VT,
                                                    SDValue True, SDValue False,
                                                    SDValue CC,
                                                    DAGCombinerInfo &DCI) const {
+  SelectionDAG &DAG = DCI.DAG;
+
+  // select (setcc x, K), (fneg x), -K ->
+  if ((True.getOpcode() == ISD::FNEG || True.getOpcode() == ISD::FABS) &&
+      isa<ConstantFPSDNode>(False)) {
+    SDValue FoldFalse = DAG.getNode(True.getOpcode(), DL, VT, False);
+    return combineFMinMaxLegacy(DL, VT, LHS, RHS,
+                                True.getOperand(0), FoldFalse, CC, DCI);
+  }
+
   if (!(LHS == True && RHS == False) && !(LHS == False && RHS == True))
     return SDValue();
 
-  SelectionDAG &DAG = DCI.DAG;
   ISD::CondCode CCOpcode = cast<CondCodeSDNode>(CC)->get();
   switch (CCOpcode) {
   case ISD::SETOEQ:
@@ -2857,50 +2866,51 @@ static SDValue foldFreeOpFromSelect(TargetLowering::DAGCombinerInfo &DCI,
 
 SDValue AMDGPUTargetLowering::performSelectCombine(SDNode *N,
                                                    DAGCombinerInfo &DCI) const {
+  SDValue Cond = N->getOperand(0);
+  if (Cond.getOpcode() == ISD::SETCC) {
+    EVT VT = N->getValueType(0);
+    SDValue LHS = Cond.getOperand(0);
+    SDValue RHS = Cond.getOperand(1);
+    SDValue CC = Cond.getOperand(2);
+
+    SDValue True = N->getOperand(1);
+    SDValue False = N->getOperand(2);
+
+    if (Cond.hasOneUse()) { // TODO: Look for multiple select uses.
+      SelectionDAG &DAG = DCI.DAG;
+      if ((DAG.isConstantValueOfAnyType(True) ||
+           DAG.isConstantValueOfAnyType(True)) &&
+          (!DAG.isConstantValueOfAnyType(False) &&
+           !DAG.isConstantValueOfAnyType(False))) {
+        // Swap cmp + select pair to move constant to false input.
+        // This will allow using VOPC cndmasks more often.
+        // select (setcc x, y), k, x -> select (setcc y, x) x, x
+
+        SDLoc SL(N);
+        ISD::CondCode NewCC = getSetCCInverse(cast<CondCodeSDNode>(CC)->get(),
+                                              LHS.getValueType().isInteger());
+
+        SDValue NewCond = DAG.getSetCC(SL, Cond.getValueType(), LHS, RHS, NewCC);
+        return DAG.getNode(ISD::SELECT, SL, VT, NewCond, False, True);
+      }
+
+      if (VT == MVT::f32 && Subtarget->hasFminFmaxLegacy()) {
+        SDValue MinMax
+          = combineFMinMaxLegacy(SDLoc(N), VT, LHS, RHS, True, False, CC, DCI);
+        // Revisit this node so we can catch min3/max3/med3 patterns.
+        //DCI.AddToWorklist(MinMax.getNode());
+        return MinMax;
+      }
+    }
+
+    // There's no reason to not do this if the condition has other uses.
+    return performCtlzCombine(SDLoc(N), Cond, True, False, DCI);
+  }
+
   if (SDValue Folded = foldFreeOpFromSelect(DCI, SDValue(N, 0)))
     return Folded;
 
-  SDValue Cond = N->getOperand(0);
-  if (Cond.getOpcode() != ISD::SETCC)
-    return SDValue();
-
-  EVT VT = N->getValueType(0);
-  SDValue LHS = Cond.getOperand(0);
-  SDValue RHS = Cond.getOperand(1);
-  SDValue CC = Cond.getOperand(2);
-
-  SDValue True = N->getOperand(1);
-  SDValue False = N->getOperand(2);
-
-  if (Cond.hasOneUse()) { // TODO: Look for multiple select uses.
-    SelectionDAG &DAG = DCI.DAG;
-    if ((DAG.isConstantValueOfAnyType(True) ||
-         DAG.isConstantValueOfAnyType(True)) &&
-        (!DAG.isConstantValueOfAnyType(False) &&
-         !DAG.isConstantValueOfAnyType(False))) {
-      // Swap cmp + select pair to move constant to false input.
-      // This will allow using VOPC cndmasks more often.
-      // select (setcc x, y), k, x -> select (setcc y, x) x, x
-
-      SDLoc SL(N);
-      ISD::CondCode NewCC = getSetCCInverse(cast<CondCodeSDNode>(CC)->get(),
-                                            LHS.getValueType().isInteger());
-
-      SDValue NewCond = DAG.getSetCC(SL, Cond.getValueType(), LHS, RHS, NewCC);
-      return DAG.getNode(ISD::SELECT, SL, VT, NewCond, False, True);
-    }
-
-    if (VT == MVT::f32 && Subtarget->hasFminFmaxLegacy()) {
-      SDValue MinMax
-        = combineFMinMaxLegacy(SDLoc(N), VT, LHS, RHS, True, False, CC, DCI);
-      // Revisit this node so we can catch min3/max3/med3 patterns.
-      //DCI.AddToWorklist(MinMax.getNode());
-      return MinMax;
-    }
-  }
-
-  // There's no reason to not do this if the condition has other uses.
-  return performCtlzCombine(SDLoc(N), Cond, True, False, DCI);
+  return SDValue();
 }
 
 static bool isConstantFPZero(SDValue N) {
