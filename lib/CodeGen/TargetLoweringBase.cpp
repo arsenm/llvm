@@ -970,6 +970,24 @@ void TargetLoweringBase::initActions() {
   setOperationAction(ISD::DEBUGTRAP, MVT::Other, Expand);
 }
 
+unsigned TargetLoweringBase::getStackTemporaryPreferredAlign(
+  const DataLayout &DL,
+  LLVMContext &Context,
+  EVT VT, unsigned MinAlign) const {
+  Type *Ty = VT.getTypeForEVT(Context);
+  return std::max((unsigned)DL.getPrefTypeAlignment(Ty), MinAlign);
+}
+
+unsigned TargetLoweringBase::getStackTemporaryPreferredAlign(const DataLayout &DL,
+                                                             LLVMContext &Context,
+                                                             EVT VT1,
+                                                             EVT VT2) const {
+  Type *Ty1 = VT1.getTypeForEVT(Context);
+  Type *Ty2 = VT2.getTypeForEVT(Context);
+
+  return std::max(DL.getPrefTypeAlignment(Ty1), DL.getPrefTypeAlignment(Ty2));
+}
+
 MVT TargetLoweringBase::getScalarShiftAmountTy(const DataLayout &DL,
                                                EVT) const {
   return MVT::getIntegerVT(8 * DL.getPointerSize(0));

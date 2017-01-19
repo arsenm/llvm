@@ -1816,24 +1816,21 @@ SDValue SelectionDAG::expandVACopy(SDNode *Node) {
                   MachinePointerInfo(VD));
 }
 
-SDValue SelectionDAG::CreateStackTemporary(EVT VT, unsigned minAlign) {
+SDValue SelectionDAG::CreateStackTemporary(EVT VT, unsigned MinAlign) {
   MachineFrameInfo &MFI = getMachineFunction().getFrameInfo();
-  unsigned ByteSize = VT.getStoreSize();
-  Type *Ty = VT.getTypeForEVT(*getContext());
-  unsigned StackAlign =
-      std::max((unsigned)getDataLayout().getPrefTypeAlignment(Ty), minAlign);
+  unsigned StackAlign
+    = TLI->getStackTemporaryPreferredAlign(getDataLayout(), *getContext(),
+                                           VT, MinAlign);
 
+  unsigned ByteSize = VT.getStoreSize();
   int FrameIdx = MFI.CreateStackObject(ByteSize, StackAlign, false);
   return getFrameIndex(FrameIdx, TLI->getPointerTy(getDataLayout()));
 }
 
 SDValue SelectionDAG::CreateStackTemporary(EVT VT1, EVT VT2) {
   unsigned Bytes = std::max(VT1.getStoreSize(), VT2.getStoreSize());
-  Type *Ty1 = VT1.getTypeForEVT(*getContext());
-  Type *Ty2 = VT2.getTypeForEVT(*getContext());
-  const DataLayout &DL = getDataLayout();
-  unsigned Align =
-      std::max(DL.getPrefTypeAlignment(Ty1), DL.getPrefTypeAlignment(Ty2));
+  unsigned Align = TLI->getStackTemporaryPreferredAlign(getDataLayout(),
+                                                        *getContext(), VT1, VT2);
 
   MachineFrameInfo &MFI = getMachineFunction().getFrameInfo();
   int FrameIdx = MFI.CreateStackObject(Bytes, Align, false);

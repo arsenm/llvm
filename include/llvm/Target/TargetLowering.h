@@ -193,6 +193,17 @@ public:
 
   virtual bool useSoftFloat() const { return false; }
 
+  /// \p returns the alignment of that should be used for a temporary stack
+  /// slot.
+  virtual unsigned getStackTemporaryPreferredAlign(const DataLayout &DL,
+                                                   LLVMContext &Context,
+                                                   EVT VT,
+                                                   unsigned MinAlign = 1) const;
+  virtual unsigned getStackTemporaryPreferredAlign(const DataLayout &DL,
+                                                   LLVMContext &Context,
+                                                   EVT VT1,
+                                                   EVT VT2) const;
+
   /// Return the pointer type for the given address space, defaults to
   /// the pointer type from the data layout.
   /// FIXME: The default needs to be removed once all the code is updated.

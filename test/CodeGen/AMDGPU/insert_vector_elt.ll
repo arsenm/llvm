@@ -209,7 +209,7 @@ define void @dynamic_insertelement_v3i16(<3 x i16> addrspace(1)* %out, <3 x i16>
 
 ; GCN-DAG: v_mov_b32_e32 [[BASE_FI:v[0-9]+]], 0{{$}}
 ; GCN-DAG: s_and_b32 [[MASK_IDX:s[0-9]+]], s{{[0-9]+}}, 3{{$}}
-; GCN-DAG: v_or_b32_e32 [[IDX:v[0-9]+]], [[MASK_IDX]], [[BASE_FI]]{{$}}
+; GCN-DAG: v_add_i32_e32 [[IDX:v[0-9]+]], vcc, [[MASK_IDX]], [[BASE_FI]]{{$}}
 
 ; GCN-DAG: buffer_store_short v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:6
 ; GCN-DAG: buffer_store_short v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:4
@@ -388,8 +388,7 @@ define void @dynamic_insertelement_v3i64(<3 x i64> addrspace(1)* %out, <3 x i64>
   ret void
 }
 
-; FIXME: Should be able to do without stack access. The used stack
-; space is also 2x what should be required.
+; FIXME: Should be able to do without stack access.
 
 ; GCN-LABEL: {{^}}dynamic_insertelement_v4f64:
 ; GCN: SCRATCH_RSRC_DWORD
@@ -410,7 +409,7 @@ define void @dynamic_insertelement_v3i64(<3 x i64> addrspace(1)* %out, <3 x i64>
 ; GCN: buffer_store_dwordx4
 ; GCN: buffer_store_dwordx4
 ; GCN: s_endpgm
-; GCN: ScratchSize: 64
+; GCN: ScratchSize: 36
 
 define void @dynamic_insertelement_v4f64(<4 x double> addrspace(1)* %out, <4 x double> %a, i32 %b) nounwind {
   %vecins = insertelement <4 x double> %a, double 8.0, i32 %b
@@ -438,7 +437,7 @@ define void @dynamic_insertelement_v4f64(<4 x double> addrspace(1)* %out, <4 x d
 ; GCN: buffer_store_dwordx4
 ; GCN: buffer_store_dwordx4
 ; GCN: s_endpgm
-; GCN: ScratchSize: 128
+; GCN: ScratchSize: 68
 define void @dynamic_insertelement_v8f64(<8 x double> addrspace(1)* %out, <8 x double> %a, i32 %b) nounwind {
   %vecins = insertelement <8 x double> %a, double 8.0, i32 %b
   store <8 x double> %vecins, <8 x double> addrspace(1)* %out, align 16

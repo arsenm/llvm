@@ -119,6 +119,22 @@ protected:
 public:
   AMDGPUTargetLowering(const TargetMachine &TM, const AMDGPUSubtarget &STI);
 
+  // Any 4-byte aligned access is always legal, and stack objects are broken
+  // into accesses of 4-byte elements, so anything higher is just wasting space.
+  unsigned getStackTemporaryPreferredAlign(const DataLayout &DL,
+                                           LLVMContext &Context,
+                                           EVT VT,
+                                           unsigned MinAlign = 1) const override {
+    return std::max(4u, MinAlign);
+  }
+
+  unsigned getStackTemporaryPreferredAlign(const DataLayout &DL,
+                                           LLVMContext &Context,
+                                           EVT VT1,
+                                           EVT VT2) const override {
+    return 4;
+  }
+
   bool mayIgnoreSignedZero(SDValue Op) const {
     if (getTargetMachine().Options.UnsafeFPMath) // FIXME: nsz only
       return true;
