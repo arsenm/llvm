@@ -84,7 +84,13 @@ void TargetMachine::resetTargetOptions(const Function &F) const {
   RESET_OPTION(UnsafeFPMath, "unsafe-fp-math");
   RESET_OPTION(NoInfsFPMath, "no-infs-fp-math");
   RESET_OPTION(NoNaNsFPMath, "no-nans-fp-math");
+  RESET_OPTION(NoSignedZerosFPMath, "no-signed-zeros-fp-math");
   RESET_OPTION(NoTrappingFPMath, "no-trapping-math");
+
+  if (Options.UnsafeFPMath) {
+    // Should this imply the others?
+    Options.NoSignedZerosFPMath = true;
+  }
 
   StringRef Denormal =
     F.getFnAttribute("denormal-fp-math").getValueAsString();
