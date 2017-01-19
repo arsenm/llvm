@@ -83,6 +83,8 @@ protected:
   SDValue performMulLoHi24Combine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performCtlzCombine(const SDLoc &SL, SDValue Cond, SDValue LHS,
                              SDValue RHS, DAGCombinerInfo &DCI) const;
+
+  SDValue foldFreeOpFromSelect(DAGCombinerInfo &DCI, SDValue N) const;
   SDValue performSelectCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performFNegCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performFAbsCombine(SDNode *N, DAGCombinerInfo &DCI) const;
@@ -129,6 +131,9 @@ public:
 
     return false;
   }
+
+  LLVM_READONLY
+  bool fnegFoldsIntoOp(SDValue Op) const;
 
   bool isFAbsFree(EVT VT) const override;
   bool isFNegFree(EVT VT) const override;

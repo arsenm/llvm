@@ -487,13 +487,14 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(const TargetMachine &TM,
 //===----------------------------------------------------------------------===//
 
 LLVM_READNONE
-static bool fnegFoldsIntoOp(unsigned Opc) {
-  switch (Opc) {
+bool AMDGPUTargetLowering::fnegFoldsIntoOp(SDValue Op) const {
+  switch (Op.getOpcode()) {
   case ISD::FADD:
   case ISD::FSUB:
-  case ISD::FMUL:
   case ISD::FMA:
   case ISD::FMAD:
+    return mayIgnoreSignedZero(Op);
+  case ISD::FMUL:
   case ISD::FMINNUM:
   case ISD::FMAXNUM:
   case ISD::FSIN:
@@ -2801,8 +2802,8 @@ static SDValue distributeOpThroughSelect(TargetLowering::DAGCombinerInfo &DCI,
 //
 // select c, (fabs x), (fabs y) -> fabs (select c, x, y)
 // select c, (fabs x), +k -> fabs (select c, x, k)
-static SDValue foldFreeOpFromSelect(TargetLowering::DAGCombinerInfo &DCI,
-                                    SDValue N) {
+SDValue AMDGPUTargetLowering::foldFreeOpFromSelect(DAGCombinerInfo &DCI,
+                                                   SDValue N) const {
   SelectionDAG &DAG = DCI.DAG;
   SDValue Cond = N.getOperand(0);
   SDValue LHS = N.getOperand(1);
@@ -2841,7 +2842,7 @@ static SDValue foldFreeOpFromSelect(TargetLowering::DAGCombinerInfo &DCI,
 
     if (NewLHS.hasOneUse()) {
       unsigned Opc = NewLHS.getOpcode();
-      if (LHS.getOpcode() == ISD::FNEG && fnegFoldsIntoOp(Opc))
+      if (LHS.getOpcode() == ISD::FNEG && fnegFoldsIntoOp(NewLHS))
         ShouldFoldNeg = false;
       if (LHS.getOpcode() == ISD::FABS && Opc == ISD::FMUL)
         ShouldFoldNeg = false;
@@ -2955,7 +2956,7 @@ SDValue AMDGPUTargetLowering::performFNegCombine(SDNode *N,
     if (allUsesHaveSourceMods(N, 0))
       return SDValue();
   } else {
-    if (fnegFoldsIntoOp(Opc) &&
+    if (fnegFoldsIntoOp(N0) &&
         (allUsesHaveSourceMods(N) || !allUsesHaveSourceMods(N0.getNode())))
       return SDValue();
   }
