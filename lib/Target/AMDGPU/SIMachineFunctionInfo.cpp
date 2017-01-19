@@ -194,6 +194,9 @@ SIMachineFunctionInfo::SpilledReg SIMachineFunctionInfo::getSpilledReg (
 
   MachineFrameInfo &FrameInfo = MF->getFrameInfo();
   MachineRegisterInfo &MRI = MF->getRegInfo();
+
+  // FIXME: We can probably salvage the first 4 bytes reserved for the emergency
+  // stack slot.
   int64_t Offset = FrameInfo.getObjectOffset(FrameIndex);
   Offset += SubIdx * 4;
 

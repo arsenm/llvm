@@ -11,8 +11,8 @@
 ; CHECK-DAG: v_and_b32_e32 [[CLAMP_IDX:v[0-9]+]], 0x1fc, [[BYTES]]
 
 ; TODO: add 0?
-; CHECK-DAG: v_add_i32_e32 [[LO_OFF:v[0-9]+]], vcc, 0, [[CLAMP_IDX]]
-; CHECK-DAG: v_add_i32_e32 [[HI_OFF:v[0-9]+]], vcc, 0x200, [[CLAMP_IDX]]
+; CHECK-DAG: v_add_i32_e32 [[LO_OFF:v[0-9]+]], vcc, 4, [[CLAMP_IDX]]
+; CHECK-DAG: v_add_i32_e32 [[HI_OFF:v[0-9]+]], vcc, 0x204, [[CLAMP_IDX]]
 
 ; CHECK: buffer_load_dword {{v[0-9]+}}, [[LO_OFF]], {{s\[[0-9]+:[0-9]+\]}}, {{s[0-9]+}} offen
 ; CHECK: buffer_load_dword {{v[0-9]+}}, [[HI_OFF]], {{s\[[0-9]+:[0-9]+\]}}, {{s[0-9]+}} offen
