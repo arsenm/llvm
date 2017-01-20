@@ -34,7 +34,7 @@ define void @use_group_to_flat_addrspacecast(i32 addrspace(3)* %ptr) #0 {
 ; HSA-DAG: v_mov_b32_e32 [[VAPERTURE:v[0-9]+]], [[APERTURE]]
 ; HSA-DAG: v_mov_b32_e32 [[VPTR:v[0-9]+]], [[PTR]]
 
-; HSA-DAG: v_cmp_ne_u32_e64 vcc, [[PTR]], -1
+; HSA-DAG: v_cmp_ne_u32_e64 vcc, [[PTR]], 0
 ; HSA-DAG: v_cndmask_b32_e32 v[[HI:[0-9]+]], 0, [[VAPERTURE]]
 ; HSA-DAG: v_cndmask_b32_e32 v[[LO:[0-9]+]], 0, [[VPTR]]
 ; HSA-DAG: v_mov_b32_e32 [[K:v[0-9]+]], 7
@@ -98,7 +98,7 @@ define void @use_flat_to_group_addrspacecast(i32 addrspace(4)* %ptr) #0 {
 ; HSA: s_load_dwordx2 s{{\[}}[[PTR_LO:[0-9]+]]:[[PTR_HI:[0-9]+]]{{\]}}
 ; HSA-DAG: v_cmp_ne_u64_e64 vcc, s{{\[}}[[PTR_LO]]:[[PTR_HI]]{{\]}}, 0{{$}}
 ; HSA-DAG: v_mov_b32_e32 v[[VPTR_LO:[0-9]+]], s[[PTR_LO]]
-; HSA-DAG: v_cndmask_b32_e32 [[CASTPTR:v[0-9]+]], -1, v[[VPTR_LO]]
+; HSA-DAG: v_cndmask_b32_e32 [[CASTPTR:v[0-9]+]], 0, v[[VPTR_LO]]
 ; HSA-DAG: v_mov_b32_e32 v[[K:[0-9]+]], 0{{$}}
 ; HSA: buffer_store_dword v[[K]], [[CASTPTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen{{$}}
 define void @use_flat_to_private_addrspacecast(i32 addrspace(4)* %ptr) #0 {
@@ -176,10 +176,9 @@ define void @cast_neg1_flat_to_group_addrspacecast() #0 {
 }
 
 ; HSA-LABEL: {{^}}cast_0_private_to_flat_addrspacecast:
-; HSA: s_load_dword [[APERTURE:s[0-9]+]], s[4:5], 0x11
-; HSA-DAG: v_mov_b32_e32 v[[HI:[0-9]+]], [[APERTURE]]
-; HSA-DAG: v_mov_b32_e32 v[[LO:[0-9]+]], 0{{$}}
+; HSA: v_mov_b32_e32 v[[LO:[0-9]+]], 0{{$}}
 ; HSA-DAG: v_mov_b32_e32 v[[K:[0-9]+]], 7{{$}}
+; HSA-DAG: v_mov_b32_e32 v[[HI:[0-9]+]], 0{{$}}
 ; HSA: flat_store_dword v{{\[}}[[LO]]:[[HI]]{{\]}}, v[[K]]
 define void @cast_0_private_to_flat_addrspacecast() #0 {
   %cast = addrspacecast i32* null to i32 addrspace(4)*
@@ -188,7 +187,7 @@ define void @cast_0_private_to_flat_addrspacecast() #0 {
 }
 
 ; HSA-LABEL: {{^}}cast_0_flat_to_private_addrspacecast:
-; HSA-DAG: v_mov_b32_e32 [[PTR:v[0-9]+]], -1{{$}}
+; HSA-DAG: v_mov_b32_e32 [[PTR:v[0-9]+]], 0{{$}}
 ; HSA-DAG: v_mov_b32_e32 [[K:v[0-9]+]], 7{{$}}
 ; HSA: buffer_store_dword [[K]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen
 define void @cast_0_flat_to_private_addrspacecast() #0 {
