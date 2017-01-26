@@ -630,7 +630,7 @@ unsigned Value::getPointerAlignment(const DataLayout &DL) const {
     if (Align == 0) {
       Type *AllocatedType = AI->getAllocatedType();
       if (AllocatedType->isSized())
-        Align = DL.getPrefTypeAlignment(AllocatedType);
+        Align = DL.getPrefABITypeAlignment(AllocatedType);
     }
   } else if (auto CS = ImmutableCallSite(this))
     Align = CS.getAttributes().getParamAlignment(AttributeSet::ReturnIndex);

@@ -388,8 +388,7 @@ define void @dynamic_insertelement_v3i64(<3 x i64> addrspace(1)* %out, <3 x i64>
   ret void
 }
 
-; FIXME: Should be able to do without stack access. The used stack
-; space is also 2x what should be required.
+; FIXME: Should be able to do without stack access.
 
 ; GCN-LABEL: {{^}}dynamic_insertelement_v4f64:
 ; GCN: SCRATCH_RSRC_DWORD
@@ -410,7 +409,7 @@ define void @dynamic_insertelement_v3i64(<3 x i64> addrspace(1)* %out, <3 x i64>
 ; GCN: buffer_store_dwordx4
 ; GCN: buffer_store_dwordx4
 ; GCN: s_endpgm
-; GCN: ScratchSize: 64
+; GCN: ScratchSize: 36
 
 define void @dynamic_insertelement_v4f64(<4 x double> addrspace(1)* %out, <4 x double> %a, i32 %b) nounwind {
   %vecins = insertelement <4 x double> %a, double 8.0, i32 %b
@@ -438,10 +437,25 @@ define void @dynamic_insertelement_v4f64(<4 x double> addrspace(1)* %out, <4 x d
 ; GCN: buffer_store_dwordx4
 ; GCN: buffer_store_dwordx4
 ; GCN: s_endpgm
-; GCN: ScratchSize: 128
+; GCN: ScratchSize: 68
 define void @dynamic_insertelement_v8f64(<8 x double> addrspace(1)* %out, <8 x double> %a, i32 %b) nounwind {
   %vecins = insertelement <8 x double> %a, double 8.0, i32 %b
   store <8 x double> %vecins, <8 x double> addrspace(1)* %out, align 16
+  ret void
+}
+; GCN-LABEL: {{^}}dynamic_insertelement_v16f64:
+; ScratchSize: 132
+define void @dynamic_insertelement_v16f64(<16 x double> addrspace(1)* %out, <16 x double> %a, i32 %b) nounwind {
+  %vecins = insertelement <16 x double> %a, double 8.0, i32 %b
+  store <16 x double> %vecins, <16 x double> addrspace(1)* %out, align 4
+  ret void
+}
+
+; GCN-LABEL: {{^}}dynamic_insertelement_v32f64:
+; ScratchSize: 260
+define void @dynamic_insertelement_v32f64(<32 x double> addrspace(1)* %out, <32 x double> %a, i32 %b) nounwind {
+  %vecins = insertelement <32 x double> %a, double 8.0, i32 %b
+  store <32 x double> %vecins, <32 x double> addrspace(1)* %out, align 4
   ret void
 }
 

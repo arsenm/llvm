@@ -233,8 +233,8 @@ bool llvm::isSafeToLoadUnconditionally(Value *V, unsigned Align,
   // know the size of the base type and the loaded type to do anything in this
   // case.
   if (BaseType && BaseType->isSized()) {
-    if (BaseAlign == 0)
-      BaseAlign = DL.getPrefTypeAlignment(BaseType);
+    if (BaseAlign == 0) // Seems to be unreachable?
+      BaseAlign = DL.getABITypeAlignment(BaseType);
 
     if (Align <= BaseAlign) {
       // Check if the load is within the bounds of the underlying object.

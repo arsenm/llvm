@@ -231,7 +231,7 @@ Instruction *InstCombiner::visitAllocaInst(AllocaInst &AI) {
   if (AI.getAllocatedType()->isSized()) {
     // If the alignment is 0 (unspecified), assign it the preferred alignment.
     if (AI.getAlignment() == 0)
-      AI.setAlignment(DL.getPrefTypeAlignment(AI.getAllocatedType()));
+      AI.setAlignment(DL.getPrefABITypeAlignment(AI.getAllocatedType()));
 
     // Move all alloca's of zero byte objects to the entry block and merge them
     // together.  Note that we only do this for alloca's, because malloc should
@@ -1188,11 +1188,12 @@ Instruction *InstCombiner::visitStoreInst(StoreInst &SI) {
     return eraseInstFromFunction(SI);
 
   // Attempt to improve the alignment.
+  unsigned PrefAlign = DL.getPrefTypeAlignment(Val->getType());
   unsigned KnownAlign = getOrEnforceKnownAlignment(
-      Ptr, DL.getPrefTypeAlignment(Val->getType()), DL, &SI, &AC, &DT);
+      Ptr, PrefAlign, DL, &SI, &AC, &DT);
   unsigned StoreAlign = SI.getAlignment();
-  unsigned EffectiveStoreAlign =
-      StoreAlign != 0 ? StoreAlign : DL.getABITypeAlignment(Val->getType());
+  unsigned EffectiveStoreAlign = StoreAlign != 0 ?
+    StoreAlign : std::min(PrefAlign, DL.getABITypeAlignment(Val->getType()));
 
   if (KnownAlign > EffectiveStoreAlign)
     SI.setAlignment(KnownAlign);

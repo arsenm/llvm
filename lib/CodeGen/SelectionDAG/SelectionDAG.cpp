@@ -1309,10 +1309,12 @@ SDValue SelectionDAG::getConstantPool(const Constant *C, EVT VT,
                                       unsigned char TargetFlags) {
   assert((TargetFlags == 0 || isTarget) &&
          "Cannot set target flags on target-independent globals");
-  if (Alignment == 0)
-    Alignment = MF->getFunction()->optForSize()
-                    ? getDataLayout().getABITypeAlignment(C->getType())
-                    : getDataLayout().getPrefTypeAlignment(C->getType());
+  if (Alignment == 0) {
+    const DataLayout &DL = getDataLayout();
+    unsigned PrefAlign = DL.getPrefTypeAlignment(C->getType());
+    Alignment = MF->getFunction()->optForSize() ?
+      std::min(DL.getABITypeAlignment(C->getType()), PrefAlign) : PrefAlign;
+  }
   unsigned Opc = isTarget ? ISD::TargetConstantPool : ISD::ConstantPool;
   FoldingSetNodeID ID;
   AddNodeIDNode(ID, Opc, getVTList(VT), None);

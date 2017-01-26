@@ -101,7 +101,6 @@ unsigned StructLayout::getElementContainingOffset(uint64_t Offset) const {
 LayoutAlignElem
 LayoutAlignElem::get(AlignTypeEnum align_type, unsigned abi_align,
                      unsigned pref_align, uint32_t bit_width) {
-  assert(abi_align <= pref_align && "Preferred alignment worse than ABI!");
   LayoutAlignElem retval;
   retval.AlignType = align_type;
   retval.ABIAlign = abi_align;
@@ -128,7 +127,6 @@ DataLayout::InvalidAlignmentElem = { INVALID_ALIGN, 0, 0, 0 };
 PointerAlignElem
 PointerAlignElem::get(uint32_t AddressSpace, unsigned ABIAlign,
                       unsigned PrefAlign, uint32_t TypeByteWidth) {
-  assert(ABIAlign <= PrefAlign && "Preferred alignment worse than ABI!");
   PointerAlignElem retval;
   retval.AddressSpace = AddressSpace;
   retval.ABIAlign = ABIAlign;
@@ -422,10 +420,6 @@ DataLayout::setAlignment(AlignTypeEnum align_type, unsigned abi_align,
   if (pref_align != 0 && !isPowerOf2_64(pref_align))
     report_fatal_error("Invalid preferred alignment, must be a power of 2");
 
-  if (pref_align < abi_align)
-    report_fatal_error(
-        "Preferred alignment cannot be less than the ABI alignment");
-
   for (LayoutAlignElem &Elem : Alignments) {
     if (Elem.AlignType == (unsigned)align_type &&
         Elem.TypeBitWidth == bit_width) {
@@ -451,10 +445,6 @@ DataLayout::findPointerLowerBound(uint32_t AddressSpace) {
 void DataLayout::setPointerAlignment(uint32_t AddrSpace, unsigned ABIAlign,
                                      unsigned PrefAlign,
                                      uint32_t TypeByteWidth) {
-  if (PrefAlign < ABIAlign)
-    report_fatal_error(
-        "Preferred alignment cannot be less than the ABI alignment");
-
   PointersTy::iterator I = findPointerLowerBound(AddrSpace);
   if (I == Pointers.end() || I->AddressSpace != AddrSpace) {
     Pointers.insert(I, PointerAlignElem::get(AddrSpace, ABIAlign, PrefAlign,

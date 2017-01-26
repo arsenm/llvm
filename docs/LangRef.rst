@@ -1854,7 +1854,12 @@ as follows:
 
 On every specification that takes a ``<abi>:<pref>``, specifying the
 ``<pref>`` alignment is optional. If omitted, the preceding ``:``
-should be omitted too and ``<pref>`` will be equal to ``<abi>``.
+should be omitted too and ``<pref>`` will be equal to ``<abi>``.  The
+type ``<abi>>`` alignment is the default assumed alignment for a load
+or store unless otherwise specified. The preferred alignment may be
+lower than the ABI alignment. If the preferred alignment is lower than
+the ABI alignment, it should only be used in cases where the pointer
+value is not captured unless otherwise known to be safe.
 
 When constructing the data layout for a given target, LLVM starts with a
 default set of specifications which are then (possibly) overridden by
@@ -1872,6 +1877,8 @@ specifications are given in this list:
 -  ``i32:32:32`` - i32 is 32-bit aligned
 -  ``i64:32:64`` - i64 has ABI alignment of 32-bits but preferred
    alignment of 64-bits
+-  ``i64:64:32`` - i64 has an ABI alignment of 64-bits but preferred
+   alignment of 32-bits
 -  ``f16:16:16`` - half is 16-bit aligned
 -  ``f32:32:32`` - float is 32-bit aligned
 -  ``f64:64:64`` - double is 64-bit aligned

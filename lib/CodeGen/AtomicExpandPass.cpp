@@ -1464,7 +1464,7 @@ bool AtomicExpand::expandAtomicOpToLibcall(
   bool UseSizedLibcall = canUseSizedAtomicCall(Size, Align, DL);
   Type *SizedIntTy = Type::getIntNTy(Ctx, Size * 8);
 
-  unsigned AllocaAlignment = DL.getPrefTypeAlignment(SizedIntTy);
+  unsigned AllocaAlignment = DL.getPrefABITypeAlignment(SizedIntTy);
 
   // TODO: the "order" argument type is "int", not int32. So
   // getInt32Ty may be wrong if the arch uses e.g. 16-bit ints.

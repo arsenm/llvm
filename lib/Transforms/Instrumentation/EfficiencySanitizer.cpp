@@ -694,7 +694,7 @@ bool EfficiencySanitizer::instrumentLoadOrStore(Instruction *I,
 
   // Convert 0 to the default alignment.
   if (Alignment == 0)
-    Alignment = DL.getPrefTypeAlignment(OrigTy);
+    Alignment = DL.getABITypeAlignment(OrigTy);
 
   if (IsStore)
     NumInstrumentedStores++;

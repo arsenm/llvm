@@ -419,18 +419,23 @@ public:
     return 8 * getTypeAllocSize(Ty);
   }
 
-  /// \brief Returns the minimum ABI-required alignment for the specified type.
+  /// \brief Returns the minimum ABI-required alignment for allocas and globals
+  /// with the specified type.
   unsigned getABITypeAlignment(Type *Ty) const;
 
   /// \brief Returns the minimum ABI-required alignment for an integer type of
   /// the specified bitwidth.
   unsigned getABIIntegerTypeAlignment(unsigned BitWidth) const;
 
-  /// \brief Returns the preferred stack/global alignment for the specified
-  /// type.
-  ///
-  /// This is always at least as good as the ABI alignment.
+  /// \brief Returns the preferred stack alignment for the specified type. This
+  /// may be less than the ABI alignment.
   unsigned getPrefTypeAlignment(Type *Ty) const;
+
+  /// \return The preferred alignment that is also suitable as the ABI
+  /// alignment.
+  unsigned getPrefABITypeAlignment(Type *Ty) const {
+    return std::max(getPrefTypeAlignment(Ty), getABITypeAlignment(Ty));
+  }
 
   /// \brief Returns the preferred alignment for the specified type, returned as
   /// log2 of the value (a shift amount).

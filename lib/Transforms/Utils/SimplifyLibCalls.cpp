@@ -751,23 +751,22 @@ Value *LibCallSimplifier::optimizeMemCmp(CallInst *CI, IRBuilder<> &B) {
 
   // memcmp(S1,S2,N/8)==0 -> (*(intN_t*)S1 != *(intN_t*)S2)==0
   if (DL.isLegalInteger(Len * 8) && isOnlyUsedInZeroEqualityComparison(CI)) {
-
     IntegerType *IntType = IntegerType::get(CI->getContext(), Len * 8);
-    unsigned PrefAlignment = DL.getPrefTypeAlignment(IntType);
-
-    if (getKnownAlignment(LHS, DL, CI) >= PrefAlignment &&
-        getKnownAlignment(RHS, DL, CI) >= PrefAlignment) {
-
+    unsigned PrefAlign = DL.getPrefTypeAlignment(IntType);
+    unsigned LHSAlign, RHSAlign;
+    if ((LHSAlign = getKnownAlignment(LHS, DL, CI)) >= PrefAlign &&
+        (RHSAlign = getKnownAlignment(LHS, DL, CI)) >= PrefAlign) {
       Type *LHSPtrTy =
-          IntType->getPointerTo(LHS->getType()->getPointerAddressSpace());
+        IntType->getPointerTo(LHS->getType()->getPointerAddressSpace());
       Type *RHSPtrTy =
-          IntType->getPointerTo(RHS->getType()->getPointerAddressSpace());
+        IntType->getPointerTo(RHS->getType()->getPointerAddressSpace());
 
       Value *LHSV =
-          B.CreateLoad(B.CreateBitCast(LHS, LHSPtrTy, "lhsc"), "lhsv");
+        B.CreateAlignedLoad(B.CreateBitCast(LHS, LHSPtrTy, "lhsc"),
+                            LHSAlign, "lhsv");
       Value *RHSV =
-          B.CreateLoad(B.CreateBitCast(RHS, RHSPtrTy, "rhsc"), "rhsv");
-
+        B.CreateAlignedLoad(B.CreateBitCast(RHS, RHSPtrTy, "rhsc"),
+                            RHSAlign, "rhsv");
       return B.CreateZExt(B.CreateICmpNE(LHSV, RHSV), CI->getType(), "memcmp");
     }
   }
