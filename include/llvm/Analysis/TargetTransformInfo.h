@@ -372,6 +372,9 @@ public:
   /// The type may be VoidTy, in which case only return true if the addressing
   /// mode is legal for a load/store of any legal type.
   /// TODO: Handle pre/postinc as well.
+  ///
+  /// \p AddrSpace will be ~0u if the address space being accessed could not be
+  /// determined.
   bool isLegalAddressingMode(Type *Ty, GlobalValue *BaseGV, int64_t BaseOffset,
                              bool HasBaseReg, int64_t Scale,
                              unsigned AddrSpace = 0) const;
