@@ -451,10 +451,11 @@ AMDGPUTargetLowering::AMDGPUTargetLowering(const TargetMachine &TM,
 
   PredictableSelectIsExpensive = false;
 
-  // FIXME: Need to really handle these.
-  MaxStoresPerMemcpy  = 4096;
-  MaxStoresPerMemmove = 4096;
-  MaxStoresPerMemset  = 4096;
+  // memcpy/memmove/memset are expanded in the IR, so we shouldn't need to worry
+  // about these during lowering.
+  MaxStoresPerMemcpy  = 0xffffffff;
+  MaxStoresPerMemmove = 0xffffffff;
+  MaxStoresPerMemset  = 0xffffffff;
 
   setTargetDAGCombine(ISD::BITCAST);
   setTargetDAGCombine(ISD::SHL);
