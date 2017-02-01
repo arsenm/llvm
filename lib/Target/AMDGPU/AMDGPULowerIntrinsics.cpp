@@ -106,8 +106,6 @@ static bool expandMemIntrinsicUses(Function &F) {
 bool AMDGPULowerIntrinsics::runOnModule(Module &M) {
   bool Changed = false;
 
-  dbgs() << "RUnning\n";
-
   for (Function &F : M) {
     if (!F.isDeclaration())
       continue;
