@@ -15,6 +15,7 @@
 // Lower memcpy to loop.
 void llvm::convertMemCpyToLoop(Instruction *ConvertedInst,
                                Value *SrcAddr, Value *DstAddr, Value *CopyLen,
+                               unsigned SrcAlign, unsigned DestAlign,
                                bool SrcIsVolatile, bool DstIsVolatile) {
   Type *TypeOfCopyLen = CopyLen->getType();
 
@@ -68,6 +69,8 @@ void llvm::convertMemCpyToLoop(MemCpyInst *Memcpy) {
                       /* SrcAddr */ Memcpy->getRawSource(),
                       /* DstAddr */ Memcpy->getRawDest(),
                       /* CopyLen */ Memcpy->getLength(),
+                      /* SrcAlign */ Memcpy->getAlignment(),
+                      /* DestAlign */ Memcpy->getAlignment(),
                       /* SrcIsVolatile */ Memcpy->isVolatile(),
                       /* DstIsVolatile */ Memcpy->isVolatile());
 
@@ -98,6 +101,7 @@ void llvm::convertMemCpyToLoop(MemCpyInst *Memcpy) {
 // }
 void llvm::convertMemMoveToLoop(Instruction *ConvertedInst,
                                 Value *SrcAddr, Value *DstAddr, Value *CopyLen,
+                                unsigned SrcAlign, unsigned DestAlign,
                                 bool SrcIsVolatile, bool DstIsVolatile) {
   Type *TypeOfCopyLen = CopyLen->getType();
   BasicBlock *OrigBB = ConvertedInst->getParent();
@@ -177,6 +181,8 @@ void llvm::convertMemMoveToLoop(MemMoveInst *Memmove) {
                        /* SrcAddr */ Memmove->getRawSource(),
                        /* DstAddr */ Memmove->getRawDest(),
                        /* CopyLen */ Memmove->getLength(),
+                       /* SrcAlign */ Memmove->getAlignment(),
+                       /* DestAlign */ Memmove->getAlignment(),
                        /* SrcIsVolatile */ Memmove->isVolatile(),
                        /* DstIsVolatile */ Memmove->isVolatile());
 }
@@ -184,7 +190,7 @@ void llvm::convertMemMoveToLoop(MemMoveInst *Memmove) {
 // Lower memset to loop.
 void llvm::convertMemSetToLoop(Instruction *ConvertedInst,
                                Value *DstAddr, Value *CopyLen, Value *SetValue,
-                               bool IsVolatile) {
+                               unsigned Align, bool IsVolatile) {
   BasicBlock *OrigBB = ConvertedInst->getParent();
   Function *F = OrigBB->getParent();
   BasicBlock *NewBB =
@@ -222,5 +228,6 @@ void llvm::convertMemSetToLoop(MemSetInst *Memset) {
                       /* DstAddr */ Memset->getRawDest(),
                       /* CopyLen */ Memset->getLength(),
                       /* SetValue */ Memset->getValue(),
+                      /* Alignment */ Memset->getAlignment(),
                       Memset->isVolatile());
 }

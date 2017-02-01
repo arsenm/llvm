@@ -109,6 +109,8 @@ bool NVPTXLowerAggrCopies::runOnFunction(Function &F) {
     convertMemCpyToLoop(/* ConvertedInst */ SI,
                         /* SrcAddr */ SrcAddr, /* DstAddr */ DstAddr,
                         /* CopyLen */ CopyLen,
+                        /* SrcAlign */ LI->getAlignment(),
+                        /* DestAlign */ SI->getAlignment(),
                         /* SrcIsVolatile */ LI->isVolatile(),
                         /* DstIsVolatile */ SI->isVolatile());
 

@@ -28,6 +28,7 @@ class Value;
 /// of llvm.memcpy with the equivalent arguments.
 void convertMemCpyToLoop(Instruction *ConvertedInst,
                          Value *SrcAddr, Value *DstAddr, Value *CopyLen,
+                         unsigned SrcAlign, unsigned DestAlign,
                          bool SrcIsVolatile, bool DstIsVolatile);
 void convertMemCpyToLoop(MemCpyInst *MemCpy);
 
@@ -35,13 +36,15 @@ void convertMemCpyToLoop(MemCpyInst *MemCpy);
 /// of llvm.memcpy with the equivalent arguments.
 void convertMemMoveToLoop(Instruction *ConvertedInst,
                           Value *SrcAddr, Value *DstAddr, Value *CopyLen,
+                          unsigned SrcAlign, unsigned DestAlign,
                           bool SrcIsVolatile, bool DstIsVolatile);
 void convertMemMoveToLoop(MemMoveInst *MemMove);
 
 /// Expand instruction \p ConvertedInst into a loop implementing the semantics
 /// of llvm.memset with the equivalent arguments.
-void convertMemSetToLoop(Instruction *ConvertedInst, Value *DstAddr,
-                         Value *CopyLen, Value *SetValue, bool IsVolatile);
+void convertMemSetToLoop(Instruction *ConvertedInst,
+                         Value *DstAddr, Value *CopyLen, Value *SetValue,
+                         unsigned Align, bool IsVolatile);
 void convertMemSetToLoop(MemSetInst *MemSet);
 
 } // End llvm namespace
