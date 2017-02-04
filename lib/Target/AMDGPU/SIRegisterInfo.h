@@ -21,8 +21,8 @@
 
 namespace llvm {
 
-class SISubtarget;
 class MachineRegisterInfo;
+class SISubtarget;
 class SIMachineFunctionInfo;
 
 class SIRegisterInfo final : public AMDGPURegisterInfo {
@@ -31,13 +31,22 @@ private:
   unsigned VGPRSetID;
   BitVector SGPRPressureSets;
   BitVector VGPRPressureSets;
+  bool SpillSGPRToVGPR;
+  bool SpillSGPRToSMEM;
 
   void reserveRegisterTuples(BitVector &, unsigned Reg) const;
   void classifyPressureSet(unsigned PSetID, unsigned Reg,
                            BitVector &PressureSets) const;
-
 public:
-  SIRegisterInfo();
+  SIRegisterInfo(const SISubtarget &ST);
+
+  bool spillSGPRToVGPR() const {
+    return SpillSGPRToVGPR;
+  }
+
+  bool spillSGPRToSMEM() const {
+    return SpillSGPRToSMEM;
+  }
 
   /// Return the end register initially reserved for the scratch buffer in case
   /// spilling is needed.

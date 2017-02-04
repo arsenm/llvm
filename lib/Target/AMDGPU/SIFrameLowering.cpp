@@ -20,7 +20,6 @@
 
 using namespace llvm;
 
-
 static ArrayRef<MCPhysReg> getAllSGPR128(const MachineFunction &MF,
                                          const SIRegisterInfo *TRI) {
   return makeArrayRef(AMDGPU::SGPR_128RegClass.begin(),
@@ -386,8 +385,10 @@ void SIFrameLowering::processFunctionBeforeFrameFinalized(
   const SISubtarget &ST = MF.getSubtarget<SISubtarget>();
   const SIInstrInfo *TII = ST.getInstrInfo();
   const SIRegisterInfo &TRI = TII->getRegisterInfo();
+  if (!TRI.spillSGPRToVGPR())
+    return;
 
-  DenseSet<int> SGPRToVGPRIndexes;
+  SIMachineFunctionInfo *FuncInfo = MF.getInfo<SIMachineFunctionInfo>();
 
   // Process all SGPR spills before frame offsets are finalized. Ideally SGPRs
   // are spilled to VGPRs, in which case we can eliminate the stack usage.
@@ -405,18 +406,13 @@ void SIFrameLowering::processFunctionBeforeFrameFinalized(
 
       if (TII->isSGPRSpill(MI)) {
         int FI = TII->getNamedOperand(MI, AMDGPU::OpName::addr)->getIndex();
-        if (TRI.eliminateSGPRToVGPRSpillFrameIndex(MI, FI, RS)) {
-          SGPRToVGPRIndexes.insert(FI);
-        } else {
-          assert(!SGPRToVGPRIndexes.count(FI) &&
-                 "could not spill SGPR to VGPR but could previously");
-        }
+        if (FuncInfo->allocateSGPRSpillToVGPR(MF, FI))
+          TRI.eliminateSGPRToVGPRSpillFrameIndex(MI, FI, RS);
       }
     }
   }
 
-  for (int FI: SGPRToVGPRIndexes)
-    MFI.RemoveStackObject(FI);
+  FuncInfo->removeSGPRToVGPRFrameIndices(MFI);
 }
 
 void SIFrameLowering::emitDebuggerPrologue(MachineFunction &MF,

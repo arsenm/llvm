@@ -134,7 +134,8 @@ public:
   // FIXME: Make private
   unsigned LDSWaveSpillSize;
   unsigned PSInputEna;
-  std::map<unsigned, unsigned> LaneVGPRs;
+
+
   unsigned ScratchOffsetReg;
   unsigned NumUserSGPRs;
   unsigned NumSystemSGPRs;
@@ -195,12 +196,32 @@ public:
     bool hasReg() { return VGPR != AMDGPU::NoRegister;}
   };
 
-  // SIMachineFunctionInfo definition
+private:
+  // VGPR->SGPR spilling support.
+
+  // Track VGPR + wave index for each subregister of the SGPR spilled to
+  // frameindex key.
+  DenseMap<int, std::vector<SpilledReg>> SGPRToVGPRSpills;
+
+  typedef std::pair<unsigned, unsigned> SpillRegMask;
+
+
+  unsigned NumVGPRSpillLanes = 0;
+  SmallVector<unsigned, 2> SpillVGPRs;
+
+public:
 
   SIMachineFunctionInfo(const MachineFunction &MF);
 
-  SpilledReg getSpilledReg(MachineFunction *MF, unsigned FrameIndex,
-                           unsigned SubIdx);
+  ArrayRef<SpilledReg> getSGPRToVGPRSpills(int FrameIndex) const {
+    auto I = SGPRToVGPRSpills.find(FrameIndex);
+    return (I == SGPRToVGPRSpills.end()) ?
+      ArrayRef<SpilledReg>() : makeArrayRef(I->second);
+  }
+
+  bool allocateSGPRSpillToVGPR(MachineFunction &MF, int FI);
+  void removeSGPRToVGPRFrameIndices(MachineFrameInfo &MFI);
+
   bool hasCalculatedTID() const { return TIDReg != AMDGPU::NoRegister; };
   unsigned getTIDReg() const { return TIDReg; };
   void setTIDReg(unsigned Reg) { TIDReg = Reg; }
