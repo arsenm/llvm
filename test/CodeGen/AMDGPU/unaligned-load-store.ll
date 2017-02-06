@@ -1,5 +1,5 @@
 ; RUN: llc -march=amdgcn -verify-machineinstrs< %s | FileCheck -check-prefix=SI -check-prefix=ALIGNED %s
-; RUN: llc -march=amdgcn -mcpu=bonaire -mattr=+unaligned-buffer-access -verify-machineinstrs< %s | FileCheck -check-prefix=SI -check-prefix=UNALIGNED %s
+; RUN: llc -march=amdgcn -mcpu=bonaire -mattr=+unaligned-buffer-access,+unaligned-scratch-access -verify-machineinstrs< %s | FileCheck -check-prefix=SI -check-prefix=UNALIGNED %s
 ; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs< %s | FileCheck -check-prefix=SI -check-prefix=ALIGNED %s
 
 ; SI-LABEL: {{^}}local_unaligned_load_store_i16:
@@ -598,6 +598,84 @@ define void @local_load_align1_v16i8(<16 x i8> addrspace(1)* %out, <16 x i8> add
 ; SI: ScratchSize: 0{{$}}
 define void @local_store_align1_v16i8(<16 x i8> addrspace(3)* %out) #0 {
   store <16 x i8> zeroinitializer, <16 x i8> addrspace(3)* %out, align 1
+  ret void
+}
+
+; SI-LABEL: {{^}}private_store_align4_v16i64:
+; SI-DAG: v_mov_b32_e32 [[ZERO:v[0-9]+]], 0
+; SI-DAG: v_mov_b32_e32 [[PTR:v[0-9]+]], s{{[0-9]+}}
+
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:4
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:8
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:12
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:16
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:20
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:24
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:28
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:32
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:36
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:40
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:44
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:48
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:52
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:56
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:60
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:64
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:68
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:68
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:72
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:76
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:80
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:84
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:88
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:92
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:96
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:100
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:104
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:108
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:112
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:116
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:120
+; SI-DAG: buffer_store_dword [[ZERO]], [[PTR]], s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offen offset:124
+define void @private_store_align4_v16i64(<16 x i64>* %out) #0 {
+  store <16 x i64> zeroinitializer, <16 x i64>* %out, align 4
+  ret void
+}
+
+; SI-LABEL: {{^}}private_store_align1_v2i16:
+; UNALIGNED: buffer_store_dword
+
+; ALIGNED: buffer_store_byte
+; ALIGNED: buffer_store_byte
+; ALIGNED: buffer_store_byte
+; ALIGNED: buffer_store_byte
+define void @private_store_align1_v2i16(<2 x i16>* %out) #0 {
+  store <2 x i16> zeroinitializer, <2 x i16>* %out, align 1
+  ret void
+}
+
+; SI-LABEL: {{^}}private_store_align2_v2i16:
+; UNALIGNED: buffer_store_dword
+
+; ALIGNED: buffer_store_short
+; ALIGNED: buffer_store_short
+define void @private_store_align2_v2i16(<2 x i16>* %out) #0 {
+  store <2 x i16> zeroinitializer, <2 x i16>* %out, align 2
+  ret void
+}
+
+; SI-LABEL: {{^}}private_store_align4_v2i16:
+; SI: buffer_store_dword
+define void @private_store_align4_v2i16(<2 x i16>* %out) #0 {
+  store <2 x i16> zeroinitializer, <2 x i16>* %out, align 4
+  ret void
+}
+
+; SI-LABEL: {{^}}private_store_align8_v2i16:
+; SI: buffer_store_dword
+define void @private_store_align8_v2i16(<2 x i16>* %out) #0 {
+  store <2 x i16> zeroinitializer, <2 x i16>* %out, align 8
   ret void
 }
 

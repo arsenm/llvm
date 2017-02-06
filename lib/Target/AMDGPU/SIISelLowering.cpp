@@ -584,61 +584,54 @@ bool SITargetLowering::allowsMisalignedMemoryAccesses(EVT VT,
                                                       unsigned AddrSpace,
                                                       unsigned Align,
                                                       bool *IsFast) const {
+  // If the access is allowed, it is expected to be similarly fast as an aligned
+  // access in all cases except one.
   if (IsFast)
-    *IsFast = false;
+    *IsFast = true;
 
   // TODO: I think v3i32 should allow unaligned accesses on CI with DS_READ_B96,
   // which isn't a simple VT.
   // Until MVT is extended to handle this, simply check for the size and
   // rely on the condition below: allow accesses if the size is a multiple of 4.
-  if (VT == MVT::Other || (VT != MVT::Other && VT.getSizeInBits() > 1024 &&
-                           VT.getStoreSize() > 16)) {
+  if (VT == MVT::Other)
     return false;
-  }
+
+  // 4-byte alignment is always good in all address spaces.
+  //
+  // 8.1.6 - For Dword or larger reads or writes, the two LSBs of the
+  // byte-address are ignored, thus forcing Dword alignment.
+  // This applies to private, global, and constant memory.
+  bool AlignedBy4 = (Align % 4 == 0);
+  if (AlignedBy4)
+    return true;
 
   if (AddrSpace == AMDGPUAS::LOCAL_ADDRESS ||
       AddrSpace == AMDGPUAS::REGION_ADDRESS) {
-    // ds_read/write_b64 require 8-byte alignment, but we can do a 4 byte
-    // aligned, 8 byte access in a single operation using ds_read2/write2_b32
-    // with adjacent offsets.
-    bool AlignedBy4 = (Align % 4 == 0);
-    if (IsFast)
-      *IsFast = AlignedBy4;
-
-    return AlignedBy4;
+    // For local/region, ds_read/write_b64 require 8-byte alignment, but we can
+    // do a 4 byte aligned, 8 byte access in a single operation using
+    // ds_read2/write2_b32 with adjacent offsets.
+    return false;
   }
 
-  // FIXME: We have to be conservative here and assume that flat operations
-  // will access scratch.  If we had access to the IR function, then we
-  // could determine if any private memory was used in the function.
   if (!Subtarget->hasUnalignedScratchAccess() &&
       (AddrSpace == AMDGPUAS::PRIVATE_ADDRESS ||
        AddrSpace == AMDGPUAS::FLAT_ADDRESS)) {
+    // FIXME: We have to be conservative here and assume that flat operations
+    // will access scratch.  If we had access to the IR function, then we could
+    // determine if any private memory was used in the function.
     return false;
   }
 
   if (Subtarget->hasUnalignedBufferAccess()) {
     // If we have an uniform constant load, it still requires using a slow
     // buffer instruction if unaligned.
-    if (IsFast) {
-      *IsFast = (AddrSpace == AMDGPUAS::CONSTANT_ADDRESS) ?
-        (Align % 4 == 0) : true;
-    }
-
+    if (IsFast)
+      *IsFast = (AddrSpace != AMDGPUAS::CONSTANT_ADDRESS);
     return true;
   }
 
   // Smaller than dword value must be aligned.
-  if (VT.bitsLT(MVT::i32))
-    return false;
-
-  // 8.1.6 - For Dword or larger reads or writes, the two LSBs of the
-  // byte-address are ignored, thus forcing Dword alignment.
-  // This applies to private, global, and constant memory.
-  if (IsFast)
-    *IsFast = true;
-
-  return VT.bitsGT(MVT::i32) && Align % 4 == 0;
+  return false;
 }
 
 EVT SITargetLowering::getOptimalMemOpType(uint64_t Size, unsigned DstAlign,
