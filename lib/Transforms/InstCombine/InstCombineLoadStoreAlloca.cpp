@@ -259,11 +259,9 @@ Instruction *InstCombiner::visitAllocaInst(AllocaInst &AI) {
           return &AI;
         }
 
-        // If the alignment of the entry block alloca is 0 (unspecified),
-        // assign it the preferred alignment.
-        if (EntryAI->getAlignment() == 0)
-          EntryAI->setAlignment(
-              DL.getPrefTypeAlignment(EntryAI->getAllocatedType()));
+        assert(EntryAI->getAlignment() != 0 &&
+               "alignment should already have been set if missing");
+
         // Replace this zero-sized alloca with the one at the start of the entry
         // block after ensuring that the address will be aligned enough for both
         // types.
