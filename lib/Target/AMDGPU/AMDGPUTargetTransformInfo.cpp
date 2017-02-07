@@ -129,6 +129,25 @@ unsigned AMDGPUTTIImpl::getLoadStoreVecRegBitWidth(unsigned AddrSpace) const {
   }
 }
 
+bool AMDGPUTTIImpl::isLegalToVectorizeLoadChain(unsigned ChainSizeInBytes,
+                                                unsigned Alignment,
+                                                unsigned AddrSpace) const {
+  // We allow vectorization of flat stores, even though we may need to decompose
+  // them later if they may access private memory. We don't have enough context
+  // here, and leglization can handle it.
+  if (AddrSpace == AMDGPUAS::PRIVATE_ADDRESS) {
+    return (Alignment >= 4 || ST->hasUnalignedScratchAccess()) &&
+           ChainSizeInBytes <= ST->getMaxPrivateElementSize();
+  }
+  return true;
+}
+
+bool AMDGPUTTIImpl::isLegalToVectorizeStoreChain(unsigned ChainSizeInBytes,
+                                                 unsigned Alignment,
+                                                 unsigned AddrSpace) const {
+  return isLegalToVectorizeLoadChain(ChainSizeInBytes, Alignment, AddrSpace);
+}
+
 unsigned AMDGPUTTIImpl::getMaxInterleaveFactor(unsigned VF) {
   // Semi-arbitrary large amount.
   return 64;
