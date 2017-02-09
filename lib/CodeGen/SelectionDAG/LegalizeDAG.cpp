@@ -17,6 +17,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/CodeGen/MachineFunction.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineJumpTableInfo.h"
 #include "llvm/CodeGen/SelectionDAG.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
@@ -1633,14 +1634,14 @@ bool SelectionDAGLegalize::LegalizeSetCCCondCode(EVT VT, SDValue &LHS,
 SDValue SelectionDAGLegalize::EmitStackConvert(SDValue SrcOp, EVT SlotVT,
                                                EVT DestVT, const SDLoc &dl) {
   // Create the stack frame object.
-  unsigned SrcAlign = DAG.getDataLayout().getPrefTypeAlignment(
-      SrcOp.getValueType().getTypeForEVT(*DAG.getContext()));
-  SDValue FIPtr = DAG.CreateStackTemporary(SlotVT, SrcAlign);
+  SDValue FIPtr = DAG.CreateStackTemporary(SrcOp.getValueType(), SlotVT);
 
   FrameIndexSDNode *StackPtrFI = cast<FrameIndexSDNode>(FIPtr);
   int SPFI = StackPtrFI->getIndex();
-  MachinePointerInfo PtrInfo =
-      MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), SPFI);
+
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachinePointerInfo PtrInfo = MachinePointerInfo::getFixedStack(MF, SPFI);
+  unsigned SrcAlign = MF.getFrameInfo().getObjectAlignment(SPFI);
 
   unsigned SrcSize = SrcOp.getValueSizeInBits();
   unsigned SlotSize = SlotVT.getSizeInBits();
