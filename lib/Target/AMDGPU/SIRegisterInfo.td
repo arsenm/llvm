@@ -273,6 +273,7 @@ def SReg_32_XM0 : RegisterClass<"AMDGPU", [i32, f32, i16, f16], 32,
 def SReg_32 : RegisterClass<"AMDGPU", [i32, f32, i16, f16], 32,
   (add SReg_32_XM0, M0_CLASS, EXEC_LO, EXEC_HI)> {
   let AllocationPriority = 7;
+  let isAllocatable = 0;
 }
 
 def SGPR_64 : RegisterClass<"AMDGPU", [v2i32, i64, f64], 32, (add SGPR_64Regs)> {

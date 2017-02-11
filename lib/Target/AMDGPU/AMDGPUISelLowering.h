@@ -313,6 +313,12 @@ enum NodeType : unsigned {
   CVT_F32_UBYTE1,
   CVT_F32_UBYTE2,
   CVT_F32_UBYTE3,
+
+  // These are the same as the standard nodes except they have glue input/output
+  // for the implicit m0 use.
+  INSERT_VECTOR_ELT_INDIRECT,
+  EXTRACT_VECTOR_ELT_INDIRECT,
+
   /// This node is for VLIW targets and it is used to represent a vector
   /// that is stored in consecutive registers with the same channel.
   /// For example:

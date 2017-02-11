@@ -197,8 +197,15 @@ public:
   getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
                                StringRef Constraint, MVT VT) const override;
   ConstraintType getConstraintType(StringRef Constraint) const override;
-  SDValue copyToM0(SelectionDAG &DAG, SDValue Chain, const SDLoc &DL,
-                   SDValue V) const;
+
+  SDValue getNodeWithM0Use(SelectionDAG &DAG, unsigned Opc,
+                           const SDLoc &SL, EVT VT,
+                           SDValue Chain,  ArrayRef<SDValue> Ops,
+                           SDValue M0Val) const;
+
+  SDValue getNodeWithM0SaveRestore(SelectionDAG &DAG, unsigned Opc,
+                                   const SDLoc &SL, EVT VT,
+                                   ArrayRef<SDValue> Ops) const;
 };
 
 } // End namespace llvm

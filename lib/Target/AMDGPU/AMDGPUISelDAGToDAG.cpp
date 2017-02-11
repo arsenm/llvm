@@ -90,8 +90,6 @@ private:
   bool isConstantLoad(const MemSDNode *N, int cbID) const;
   bool isUniformBr(const SDNode *N) const;
 
-  SDNode *glueCopyToM0(SDNode *N) const;
-
   const TargetRegisterClass *getOperandRegClass(SDNode *N, unsigned OpNo) const;
   bool SelectGlobalValueConstantOffset(SDValue Addr, SDValue& IntPtr);
   bool SelectGlobalValueVariableOffset(SDValue Addr, SDValue &BaseReg,
@@ -263,31 +261,6 @@ const TargetRegisterClass *AMDGPUDAGToDAGISel::getOperandRegClass(SDNode *N,
   }
 }
 
-SDNode *AMDGPUDAGToDAGISel::glueCopyToM0(SDNode *N) const {
-  if (Subtarget->getGeneration() < AMDGPUSubtarget::SOUTHERN_ISLANDS ||
-      cast<MemSDNode>(N)->getAddressSpace() != AMDGPUAS::LOCAL_ADDRESS)
-    return N;
-
-  const SITargetLowering& Lowering =
-      *static_cast<const SITargetLowering*>(getTargetLowering());
-
-  // Write max value to m0 before each load operation
-
-  SDValue M0 = Lowering.copyToM0(*CurDAG, CurDAG->getEntryNode(), SDLoc(N),
-                                 CurDAG->getTargetConstant(-1, SDLoc(N), MVT::i32));
-
-  SDValue Glue = M0.getValue(1);
-
-  SmallVector <SDValue, 8> Ops;
-  for (unsigned i = 0, e = N->getNumOperands(); i != e; ++i) {
-     Ops.push_back(N->getOperand(i));
-  }
-  Ops.push_back(Glue);
-  CurDAG->MorphNodeTo(N, N->getOpcode(), N->getVTList(), Ops);
-
-  return N;
-}
-
 static unsigned selectSGPRVectorRegClassID(unsigned NumVectorElts) {
   switch (NumVectorElts) {
   case 1:
@@ -311,10 +284,6 @@ void AMDGPUDAGToDAGISel::Select(SDNode *N) {
     N->setNodeId(-1);
     return;   // Already selected.
   }
-
-  if (isa<AtomicSDNode>(N) ||
-      (Opc == AMDGPUISD::ATOMIC_INC || Opc == AMDGPUISD::ATOMIC_DEC))
-    N = glueCopyToM0(N);
 
   switch (Opc) {
   default: break;
@@ -479,12 +448,6 @@ void AMDGPUDAGToDAGISel::Select(SDNode *N) {
                                           N->getValueType(0), Ops));
     return;
   }
-  case ISD::LOAD:
-  case ISD::STORE: {
-    N = glueCopyToM0(N);
-    break;
-  }
-
   case AMDGPUISD::BFE_I32:
   case AMDGPUISD::BFE_U32: {
     if (Subtarget->getGeneration() < AMDGPUSubtarget::SOUTHERN_ISLANDS)

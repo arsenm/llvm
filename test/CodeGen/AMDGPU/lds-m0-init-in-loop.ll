@@ -3,16 +3,19 @@
 ; Make sure that m0 is not reinitialized in the loop.
 
 ; GCN-LABEL: {{^}}copy_local_to_global_loop_m0_init:
-; GCN: s_cbranch_scc1 BB0_3
-
-; Initialize in preheader
+; Initialize in entry block only
 ; GCN: s_mov_b32 m0, -1
+; GCN-NOT: m0
+; GCN: s_cbranch_scc1 BB0_3
+; GCN-NOT: m0
+
 
 ; GCN: BB0_2:
 ; GCN-NOT: m0
 ; GCN: ds_read_b32
 ; GCN-NOT: m0
 ; GCN: buffer_store_dword
+; GCN-NOT: m0
 
 ; GCN: s_cbranch_scc0 BB0_2
 

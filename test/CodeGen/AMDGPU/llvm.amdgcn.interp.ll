@@ -11,15 +11,15 @@
 ; GCN-DAG: v_interp_p1_f32 v{{[0-9]+}}, v{{[0-9]+}}, attr0.y{{$}}
 ; GCN-DAG: v_interp_p2_f32 v{{[0-9]+}}, v{{[0-9]+}}, attr0.y{{$}}
 ; GCN-DAG: v_interp_mov_f32 v{{[0-9]+}}, p0, attr0.x{{$}}
-define amdgpu_ps void @v_interp(<16 x i8> addrspace(2)* inreg, <16 x i8> addrspace(2)* inreg, <32 x i8> addrspace(2)* inreg, i32 inreg, <2 x float>) {
+define amdgpu_ps void @v_interp(<16 x i8> addrspace(2)* inreg, <16 x i8> addrspace(2)* inreg, <32 x i8> addrspace(2)* inreg, i32 inreg %m0, <2 x float> %arg3) {
 main_body:
-  %i = extractelement <2 x float> %4, i32 0
-  %j = extractelement <2 x float> %4, i32 1
-  %p0_0 = call float @llvm.amdgcn.interp.p1(float %i, i32 0, i32 0, i32 %3)
-  %p1_0 = call float @llvm.amdgcn.interp.p2(float %p0_0, float %j, i32 0, i32 0, i32 %3)
-  %p0_1 = call float @llvm.amdgcn.interp.p1(float %i, i32 1, i32 0, i32 %3)
-  %p1_1 = call float @llvm.amdgcn.interp.p2(float %p0_1, float %j, i32 1, i32 0, i32 %3)
-  %const = call float @llvm.amdgcn.interp.mov(i32 2, i32 0, i32 0, i32 %3)
+  %i = extractelement <2 x float> %arg3, i32 0
+  %j = extractelement <2 x float> %arg3, i32 1
+  %p0_0 = call float @llvm.amdgcn.interp.p1(float %i, i32 0, i32 0, i32 %m0)
+  %p1_0 = call float @llvm.amdgcn.interp.p2(float %p0_0, float %j, i32 0, i32 0, i32 %m0)
+  %p0_1 = call float @llvm.amdgcn.interp.p1(float %i, i32 1, i32 0, i32 %m0)
+  %p1_1 = call float @llvm.amdgcn.interp.p2(float %p0_1, float %j, i32 1, i32 0, i32 %m0)
+  %const = call float @llvm.amdgcn.interp.mov(i32 2, i32 0, i32 0, i32 %m0)
   %w = fadd float %p1_1, %const
   call void @llvm.SI.export(i32 15, i32 1, i32 1, i32 0, i32 1, float %p0_0, float %p0_0, float %p1_1, float %w)
   ret void
@@ -156,6 +156,7 @@ define amdgpu_ps void @v_interp_mov(float %x, float %j) {
   ret void
 }
 
+; FIXME: Dead def of m0 emitted
 ; SI won't merge ds memory operations, because of the signed offset bug, so
 ; we only have check lines for VI.
 ; VI-LABEL: v_interp_readnone:
@@ -170,6 +171,35 @@ define amdgpu_ps void @v_interp_readnone(float addrspace(3)* %lds) {
   %tmp2 = getelementptr float, float addrspace(3)* %lds, i32 4
   store float 0.0, float addrspace(3)* %tmp2
   call void @llvm.SI.export(i32 15, i32 1, i32 1, i32 0, i32 1, float %tmp1, float %tmp1, float %tmp1, float %tmp1)
+  ret void
+}
+
+; GCN-LABEL: {{^}}v_interp_lds_restore:
+; GCN: s_wqm
+; GCN: s_mov_b32 m0, -1
+; GCN-NEXT: s_mov_b32 [[SAVE_M0:s[0-9]+]], m0
+; GCN-NEXT: s_mov_b32 m0, s6
+; GCN: v_interp_p1_f32 v{{[0-9]+}}, v{{[0-9]+}}, attr0.x{{$}}
+; GCN: s_mov_b32 m0, [[SAVE_M0]]
+; GCN-NEXT: ds_write_b32
+
+; GCN: s_mov_b32 m0, s6
+; GCN: v_interp_p1_f32 v{{[0-9]+}}, v{{[0-9]+}}, attr0.y{{$}}
+; GCN-NEXT: v_interp_p2_f32 v{{[0-9]+}}, v{{[0-9]+}}, attr0.y{{$}}
+; GCN-NEXT: v_interp_mov_f32 v{{[0-9]+}}, p0, attr0.x{{$}}
+; GCN-NOT: m0
+define amdgpu_ps void @v_interp_lds_restore(<16 x i8> addrspace(2)* inreg, <16 x i8> addrspace(2)* inreg, <32 x i8> addrspace(2)* inreg, i32 inreg %m0, <2 x float> %arg3) {
+main_body:
+  %i = extractelement <2 x float> %arg3, i32 0
+  %j = extractelement <2 x float> %arg3, i32 1
+  %p0_0 = call float @llvm.amdgcn.interp.p1(float %i, i32 0, i32 0, i32 %m0)
+  %p1_0 = call float @llvm.amdgcn.interp.p2(float %p0_0, float %j, i32 0, i32 0, i32 %m0)
+  store volatile float 4.0, float addrspace(3)* undef
+  %p0_1 = call float @llvm.amdgcn.interp.p1(float %i, i32 1, i32 0, i32 %m0)
+  %p1_1 = call float @llvm.amdgcn.interp.p2(float %p0_1, float %j, i32 1, i32 0, i32 %m0)
+  %const = call float @llvm.amdgcn.interp.mov(i32 2, i32 0, i32 0, i32 %m0)
+  %w = fadd float %p1_1, %const
+  call void @llvm.SI.export(i32 15, i32 1, i32 1, i32 0, i32 1, float %p0_0, float %p0_0, float %p1_1, float %w)
   ret void
 }
 
@@ -206,6 +236,37 @@ main_body:
   %tmp38 = call i32 @llvm.SI.packf16(float %tmp35, float 1.000000e+00)
   %tmp39 = bitcast i32 %tmp38 to float
   call void @llvm.SI.export(i32 15, i32 1, i32 1, i32 0, i32 1, float %tmp37, float %tmp39, float %tmp37, float %tmp39)
+  ret void
+}
+
+; Put the interps out of the entry block, obscuring the dead def of m0
+; in the entry.
+; GCN-LABEL: @v_interp_no_dead_setup(
+; GCN-NOT: s_mov_b32 m0, -1
+; GCN: s_cbranch_scc1
+
+; GCN: s_mov_b32 m0, s6
+; GCN: v_interp_p1_f32
+define amdgpu_ps void @v_interp_no_dead_setup(<16 x i8> addrspace(2)* inreg, <16 x i8> addrspace(2)* inreg, <32 x i8> addrspace(2)* inreg, i32 inreg %m0, <2 x float> %arg3) {
+entry:
+  %i = extractelement <2 x float> %arg3, i32 0
+  %j = extractelement <2 x float> %arg3, i32 1
+  call void asm sideeffect "", ""()
+  br i1 undef, label %if, label %endif
+
+if:
+  %p0_0 = call float @llvm.amdgcn.interp.p1(float %i, i32 0, i32 0, i32 %m0)
+  %p1_0 = call float @llvm.amdgcn.interp.p2(float %p0_0, float %j, i32 0, i32 0, i32 %m0)
+  %p0_1 = call float @llvm.amdgcn.interp.p1(float %i, i32 1, i32 0, i32 %m0)
+  %p1_1 = call float @llvm.amdgcn.interp.p2(float %p0_1, float %j, i32 1, i32 0, i32 %m0)
+  %const = call float @llvm.amdgcn.interp.mov(i32 2, i32 0, i32 0, i32 %m0)
+  %w = fadd float %p1_1, %const
+  store volatile float %p0_0, float addrspace(1)* undef
+  store volatile float %p0_1, float addrspace(1)* undef
+  store volatile float %w, float addrspace(1)* undef
+  br label %endif
+
+endif:
   ret void
 }
 

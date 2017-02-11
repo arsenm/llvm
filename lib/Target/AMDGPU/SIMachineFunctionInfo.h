@@ -140,6 +140,7 @@ public:
   unsigned NumSystemSGPRs;
 
 private:
+  bool NeedsM0Initialization;
   bool HasSpilledSGPRs;
   bool HasSpilledVGPRs;
   bool HasNonSpillStackObjects;
@@ -359,6 +360,14 @@ public:
 
   unsigned getPrivateMemoryPtrUserSGPR() const {
     return PrivateMemoryPtrUserSGPR;
+  }
+
+  bool needsM0Initialization() const {
+    return NeedsM0Initialization;
+  }
+
+  void setNeedsM0Intialization() {
+    NeedsM0Initialization = true;
   }
 
   bool hasSpilledSGPRs() const {

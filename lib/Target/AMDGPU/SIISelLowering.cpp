@@ -208,8 +208,6 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
       case ISD::STORE:
       case ISD::BUILD_VECTOR:
       case ISD::BITCAST:
-      case ISD::EXTRACT_VECTOR_ELT:
-      case ISD::INSERT_VECTOR_ELT:
       case ISD::INSERT_SUBVECTOR:
       case ISD::EXTRACT_SUBVECTOR:
       case ISD::SCALAR_TO_VECTOR:
@@ -223,6 +221,26 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
       }
     }
   }
+
+  setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v2f32, Custom);
+  setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v2i32, Custom);
+  setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v2f32, Custom);
+  setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v2i32, Custom);
+
+  setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v4f32, Custom);
+  setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v4i32, Custom);
+  setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v4f32, Custom);
+  setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v4i32, Custom);
+
+  setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v8f32, Custom);
+  setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v8i32, Custom);
+  setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v8f32, Custom);
+  setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v8i32, Custom);
+
+  setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v16f32, Custom);
+  setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v16i32, Custom);
+  setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v16f32, Custom);
+  setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v16i32, Custom);
 
   // TODO: For dynamic 64-bit vector inserts/extracts, should emit a pseudo that
   // is expanded to avoid having two separate loops in case the index is a VGPR.
@@ -2005,13 +2023,17 @@ void SITargetLowering::ReplaceNodeResults(SDNode *N,
                                           SelectionDAG &DAG) const {
   switch (N->getOpcode()) {
   case ISD::INSERT_VECTOR_ELT: {
-    if (SDValue Res = lowerINSERT_VECTOR_ELT(SDValue(N, 0), DAG))
-      Results.push_back(Res);
+    if (SDValue Res = lowerINSERT_VECTOR_ELT(SDValue(N, 0), DAG)) {
+      if (Res.getNode() != N)
+        Results.push_back(Res);
+    }
     return;
   }
   case ISD::EXTRACT_VECTOR_ELT: {
-    if (SDValue Res = lowerEXTRACT_VECTOR_ELT(SDValue(N, 0), DAG))
-      Results.push_back(Res);
+    if (SDValue Res = lowerEXTRACT_VECTOR_ELT(SDValue(N, 0), DAG)) {
+      if (Res.getNode() != N)
+        Results.push_back(Res);
+    }
     return;
   }
   default:
@@ -2317,11 +2339,19 @@ SDValue SITargetLowering::lowerINSERT_VECTOR_ELT(SDValue Op,
                                                  SelectionDAG &DAG) const {
   SDValue Idx = Op.getOperand(2);
   if (isa<ConstantSDNode>(Idx))
-    return SDValue();
+    return Op;
+
+  SDLoc SL(Op);
+  EVT ResultVT = Op.getValueType();
+  SDValue Vec = Op.getOperand(0);
+
+  if (Vec.getValueType().getSizeInBits() != 32) {
+    SDValue Ops[] = { Op.getOperand(0), Op.getOperand(1), Op.getOperand(2) };
+    return getNodeWithM0SaveRestore(DAG, AMDGPUISD::INSERT_VECTOR_ELT_INDIRECT,
+                                    SL, ResultVT, Ops);
+  }
 
   // Avoid stack access for dynamic indexing.
-  SDLoc SL(Op);
-  SDValue Vec = Op.getOperand(0);
   SDValue Val = DAG.getNode(ISD::BITCAST, SL, MVT::i16, Op.getOperand(1));
 
   // v_bfi_b32 (v_bfm_b32 16, (shl idx, 16)), val, vec
@@ -2354,8 +2384,10 @@ SDValue SITargetLowering::lowerEXTRACT_VECTOR_ELT(SDValue Op,
   SDValue Idx = Op.getOperand(1);
 
   if (const ConstantSDNode *CIdx = dyn_cast<ConstantSDNode>(Idx)) {
-    SDValue Result = DAG.getNode(ISD::BITCAST, SL, MVT::i32, Vec);
+    if (Vec.getValueType().getSizeInBits() != 32)
+      return Op;
 
+    SDValue Result = DAG.getNode(ISD::BITCAST, SL, MVT::i32, Vec);
     if (CIdx->getZExtValue() == 1) {
       Result = DAG.getNode(ISD::SRL, SL, MVT::i32, Result,
                            DAG.getConstant(16, SL, MVT::i32));
@@ -2366,6 +2398,12 @@ SDValue SITargetLowering::lowerEXTRACT_VECTOR_ELT(SDValue Op,
     if (ResultVT.bitsLT(MVT::i32))
       Result = DAG.getNode(ISD::TRUNCATE, SL, MVT::i16, Result);
     return DAG.getNode(ISD::BITCAST, SL, ResultVT, Result);
+  }
+
+  if (Vec.getValueType().getSizeInBits() != 32) {
+    SDValue Ops[] = { Op.getOperand(0), Op.getOperand(1) };
+    return getNodeWithM0SaveRestore(DAG, AMDGPUISD::EXTRACT_VECTOR_ELT_INDIRECT,
+                                    SL, ResultVT, Ops);
   }
 
   SDValue Sixteen = DAG.getConstant(16, SL, MVT::i32);
@@ -2467,8 +2505,18 @@ SDValue SITargetLowering::LowerGlobalAddress(AMDGPUMachineFunction *MFI,
                          MachineMemOperand::MOInvariant);
 }
 
-SDValue SITargetLowering::copyToM0(SelectionDAG &DAG, SDValue Chain,
-                                   const SDLoc &DL, SDValue V) const {
+SDValue SITargetLowering::getNodeWithM0Use(SelectionDAG &DAG, unsigned Opc,
+                                           const SDLoc &SL, EVT VT,
+                                           SDValue InputChain,
+                                           ArrayRef<SDValue> Ops,
+                                           SDValue M0Val) const {
+  SDValue Chain = InputChain ? InputChain : DAG.getEntryNode();
+  SDValue OrigM0 = DAG.getCopyFromReg(Chain, SL, AMDGPU::M0, MVT::i32, SDValue());
+
+#if 1
+  SDValue NewM0 = DAG.getCopyToReg(OrigM0.getValue(1), SL, AMDGPU::M0,
+                                   M0Val, OrigM0.getValue(2));
+#else
   // We can't use S_MOV_B32 directly, because there is no way to specify m0 as
   // the destination register.
   //
@@ -2478,9 +2526,69 @@ SDValue SITargetLowering::copyToM0(SelectionDAG &DAG, SDValue Chain,
   // We use a pseudo to ensure we emit s_mov_b32 with m0 as the direct result.
 
   // A Null SDValue creates a glue result.
-  SDNode *M0 = DAG.getMachineNode(AMDGPU::SI_INIT_M0, DL, MVT::Other, MVT::Glue,
-                                  V, Chain);
-  return SDValue(M0, 0);
+  SDNode *M0 = DAG.getMachineNode(AMDGPU::SI_INIT_M0, SL, MVT::Other, MVT::Glue,
+                                  M0Val, Chain, OrigM0.getValue(2));
+  SDValue NewM0(M0, 0);
+
+#endif
+
+  SDVTList VTList = (InputChain && VT != MVT::Other) ?
+    DAG.getVTList(VT, MVT::Other, MVT::Glue) : DAG.getVTList(VT, MVT::Glue);
+
+  SmallVector<SDValue, 6> NodeOps;
+
+  if (InputChain)
+    NodeOps.push_back(NewM0); // Chain
+
+  NodeOps.append(Ops.begin(), Ops.end()); // Operands
+  NodeOps.push_back(NewM0.getValue(1)); // Glue
+
+  SDValue Node = DAG.getNode(Opc, SL, VTList, NodeOps);
+
+  SDValue OutChain = InputChain ? Node : NewM0;
+  SDValue OutGlue = Node.getValue(Node->getNumValues() - 1);
+#if 1
+  SDValue RestoreM0 = DAG.getCopyToReg(OutChain, SL, AMDGPU::M0,
+                                       OrigM0, OutGlue);
+#else
+  SDNode *InitM0 = DAG.getMachineNode(AMDGPU::SI_INIT_M0, SL, MVT::Other, MVT::Glue,
+                                  OrigM0, OutChain, OutGlue);
+  SDValue RestoreM0(InitM0, 0);
+#endif
+  if (InputChain)
+    return RestoreM0;
+
+  SDValue NewRoot = DAG.getNode(ISD::TokenFactor, SL, MVT::Other,
+                                RestoreM0, DAG.getRoot());
+  DAG.setRoot(NewRoot);
+  return Node;
+}
+
+SDValue SITargetLowering::getNodeWithM0SaveRestore(SelectionDAG &DAG, unsigned Opc,
+                                                   const SDLoc &SL, EVT VT,
+                                                   ArrayRef<SDValue> Ops) const {
+  SDValue SaveM0 = DAG.getCopyFromReg(DAG.getEntryNode(), SL, AMDGPU::M0, MVT::i32,
+                                      SDValue());
+
+  SmallVector<SDValue, 4> OpsWithGlue(Ops.begin(), Ops.end());
+  OpsWithGlue.push_back(SaveM0.getValue(2));
+
+  SDVTList VTs = DAG.getVTList(VT, MVT::Glue);
+  SDValue Op = DAG.getNode(Opc, SL, VTs, OpsWithGlue);
+
+#if 1
+  SDValue RestoreM0 = DAG.getCopyToReg(SaveM0.getValue(1), SL, AMDGPU::M0,
+                                       SaveM0.getValue(0), Op.getValue(1));
+#else
+  SDNode *M0 = DAG.getMachineNode(AMDGPU::SI_INIT_M0, SL, MVT::Other, MVT::Glue,
+                                  SaveM0, SaveM0.getValue(1), Op.getValue(1));
+  SDValue RestoreM0(M0, 0);
+
+#endif
+  SDValue NewRoot = DAG.getNode(ISD::TokenFactor, SL, MVT::Other,
+                                RestoreM0, DAG.getRoot());
+  DAG.setRoot(NewRoot);
+  return Op;
 }
 
 SDValue SITargetLowering::lowerImplicitZextParam(SelectionDAG &DAG,
@@ -2688,24 +2796,24 @@ SDValue SITargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
     if (Op.getOperand(1).isUndef() && Op.getOperand(2).isUndef())
       return DAG.getUNDEF(MVT::i32);
     return Op;
-  case Intrinsic::amdgcn_interp_mov: {
-    SDValue M0 = copyToM0(DAG, DAG.getEntryNode(), DL, Op.getOperand(4));
-    SDValue Glue = M0.getValue(1);
-    return DAG.getNode(AMDGPUISD::INTERP_MOV, DL, MVT::f32, Op.getOperand(1),
-                       Op.getOperand(2), Op.getOperand(3), Glue);
-  }
-  case Intrinsic::amdgcn_interp_p1: {
-    SDValue M0 = copyToM0(DAG, DAG.getEntryNode(), DL, Op.getOperand(4));
-    SDValue Glue = M0.getValue(1);
-    return DAG.getNode(AMDGPUISD::INTERP_P1, DL, MVT::f32, Op.getOperand(1),
-                       Op.getOperand(2), Op.getOperand(3), Glue);
+  case Intrinsic::amdgcn_interp_mov:
+  case Intrinsic::amdgcn_interp_p1:  {
+    unsigned Opc = IntrinsicID == Intrinsic::amdgcn_interp_mov ?
+      AMDGPUISD::INTERP_MOV : AMDGPUISD::INTERP_P1;
+
+    SDValue M0 = Op.getOperand(4);
+    SDValue Ops[] = { Op.getOperand(1), Op.getOperand(2), Op.getOperand(3) };
+    return getNodeWithM0Use(DAG, Opc, DL,
+                            MVT::f32, SDValue(), Ops, M0);
   }
   case Intrinsic::amdgcn_interp_p2: {
-    SDValue M0 = copyToM0(DAG, DAG.getEntryNode(), DL, Op.getOperand(5));
-    SDValue Glue = SDValue(M0.getNode(), 1);
-    return DAG.getNode(AMDGPUISD::INTERP_P2, DL, MVT::f32, Op.getOperand(1),
-                       Op.getOperand(2), Op.getOperand(3), Op.getOperand(4),
-                       Glue);
+    SDValue M0 = Op.getOperand(5);
+    SDValue Ops[] = {
+      Op.getOperand(1), Op.getOperand(2), Op.getOperand(3), Op.getOperand(4)
+    };
+
+    return getNodeWithM0Use(DAG, AMDGPUISD::INTERP_P2, DL,
+                            MVT::f32, SDValue(), Ops, M0);
   }
   case Intrinsic::amdgcn_sin:
     return DAG.getNode(AMDGPUISD::SIN_HW, DL, VT, Op.getOperand(1));
@@ -2863,7 +2971,7 @@ SDValue SITargetLowering::LowerINTRINSIC_VOID(SDValue Op,
   unsigned IntrinsicID = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
 
   switch (IntrinsicID) {
-      case Intrinsic::amdgcn_exp: {
+  case Intrinsic::amdgcn_exp: {
     const ConstantSDNode *Tgt = cast<ConstantSDNode>(Op.getOperand(2));
     const ConstantSDNode *En = cast<ConstantSDNode>(Op.getOperand(3));
     const ConstantSDNode *Done = cast<ConstantSDNode>(Op.getOperand(8));
@@ -2914,10 +3022,9 @@ SDValue SITargetLowering::LowerINTRINSIC_VOID(SDValue Op,
   case Intrinsic::amdgcn_s_sendmsghalt: {
     unsigned NodeOp = (IntrinsicID == Intrinsic::amdgcn_s_sendmsg) ?
       AMDGPUISD::SENDMSG : AMDGPUISD::SENDMSGHALT;
-    Chain = copyToM0(DAG, Chain, DL, Op.getOperand(3));
-    SDValue Glue = Chain.getValue(1);
-    return DAG.getNode(NodeOp, DL, MVT::Other, Chain,
-                       Op.getOperand(2), Glue);
+    SDValue M0 = Op.getOperand(3);
+    return getNodeWithM0Use(DAG, NodeOp, DL, MVT::Other,
+                            Chain, { Op.getOperand(2) }, M0);
   }
   case AMDGPUIntrinsic::SI_tbuffer_store: {
     SDValue Ops[] = {

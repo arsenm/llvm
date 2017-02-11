@@ -44,6 +44,14 @@ def AMDGPUKillSDT : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
 
 //===----------------------------------------------------------------------===//
 // AMDGPU DAG Nodes
+
+def extractelt_indirect : SDNode<"AMDGPUISD::EXTRACT_VECTOR_ELT_INDIRECT", SDTVecExtract,
+  [SDNPInGlue, SDNPOutGlue]
+>;
+def insertelt_indirect : SDNode<"AMDGPUISD::INSERT_VECTOR_ELT_INDIRECT", SDTVecInsert,
+  [SDNPInGlue, SDNPOutGlue]
+>;
+
 //
 
 def AMDGPUconstdata_ptr : SDNode<
@@ -257,15 +265,15 @@ def AMDGPUfmed3 : SDNode<"AMDGPUISD::FMED3", SDTFPTernaryOp, []>;
 
 def AMDGPUsendmsg : SDNode<"AMDGPUISD::SENDMSG",
                     SDTypeProfile<0, 1, [SDTCisInt<0>]>,
-                    [SDNPHasChain, SDNPInGlue]>;
+                    [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
 
 def AMDGPUsendmsghalt : SDNode<"AMDGPUISD::SENDMSGHALT",
                     SDTypeProfile<0, 1, [SDTCisInt<0>]>,
-                    [SDNPHasChain, SDNPInGlue]>;
+                    [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
 
 def AMDGPUinterp_mov : SDNode<"AMDGPUISD::INTERP_MOV",
                         SDTypeProfile<1, 3, [SDTCisFP<0>]>,
-                        [SDNPInGlue]>;
+                        [SDNPInGlue, SDNPOutGlue]>;
 
 def AMDGPUinterp_p1 : SDNode<"AMDGPUISD::INTERP_P1",
                       SDTypeProfile<1, 3, [SDTCisFP<0>]>,
@@ -273,7 +281,7 @@ def AMDGPUinterp_p1 : SDNode<"AMDGPUISD::INTERP_P1",
 
 def AMDGPUinterp_p2 : SDNode<"AMDGPUISD::INTERP_P2",
                       SDTypeProfile<1, 4, [SDTCisFP<0>]>,
-                      [SDNPInGlue]>;
+                      [SDNPInGlue, SDNPOutGlue]>;
 
 
 def AMDGPUkill : SDNode<"AMDGPUISD::KILL", AMDGPUKillSDT,

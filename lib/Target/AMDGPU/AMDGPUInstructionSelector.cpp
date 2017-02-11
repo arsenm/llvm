@@ -76,8 +76,8 @@ bool AMDGPUInstructionSelector::selectG_ADD(MachineInstr &I) const {
   MachineFunction *MF = BB->getParent();
   MachineRegisterInfo &MRI = MF->getRegInfo();
   unsigned Size = RBI.getSizeInBits(I.getOperand(0).getReg(), MRI, TRI);
-  unsigned DstLo = MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
-  unsigned DstHi = MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+  unsigned DstLo = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
+  unsigned DstHi = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
 
   if (Size != 64)
     return false;
@@ -153,8 +153,8 @@ bool AMDGPUInstructionSelector::selectG_CONSTANT(MachineInstr &I) const {
   assert(Size == 64);
 
   DebugLoc DL = I.getDebugLoc();
-  unsigned LoReg = MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
-  unsigned HiReg = MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+  unsigned LoReg = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
+  unsigned HiReg = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
   const APInt &Imm = I.getOperand(1).getCImm()->getValue();
 
   BuildMI(*BB, &I, DL, TII.get(AMDGPU::S_MOV_B32), LoReg)
@@ -337,7 +337,7 @@ bool AMDGPUInstructionSelector::selectSMRD(MachineInstr &I,
 
     if (isUInt<32>(GEPInfo.Imm)) {
       Opcode = getSmrdOpcode(AMDGPU::S_LOAD_DWORD_SGPR, LoadSize);
-      unsigned OffsetReg = MRI.createVirtualRegister(&AMDGPU::SReg_32RegClass);
+      unsigned OffsetReg = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
       BuildMI(*BB, &I, DL, TII.get(AMDGPU::S_MOV_B32), OffsetReg)
               .addImm(GEPInfo.Imm);
 

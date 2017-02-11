@@ -38,7 +38,7 @@
 ; GCN: mask branch [[ENDIF:BB[0-9]+_[0-9]+]]
 
 ; GCN: {{^}}BB{{[0-9]+}}_1: ; %if
-; GCN: s_mov_b32 m0, -1
+; GCN-NOT: m0
 ; GCN: ds_read_b32 [[LOAD1:v[0-9]+]]
 ; GCN: buffer_load_dword [[RELOAD_LOAD0:v[0-9]+]], off, s[0:3], s7 offset:[[LOAD0_OFFSET]] ; 4-byte Folded Reload
 ; GCN: s_waitcnt vmcnt(0)

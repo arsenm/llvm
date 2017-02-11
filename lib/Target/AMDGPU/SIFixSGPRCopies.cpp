@@ -336,10 +336,31 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
 
   SmallVector<MachineInstr *, 16> Worklist;
 
+
+  bool NeedsM0Init = false;
+  MachineBasicBlock &Entry = *MF.begin();
+
+  if (MRI.isPhysRegUsed(AMDGPU::M0)) {
+    NeedsM0Init = true;
+    if (NeedsM0Init) {
+      BuildMI(Entry, Entry.begin(), DebugLoc(), TII->get(AMDGPU::S_MOV_B32), AMDGPU::M0)
+        .addImm(-1);
+    } else {
+      BuildMI(Entry, Entry.begin(), DebugLoc(),
+              TII->get(AMDGPU::IMPLICIT_DEF), AMDGPU::M0);
+    }
+  }
+
   for (MachineFunction::iterator BI = MF.begin(), BE = MF.end();
                                                   BI != BE; ++BI) {
 
     MachineBasicBlock &MBB = *BI;
+#if 1
+    if (NeedsM0Init) {
+      assert(!MBB.isLiveIn(AMDGPU::M0));
+      MBB.addLiveIn(AMDGPU::M0);
+    }
+#endif
     for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end();
          I != E; ++I) {
       MachineInstr &MI = *I;
