@@ -1509,7 +1509,6 @@ bool SIInstrInfo::FoldImmediate(MachineInstr &UseMI, MachineInstr &DefMI,
 
   unsigned Opc = UseMI.getOpcode();
   if (Opc == AMDGPU::COPY) {
-    bool isVGPRCopy = RI.isVGPR(*MRI, UseMI.getOperand(0).getReg());
     switch (DefMI.getOpcode()) {
     default:
       return false;
@@ -1522,15 +1521,18 @@ bool SIInstrInfo::FoldImmediate(MachineInstr &UseMI, MachineInstr &DefMI,
     case AMDGPU::S_MOV_B32:
       break;
     }
-    unsigned NewOpc = isVGPRCopy ? AMDGPU::V_MOV_B32_e32 : AMDGPU::S_MOV_B32;
-    const MachineOperand *ImmOp = getNamedOperand(DefMI, AMDGPU::OpName::src0);
-    assert(ImmOp);
+
+    const MachineOperand &ImmOp = DefMI.getOperand(1);
     // FIXME: We could handle FrameIndex values here.
-    if (!ImmOp->isImm()) {
+    if (!ImmOp.isImm())
       return false;
-    }
+
+    unsigned CopyDefReg = UseMI.getOperand(0).getReg();
+    bool IsVGPRCopy = RI.isVGPR(*MRI, CopyDefReg);
+    unsigned NewOpc = IsVGPRCopy ? AMDGPU::V_MOV_B32_e32 : AMDGPU::S_MOV_B32;
+
     UseMI.setDesc(get(NewOpc));
-    UseMI.getOperand(1).ChangeToImmediate(ImmOp->getImm());
+    UseMI.getOperand(1).ChangeToImmediate(ImmOp.getImm());
     UseMI.addImplicitDefUseOperands(*UseMI.getParent()->getParent());
     return true;
   }
