@@ -753,6 +753,10 @@ public:
   CreateTargetPostRAHazardRecognizer(const MachineFunction &MF) const override;
 
   bool isBasicBlockPrologue(const MachineInstr &MI) const override;
+
+  void emitSetM0ToDefaultValue(MachineBasicBlock &MBB,
+                               MachineBasicBlock::iterator I,
+                               const DebugLoc &DL) const;
 };
 
 namespace AMDGPU {

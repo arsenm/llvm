@@ -68,6 +68,7 @@
 #include "AMDGPU.h"
 #include "AMDGPUSubtarget.h"
 #include "SIInstrInfo.h"
+#include "SIMachineFunctionInfo.h"
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -327,40 +328,50 @@ static bool isSafeToFoldImmIntoCopy(const MachineInstr *Copy,
   return true;
 }
 
+static bool usesDefaultM0Value(const SIInstrInfo &TII, const MachineInstr &MI) {
+  return TII.isDS(MI) || TII.mayAccessFlatAddressSpace(MI);
+}
+
 bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
   const SISubtarget &ST = MF.getSubtarget<SISubtarget>();
   MachineRegisterInfo &MRI = MF.getRegInfo();
   const SIRegisterInfo *TRI = ST.getRegisterInfo();
   const SIInstrInfo *TII = ST.getInstrInfo();
+  SIMachineFunctionInfo *MFI = MF.getInfo<SIMachineFunctionInfo>();
+
   MDT = &getAnalysis<MachineDominatorTree>();
 
-  SmallVector<MachineInstr *, 16> Worklist;
 
-
-  bool NeedsM0Init = false;
   MachineBasicBlock &Entry = *MF.begin();
+  for (const MachineInstr &MI : MRI.use_instructions(AMDGPU::M0)) {
+    if (usesDefaultM0Value(*TII, MI)) {
+      MFI->setNeedsM0Intialization();
+      break;
+    }
+  }
 
-  if (MRI.isPhysRegUsed(AMDGPU::M0)) {
-    NeedsM0Init = true;
-    if (NeedsM0Init) {
-      BuildMI(Entry, Entry.begin(), DebugLoc(), TII->get(AMDGPU::S_MOV_B32), AMDGPU::M0)
-        .addImm(-1);
-    } else {
+  bool NeedM0 = false;
+  if (MFI->needsM0Initialization()) {
+    NeedM0 = true;
+    TII->emitSetM0ToDefaultValue(Entry, Entry.begin(), DebugLoc());
+  } else {
+    NeedM0 = MRI.isPhysRegUsed(AMDGPU::M0);
+    if (NeedM0) {
       BuildMI(Entry, Entry.begin(), DebugLoc(),
               TII->get(AMDGPU::IMPLICIT_DEF), AMDGPU::M0);
     }
   }
 
+  SmallVector<MachineInstr *, 16> Worklist;
   for (MachineFunction::iterator BI = MF.begin(), BE = MF.end();
                                                   BI != BE; ++BI) {
 
     MachineBasicBlock &MBB = *BI;
-#if 1
-    if (NeedsM0Init) {
+    if (NeedM0 && (&MBB != &Entry)) {
       assert(!MBB.isLiveIn(AMDGPU::M0));
       MBB.addLiveIn(AMDGPU::M0);
     }
-#endif
+
     for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end();
          I != E; ++I) {
       MachineInstr &MI = *I;

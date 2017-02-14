@@ -176,14 +176,13 @@ define amdgpu_ps void @v_interp_readnone(float addrspace(3)* %lds) {
 
 ; GCN-LABEL: {{^}}v_interp_lds_restore:
 ; GCN: s_wqm
-; GCN: s_mov_b32 m0, -1
-; GCN-NEXT: s_mov_b32 [[SAVE_M0:s[0-9]+]], m0
 ; GCN-NEXT: s_mov_b32 m0, s6
-; GCN: v_interp_p1_f32 v{{[0-9]+}}, v{{[0-9]+}}, attr0.x{{$}}
-; GCN: s_mov_b32 m0, [[SAVE_M0]]
-; GCN-NEXT: ds_write_b32
+; GCN-NEXT: v_interp_p1_f32 v{{[0-9]+}}, v{{[0-9]+}}, attr0.x{{$}}
+; GCN: s_mov_b32 m0, -1{{$}}
+; GCN-NOT: m0
+; GCN: ds_write_b32
+; GCN-NEXT: s_mov_b32 m0, s6
 
-; GCN: s_mov_b32 m0, s6
 ; GCN: v_interp_p1_f32 v{{[0-9]+}}, v{{[0-9]+}}, attr0.y{{$}}
 ; GCN-NEXT: v_interp_p2_f32 v{{[0-9]+}}, v{{[0-9]+}}, attr0.y{{$}}
 ; GCN-NEXT: v_interp_mov_f32 v{{[0-9]+}}, p0, attr0.x{{$}}
@@ -241,12 +240,17 @@ main_body:
 
 ; Put the interps out of the entry block, obscuring the dead def of m0
 ; in the entry.
-; GCN-LABEL: @v_interp_no_dead_setup(
-; GCN-NOT: s_mov_b32 m0, -1
+; FIXME: getting dead def
+; GCN-LABEL: {{^}}v_interp_no_dead_setup:
+; GCN: ; implicit-def: %M0
+; GCN-NOT: s_mov_b32 m0
 ; GCN: s_cbranch_scc1
 
 ; GCN: s_mov_b32 m0, s6
 ; GCN: v_interp_p1_f32
+
+; FIXME: Dead
+; GCN: s_mov_b32 m0, -1
 define amdgpu_ps void @v_interp_no_dead_setup(<16 x i8> addrspace(2)* inreg, <16 x i8> addrspace(2)* inreg, <32 x i8> addrspace(2)* inreg, i32 inreg %m0, <2 x float> %arg3) {
 entry:
   %i = extractelement <2 x float> %arg3, i32 0

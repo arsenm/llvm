@@ -8,9 +8,9 @@
 ; of the tied implicit use and def of the super register.
 
 ; GCN-LABEL: {{^}}insert_wo_offset:
-; GCN: s_mov_b32 m0, -1
-; GCN-DAG: s_mov_b32 [[NEG1:s[0-9]+]], -1
+; GCN: ; implicit-def: %M0
 ; GCN-DAG: s_load_dword [[IN:s[0-9]+]]
+; GCN: s_mov_b32 [[NEG1:s[0-9]+]], -1{{$}}
 
 ; MOVREL: s_mov_b32 m0, [[IN]]
 ; MOVREL-NEXT: v_movreld_b32_e32 v[[ELT0:[0-9]+]]
@@ -19,6 +19,7 @@
 ; IDXMODE-NEXT: v_mov_b32_e32 v[[ELT0:[0-9]+]], v
 ; IDXMODE-NEXT: s_set_gpr_idx_off
 
+; GCN-NEXT: s_mov_b32 m0, -1
 ; GCN-NEXT: s_mov_b32 m0, [[NEG1]]
 ; GCN-NEXT: buffer_store_dwordx4 v{{\[}}[[ELT0]]:
 define void @insert_wo_offset(<4 x float> addrspace(1)* %out, i32 %in) #0 {

@@ -3784,3 +3784,12 @@ bool SIInstrInfo::isBasicBlockPrologue(const MachineInstr &MI) const {
   return !MI.isTerminator() && MI.getOpcode() != AMDGPU::COPY &&
          MI.modifiesRegister(AMDGPU::EXEC, &RI);
 }
+
+void SIInstrInfo::emitSetM0ToDefaultValue(MachineBasicBlock &MBB,
+                                          MachineBasicBlock::iterator I,
+                                          const DebugLoc &DL) const {
+  // TODO: Restrict to compile time LDS size or initialize with dynamic size
+  // from register?
+  BuildMI(MBB, I, DL, get(AMDGPU::S_MOV_B32), AMDGPU::M0)
+    .addImm(-1);
+}

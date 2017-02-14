@@ -366,6 +366,12 @@ public:
     return NeedsM0Initialization;
   }
 
+  /// The default m0 value is to support LDS accesses. If this is true, other
+  /// uses need to restore this value after mutating m0.
+  bool shouldPreserveDefaultM0Value() const {
+    return NeedsM0Initialization;
+  }
+
   void setNeedsM0Intialization() {
     NeedsM0Initialization = true;
   }

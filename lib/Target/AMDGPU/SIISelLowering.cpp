@@ -208,6 +208,8 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
       case ISD::STORE:
       case ISD::BUILD_VECTOR:
       case ISD::BITCAST:
+        //case ISD::EXTRACT_VECTOR_ELT:
+        //case ISD::INSERT_VECTOR_ELT:
       case ISD::INSERT_SUBVECTOR:
       case ISD::EXTRACT_SUBVECTOR:
       case ISD::SCALAR_TO_VECTOR:
@@ -222,6 +224,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
     }
   }
 
+#if 1
   setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v2f32, Custom);
   setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v2i32, Custom);
   setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v2f32, Custom);
@@ -241,6 +244,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::EXTRACT_VECTOR_ELT, MVT::v16i32, Custom);
   setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v16f32, Custom);
   setOperationAction(ISD::INSERT_VECTOR_ELT, MVT::v16i32, Custom);
+#endif
 
   // TODO: For dynamic 64-bit vector inserts/extracts, should emit a pseudo that
   // is expanded to avoid having two separate loops in case the index is a VGPR.
@@ -1583,6 +1587,10 @@ static MachineBasicBlock *emitIndirectSrc(MachineInstr &MI,
 
   bool UseGPRIdxMode = ST.hasVGPRIndexMode() && EnableVGPRIndexMode;
 
+  const DebugLoc &DL = MI.getDebugLoc();
+  MachineBasicBlock::iterator I(&MI);
+  TII->emitSetM0ToDefaultValue(MBB, std::next(I), DL);
+
   if (setM0ToIndexFromSGPR(TII, MRI, MI, Offset, UseGPRIdxMode, true)) {
     MachineBasicBlock::iterator I(&MI);
     const DebugLoc &DL = MI.getDebugLoc();
@@ -1606,9 +1614,6 @@ static MachineBasicBlock *emitIndirectSrc(MachineInstr &MI,
 
     return &MBB;
   }
-
-  const DebugLoc &DL = MI.getDebugLoc();
-  MachineBasicBlock::iterator I(&MI);
 
   unsigned PhiReg = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
   unsigned InitReg = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
@@ -1700,6 +1705,11 @@ static MachineBasicBlock *emitIndirectDst(MachineInstr &MI,
     return &MBB;
   }
 
+  const DebugLoc &DL = MI.getDebugLoc();
+  MachineBasicBlock::iterator I(&MI);
+
+  TII->emitSetM0ToDefaultValue(MBB, std::next(I), DL);
+
   if (setM0ToIndexFromSGPR(TII, MRI, MI, Offset, UseGPRIdxMode, false)) {
     MachineBasicBlock::iterator I(&MI);
     const DebugLoc &DL = MI.getDebugLoc();
@@ -1729,8 +1739,6 @@ static MachineBasicBlock *emitIndirectDst(MachineInstr &MI,
 
   if (Val->isReg())
     MRI.clearKillFlags(Val->getReg());
-
-  const DebugLoc &DL = MI.getDebugLoc();
 
   if (UseGPRIdxMode) {
     MachineBasicBlock::iterator I(&MI);
@@ -2347,8 +2355,8 @@ SDValue SITargetLowering::lowerINSERT_VECTOR_ELT(SDValue Op,
 
   if (Vec.getValueType().getSizeInBits() != 32) {
     SDValue Ops[] = { Op.getOperand(0), Op.getOperand(1), Op.getOperand(2) };
-    return getNodeWithM0SaveRestore(DAG, AMDGPUISD::INSERT_VECTOR_ELT_INDIRECT,
-                                    SL, ResultVT, Ops);
+    return getNodeWithM0UseRestoreDefault(DAG, AMDGPUISD::INSERT_VECTOR_ELT_INDIRECT,
+                                          SL, ResultVT, SDValue(), Ops);
   }
 
   // Avoid stack access for dynamic indexing.
@@ -2384,8 +2392,9 @@ SDValue SITargetLowering::lowerEXTRACT_VECTOR_ELT(SDValue Op,
   SDValue Idx = Op.getOperand(1);
 
   if (const ConstantSDNode *CIdx = dyn_cast<ConstantSDNode>(Idx)) {
-    if (Vec.getValueType().getSizeInBits() != 32)
+    if (Vec.getValueType().getSizeInBits() != 32) {
       return Op;
+    }
 
     SDValue Result = DAG.getNode(ISD::BITCAST, SL, MVT::i32, Vec);
     if (CIdx->getZExtValue() == 1) {
@@ -2402,8 +2411,8 @@ SDValue SITargetLowering::lowerEXTRACT_VECTOR_ELT(SDValue Op,
 
   if (Vec.getValueType().getSizeInBits() != 32) {
     SDValue Ops[] = { Op.getOperand(0), Op.getOperand(1) };
-    return getNodeWithM0SaveRestore(DAG, AMDGPUISD::EXTRACT_VECTOR_ELT_INDIRECT,
-                                    SL, ResultVT, Ops);
+    return getNodeWithM0UseRestoreDefault(DAG, AMDGPUISD::EXTRACT_VECTOR_ELT_INDIRECT,
+                                          SL, ResultVT, SDValue(), Ops);
   }
 
   SDValue Sixteen = DAG.getConstant(16, SL, MVT::i32);
@@ -2589,6 +2598,69 @@ SDValue SITargetLowering::getNodeWithM0SaveRestore(SelectionDAG &DAG, unsigned O
                                 RestoreM0, DAG.getRoot());
   DAG.setRoot(NewRoot);
   return Op;
+}
+
+SDValue SITargetLowering::getDefaultM0Value(SelectionDAG &DAG,
+                                            const SDLoc &SL) const {
+  return DAG.getConstant(-1, SL, MVT::i32);
+  //return DAG.getTargetConstant(-1, SL, MVT::i32);
+}
+
+SDValue SITargetLowering::getNodeWithM0UseRestoreDefault(SelectionDAG &DAG,
+                                                         unsigned Opc,
+                                                         const SDLoc &SL, EVT VT,
+                                                         SDValue InputChain,
+                                                         ArrayRef<SDValue> Ops,
+                                                         SDValue M0Val) const {
+  SDValue Chain = InputChain ? InputChain : DAG.getEntryNode();
+  SDVTList VTList = InputChain ?
+    DAG.getVTList(VT, MVT::Other, MVT::Glue) : DAG.getVTList(VT, MVT::Glue);
+
+
+  //SDValue M0Reg = DAG.getRegister(AMDGPU::M0, MVT::i32);
+  //SDValue NewM0 = copyToM0(DAG, OrigM0.getValue(1), SL, M0Val,
+
+  SmallVector<SDValue, 6> NodeOps;
+
+  SDValue Node;
+  SDValue OutChain = Chain;
+  if (M0Val) {
+    // We can't use S_MOV_B32 directly, because there is no way to specify m0 as
+    // the destination register.
+    //
+    //
+    // We don't use CopyToReg, because MachineCSE won't combine COPY
+    // instructions, so we will end up with redundant moves to m0.
+    //
+    // We use a pseudo to ensure we emit s_mov_b32 with m0 as the direct result.
+    //
+    // A Null SDValue creates a glue result.
+    SDNode *M0 = DAG.getMachineNode(AMDGPU::SI_INIT_M0, SL, MVT::Other,
+                                    MVT::Glue, M0Val, Chain);
+    SDValue NewM0(M0, 0);
+
+    if (InputChain)
+      NodeOps.push_back(NewM0); // Chain
+    NodeOps.append(Ops.begin(), Ops.end()); // Operands
+    NodeOps.push_back(NewM0.getValue(1)); // Glue
+
+    Node = DAG.getNode(Opc, SL, VTList, NodeOps);
+    OutChain = InputChain ? Node : NewM0;
+  } else {
+    NodeOps.append(Ops.begin(), Ops.end()); // Operands
+    Node = DAG.getNode(Opc, SL, VTList, NodeOps);
+  }
+
+  SDValue OutGlue = Node.getValue(Node->getNumValues() - 1);
+  SDValue RestoreM0 = DAG.getCopyToReg(OutChain, SL, AMDGPU::M0,
+                                       getDefaultM0Value(DAG, SL), OutGlue);
+  if (InputChain)
+    return RestoreM0;
+
+  SDValue NewRoot = DAG.getNode(ISD::TokenFactor, SL, MVT::Other,
+                                RestoreM0, DAG.getRoot());
+  DAG.setRoot(NewRoot);
+  return Node;
 }
 
 SDValue SITargetLowering::lowerImplicitZextParam(SelectionDAG &DAG,
@@ -2803,8 +2875,8 @@ SDValue SITargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
 
     SDValue M0 = Op.getOperand(4);
     SDValue Ops[] = { Op.getOperand(1), Op.getOperand(2), Op.getOperand(3) };
-    return getNodeWithM0Use(DAG, Opc, DL,
-                            MVT::f32, SDValue(), Ops, M0);
+    return getNodeWithM0UseRestoreDefault(DAG, Opc, DL,
+                                          MVT::f32, SDValue(), Ops, M0);
   }
   case Intrinsic::amdgcn_interp_p2: {
     SDValue M0 = Op.getOperand(5);
@@ -2812,8 +2884,8 @@ SDValue SITargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
       Op.getOperand(1), Op.getOperand(2), Op.getOperand(3), Op.getOperand(4)
     };
 
-    return getNodeWithM0Use(DAG, AMDGPUISD::INTERP_P2, DL,
-                            MVT::f32, SDValue(), Ops, M0);
+    return getNodeWithM0UseRestoreDefault(DAG, AMDGPUISD::INTERP_P2, DL,
+                                          MVT::f32, SDValue(), Ops, M0);
   }
   case Intrinsic::amdgcn_sin:
     return DAG.getNode(AMDGPUISD::SIN_HW, DL, VT, Op.getOperand(1));

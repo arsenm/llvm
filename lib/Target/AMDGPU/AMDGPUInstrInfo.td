@@ -46,10 +46,10 @@ def AMDGPUKillSDT : SDTypeProfile<0, 1, [SDTCisInt<0>]>;
 // AMDGPU DAG Nodes
 
 def extractelt_indirect : SDNode<"AMDGPUISD::EXTRACT_VECTOR_ELT_INDIRECT", SDTVecExtract,
-  [SDNPInGlue, SDNPOutGlue]
+  [SDNPOutGlue]
 >;
 def insertelt_indirect : SDNode<"AMDGPUISD::INSERT_VECTOR_ELT_INDIRECT", SDTVecInsert,
-  [SDNPInGlue, SDNPOutGlue]
+  [SDNPOutGlue]
 >;
 
 //

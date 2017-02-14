@@ -286,8 +286,8 @@ def SI_RETURN : SPseudoInstSI <
   let DisableWQM = 1;
 }
 
-let Defs = [M0, EXEC],
-  UseNamedOperandTable = 1 in {
+// These use and define m0, but restore it to its default value.
+let Defs = [M0, EXEC], UseNamedOperandTable = 1 in {
 
 class SI_INDIRECT_SRC<RegisterClass rc> : VPseudoInstSI <
   (outs VGPR_32:$vdst),

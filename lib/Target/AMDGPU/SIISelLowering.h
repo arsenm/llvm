@@ -206,6 +206,14 @@ public:
   SDValue getNodeWithM0SaveRestore(SelectionDAG &DAG, unsigned Opc,
                                    const SDLoc &SL, EVT VT,
                                    ArrayRef<SDValue> Ops) const;
+
+  SDValue getDefaultM0Value(SelectionDAG &DAG, const SDLoc &SL) const;
+
+  SDValue getNodeWithM0UseRestoreDefault(SelectionDAG &DAG, unsigned Opc,
+                                         const SDLoc &SL, EVT VT,
+                                         SDValue Chain,  ArrayRef<SDValue> Ops,
+                                         SDValue M0Val = SDValue()) const;
+
 };
 
 } // End namespace llvm

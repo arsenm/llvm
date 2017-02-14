@@ -61,6 +61,36 @@ define amdgpu_gs void @sendmsg(i32 inreg %a) #0 {
   ret void
 }
 
+; GCN-LABEL: {{^}}test_interrupt_undef_m0:
+; GCN-NOT: s_mov_b32 m0
+; GCN: s_sendmsg sendmsg(MSG_INTERRUPT)
+; GCN-NOT: s_mov_b32 m0
+define void @test_interrupt_undef_m0() {
+body:
+  call void @llvm.amdgcn.s.sendmsg(i32 1, i32 undef);
+  ret void
+}
+
+; FIXME: Should not get any m0 def
+; GCN-LABEL: {{^}}test_interrupt_undef_m0_nonentry:
+; GCN: ; implicit-def: %M0
+; GCN-NOT: s_mov_b32 m0
+; GCN: s_cbranch_scc1
+; GCN: s_mov_b32 s0, m0
+; GCN: s_sendmsg sendmsg(MSG_INTERRUPT)
+; GCN-NOT: s_mov_b32 m0
+define void @test_interrupt_undef_m0_nonentry() {
+entry:
+  br i1 undef, label %if, label %endif
+
+if:
+  call void @llvm.amdgcn.s.sendmsg(i32 1, i32 undef)
+  br label %endif
+
+endif:
+  ret void
+}
+
 ; GCN-LABEL: {{^}}sendmsghalt:
 ; GCN: s_mov_b32 m0, s0
 ; VI-NEXT: s_nop 0
