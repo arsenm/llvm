@@ -4,11 +4,11 @@
 
 ; GCN-LABEL: {{^}}copy_local_to_global_loop_m0_init:
 ; Initialize in entry block only
-; GCN: s_mov_b32 m0, -1
-; GCN-NOT: m0
+; GCN-NOT: s_mov_b32 m0
 ; GCN: s_cbranch_scc1 BB0_3
 ; GCN-NOT: m0
-
+; GCN: s_mov_b32 m0, -1
+; GCN-NOT: m0
 
 ; GCN: BB0_2:
 ; GCN-NOT: m0

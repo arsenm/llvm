@@ -369,7 +369,15 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
     MachineBasicBlock &MBB = *BI;
     if (NeedM0 && (&MBB != &Entry)) {
       assert(!MBB.isLiveIn(AMDGPU::M0));
-      MBB.addLiveIn(AMDGPU::M0);
+      //MBB.addLiveIn(AMDGPU::M0);
+      if (NeedM0) {
+        if (MFI->needsM0Initialization()) {
+          TII->emitSetM0ToDefaultValue(MBB, MBB.getFirstNonPHI(), DebugLoc());
+        } else {
+          BuildMI(MBB, MBB.getFirstNonPHI(), DebugLoc(),
+                  TII->get(AMDGPU::IMPLICIT_DEF), AMDGPU::M0);
+        }
+      }
     }
 
     for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end();
