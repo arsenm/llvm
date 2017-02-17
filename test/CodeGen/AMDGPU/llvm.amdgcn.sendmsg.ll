@@ -73,12 +73,12 @@ body:
 
 ; FIXME: Should not get any m0 def
 ; GCN-LABEL: {{^}}test_interrupt_undef_m0_nonentry:
-; GCN: ; implicit-def: %M0
-; GCN-NOT: s_mov_b32 m0
-; GCN: s_cbranch_scc1
-; GCN: s_mov_b32 s0, m0
-; GCN: s_sendmsg sendmsg(MSG_INTERRUPT)
-; GCN-NOT: s_mov_b32 m0
+; GCN: ; %entry
+; GCN-NEXT: s_cbranch_scc1
+; GCN-NEXT: ; %if
+; GCN-NEXT: s_sendmsg sendmsg(MSG_INTERRUPT)
+; GCN-NEXT: BB{{[0-9]+_[0-9]+}}:
+; GCN-NEXT: s_endpgm
 define void @test_interrupt_undef_m0_nonentry() {
 entry:
   br i1 undef, label %if, label %endif

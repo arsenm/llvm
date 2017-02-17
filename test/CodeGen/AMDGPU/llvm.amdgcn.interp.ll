@@ -240,17 +240,14 @@ main_body:
 
 ; Put the interps out of the entry block, obscuring the dead def of m0
 ; in the entry.
-; FIXME: getting dead def
 ; GCN-LABEL: {{^}}v_interp_no_dead_setup:
-; GCN: ; implicit-def: %M0
 ; GCN-NOT: s_mov_b32 m0
 ; GCN: s_cbranch_scc1
 
 ; GCN: s_mov_b32 m0, s6
 ; GCN: v_interp_p1_f32
 
-; FIXME: Dead
-; GCN: s_mov_b32 m0, -1
+; GCN-NOT: s_mov_b32 m0
 define amdgpu_ps void @v_interp_no_dead_setup(<16 x i8> addrspace(2)* inreg, <16 x i8> addrspace(2)* inreg, <32 x i8> addrspace(2)* inreg, i32 inreg %m0, <2 x float> %arg3) {
 entry:
   %i = extractelement <2 x float> %arg3, i32 0
