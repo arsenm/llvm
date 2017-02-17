@@ -768,9 +768,9 @@ void SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI,
 
       auto MIB =
         BuildMI(*MBB, MI, DL, TII->get(ScalarLoadOp), SubReg)
-        .addReg(MFI->getScratchRSrcReg()) // sbase
-        .addReg(OffsetReg, RegState::Kill)                // soff
-        .addImm(0)                        // glc
+        .addReg(MFI->getScratchRSrcReg())  // sbase
+        .addReg(OffsetReg, RegState::Kill) // soff
+        .addImm(0)                         // glc
         .addMemOperand(MMO);
 
       if (NumSubRegs > 1)

@@ -341,8 +341,7 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
 
   MDT = &getAnalysis<MachineDominatorTree>();
 
-  unsigned M0InitReg = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
-
+  unsigned M0InitReg = AMDGPU::NoRegister;
 
   MachineBasicBlock &Entry = *MF.begin();
   for (const MachineInstr &MI : MRI.use_instructions(AMDGPU::M0)) {
@@ -352,54 +351,37 @@ bool SIFixSGPRCopies::runOnMachineFunction(MachineFunction &MF) {
     }
   }
 
-  bool NeedM0 = false;
+  // Insert defs and copies to maintain the value of m0 without adding physreg
+  // live ins.
+  //
+  // If we have LDS uses, initialize to -1 and insert copies from the vreg.
+  // Other uses are expected to insert their own copies. Otherwise, insert
+  // implicit_defs to avoid verifier errors.
+
+  bool HasUndefM0 = false;
   if (MFI->needsM0Initialization()) {
-    NeedM0 = true;
-    //TII->emitSetM0ToDefaultValue(Entry, Entry.begin(), DebugLoc());
+    M0InitReg = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
 
     auto Ins = Entry.begin();
-    BuildMI(Entry, Ins, DebugLoc(),
-            TII->get(AMDGPU::S_MOV_B32), M0InitReg)
+    BuildMI(Entry, Ins, DebugLoc(), TII->get(AMDGPU::S_MOV_B32), M0InitReg)
       .addImm(-1);
-
-    BuildMI(Entry, Ins, DebugLoc(),
-            TII->get(AMDGPU::COPY), AMDGPU::M0)
+    BuildMI(Entry, Ins, DebugLoc(), TII->get(AMDGPU::COPY), AMDGPU::M0)
       .addReg(M0InitReg);
-  } else {
-    auto Ins = Entry.begin();
-    NeedM0 = MRI.isPhysRegUsed(AMDGPU::M0);
-    if (NeedM0) {
-      BuildMI(Entry, Ins, DebugLoc(),
-              TII->get(AMDGPU::IMPLICIT_DEF), M0InitReg);
-      BuildMI(Entry, Ins, DebugLoc(),
-              TII->get(AMDGPU::COPY), AMDGPU::M0)
-        .addReg(M0InitReg);
-
-    }
-  }
+  } else if (MRI.isPhysRegUsed(AMDGPU::M0))
+    HasUndefM0 = true;
 
   SmallVector<MachineInstr *, 16> Worklist;
   for (MachineFunction::iterator BI = MF.begin(), BE = MF.end();
                                                   BI != BE; ++BI) {
-
     MachineBasicBlock &MBB = *BI;
-    if (NeedM0 && (&MBB != &Entry)) {
-      assert(!MBB.isLiveIn(AMDGPU::M0));
-      //MBB.addLiveIn(AMDGPU::M0);
-      if (NeedM0) {
-        BuildMI(MBB, MBB.getFirstNonPHI(), DebugLoc(),
-                  TII->get(AMDGPU::COPY), AMDGPU::M0)
-          .addReg(M0InitReg);
 
-#if 0
-        if (MFI->needsM0Initialization()) {
-          TII->emitSetM0ToDefaultValue(MBB, MBB.getFirstNonPHI(), DebugLoc());
-        } else {
-          BuildMI(MBB, MBB.getFirstNonPHI(), DebugLoc(),
-                  TII->get(AMDGPU::IMPLICIT_DEF), AMDGPU::M0);
-        }
-#endif
-      }
+    if (MFI->needsM0Initialization() && &MBB != &Entry) {
+      BuildMI(MBB, MBB.SkipPHIsAndLabels(MBB.begin()), DebugLoc(),
+              TII->get(AMDGPU::COPY), AMDGPU::M0)
+        .addReg(M0InitReg);
+    } else if (HasUndefM0) {
+      BuildMI(MBB, MBB.SkipPHIsAndLabels(MBB.begin()), DebugLoc(),
+              TII->get(AMDGPU::IMPLICIT_DEF), AMDGPU::M0);
     }
 
     for (MachineBasicBlock::iterator I = MBB.begin(), E = MBB.end();
