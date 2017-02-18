@@ -45,7 +45,7 @@ entry:
   %mul.26.i = mul i32 %x.i.12.i, %x.i.i
   %add.i = add i32 %tmp2, %mul.26.i
   %arrayidx = getelementptr [256 x [8 x <4 x i64>]], [256 x [8 x <4 x i64>]] addrspace(3)* @sPrivateStorage, i32 0, i32 %tmp9, i32 %add.i
-  store <4 x i64> zeroinitializer, <4 x i64> addrspace(3)* %arrayidx
+  store <4 x i64> zeroinitializer, <4 x i64> addrspace(3)* %arrayidx, align 8
   %tmp12 = sext i32 %add.i to i64
   %arrayidx1 = getelementptr inbounds <4 x i64>, <4 x i64> addrspace(1)* %srcValues, i64 %tmp12
   %tmp13 = load <4 x i64>, <4 x i64> addrspace(1)* %arrayidx1
@@ -55,7 +55,7 @@ entry:
   %mul.i = shl i32 %tmp14, 2
   %arrayidx.i = getelementptr inbounds i64, i64 addrspace(3)* %add.ptr, i32 %mul.i
   %tmp15 = bitcast i64 addrspace(3)* %arrayidx.i to <4 x i64> addrspace(3)*
-  store <4 x i64> %tmp13, <4 x i64> addrspace(3)* %tmp15
+  store <4 x i64> %tmp13, <4 x i64> addrspace(3)* %tmp15, align 8
   %add.ptr6 = getelementptr [256 x [8 x <4 x i64>]], [256 x [8 x <4 x i64>]] addrspace(3)* @sPrivateStorage, i32 0, i32 %tmp9, i32 %tmp14, i32 %alignmentOffset
   %tmp16 = sext i32 %tmp14 to i64
   %tmp17 = sext i32 %alignmentOffset to i64
@@ -64,15 +64,15 @@ entry:
   %trunc = trunc i256 %tmp18 to i64
   store i64 %trunc, i64 addrspace(1)* %add.ptr9
   %arrayidx10.1 = getelementptr inbounds i64, i64 addrspace(3)* %add.ptr6, i32 1
-  %tmp19 = load i64, i64 addrspace(3)* %arrayidx10.1
+  %tmp19 = load i64, i64 addrspace(3)* %arrayidx10.1, align 8
   %arrayidx11.1 = getelementptr inbounds i64, i64 addrspace(1)* %add.ptr9, i64 1
-  store i64 %tmp19, i64 addrspace(1)* %arrayidx11.1
+  store i64 %tmp19, i64 addrspace(1)* %arrayidx11.1, align 8
   %arrayidx10.2 = getelementptr inbounds i64, i64 addrspace(3)* %add.ptr6, i32 2
-  %tmp20 = load i64, i64 addrspace(3)* %arrayidx10.2
+  %tmp20 = load i64, i64 addrspace(3)* %arrayidx10.2, align 8
   %arrayidx11.2 = getelementptr inbounds i64, i64 addrspace(1)* %add.ptr9, i64 2
   store i64 %tmp20, i64 addrspace(1)* %arrayidx11.2
   %arrayidx10.3 = getelementptr inbounds i64, i64 addrspace(3)* %add.ptr6, i32 3
-  %tmp21 = load i64, i64 addrspace(3)* %arrayidx10.3
+  %tmp21 = load i64, i64 addrspace(3)* %arrayidx10.3, align 8
   %arrayidx11.3 = getelementptr inbounds i64, i64 addrspace(1)* %add.ptr9, i64 3
   store i64 %tmp21, i64 addrspace(1)* %arrayidx11.3
   ret void

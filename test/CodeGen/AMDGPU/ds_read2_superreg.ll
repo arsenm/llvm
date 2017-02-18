@@ -104,9 +104,9 @@ define void @simple_read2_v4f32_superreg_align8(<4 x float> addrspace(1)* %out) 
 define void @simple_read2_v4f32_superreg(<4 x float> addrspace(1)* %out) #0 {
   %x.i = tail call i32 @llvm.amdgcn.workitem.id.x() #1
   %arrayidx0 = getelementptr inbounds [512 x <4 x float>], [512 x <4 x float>] addrspace(3)* @lds.v4, i32 0, i32 %x.i
-  %val0 = load <4 x float>, <4 x float> addrspace(3)* %arrayidx0
+  %val0 = load <4 x float>, <4 x float> addrspace(3)* %arrayidx0, align 8
   %out.gep = getelementptr inbounds <4 x float>, <4 x float> addrspace(1)* %out, i32 %x.i
-  store <4 x float> %val0, <4 x float> addrspace(1)* %out.gep
+  store <4 x float> %val0, <4 x float> addrspace(1)* %out.gep, align 8
   ret void
 }
 
@@ -120,9 +120,9 @@ define void @simple_read2_v4f32_superreg(<4 x float> addrspace(1)* %out) #0 {
 define void @simple_read2_v8f32_superreg(<8 x float> addrspace(1)* %out) #0 {
   %x.i = tail call i32 @llvm.amdgcn.workitem.id.x() #1
   %arrayidx0 = getelementptr inbounds [512 x <8 x float>], [512 x <8 x float>] addrspace(3)* @lds.v8, i32 0, i32 %x.i
-  %val0 = load <8 x float>, <8 x float> addrspace(3)* %arrayidx0
+  %val0 = load <8 x float>, <8 x float> addrspace(3)* %arrayidx0, align 8
   %out.gep = getelementptr inbounds <8 x float>, <8 x float> addrspace(1)* %out, i32 %x.i
-  store <8 x float> %val0, <8 x float> addrspace(1)* %out.gep
+  store <8 x float> %val0, <8 x float> addrspace(1)* %out.gep, align 8
   ret void
 }
 
@@ -141,9 +141,9 @@ define void @simple_read2_v8f32_superreg(<8 x float> addrspace(1)* %out) #0 {
 define void @simple_read2_v16f32_superreg(<16 x float> addrspace(1)* %out) #0 {
   %x.i = tail call i32 @llvm.amdgcn.workitem.id.x() #1
   %arrayidx0 = getelementptr inbounds [512 x <16 x float>], [512 x <16 x float>] addrspace(3)* @lds.v16, i32 0, i32 %x.i
-  %val0 = load <16 x float>, <16 x float> addrspace(3)* %arrayidx0
+  %val0 = load <16 x float>, <16 x float> addrspace(3)* %arrayidx0, align 8
   %out.gep = getelementptr inbounds <16 x float>, <16 x float> addrspace(1)* %out, i32 %x.i
-  store <16 x float> %val0, <16 x float> addrspace(1)* %out.gep
+  store <16 x float> %val0, <16 x float> addrspace(1)* %out.gep, align 8
   ret void
 }
 

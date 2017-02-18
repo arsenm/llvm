@@ -269,6 +269,11 @@ public:
     return (getGeneration() >= EVERGREEN);
   }
 
+  /// Returns whether target supports ds_read_b128/ds_write_b128.
+  bool hasDS128() const {
+    return CIInsts;
+  }
+
   bool hasCaymanISA() const {
     return CaymanISA;
   }

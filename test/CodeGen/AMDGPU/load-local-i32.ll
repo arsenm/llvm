@@ -1,5 +1,5 @@
-; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=FUNC %s
-; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=SI -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=CIVI -check-prefix=FUNC %s
 ; RUN: llc -march=r600 -mcpu=redwood < %s | FileCheck -check-prefix=EG -check-prefix=FUNC %s
 
 
@@ -26,8 +26,10 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_load_v3i32:
-; GCN-DAG: ds_read_b64
-; GCN-DAG: ds_read_b32
+; SI-DAG: ds_read_b64
+; SI-DAG: ds_read_b32
+
+; CIVI: ds_read_b128
 define void @local_load_v3i32(<3 x i32> addrspace(3)* %out, <3 x i32> addrspace(3)* %in) #0 {
 entry:
   %ld = load <3 x i32>, <3 x i32> addrspace(3)* %in
@@ -36,8 +38,8 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_load_v4i32:
-; GCN: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset1:1{{$}}
-
+; SI: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset1:1{{$}}
+; CIVI: ds_read_b128 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+$}}
 define void @local_load_v4i32(<4 x i32> addrspace(3)* %out, <4 x i32> addrspace(3)* %in) #0 {
 entry:
   %ld = load <4 x i32>, <4 x i32> addrspace(3)* %in
@@ -45,9 +47,34 @@ entry:
   ret void
 }
 
+; FUNC-LABEL: {{^}}local_load_v4i32_align4:
+; GCN-DAG: ds_read2_b32 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset0:2 offset1:3{{$}}
+; GCN-DAG: ds_read2_b32 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset1:1{{$}}
+; GCN-DAG: ds_write2_b32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}} offset0:2 offset1:3{{$}}
+; GCN-DAG: ds_write2_b32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}} offset1:1{{$}}
+define void @local_load_v4i32_align4(<4 x i32> addrspace(3)* %out, <4 x i32> addrspace(3)* %in) #0 {
+entry:
+  %ld = load <4 x i32>, <4 x i32> addrspace(3)* %in, align 4
+  store <4 x i32> %ld, <4 x i32> addrspace(3)* %out, align 4
+  ret void
+}
+
+; FUNC-LABEL: {{^}}local_load_v4i32_align8:
+; GCN: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset1:1{{$}}
+; GCN: ds_write2_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}} offset1:1{{$}}
+define void @local_load_v4i32_align8(<4 x i32> addrspace(3)* %out, <4 x i32> addrspace(3)* %in) #0 {
+entry:
+  %ld = load <4 x i32>, <4 x i32> addrspace(3)* %in, align 8
+  store <4 x i32> %ld, <4 x i32> addrspace(3)* %out, align 8
+  ret void
+}
+
 ; FUNC-LABEL: {{^}}local_load_v8i32:
-; GCN-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset0:2 offset1:3{{$}}
-; GCN-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset1:1{{$}}
+; SI-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset0:2 offset1:3{{$}}
+; SI-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset1:1{{$}}
+
+; CIVI-DAG: ds_read_b128 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset:16{{$}}
+; CIVI-DAG: ds_read_b128 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset:16{{$}}
 define void @local_load_v8i32(<8 x i32> addrspace(3)* %out, <8 x i32> addrspace(3)* %in) #0 {
 entry:
   %ld = load <8 x i32>, <8 x i32> addrspace(3)* %in
@@ -56,14 +83,23 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_load_v16i32:
-; GCN-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset0:6 offset1:7{{$}}
-; GCN-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset0:4 offset1:5{{$}}
-; GCN-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset0:2 offset1:3{{$}}
-; GCN-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset1:1{{$}}
-; GCN-DAG: ds_write2_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}} offset0:6 offset1:7
-; GCN-DAG: ds_write2_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}} offset0:4 offset1:5
-; GCN-DAG: ds_write2_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}} offset0:2 offset1:3
-; GCN-DAG: ds_write2_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}} offset1:1
+; SI-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset0:6 offset1:7{{$}}
+; SI-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset0:4 offset1:5{{$}}
+; SI-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset0:2 offset1:3{{$}}
+; SI-DAG: ds_read2_b64 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset1:1{{$}}
+; SI-DAG: ds_write2_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}} offset0:6 offset1:7
+; SI-DAG: ds_write2_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}} offset0:4 offset1:5
+; SI-DAG: ds_write2_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}} offset0:2 offset1:3
+; SI-DAG: ds_write2_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}, v{{\[[0-9]+:[0-9]+\]}} offset1:1
+
+; CIVI-DAG: ds_read_b128 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+$}}
+; CIVI-DAG: ds_read_b128 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset:16{{$}}
+; CIVI-DAG: ds_read_b128 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset:32{{$}}
+; CIVI-DAG: ds_read_b128 v{{\[[0-9]+:[0-9]+\]}}, v{{[0-9]+}} offset:48{{$}}
+; CIVI-DAG: ds_write_b128 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]$}}
+; CIVI-DAG: ds_write_b128 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}} offset:16{{$}}
+; CIVI-DAG: ds_write_b128 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}} offset:32{{$}}
+; CIVI-DAG: ds_write_b128 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}} offset:48{{$}}
 define void @local_load_v16i32(<16 x i32> addrspace(3)* %out, <16 x i32> addrspace(3)* %in) #0 {
 entry:
   %ld = load <16 x i32>, <16 x i32> addrspace(3)* %in

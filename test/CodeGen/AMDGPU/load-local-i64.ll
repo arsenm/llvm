@@ -1,6 +1,6 @@
-; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=FUNC %s
-; RUN: llc -mtriple=amdgcn--amdhsa -mcpu=kaveri -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=FUNC %s
-; RUN: llc -march=amdgcn -mcpu=tonga -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=SI -check-prefix=FUNC %s
+; RUN: llc -mtriple=amdgcn--amdhsa -mcpu=kaveri -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=CIVI -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -mcpu=tonga -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=CIVI -check-prefix=FUNC %s
 ; RUN: llc -march=r600 -mcpu=redwood < %s | FileCheck -check-prefix=EG -check-prefix=FUNC %s
 
 ; FUNC-LABEL: {{^}}local_load_i64:
@@ -16,7 +16,8 @@ define void @local_load_i64(i64 addrspace(3)* %out, i64 addrspace(3)* %in) #0 {
 }
 
 ; FUNC-LABEL: {{^}}local_load_v2i64:
-; GCN: ds_read2_b64
+; SI: ds_read2_b64
+; CIVI: ds_read_b128
 
 ; EG: LDS_READ_RET
 ; EG: LDS_READ_RET
@@ -30,8 +31,11 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_load_v3i64:
-; GCN-DAG: ds_read2_b64
-; GCN-DAG: ds_read_b64
+; SI-DAG: ds_read2_b64
+; SI-DAG: ds_read_b64
+
+; CIVI: ds_read_b128
+
 
 ; EG: LDS_READ_RET
 ; EG: LDS_READ_RET
@@ -47,8 +51,11 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_load_v4i64:
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
 
 ; EG: LDS_READ_RET
 ; EG: LDS_READ_RET
@@ -67,10 +74,15 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_load_v8i64:
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
 
 ; EG: LDS_READ_RET
 ; EG: LDS_READ_RET
@@ -96,14 +108,25 @@ entry:
 }
 
 ; FUNC-LABEL: {{^}}local_load_v16i64:
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
-; GCN: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+; SI: ds_read2_b64
+
+
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
+; CIVI: ds_read_b128
+
 
 ; EG: LDS_READ_RET
 ; EG: LDS_READ_RET

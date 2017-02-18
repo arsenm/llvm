@@ -3083,6 +3083,10 @@ SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
       llvm_unreachable("unsupported private_element_size");
     }
   case AMDGPUAS::LOCAL_ADDRESS:
+    // Use ds_read_b128 if possible.
+    if (NumElements == 4 && Subtarget->hasDS128() && Load->getAlignment() >= 16)
+      return SDValue();
+
     if (NumElements > 2)
       return SplitVectorLoad(Op, DAG);
 
@@ -3490,6 +3494,11 @@ SDValue SITargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
     }
   }
   case AMDGPUAS::LOCAL_ADDRESS: {
+    // Use ds_write_b128 if possible.
+    if (NumElements == 4 && Subtarget->hasDS128() &&
+        Store->getAlignment() >= 16)
+      return SDValue();
+
     if (NumElements > 2)
       return SplitVectorStore(Op, DAG);
 

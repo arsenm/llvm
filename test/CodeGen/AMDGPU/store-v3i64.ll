@@ -1,6 +1,6 @@
 ; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=SI %s
-; RUN: llc -march=amdgcn -mcpu=bonaire -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=CI %s
-; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=VI %s
+; RUN: llc -march=amdgcn -mcpu=bonaire -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=CI -check-prefix=CIVI %s
+; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=VI -check-prefix=CIVI %s
 
 ; GCN-LABEL: {{^}}global_store_v3i64:
 ; GCN-DAG: buffer_store_dwordx2 v{{\[[0-9]+:[0-9]+\]}}, off, s{{\[[0-9]+:[0-9]+\]}}, 0 offset:16
@@ -46,8 +46,11 @@ define void @global_store_v3i64_unaligned(<3 x i64> addrspace(1)* %out, <3 x i64
 }
 
 ; GCN-LABEL: {{^}}local_store_v3i64:
-; GCN: ds_write2_b64
-; GCN: ds_write_b64
+; SI: ds_write2_b64
+; SI: ds_write_b64
+
+; CIVI-DAG: ds_write_b64 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]}}
+; CIVI-DAG: ds_write_b128 v{{[0-9]+}}, v{{\[[0-9]+:[0-9]+\]$}}
 define void @local_store_v3i64(<3 x i64> addrspace(3)* %out, <3 x i64> %x) {
   store <3 x i64> %x, <3 x i64> addrspace(3)* %out, align 32
   ret void

@@ -119,6 +119,10 @@ def si_load_local_align8 : Aligned8Bytes <
   (ops node:$ptr), (si_load_local node:$ptr)
 >;
 
+def si_load_local_align16 : Aligned16Bytes <
+  (ops node:$ptr), (si_load_local node:$ptr)
+>;
+
 def si_sextload_local : PatFrag <(ops node:$ptr), (si_ld_local node:$ptr), [{
   return cast<LoadSDNode>(N)->getExtensionType() == ISD::SEXTLOAD;
 }]>;
@@ -154,6 +158,10 @@ def si_store_local : PatFrag <
 }]>;
 
 def si_store_local_align8 : Aligned8Bytes <
+  (ops node:$val, node:$ptr), (si_store_local node:$val, node:$ptr)
+>;
+
+def si_store_local_align16 : Aligned16Bytes <
   (ops node:$val, node:$ptr), (si_store_local node:$val, node:$ptr)
 >;
 

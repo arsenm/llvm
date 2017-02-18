@@ -307,7 +307,11 @@ def truncstorei16_local : LocalStore <truncstorei16>;
 def local_load : LocalLoad <load>;
 
 class Aligned8Bytes <dag ops, dag frag> : PatFrag <ops, frag, [{
-    return cast<MemSDNode>(N)->getAlignment() % 8 == 0;
+    return cast<MemSDNode>(N)->getAlignment() >= 8;
+}]>;
+
+class Aligned16Bytes <dag ops, dag frag> : PatFrag <ops, frag, [{
+    return cast<MemSDNode>(N)->getAlignment() >= 16;
 }]>;
 
 def local_load_aligned8bytes : Aligned8Bytes <

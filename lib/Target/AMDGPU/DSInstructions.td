@@ -527,6 +527,9 @@ let AddedComplexity = 100 in {
 
 def : DSReadPat <DS_READ_B64, v2i32, si_load_local_align8>;
 
+// TODO: v3i32, also requires align 16
+def : DSReadPat <DS_READ_B128, v4i32, si_load_local_align16>;
+
 } // End AddedComplexity = 100
 
 def : Pat <
@@ -547,8 +550,8 @@ def : DSWritePat <DS_WRITE_B16, i16, si_store_local>;
 def : DSWritePat <DS_WRITE_B32, i32, si_store_local>;
 
 let AddedComplexity = 100 in {
-
 def : DSWritePat <DS_WRITE_B64, v2i32, si_store_local_align8>;
+def : DSWritePat <DS_WRITE_B128, v4i32, si_store_local_align16>;
 } // End AddedComplexity = 100
 
 def : Pat <
