@@ -8003,6 +8003,9 @@ SDValue DAGCombiner::visitBITCAST(SDNode *N) {
       return ConstantFoldBITCASTofBUILD_VECTOR(N0.getNode(), DestEltVT);
   }
 
+  if (N0.isUndef())
+    return DAG.getUNDEF(VT);
+
   // If the input is a constant, let getNode fold it.
   if (isa<ConstantSDNode>(N0) || isa<ConstantFPSDNode>(N0)) {
     // If we can't allow illegal operations, we need to check that this is just
@@ -12966,6 +12969,9 @@ SDValue DAGCombiner::visitEXTRACT_VECTOR_ELT(SDNode *N) {
     }
     return InOp;
   }
+
+  if (InVec.isUndef())
+    return DAG.getUNDEF(NVT);
 
   SDValue EltNo = N->getOperand(1);
   ConstantSDNode *ConstEltNo = dyn_cast<ConstantSDNode>(EltNo);
