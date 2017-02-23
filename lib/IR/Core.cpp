@@ -2694,12 +2694,17 @@ LLVMValueRef LLVMBuildArrayMalloc(LLVMBuilderRef B, LLVMTypeRef Ty,
 
 LLVMValueRef LLVMBuildAlloca(LLVMBuilderRef B, LLVMTypeRef Ty,
                              const char *Name) {
-  return wrap(unwrap(B)->CreateAlloca(unwrap(Ty), nullptr, Name));
+  const DataLayout &DL
+    = unwrap(B)->GetInsertBlock()->getModule()->getDataLayout();
+  return wrap(unwrap(B)->CreateAlloca(DL, unwrap(Ty), nullptr, Name));
 }
 
 LLVMValueRef LLVMBuildArrayAlloca(LLVMBuilderRef B, LLVMTypeRef Ty,
                                   LLVMValueRef Val, const char *Name) {
-  return wrap(unwrap(B)->CreateAlloca(unwrap(Ty), unwrap(Val), Name));
+  const DataLayout &DL
+    = unwrap(B)->GetInsertBlock()->getModule()->getDataLayout();
+
+  return wrap(unwrap(B)->CreateAlloca(DL, unwrap(Ty), unwrap(Val), Name));
 }
 
 LLVMValueRef LLVMBuildFree(LLVMBuilderRef B, LLVMValueRef PointerVal) {

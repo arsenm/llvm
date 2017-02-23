@@ -185,7 +185,8 @@ static Instruction *simplifyAllocaArraySize(InstCombiner &IC, AllocaInst &AI) {
   // Convert: alloca Ty, C - where C is a constant != 1 into: alloca [C x Ty], 1
   if (const ConstantInt *C = dyn_cast<ConstantInt>(AI.getArraySize())) {
     Type *NewTy = ArrayType::get(AI.getAllocatedType(), C->getZExtValue());
-    AllocaInst *New = IC.Builder->CreateAlloca(NewTy, nullptr, AI.getName());
+    AllocaInst *New = IC.Builder->CreateAlloca(IC.getDataLayout(), NewTy,
+                                               nullptr, AI.getName());
     New->setAlignment(AI.getAlignment());
 
     // Scan to the end of the allocation instructions, to skip over a block of

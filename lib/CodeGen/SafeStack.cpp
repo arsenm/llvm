@@ -185,7 +185,7 @@ public:
   bool doInitialization(Module &M) override {
     DL = &M.getDataLayout();
 
-    StackPtrTy = Type::getInt8PtrTy(M.getContext());
+    StackPtrTy = Type::getInt8PtrTy(M.getContext(), DL->getAllocaAddrSpace());
     IntPtrTy = DL->getIntPtrType(M.getContext());
     Int32Ty = Type::getInt32Ty(M.getContext());
     Int8Ty = Type::getInt8Ty(M.getContext());
@@ -418,7 +418,7 @@ SafeStack::createStackRestorePoints(IRBuilder<> &IRB, Function &F,
   if (NeedDynamicTop) {
     // If we also have dynamic alloca's, the stack pointer value changes
     // throughout the function. For now we store it in an alloca.
-    DynamicTop = IRB.CreateAlloca(StackPtrTy, /*ArraySize=*/nullptr,
+    DynamicTop = IRB.CreateAlloca(*DL, StackPtrTy, /*ArraySize=*/nullptr,
                                   "unsafe_stack_dynamic_ptr");
     IRB.CreateStore(StaticTop, DynamicTop);
   }
@@ -750,7 +750,7 @@ bool SafeStack::runOnFunction(Function &F) {
       F.hasFnAttribute(Attribute::StackProtectStrong) ||
       F.hasFnAttribute(Attribute::StackProtectReq)) {
     Value *StackGuard = getStackGuard(IRB, F);
-    StackGuardSlot = IRB.CreateAlloca(StackPtrTy, nullptr);
+    StackGuardSlot = IRB.CreateAlloca(*DL, StackPtrTy, nullptr);
     IRB.CreateStore(StackGuard, StackGuardSlot);
 
     for (ReturnInst *RI : Returns) {

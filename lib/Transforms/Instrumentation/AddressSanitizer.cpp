@@ -503,8 +503,7 @@ struct AddressSanitizer : public FunctionPass {
       ArraySize = CI->getZExtValue();
     }
     Type *Ty = AI.getAllocatedType();
-    uint64_t SizeInBytes =
-        AI.getModule()->getDataLayout().getTypeAllocSize(Ty);
+    uint64_t SizeInBytes = DL->getTypeAllocSize(Ty);
     return SizeInBytes * ArraySize;
   }
   /// Check if we want (and can) handle this alloca.
@@ -568,6 +567,7 @@ struct AddressSanitizer : public FunctionPass {
   };
 
   LLVMContext *C;
+  const DataLayout *DL;
   Triple TargetTriple;
   int LongSize;
   bool CompileKernel;
@@ -639,6 +639,7 @@ private:
   bool Recover;
   Type *IntptrTy;
   LLVMContext *C;
+  const DataLayout *DL;
   Triple TargetTriple;
   ShadowMapping Mapping;
   Function *AsanPoisonGlobals;
@@ -1930,6 +1931,7 @@ bool AddressSanitizerModule::InstrumentGlobals(IRBuilder<> &IRB, Module &M) {
 
 bool AddressSanitizerModule::runOnModule(Module &M) {
   C = &(M.getContext());
+  DL = &M.getDataLayout();
   int LongSize = M.getDataLayout().getPointerSizeInBits();
   IntptrTy = Type::getIntNTy(*C, LongSize);
   TargetTriple = Triple(M.getTargetTriple());
@@ -2015,6 +2017,7 @@ bool AddressSanitizer::doInitialization(Module &M) {
   GlobalsMD.init(M);
 
   C = &(M.getContext());
+  DL = &M.getDataLayout();
   LongSize = M.getDataLayout().getPointerSizeInBits();
   IntptrTy = Type::getIntNTy(*C, LongSize);
   TargetTriple = Triple(M.getTargetTriple());
@@ -2389,12 +2392,14 @@ PHINode *FunctionStackPoisoner::createPHI(IRBuilder<> &IRB, Value *Cond,
 Value *FunctionStackPoisoner::createAllocaForLayout(
     IRBuilder<> &IRB, const ASanStackFrameLayout &L, bool Dynamic) {
   AllocaInst *Alloca;
+
+  const DataLayout &DL = F.getParent()->getDataLayout();
   if (Dynamic) {
-    Alloca = IRB.CreateAlloca(IRB.getInt8Ty(),
+    Alloca = IRB.CreateAlloca(DL, IRB.getInt8Ty(),
                               ConstantInt::get(IRB.getInt64Ty(), L.FrameSize),
                               "MyAlloca");
   } else {
-    Alloca = IRB.CreateAlloca(ArrayType::get(IRB.getInt8Ty(), L.FrameSize),
+    Alloca = IRB.CreateAlloca(DL, ArrayType::get(IRB.getInt8Ty(), L.FrameSize),
                               nullptr, "MyAlloca");
     assert(Alloca->isStaticAlloca());
   }
@@ -2406,8 +2411,9 @@ Value *FunctionStackPoisoner::createAllocaForLayout(
 
 void FunctionStackPoisoner::createDynamicAllocasInitStorage() {
   BasicBlock &FirstBB = *F.begin();
+  const DataLayout &DL = F.getParent()->getDataLayout();
   IRBuilder<> IRB(dyn_cast<Instruction>(FirstBB.begin()));
-  DynamicAllocaLayout = IRB.CreateAlloca(IntptrTy, nullptr);
+  DynamicAllocaLayout = IRB.CreateAlloca(DL, IntptrTy, nullptr);
   IRB.CreateStore(Constant::getNullValue(IntptrTy), DynamicAllocaLayout);
   DynamicAllocaLayout->setAlignment(32);
 }
@@ -2778,7 +2784,9 @@ void FunctionStackPoisoner::handleDynamicAllocaCall(AllocaInst *AI) {
   Value *NewSize = IRB.CreateAdd(OldSize, AdditionalChunkSize);
 
   // Insert new alloca with new NewSize and Align params.
-  AllocaInst *NewAlloca = IRB.CreateAlloca(IRB.getInt8Ty(), NewSize);
+  AllocaInst *NewAlloca = IRB.CreateAlloca(IRB.getInt8Ty(),
+                                           AI->getType()->getAddressSpace(),
+                                           NewSize);
   NewAlloca->setAlignment(Align);
 
   // NewAddress = Address + Align

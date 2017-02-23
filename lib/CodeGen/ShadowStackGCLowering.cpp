@@ -288,8 +288,9 @@ bool ShadowStackGCLowering::runOnFunction(Function &F) {
   BasicBlock::iterator IP = F.getEntryBlock().begin();
   IRBuilder<> AtEntry(IP->getParent(), IP);
 
+  const DataLayout &DL = F.getParent()->getDataLayout();
   Instruction *StackEntry =
-      AtEntry.CreateAlloca(ConcreteStackEntryTy, nullptr, "gc_frame");
+    AtEntry.CreateAlloca(DL, ConcreteStackEntryTy, nullptr, "gc_frame");
 
   while (isa<AllocaInst>(IP))
     ++IP;

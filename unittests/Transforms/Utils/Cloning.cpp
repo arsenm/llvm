@@ -293,7 +293,8 @@ protected:
     IBuilder.SetInsertPoint(Entry);
     DebugLoc Loc = DebugLoc::get(3, 2, Subprogram);
     IBuilder.SetCurrentDebugLocation(Loc);
-    AllocaInst* Alloca = IBuilder.CreateAlloca(IntegerType::getInt32Ty(C));
+    AllocaInst* Alloca = IBuilder.CreateAlloca(M->getDataLayout(),
+                                               IntegerType::getInt32Ty(C));
     IBuilder.SetCurrentDebugLocation(DebugLoc::get(4, 2, Subprogram));
     Value* AllocaContent = IBuilder.getInt32(1);
     Instruction* Store = IBuilder.CreateStore(AllocaContent, Alloca);

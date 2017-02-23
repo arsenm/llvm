@@ -351,7 +351,7 @@ static bool CreatePrologue(Function *F, Module *M, ReturnInst *RI,
   bool SupportsSelectionDAGSP = false;
   IRBuilder<> B(&F->getEntryBlock().front());
   PointerType *PtrTy = Type::getInt8PtrTy(RI->getContext());
-  AI = B.CreateAlloca(PtrTy, nullptr, "StackGuardSlot");
+  AI = B.CreateAlloca(M->getDataLayout(), PtrTy, nullptr, "StackGuardSlot");
 
   Value *GuardSlot = getStackGuard(TLI, M, B, &SupportsSelectionDAGSP);
   B.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::stackprotector),

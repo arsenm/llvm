@@ -88,6 +88,7 @@ private:
 
   // Per-module data.
   Module *TheModule = nullptr;
+  const DataLayout *DL = nullptr;
   StructType *EHLinkRegistrationTy = nullptr;
   StructType *CXXEHRegistrationTy = nullptr;
   StructType *SEHRegistrationTy = nullptr;
@@ -126,6 +127,7 @@ INITIALIZE_PASS(WinEHStatePass, "x86-winehstate",
 
 bool WinEHStatePass::doInitialization(Module &M) {
   TheModule = &M;
+  DL = &M.getDataLayout();
   return false;
 }
 
@@ -285,7 +287,7 @@ void WinEHStatePass::emitExceptionRegistrationRecord(Function *F) {
 
   if (Personality == EHPersonality::MSVC_CXX) {
     RegNodeTy = getCXXEHRegistrationType();
-    RegNode = Builder.CreateAlloca(RegNodeTy);
+    RegNode = Builder.CreateAlloca(*DL, RegNodeTy);
     // SavedESP = llvm.stacksave()
     Value *SP = Builder.CreateCall(
         Intrinsic::getDeclaration(TheModule, Intrinsic::stacksave), {});
@@ -312,9 +314,9 @@ void WinEHStatePass::emitExceptionRegistrationRecord(Function *F) {
 
     // Allocate local structures.
     RegNodeTy = getSEHRegistrationType();
-    RegNode = Builder.CreateAlloca(RegNodeTy);
+    RegNode = Builder.CreateAlloca(*DL, RegNodeTy);
     if (UseStackGuard)
-      EHGuardNode = Builder.CreateAlloca(Int32Ty);
+      EHGuardNode = Builder.CreateAlloca(*DL, Int32Ty);
 
     // SavedESP = llvm.stacksave()
     Value *SP = Builder.CreateCall(

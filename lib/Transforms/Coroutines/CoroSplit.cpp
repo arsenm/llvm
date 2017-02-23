@@ -417,9 +417,11 @@ static void handleNoSuspendCoroutine(CoroBeginInst *CoroBegin, Type *FrameTy) {
   auto *AllocInst = CoroId->getCoroAlloc();
   coro::replaceCoroFree(CoroId, /*Elide=*/AllocInst != nullptr);
   if (AllocInst) {
+    const DataLayout &DL = AllocInst->getModule()->getDataLayout();
+
     IRBuilder<> Builder(AllocInst);
     // FIXME: Need to handle overaligned members.
-    auto *Frame = Builder.CreateAlloca(FrameTy);
+    auto *Frame = Builder.CreateAlloca(DL, FrameTy);
     auto *VFrame = Builder.CreateBitCast(Frame, Builder.getInt8PtrTy());
     AllocInst->replaceAllUsesWith(Builder.getFalse());
     AllocInst->eraseFromParent();

@@ -1547,7 +1547,7 @@ bool AtomicExpand::expandAtomicOpToLibcall(
 
   // 'expected' argument, if present.
   if (CASExpected) {
-    AllocaCASExpected = AllocaBuilder.CreateAlloca(CASExpected->getType());
+    AllocaCASExpected = AllocaBuilder.CreateAlloca(DL, CASExpected->getType());
     AllocaCASExpected->setAlignment(AllocaAlignment);
     AllocaCASExpected_i8 =
         Builder.CreateBitCast(AllocaCASExpected, Type::getInt8PtrTy(Ctx));
@@ -1563,7 +1563,7 @@ bool AtomicExpand::expandAtomicOpToLibcall(
           Builder.CreateBitOrPointerCast(ValueOperand, SizedIntTy);
       Args.push_back(IntValue);
     } else {
-      AllocaValue = AllocaBuilder.CreateAlloca(ValueOperand->getType());
+      AllocaValue = AllocaBuilder.CreateAlloca(DL, ValueOperand->getType());
       AllocaValue->setAlignment(AllocaAlignment);
       AllocaValue_i8 =
           Builder.CreateBitCast(AllocaValue, Type::getInt8PtrTy(Ctx));
@@ -1575,7 +1575,7 @@ bool AtomicExpand::expandAtomicOpToLibcall(
 
   // 'ret' argument.
   if (!CASExpected && HasResult && !UseSizedLibcall) {
-    AllocaResult = AllocaBuilder.CreateAlloca(I->getType());
+    AllocaResult = AllocaBuilder.CreateAlloca(DL, I->getType());
     AllocaResult->setAlignment(AllocaAlignment);
     AllocaResult_i8 =
         Builder.CreateBitCast(AllocaResult, Type::getInt8PtrTy(Ctx));

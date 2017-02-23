@@ -34,6 +34,7 @@ protected:
     BB = BasicBlock::Create(Ctx, "", F);
     GV = new GlobalVariable(*M, Type::getFloatTy(Ctx), true,
                             GlobalValue::ExternalLinkage, nullptr);
+    DL = &M->getDataLayout();
   }
 
   void TearDown() override {
@@ -46,13 +47,14 @@ protected:
   Function *F;
   BasicBlock *BB;
   GlobalVariable *GV;
+  const DataLayout *DL;
 };
 
 TEST_F(IRBuilderTest, Lifetime) {
   IRBuilder<> Builder(BB);
-  AllocaInst *Var1 = Builder.CreateAlloca(Builder.getInt8Ty());
-  AllocaInst *Var2 = Builder.CreateAlloca(Builder.getInt32Ty());
-  AllocaInst *Var3 = Builder.CreateAlloca(Builder.getInt8Ty(),
+  AllocaInst *Var1 = Builder.CreateAlloca(*DL, Builder.getInt8Ty());
+  AllocaInst *Var2 = Builder.CreateAlloca(*DL, Builder.getInt32Ty());
+  AllocaInst *Var3 = Builder.CreateAlloca(*DL, Builder.getInt8Ty(),
                                           Builder.getInt32(123));
 
   CallInst *Start1 = Builder.CreateLifetimeStart(Var1);
@@ -348,7 +350,7 @@ TEST_F(IRBuilderTest, DIBuilder) {
   auto SP = DIB.createFunction(CU, "foo", "", File, 1, Type, false, true, 1,
                                DINode::FlagZero, true);
   F->setSubprogram(SP);
-  AllocaInst *I = Builder.CreateAlloca(Builder.getInt8Ty());
+  AllocaInst *I = Builder.CreateAlloca(*DL, Builder.getInt8Ty());
   auto BarSP = DIB.createFunction(CU, "bar", "", File, 1, Type, false, true, 1,
                                   DINode::FlagZero, true);
   auto BadScope = DIB.createLexicalBlockFile(BarSP, File, 0);

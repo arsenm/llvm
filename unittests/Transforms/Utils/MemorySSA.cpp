@@ -553,7 +553,7 @@ TEST_F(MemorySSATest, TestTripleStore) {
                        GlobalValue::ExternalLinkage, "F", &M);
   B.SetInsertPoint(BasicBlock::Create(C, "", F));
   Type *Int8 = Type::getInt8Ty(C);
-  Value *Alloca = B.CreateAlloca(Int8, ConstantInt::get(Int8, 1), "A");
+  Value *Alloca = B.CreateAlloca(DL, Int8, ConstantInt::get(Int8, 1), "A");
   StoreInst *S1 = B.CreateStore(ConstantInt::get(Int8, 0), Alloca);
   StoreInst *S2 = B.CreateStore(ConstantInt::get(Int8, 1), Alloca);
   StoreInst *S3 = B.CreateStore(ConstantInt::get(Int8, 2), Alloca);
@@ -584,7 +584,7 @@ TEST_F(MemorySSATest, TestStoreAndLoad) {
                        GlobalValue::ExternalLinkage, "F", &M);
   B.SetInsertPoint(BasicBlock::Create(C, "", F));
   Type *Int8 = Type::getInt8Ty(C);
-  Value *Alloca = B.CreateAlloca(Int8, ConstantInt::get(Int8, 1), "A");
+  Value *Alloca = B.CreateAlloca(DL, Int8, ConstantInt::get(Int8, 1), "A");
   Instruction *SI = B.CreateStore(ConstantInt::get(Int8, 0), Alloca);
   Instruction *LI = B.CreateLoad(Alloca);
 
@@ -614,7 +614,7 @@ TEST_F(MemorySSATest, TestStoreDoubleQuery) {
                        GlobalValue::ExternalLinkage, "F", &M);
   B.SetInsertPoint(BasicBlock::Create(C, "", F));
   Type *Int8 = Type::getInt8Ty(C);
-  Value *Alloca = B.CreateAlloca(Int8, ConstantInt::get(Int8, 1), "A");
+  Value *Alloca = B.CreateAlloca(DL, Int8, ConstantInt::get(Int8, 1), "A");
   StoreInst *SI = B.CreateStore(ConstantInt::get(Int8, 0), Alloca);
 
   setupAnalyses();
@@ -660,8 +660,8 @@ TEST_F(MemorySSATest, PartialWalkerCacheWithPhis) {
   Type *Int8 = Type::getInt8Ty(C);
   Constant *One = ConstantInt::get(Int8, 1);
   Constant *Zero = ConstantInt::get(Int8, 0);
-  Value *AllocA = B.CreateAlloca(Int8, One, "a");
-  Value *AllocB = B.CreateAlloca(Int8, One, "b");
+  Value *AllocA = B.CreateAlloca(DL, Int8, One, "a");
+  Value *AllocB = B.CreateAlloca(DL, Int8, One, "b");
   BasicBlock *IfThen = BasicBlock::Create(C, "B", F);
   BasicBlock *IfEnd = BasicBlock::Create(C, "C", F);
 
@@ -723,7 +723,7 @@ TEST_F(MemorySSATest, WalkerInvariantLoadOpt) {
   B.SetInsertPoint(BasicBlock::Create(C, "", F));
   Type *Int8 = Type::getInt8Ty(C);
   Constant *One = ConstantInt::get(Int8, 1);
-  Value *AllocA = B.CreateAlloca(Int8, One, "");
+  Value *AllocA = B.CreateAlloca(DL, Int8, One, "");
 
   Instruction *Store = B.CreateStore(One, AllocA);
   Instruction *Load = B.CreateLoad(AllocA);
@@ -751,9 +751,9 @@ TEST_F(MemorySSATest, WalkerReopt) {
                        GlobalValue::ExternalLinkage, "F", &M);
   B.SetInsertPoint(BasicBlock::Create(C, "", F));
   Type *Int8 = Type::getInt8Ty(C);
-  Value *AllocaA = B.CreateAlloca(Int8, ConstantInt::get(Int8, 1), "A");
+  Value *AllocaA = B.CreateAlloca(DL, Int8, ConstantInt::get(Int8, 1), "A");
   Instruction *SIA = B.CreateStore(ConstantInt::get(Int8, 0), AllocaA);
-  Value *AllocaB = B.CreateAlloca(Int8, ConstantInt::get(Int8, 1), "B");
+  Value *AllocaB = B.CreateAlloca(DL, Int8, ConstantInt::get(Int8, 1), "B");
   Instruction *SIB = B.CreateStore(ConstantInt::get(Int8, 0), AllocaB);
   Instruction *LIA = B.CreateLoad(AllocaA);
 
@@ -783,9 +783,9 @@ TEST_F(MemorySSATest, MoveAboveMemoryDef) {
   B.SetInsertPoint(BasicBlock::Create(C, "", F));
 
   Type *Int8 = Type::getInt8Ty(C);
-  Value *A = B.CreateAlloca(Int8, ConstantInt::get(Int8, 1), "A");
-  Value *B_ = B.CreateAlloca(Int8, ConstantInt::get(Int8, 1), "B");
-  Value *C = B.CreateAlloca(Int8, ConstantInt::get(Int8, 1), "C");
+  Value *A = B.CreateAlloca(DL, Int8, ConstantInt::get(Int8, 1), "A");
+  Value *B_ = B.CreateAlloca(DL, Int8, ConstantInt::get(Int8, 1), "B");
+  Value *C = B.CreateAlloca(DL, Int8, ConstantInt::get(Int8, 1), "C");
 
   StoreInst *StoreA0 = B.CreateStore(ConstantInt::get(Int8, 0), A);
   StoreInst *StoreB = B.CreateStore(ConstantInt::get(Int8, 0), B_);

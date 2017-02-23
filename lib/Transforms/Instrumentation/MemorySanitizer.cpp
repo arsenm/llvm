@@ -3062,6 +3062,8 @@ struct VarArgAMD64Helper : public VarArgHelper {
   }
 
   void finalizeInstrumentation() override {
+    const DataLayout &DL = F.getParent()->getDataLayout();
+
     assert(!VAArgOverflowSize && !VAArgTLSCopy &&
            "finalizeInstrumentation called twice");
     if (!VAStartInstrumentationList.empty()) {
@@ -3072,7 +3074,7 @@ struct VarArgAMD64Helper : public VarArgHelper {
       Value *CopySize =
         IRB.CreateAdd(ConstantInt::get(MS.IntptrTy, AMD64FpEndOffset),
                       VAArgOverflowSize);
-      VAArgTLSCopy = IRB.CreateAlloca(Type::getInt8Ty(*MS.C), CopySize);
+      VAArgTLSCopy = IRB.CreateAlloca(DL, Type::getInt8Ty(*MS.C), CopySize);
       IRB.CreateMemCpy(VAArgTLSCopy, MS.VAArgTLS, CopySize, 8);
     }
 
@@ -3189,9 +3191,11 @@ struct VarArgMIPS64Helper : public VarArgHelper {
                                     VAArgSize);
 
     if (!VAStartInstrumentationList.empty()) {
+      const DataLayout &DL = F.getParent()->getDataLayout();
+
       // If there is a va_start in this function, make a backup copy of
       // va_arg_tls somewhere in the function entry block.
-      VAArgTLSCopy = IRB.CreateAlloca(Type::getInt8Ty(*MS.C), CopySize);
+      VAArgTLSCopy = IRB.CreateAlloca(DL, Type::getInt8Ty(*MS.C), CopySize);
       IRB.CreateMemCpy(VAArgTLSCopy, MS.VAArgTLS, CopySize, 8);
     }
 
@@ -3362,6 +3366,7 @@ struct VarArgAArch64Helper : public VarArgHelper {
     assert(!VAArgOverflowSize && !VAArgTLSCopy &&
            "finalizeInstrumentation called twice");
     if (!VAStartInstrumentationList.empty()) {
+      const DataLayout &DL = F.getParent()->getDataLayout();
       // If there is a va_start in this function, make a backup copy of
       // va_arg_tls somewhere in the function entry block.
       IRBuilder<> IRB(F.getEntryBlock().getFirstNonPHI());
@@ -3369,7 +3374,7 @@ struct VarArgAArch64Helper : public VarArgHelper {
       Value *CopySize =
         IRB.CreateAdd(ConstantInt::get(MS.IntptrTy, AArch64VAEndOffset),
                       VAArgOverflowSize);
-      VAArgTLSCopy = IRB.CreateAlloca(Type::getInt8Ty(*MS.C), CopySize);
+      VAArgTLSCopy = IRB.CreateAlloca(DL, Type::getInt8Ty(*MS.C), CopySize);
       IRB.CreateMemCpy(VAArgTLSCopy, MS.VAArgTLS, CopySize, 8);
     }
 
@@ -3592,9 +3597,11 @@ struct VarArgPowerPC64Helper : public VarArgHelper {
                                     VAArgSize);
 
     if (!VAStartInstrumentationList.empty()) {
+      const DataLayout &DL = F.getParent()->getDataLayout();
+
       // If there is a va_start in this function, make a backup copy of
       // va_arg_tls somewhere in the function entry block.
-      VAArgTLSCopy = IRB.CreateAlloca(Type::getInt8Ty(*MS.C), CopySize);
+      VAArgTLSCopy = IRB.CreateAlloca(DL, Type::getInt8Ty(*MS.C), CopySize);
       IRB.CreateMemCpy(VAArgTLSCopy, MS.VAArgTLS, CopySize, 8);
     }
 
