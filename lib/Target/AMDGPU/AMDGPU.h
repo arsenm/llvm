@@ -154,9 +154,12 @@ enum AddressSpaces : unsigned {
   CONSTANT_ADDRESS = 2, ///< Address space for constant memory (VTX2)
   LOCAL_ADDRESS    = 3, ///< Address space for local memory.
   FLAT_ADDRESS     = 4, ///< Address space for flat memory.
-  REGION_ADDRESS   = 5, ///< Address space for region memory.
+  NEW_PRIVATE_ADDRESS = 5,
   PARAM_D_ADDRESS  = 6, ///< Address space for direct addressible parameter memory (CONST0)
   PARAM_I_ADDRESS  = 7, ///< Address space for indirect addressible parameter memory (VTX1)
+
+  // FIXME: Reorder
+  REGION_ADDRESS   = 8, ///< Address space for region memory.
 
   // Do not re-order the CONSTANT_BUFFER_* enums.  Several places depend on this
   // order to be able to dynamically index a constant buffer, for example:
