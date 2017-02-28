@@ -824,6 +824,10 @@ public:
                                     MachineBasicBlock::iterator I,
                                     const DebugLoc &DL,
                                     unsigned DestReg) const;
+
+  void computeKnownBits(const MachineRegisterInfo &MRI, const MachineOperand &Op,
+                        uint64_t &KnownZero, uint64_t &KnownOne,
+                        unsigned Depth = 0) const;
 };
 
 namespace AMDGPU {

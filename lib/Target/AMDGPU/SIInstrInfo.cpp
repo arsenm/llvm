@@ -4400,3 +4400,178 @@ SIInstrInfo::getAddNoCarry(MachineBasicBlock &MBB,
   return BuildMI(MBB, I, DL, get(AMDGPU::V_ADD_I32_e64), DestReg)
            .addReg(UnusedCarry, RegState::Define | RegState::Dead);
 }
+
+static bool isImmOrMaterializedImm(const MachineRegisterInfo &MRI,
+                                   const MachineOperand &Op,
+                                   uint64_t &Imm) {
+  if (Op.isImm()) {
+    Imm = Op.getImm();
+    return true;
+  }
+
+  if (Op.isReg()) {
+    const MachineInstr *Def = MRI.getUniqueVRegDef(Op.getReg());
+    if (!Def || !Def->isMoveImmediate())
+      return false;
+
+    const MachineOperand &Src = Def->getOperand(1);
+    if (Src.isImm()) {
+      Imm = Src.getImm();
+      return true;
+    }
+
+    return false;
+  }
+
+  return false;
+}
+
+static void computeKnownBitsShift(const SIInstrInfo *TII,
+                                  const MachineRegisterInfo &MRI,
+                                  unsigned Opcode,
+                                  const MachineOperand &LHS,
+                                  const MachineOperand &RHS,
+                                  uint64_t &KnownZero,
+                                  uint64_t &KnownOne,
+                                  unsigned Depth) {
+  uint64_t ShiftAmt;
+  if (!isImmOrMaterializedImm(MRI, RHS, ShiftAmt))
+    return;
+
+  switch (Opcode) {
+  case AMDGPU::S_LSHL_B32:
+  case AMDGPU::V_LSHLREV_B32_e64:
+  case AMDGPU::V_LSHLREV_B32_e32:
+  case AMDGPU::V_LSHL_B32_e64:
+  case AMDGPU::V_LSHL_B32_e32: {
+    TII->computeKnownBits(MRI, LHS, KnownZero, KnownOne, Depth + 1);
+
+    KnownZero <<= ShiftAmt;
+    KnownOne <<= ShiftAmt;
+
+    // Low bits are known zero.
+    KnownZero |= (UINT64_C(1) << ShiftAmt) - 1;
+    return;
+  }
+  case AMDGPU::S_LSHR_B32:
+  case AMDGPU::V_LSHRREV_B32_e64:
+  case AMDGPU::V_LSHRREV_B32_e32:
+  case AMDGPU::V_LSHR_B32_e64:
+  case AMDGPU::V_LSHR_B32_e32: {
+    TII->computeKnownBits(MRI, LHS, KnownZero, KnownOne, Depth + 1);
+
+    KnownZero >>= ShiftAmt;
+    KnownOne >>= ShiftAmt;
+
+    // High bits are known zero.
+    uint64_t Mask = (UINT64_C(1) << ShiftAmt) - 1;
+    uint64_t HighBits = Mask << ShiftAmt;
+    KnownZero |= HighBits;
+    return;
+  }
+  default:
+    return;
+  }
+}
+
+void SIInstrInfo::computeKnownBits(const MachineRegisterInfo &MRI,
+                                   const MachineOperand &Op,
+                                   uint64_t &KnownZero,
+                                   uint64_t &KnownOne,
+                                   unsigned Depth) const {
+  if (Depth > 6)
+    return;
+
+  uint64_t ImmVal;
+  if (isImmOrMaterializedImm(MRI, Op, ImmVal)) {
+    KnownOne = ImmVal;
+    KnownZero = ~ImmVal;
+    return;
+  }
+
+  if (!Op.isReg())
+    return;
+
+  unsigned Reg = Op.getReg();
+  const MachineInstr *Def = MRI.getUniqueVRegDef(Reg);
+  if (!Def)
+    return;
+
+  switch (Def->getOpcode()) {
+  case AMDGPU::COPY: {
+    const MachineOperand &Src = Def->getOperand(1);
+    if (Src.getSubReg() != AMDGPU::NoSubRegister)
+      return;
+
+    computeKnownBits(MRI, Src, KnownZero, KnownOne, Depth + 1);
+    return;
+  }
+  case AMDGPU::S_AND_B32:
+  case AMDGPU::V_AND_B32_e64:
+  case AMDGPU::V_AND_B32_e32: {
+    const MachineOperand &LHS = Def->getOperand(1);
+    const MachineOperand &RHS = Def->getOperand(2);
+
+    uint64_t KnownZero2, KnownOne2;
+
+    // If either the LHS or the RHS are Zero, the result is zero.
+    computeKnownBits(MRI, LHS, KnownZero2, KnownOne2, Depth + 1);
+    computeKnownBits(MRI, RHS, KnownZero, KnownOne, Depth + 1);
+
+    // Output known-1 bits are only known if set in both the LHS & RHS.
+    KnownOne &= KnownOne2;
+
+    // Output known-0 are known to be clear if zero in either the LHS | RHS.
+    KnownZero |= KnownZero2;
+    return;
+  }
+  case AMDGPU::V_LSHLREV_B32_e64:
+  case AMDGPU::V_LSHRREV_B32_e64:
+  case AMDGPU::V_ASHRREV_I32_e64:
+  case AMDGPU::V_LSHLREV_B32_e32:
+  case AMDGPU::V_LSHRREV_B32_e32:
+  case AMDGPU::V_ASHRREV_I32_e32: {
+    computeKnownBitsShift(this, MRI, Def->getOpcode(),
+                          Def->getOperand(2), Def->getOperand(1),
+                          KnownZero, KnownOne, Depth);
+    return;
+  }
+  case AMDGPU::S_LSHL_B32:
+  case AMDGPU::S_ASHR_I32:
+  case AMDGPU::S_LSHR_B32:
+  case AMDGPU::V_LSHL_B32_e64:
+  case AMDGPU::V_LSHR_B32_e64:
+  case AMDGPU::V_ASHR_I32_e64:
+  case AMDGPU::V_LSHL_B32_e32:
+  case AMDGPU::V_LSHR_B32_e32:
+  case AMDGPU::V_ASHR_I32_e32: {
+    computeKnownBitsShift(this, MRI, Def->getOpcode(),
+                          Def->getOperand(1), Def->getOperand(2),
+                          KnownZero, KnownOne, Depth);
+    return;
+  }
+  case AMDGPU::V_BFE_U32: {
+    uint64_t WidthVal;
+    if (isImmOrMaterializedImm(MRI, Def->getOperand(3), WidthVal)) {
+      WidthVal &= 0x1f;
+      KnownZero = ((1 << WidthVal) - 1) << (32 - WidthVal);
+      return;
+    }
+
+    return;
+  }
+  case AMDGPU::FLAT_LOAD_USHORT:
+  case AMDGPU::BUFFER_LOAD_USHORT_ADDR64:
+  case AMDGPU::BUFFER_LOAD_USHORT_OFFEN:
+  case AMDGPU::BUFFER_LOAD_USHORT_OFFSET:
+  case AMDGPU::BUFFER_LOAD_USHORT_BOTHEN:
+  case AMDGPU::BUFFER_LOAD_USHORT_OFFEN_exact:
+  case AMDGPU::BUFFER_LOAD_USHORT_OFFSET_exact:
+  case AMDGPU::BUFFER_LOAD_USHORT_BOTHEN_exact: {
+    KnownZero = 0xffff0000;
+    return;
+  }
+  default:
+    return;
+  }
+}
