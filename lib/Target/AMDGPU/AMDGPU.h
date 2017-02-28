@@ -100,6 +100,9 @@ extern char &SIShrinkInstructionsID;
 void initializeSIFixSGPRCopiesPass(PassRegistry &);
 extern char &SIFixSGPRCopiesID;
 
+void initializeSIFixupVectorISelPass(PassRegistry &);
+extern char &SIFixupVectorISelID;
+
 void initializeSIFixVGPRCopiesPass(PassRegistry &);
 extern char &SIFixVGPRCopiesID;
 

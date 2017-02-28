@@ -825,6 +825,10 @@ public:
                                     const DebugLoc &DL,
                                     unsigned DestReg) const;
 
+  static bool isImmOrMaterializedImm(const MachineRegisterInfo &MRI,
+                                     const MachineOperand &Op,
+                                     uint64_t &Imm);
+
   void computeKnownBits(const MachineRegisterInfo &MRI, const MachineOperand &Op,
                         uint64_t &KnownZero, uint64_t &KnownOne,
                         unsigned Depth = 0) const;

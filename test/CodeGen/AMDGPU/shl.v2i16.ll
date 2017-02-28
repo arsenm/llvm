@@ -1,6 +1,6 @@
-; RUN: llc -march=amdgcn -mcpu=gfx901 -mattr=-flat-for-global -verify-machineinstrs -enable-packed-inlinable-literals < %s | FileCheck -check-prefix=GCN -check-prefix=GFX9 %s
-; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=VI -check-prefix=CIVI %s
-; RUN: llc -march=amdgcn -mcpu=bonaire -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=CI -check-prefix=CIVI %s
+; RUN: llc -march=amdgcn -mcpu=gfx901 -mattr=-flat-for-global -verify-machineinstrs -enable-packed-inlinable-literals < %s | FileCheck -enable-var-scope -check-prefix=GCN -check-prefix=GFX9 %s
+; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefix=GCN -check-prefix=VI -check-prefix=CIVI %s
+; RUN: llc -march=amdgcn -mcpu=bonaire -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefix=GCN -check-prefix=CI -check-prefix=CIVI %s
 
 ; GCN-LABEL: {{^}}s_shl_v2i16:
 ; GFX9: s_load_dword [[LHS:s[0-9]+]]
@@ -15,8 +15,9 @@
 ; CI: v_lshlrev_b32_e32
 ; CI: v_and_b32_e32 v{{[0-9]+}}, 0xffff, v{{[0-9]+}}
 ; CI: v_lshlrev_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
-; CI: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
-; CI: v_or_b32_e32
+; CI-NOT: v_lshl
+; CI-NOT: v_or_b32
+; CI: v_cvt_pk_u16_u32_e32
 define amdgpu_kernel void @s_shl_v2i16(<2 x i16> addrspace(1)* %out, <2 x i16> %lhs, <2 x i16> %rhs) #0 {
   %result = shl <2 x i16> %lhs, %rhs
   store <2 x i16> %result, <2 x i16> addrspace(1)* %out
@@ -24,22 +25,26 @@ define amdgpu_kernel void @s_shl_v2i16(<2 x i16> addrspace(1)* %out, <2 x i16> %
 }
 
 ; GCN-LABEL: {{^}}v_shl_v2i16:
-; GCN: {{buffer|flat|global}}_load_dword [[LHS:v[0-9]+]]
-; GCN: {{buffer|flat|global}}_load_dword [[RHS:v[0-9]+]]
+; GFX9: global_load_dword [[LHS:v[0-9]+]]
+; GFX9: global_load_dword [[RHS:v[0-9]+]]
 ; GFX9: v_pk_lshlrev_b16 [[RESULT:v[0-9]+]], [[RHS]], [[LHS]]
 
+; VI: flat_load_dword [[LHS:v[0-9]+]]
+; VI: flat_load_dword [[RHS:v[0-9]+]]
 ; VI: v_lshlrev_b16_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
 ; VI: v_lshlrev_b16_sdwa v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}} dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
 ; VI: v_or_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
 
+; CI-DAG: buffer_load_dword [[LHS:v[0-9]+]], v{{\[[0-9]+:[0-9]+\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0 addr64{{$}}
+; CI-DAG: buffer_load_dword [[RHS:v[0-9]+]], v{{\[[0-9]+:[0-9]+\]}}, s{{\[[0-9]+:[0-9]+\]}}, 0 addr64 offset:4{{$}}
 ; CI: s_mov_b32 [[MASK:s[0-9]+]], 0xffff{{$}}
+; CI: v_and_b32_e32 v{{[0-9]+}}, [[MASK]], v{{[0-9]+}}
 ; CI: v_lshrrev_b32_e32 v{{[0-9]+}}, 16, [[LHS]]
 ; CI: v_lshrrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
-; CI: v_lshlrev_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
 ; CI: v_lshl_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
-; CI: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
+; CI: v_lshlrev_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
 ; CI: v_and_b32_e32 v{{[0-9]+}}, [[MASK]], v{{[0-9]+}}
-; CI: v_or_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
+; CI: v_cvt_pk_u16_u32_e32
 define amdgpu_kernel void @v_shl_v2i16(<2 x i16> addrspace(1)* %out, <2 x i16> addrspace(1)* %in) #0 {
   %tid = call i32 @llvm.amdgcn.workitem.id.x()
   %tid.ext = sext i32 %tid to i64

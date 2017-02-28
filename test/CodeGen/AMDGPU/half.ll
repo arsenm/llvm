@@ -1,5 +1,5 @@
-; RUN: llc -amdgpu-scalarize-global-loads=false -march=amdgcn -mcpu=tahiti -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=SI %s
-; RUN: llc -amdgpu-scalarize-global-loads=false -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=VI %s
+; RUN: llc -amdgpu-scalarize-global-loads=false -march=amdgcn -mcpu=tahiti -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefixes=GCN,SI %s
+; RUN: llc -amdgpu-scalarize-global-loads=false -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefixes=GCN,VI %s
 
 ; half args should be promoted to float for SI and lower.
 
@@ -16,8 +16,13 @@ define amdgpu_kernel void @load_f16_arg(half addrspace(1)* %out, half %arg) #0 {
 ; GCN-LABEL: {{^}}load_v2f16_arg:
 ; GCN-DAG: buffer_load_ushort [[V0:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, 0 offset:44
 ; GCN-DAG: buffer_load_ushort [[V1:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, 0 offset:46
-; GCN: v_lshlrev_b32_e32 [[HI:v[0-9]+]], 16, [[V1]]
-; GCN: v_or_b32_e32 [[PACKED:v[0-9]+]],  [[V0]], [[HI]]
+; SI-NOT: v_lshl
+; SI-NOT: v_or
+; SI: v_cvt_pk_u16_u32_e32 [[PACKED:v[0-9]+]], [[V0]], [[V1]]
+
+; VI: v_lshlrev_b32_e32 [[HI:v[0-9]+]], 16, [[V1]]
+; VI: v_or_b32_e32 [[PACKED:v[0-9]+]],  [[V0]], [[HI]]
+
 ; GCN: buffer_store_dword [[PACKED]], off, s{{\[[0-9]+:[0-9]+\]}}, 0{{$}}
 ; GCN: s_endpgm
 define amdgpu_kernel void @load_v2f16_arg(<2 x half> addrspace(1)* %out, <2 x half> %arg) #0 {
@@ -470,8 +475,9 @@ define amdgpu_kernel void @global_truncstore_f32_to_f16(half addrspace(1)* %out,
 ; GCN-DAG: v_cvt_f16_f32_e32 [[CVT0:v[0-9]+]], v[[LO]]
 
 ; SI-DAG: v_cvt_f16_f32_e32 [[CVT1:v[0-9]+]], v[[HI]]
-; SI-DAG: v_lshlrev_b32_e32 [[SHL:v[0-9]+]], 16, [[CVT1]]
-; SI:     v_or_b32_e32 [[PACKED:v[0-9]+]], [[CVT0]], [[SHL]]
+; SI-NOT: v_lshl
+; SI-NOT: v_or
+; SI: v_cvt_pk_u16_u32_e32 [[PACKED:v[0-9]+]], [[CVT0]], [[CVT1]]
 
 ; VI-DAG: v_cvt_f16_f32_sdwa [[CVT1:v[0-9]+]], v[[HI]] dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:DWORD
 ; VI:     v_or_b32_e32 [[PACKED:v[0-9]+]], [[CVT0]], [[CVT1]]

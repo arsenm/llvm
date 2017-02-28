@@ -68,6 +68,7 @@ add_llvm_target(AMDGPUCodeGen
   SIDebuggerInsertNops.cpp
   SIFixControlFlowLiveIntervals.cpp
   SIFixSGPRCopies.cpp
+  SIFixupVectorISel.cpp
   SIFixVGPRCopies.cpp
   SIFixWWMLiveness.cpp
   SIFoldOperands.cpp

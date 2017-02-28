@@ -4401,9 +4401,9 @@ SIInstrInfo::getAddNoCarry(MachineBasicBlock &MBB,
            .addReg(UnusedCarry, RegState::Define | RegState::Dead);
 }
 
-static bool isImmOrMaterializedImm(const MachineRegisterInfo &MRI,
-                                   const MachineOperand &Op,
-                                   uint64_t &Imm) {
+bool SIInstrInfo::isImmOrMaterializedImm(const MachineRegisterInfo &MRI,
+                                         const MachineOperand &Op,
+                                         uint64_t &Imm) {
   if (Op.isImm()) {
     Imm = Op.getImm();
     return true;
@@ -4435,7 +4435,7 @@ static void computeKnownBitsShift(const SIInstrInfo *TII,
                                   uint64_t &KnownOne,
                                   unsigned Depth) {
   uint64_t ShiftAmt;
-  if (!isImmOrMaterializedImm(MRI, RHS, ShiftAmt))
+  if (!SIInstrInfo::isImmOrMaterializedImm(MRI, RHS, ShiftAmt))
     return;
 
   switch (Opcode) {
@@ -4493,7 +4493,7 @@ void SIInstrInfo::computeKnownBits(const MachineRegisterInfo &MRI,
     return;
 
   unsigned Reg = Op.getReg();
-  const MachineInstr *Def = MRI.getUniqueVRegDef(Reg);
+  const MachineInstr *Def = MRI.getVRegDef(Reg);
   if (!Def)
     return;
 
@@ -4560,6 +4560,10 @@ void SIInstrInfo::computeKnownBits(const MachineRegisterInfo &MRI,
 
     return;
   }
+  case AMDGPU::V_CVT_F16_F32_e64:
+  case AMDGPU::V_CVT_F16_F32_e32:
+  case AMDGPU::V_ADD_U16_e64:
+  case AMDGPU::V_ADD_U16_e32:
   case AMDGPU::FLAT_LOAD_USHORT:
   case AMDGPU::BUFFER_LOAD_USHORT_ADDR64:
   case AMDGPU::BUFFER_LOAD_USHORT_OFFEN:
@@ -4586,6 +4590,6 @@ void SIInstrInfo::computeKnownBits(const MachineRegisterInfo &MRI,
     }
 
     return;
-    }
+  }
   }
 }

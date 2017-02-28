@@ -14,8 +14,7 @@
 ; CI: v_ashrrev_i32_e32
 ; CI: v_and_b32_e32 v{{[0-9]+}}, 0xffff, v{{[0-9]+}}
 ; CI: v_ashrrev_i32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
-; CI: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
-; CI: v_or_b32_e32
+; CI: v_cvt_pk_u16_u32
 define amdgpu_kernel void @s_ashr_v2i16(<2 x i16> addrspace(1)* %out, <2 x i16> %lhs, <2 x i16> %rhs) #0 {
   %result = ashr <2 x i16> %lhs, %rhs
   store <2 x i16> %result, <2 x i16> addrspace(1)* %out
@@ -38,9 +37,8 @@ define amdgpu_kernel void @s_ashr_v2i16(<2 x i16> addrspace(1)* %out, <2 x i16> 
 ; CI: v_lshrrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
 ; CI: v_ashrrev_i32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
 ; CI: v_ashrrev_i32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
-; CI: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
 ; CI: v_and_b32_e32 v{{[0-9]+}}, [[MASK]], v{{[0-9]+}}
-; CI: v_or_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
+; CI: v_cvt_pk_u16_u32
 define amdgpu_kernel void @v_ashr_v2i16(<2 x i16> addrspace(1)* %out, <2 x i16> addrspace(1)* %in) #0 {
   %tid = call i32 @llvm.amdgcn.workitem.id.x()
   %tid.ext = sext i32 %tid to i64

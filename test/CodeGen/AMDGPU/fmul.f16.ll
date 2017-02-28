@@ -60,7 +60,7 @@ entry:
   ret void
 }
 
-; GCN-LABEL: {{^}}fmul_v2f16:
+; GCN-LABEL: {{^}}v_fmul_v2f16:
 ; GCN: buffer_load_dword v[[A_V2_F16:[0-9]+]]
 ; GCN: buffer_load_dword v[[B_V2_F16:[0-9]+]]
 
@@ -74,8 +74,8 @@ entry:
 ; SI:  v_mul_f32_e32 v[[R_F32_1:[0-9]+]], v[[A_F32_1]], v[[B_F32_1]]
 ; SI-DAG:  v_cvt_f16_f32_e32 v[[R_F16_0:[0-9]+]], v[[R_F32_0]]
 ; SI-DAG:  v_cvt_f16_f32_e32 v[[R_F16_1:[0-9]+]], v[[R_F32_1]]
-; SI-DAG:  v_lshlrev_b32_e32 v[[R_F16_HI:[0-9]+]], 16, v[[R_F16_1]]
-; SI:  v_or_b32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_0]],  v[[R_F16_HI]]
+; SI-NOT: v_or_b32
+; SI: v_cvt_pk_u16_u32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_0]],  v[[R_F16_1]]
 
 ; VI-DAG: v_mul_f16_e32 v[[R_F16_LO:[0-9]+]], v[[A_V2_F16]], v[[B_V2_F16]]
 ; VI-DAG: v_mul_f16_sdwa v[[R_F16_HI:[0-9]+]], v[[A_V2_F16]], v[[B_V2_F16]] dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1
@@ -83,7 +83,7 @@ entry:
 
 ; GCN: buffer_store_dword v[[R_V2_F16]]
 ; GCN: s_endpgm
-define amdgpu_kernel void @fmul_v2f16(
+define amdgpu_kernel void @v_fmul_v2f16(
     <2 x half> addrspace(1)* %r,
     <2 x half> addrspace(1)* %a,
     <2 x half> addrspace(1)* %b) {
@@ -104,11 +104,15 @@ entry:
 ; SI:  v_cvt_f16_f32_e32 v[[R_F16_0:[0-9]+]], v[[R_F32_0]]
 ; SI:  v_mul_f32_e32 v[[R_F32_1:[0-9]+]], 4.0, v[[B_F32_1]]
 ; SI:  v_cvt_f16_f32_e32 v[[R_F16_1:[0-9]+]], v[[R_F32_1]]
-; VI-DAG:  v_mov_b32_e32 v[[CONST4:[0-9]+]], 0x4400
-; VI-DAG:  v_mul_f16_sdwa v[[R_F16_HI:[0-9]+]], v[[B_V2_F16]], v[[CONST4]] dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
-; VI-DAG:  v_mul_f16_e32 v[[R_F16_0:[0-9]+]], 0x4200, v[[B_V2_F16]]
-; SI-DAG: v_lshlrev_b32_e32 v[[R_F16_HI:[0-9]+]], 16, v[[R_F16_1]]
-; GCN: v_or_b32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_0]], v[[R_F16_HI]]
+; SI-NOT: v_or_b32
+; SI: v_cvt_pk_u16_u32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_0]], v[[R_F16_1]]
+
+; VI-DAG: v_mov_b32_e32 v[[CONST4:[0-9]+]], 0x4400
+; VI-DAG: v_mul_f16_sdwa v[[R_F16_HI:[0-9]+]], v[[B_V2_F16]], v[[CONST4]] dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
+; VI-DAG: v_mul_f16_e32 v[[R_F16_0:[0-9]+]], 0x4200, v[[B_V2_F16]]
+; VI-NOT: v_lshl
+; VI: v_or_b32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_0]], v[[R_F16_HI]]
+
 ; GCN: buffer_store_dword v[[R_V2_F16]]
 ; GCN: s_endpgm
 define amdgpu_kernel void @fmul_v2f16_imm_a(
@@ -130,11 +134,14 @@ entry:
 ; SI:  v_cvt_f16_f32_e32 v[[R_F16_0:[0-9]+]], v[[R_F32_0]]
 ; SI:  v_mul_f32_e32 v[[R_F32_1:[0-9]+]], 0x40400000, v[[A_F32_1]]
 ; SI:  v_cvt_f16_f32_e32 v[[R_F16_1:[0-9]+]], v[[R_F32_1]]
-; VI-DAG:  v_mov_b32_e32 v[[CONST3:[0-9]+]], 0x4200
+; SI-NOT: v_or_b32
+; SI: v_cvt_pk_u16_u32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_0]], v[[R_F16_1]]
+
+; VI-DAG: v_mov_b32_e32 v[[CONST3:[0-9]+]], 0x4200
 ; VI-DAG:  v_mul_f16_sdwa v[[R_F16_HI:[0-9]+]], v[[A_V2_F16]], v[[CONST3]] dst_sel:WORD_1 dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:DWORD
 ; VI-DAG:  v_mul_f16_e32 v[[R_F16_0:[0-9]+]], 4.0, v[[A_V2_F16]]
-; SI-DAG: v_lshlrev_b32_e32 v[[R_F16_HI:[0-9]+]], 16, v[[R_F16_1]]
-; GCN: v_or_b32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_0]], v[[R_F16_HI]]
+; VI: v_or_b32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_0]], v[[R_F16_HI]]
+
 ; GCN: buffer_store_dword v[[R_V2_F16]]
 ; GCN: s_endpgm
 define amdgpu_kernel void @fmul_v2f16_imm_b(
@@ -146,3 +153,8 @@ entry:
   store <2 x half> %r.val, <2 x half> addrspace(1)* %r
   ret void
 }
+
+declare i32 @llvm.amdgcn.workitem.id.x() #1
+
+attributes #0 = { nounwind }
+attributes #1 = { nounwind readnone speculatable }

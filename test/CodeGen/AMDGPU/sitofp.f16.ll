@@ -1,5 +1,5 @@
-; RUN: llc -amdgpu-scalarize-global-loads=false -march=amdgcn -mcpu=tahiti -verify-machineinstrs -enable-unsafe-fp-math < %s | FileCheck -check-prefix=GCN -check-prefix=SI %s
-; RUN: llc -amdgpu-scalarize-global-loads=false -march=amdgcn -mcpu=fiji -mattr=-flat-for-global -verify-machineinstrs -enable-unsafe-fp-math < %s | FileCheck -check-prefix=GCN -check-prefix=VI %s
+; RUN: llc -amdgpu-scalarize-global-loads=false -march=amdgcn -mcpu=tahiti -verify-machineinstrs -enable-unsafe-fp-math < %s | FileCheck -enable-var-scope -check-prefixes=GCN,SI %s
+; RUN: llc -amdgpu-scalarize-global-loads=false -march=amdgcn -mcpu=fiji -mattr=-flat-for-global -verify-machineinstrs -enable-unsafe-fp-math < %s | FileCheck -enable-var-scope -check-prefixes=GCN,VI %s
 
 ; GCN-LABEL: {{^}}sitofp_i16_to_f16
 ; GCN: buffer_load_{{sshort|ushort}} v[[A_I16:[0-9]+]]
@@ -42,8 +42,9 @@ entry:
 ; SI: v_cvt_f32_i32_e32
 ; SI: v_cvt_f16_f32_e32
 ; SI: v_cvt_f16_f32_e32
-; SI-DAG: v_lshlrev_b32_e32
-; SI: v_or_b32_e32
+; SI-NOT: v_lshl
+; SI-NOT: v_or_b32
+; SI: v_cvt_pk_u16_u32_e3
 
 ; VI-DAG: v_cvt_f32_i32_sdwa
 ; VI-DAG: v_cvt_f32_i32_sdwa
@@ -71,8 +72,9 @@ entry:
 ; SI: v_cvt_f32_i32_e32
 ; SI: v_cvt_f16_f32_e32
 ; SI: v_cvt_f16_f32_e32
-; SI-DAG: v_lshlrev_b32_e32
-; SI: v_or_b32_e32
+; SI-NOT: v_lshl
+; SI-NOT: v_or_
+; SI: v_cvt_pk_u16_u32_e32
 
 ; VI-DAG: v_cvt_f32_i32_e32
 ; VI-DAG: v_cvt_f32_i32_e32

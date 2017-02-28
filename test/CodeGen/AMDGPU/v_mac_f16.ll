@@ -316,9 +316,9 @@ entry:
 ; SI-DAG:  v_cvt_f16_f32_e32 v[[R_F16_LO:[0-9]+]], v[[C_F32_0]]
 ; SI-DAG:  v_mac_f32_e32 v[[C_F32_1]], v[[A_F32_1]], v[[B_F32_1]]
 ; SI-DAG:  v_cvt_f16_f32_e32 v[[R_F16_1:[0-9]+]], v[[C_F32_1]]
-; SI:  v_lshlrev_b32_e32 v[[R_F16_HI:[0-9]+]], 16, v[[R_F16_1]]
+; SI-NOT:  v_lshl
 ; VI-NOT: and
-; SI:  v_or_b32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_LO]], v[[R_F16_HI]]
+; SI:  v_cvt_pk_u16_u32_e32 v[[R_V2_F16:[0-9]+]], v[[R_F16_LO]], v[[R_F16_1]]
 
 ; VI-DAG: v_lshrrev_b32_e32 v[[C_F16_1:[0-9]+]], 16, v[[C_V2_F16]]
 ; VI-DAG: v_mac_f16_sdwa v[[C_F16_1]], v[[A_V2_F16]], v[[B_V2_F16]] dst_sel:DWORD dst_unused:UNUSED_PAD src0_sel:WORD_1 src1_sel:WORD_1

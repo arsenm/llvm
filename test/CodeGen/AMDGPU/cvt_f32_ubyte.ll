@@ -1,5 +1,5 @@
-; RUN: llc -march=amdgcn -mcpu=tahiti -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=SI %s
-; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefix=GCN -check-prefix=VI %s
+; RUN: llc -march=amdgcn -mcpu=tahiti -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefixes=GCN,SI %s
+; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefixes=GCN,VI %s
 
 declare i32 @llvm.amdgcn.workitem.id.x() nounwind readnone
 declare i32 @llvm.amdgcn.workitem.id.y() nounwind readnone
@@ -105,11 +105,11 @@ define amdgpu_kernel void @load_v4i8_to_v4f32_unaligned(<4 x float> addrspace(1)
 
 ; GCN-DAG: v_lshrrev_b32_e32 v{{[0-9]+}}, 24
 
-; SI-DAG: v_lshlrev_b32_e32 v{{[0-9]+}}, 16
 ; SI-DAG: v_lshlrev_b32_e32 v{{[0-9]+}}, 8
 ; SI-DAG: v_and_b32_e32 v{{[0-9]+}}, 0xffff,
 ; SI-DAG: v_and_b32_e32 v{{[0-9]+}}, 0xff00,
 ; SI-DAG: v_add_i32
+; SI: v_cvt_pk_u16_u32_e32
 
 ; VI-DAG: v_and_b32_e32 v{{[0-9]+}}, 0xffffff00,
 ; VI-DAG: v_add_u16_e32

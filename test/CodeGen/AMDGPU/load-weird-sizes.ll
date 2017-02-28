@@ -1,13 +1,19 @@
-; RUN:  llc -amdgpu-scalarize-global-loads=false  -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=SI-NOHSA -check-prefix=SI -check-prefix=FUNC %s
-; RUN:  llc -amdgpu-scalarize-global-loads=false  -mtriple=amdgcn-amdhsa -mcpu=kaveri -verify-machineinstrs < %s | FileCheck -check-prefix=FUNC -check-prefix=CI-HSA -check-prefix=SI %s
-; RUN:  llc -amdgpu-scalarize-global-loads=false  -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefix=SI-NOHSA -check-prefix=SI -check-prefix=FUNC %s
-; RUN:  llc -amdgpu-scalarize-global-loads=false  -march=r600 -mcpu=redwood < %s | FileCheck -check-prefix=R600 -check-prefix=EG -check-prefix=FUNC %s
-; RUN:  llc -amdgpu-scalarize-global-loads=false  -march=r600 -mcpu=cayman < %s | FileCheck -check-prefix=R600 -check-prefix=CM -check-prefix=FUNC %s
+; RUN:  llc -amdgpu-scalarize-global-loads=false  -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefixes=SI-NOHSA,SI,GCN,FUNC %s
+; RUN:  llc -amdgpu-scalarize-global-loads=false  -mtriple=amdgcn-amdhsa -mcpu=kaveri -verify-machineinstrs < %s | FileCheck -check-prefixes=GCN,CI-HSA,SI,FUNC %s
+; RUN:  llc -amdgpu-scalarize-global-loads=false  -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefixes=SI-NOHSA,VI,GCN,FUNC %s
+; RUN:  llc -amdgpu-scalarize-global-loads=false  -march=r600 -mcpu=redwood < %s | FileCheck -check-prefixes=R600,EG,FUNC %s
+; RUN:  llc -amdgpu-scalarize-global-loads=false  -march=r600 -mcpu=cayman < %s | FileCheck -check-prefixes=R600,VM,FUNC %s
 
+; FIXME: use cvt_pk on VI
 ; FUNC-LABEL: {{^}}load_i24:
-; SI: {{flat|buffer}}_load_ubyte
-; SI: {{flat|buffer}}_load_ushort
-; SI: {{flat|buffer}}_store_dword
+; GCN-DAG: {{flat|buffer}}_load_ubyte
+; GCN-DAG: {{flat|buffer}}_load_ushort
+; SI: v_cvt_pk_u16_u32_e32
+
+; VI: v_lshlrev_b32_e32 v{{[0-9]+}}, 16
+; VI: v_or_b32_e32
+
+; GCN: {{flat|buffer}}_store_dword
 define amdgpu_kernel void @load_i24(i32 addrspace(1)* %out, i24 addrspace(1)* %in) #0 {
   %1 = load i24, i24 addrspace(1)* %in
   %2 = zext i24 %1 to i32
@@ -16,8 +22,8 @@ define amdgpu_kernel void @load_i24(i32 addrspace(1)* %out, i24 addrspace(1)* %i
 }
 
 ; FUNC-LABEL: {{^}}load_i25:
-; SI-NOHSA: buffer_load_dword [[VAL:v[0-9]+]]
-; SI-NOHSA: buffer_store_dword [[VAL]]
+; GCN-NOHSA: buffer_load_dword [[VAL:v[0-9]+]]
+; GCN-NOHSA: buffer_store_dword [[VAL]]
 
 ; CI-HSA: flat_load_dword [[VAL:v[0-9]+]]
 ; CI-HSA: flat_store_dword v{{\[[0-9]+:[0-9]+\]}}, [[VAL]]

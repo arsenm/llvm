@@ -32,9 +32,9 @@ define amdgpu_kernel void @s_fabs_f16(half addrspace(1)* %out, half %in) {
 ; GCN-LABEL: {{^}}s_fabs_v2f16:
 ; CI: s_movk_i32 [[MASK:s[0-9]+]], 0x7fff
 ; CI: v_and_b32_e32 v{{[0-9]+}}, [[MASK]]
-; CI: v_lshlrev_b32_e32 v{{[0-9]+}}, 16,
 ; CI: v_and_b32_e32 v{{[0-9]+}}, [[MASK]]
-; CI: v_or_b32_e32
+; CI-NOT: v_or_b32
+; CI: v_cvt_pk_u16_u32_e32
 
 ; VI: flat_load_ushort [[HI:v[0-9]+]]
 ; VI: flat_load_ushort [[LO:v[0-9]+]]
