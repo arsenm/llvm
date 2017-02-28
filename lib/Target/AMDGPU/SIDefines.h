@@ -126,7 +126,10 @@ namespace AMDGPU {
 
     /// Operand with 32-bit immediate that uses the constant bus.
     OPERAND_KIMM32,
-    OPERAND_KIMM16
+    OPERAND_KIMM16,
+
+    // Output register operand with 16-bit output.
+    OPERAND_REG_DEF16
   };
 }
 

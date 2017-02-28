@@ -887,8 +887,17 @@ class getVALUDstForVT<ValueType VT> {
   RegisterOperand ret = !if(!eq(VT.Size, 32), VOPDstOperand<VGPR_32>,
                           !if(!eq(VT.Size, 128), VOPDstOperand<VReg_128>,
                             !if(!eq(VT.Size, 64), VOPDstOperand<VReg_64>,
-                              !if(!eq(VT.Size, 16), VOPDstOperand<VGPR_32>,
+                              !if(!eq(VT.Size, 16), VOPDstOperand16,
                               VOPDstOperand<SReg_64>)))); // else VT == i1
+}
+
+// Hack to avoid printing _e64 for instructions that must be VOP3.
+class getVALUDstForVT_VOP3<ValueType VT> {
+  RegisterOperand ret = !if(!eq(VT.Size, 32), VOP3DstOperand<VGPR_32>,
+                          !if(!eq(VT.Size, 128), VOP3DstOperand<VReg_128>,
+                            !if(!eq(VT.Size, 64), VOP3DstOperand<VReg_64>,
+                              !if(!eq(VT.Size, 16), VOP3DstOperand16,
+                              VOP3DstOperand<SReg_64>)))); // else VT == i1
 }
 
 // Returns the register class to use for the destination of VOP[12C]

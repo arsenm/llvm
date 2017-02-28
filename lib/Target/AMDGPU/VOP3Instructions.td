@@ -121,10 +121,13 @@ class VOP3OpSelInst<string OpName, VOPProfile P, SDPatternOperator node = null_f
 // only VOP instruction that implicitly reads VCC.
 let Asm64 = " $vdst, $src0_modifiers, $src1_modifiers, $src2_modifiers$clamp$omod" in {
 def VOP_F32_F32_F32_F32_VCC : VOPProfile<[f32, f32, f32, f32]> {
-  let Outs64 = (outs DstRC.RegClass:$vdst);
+  // FIXME: Hack to stop printing _e64
+  let DstRC = getVALUDstForVT_VOP3<f32>.ret;
 }
+
 def VOP_F64_F64_F64_F64_VCC : VOPProfile<[f64, f64, f64, f64]> {
-  let Outs64 = (outs DstRC.RegClass:$vdst);
+  // FIXME: Hack to stop printing _e64
+  let DstRC = getVALUDstForVT_VOP3<f64>.ret;
 }
 }
 
@@ -139,7 +142,7 @@ class getVOP3VCC<VOPProfile P, SDPatternOperator node> {
 
 class VOP3_Profile<VOPProfile P> : VOPProfile<P.ArgVT> {
   // FIXME: Hack to stop printing _e64
-  let Outs64 = (outs DstRC.RegClass:$vdst);
+  let DstRC = getVALUDstForVT_VOP3<DstVT>.ret;
   let Asm64 = " " # P.Asm64;
 }
 
@@ -158,17 +161,17 @@ class VOP3b_Profile<ValueType vt> : VOPProfile<[vt, vt, vt, vt]> {
 
 def VOP3b_F32_I1_F32_F32_F32 : VOP3b_Profile<f32> {
   // FIXME: Hack to stop printing _e64
-  let DstRC = RegisterOperand<VGPR_32>;
+  let DstRC = getVALUDstForVT_VOP3<f32>.ret;
 }
 
 def VOP3b_F64_I1_F64_F64_F64 : VOP3b_Profile<f64> {
   // FIXME: Hack to stop printing _e64
-  let DstRC = RegisterOperand<VReg_64>;
+  let DstRC = getVALUDstForVT_VOP3<f64>.ret;
 }
 
 def VOP3b_I64_I1_I32_I32_I64 : VOPProfile<[i64, i32, i32, i64]> {
   // FIXME: Hack to stop printing _e64
-  let DstRC = RegisterOperand<VReg_64>;
+  let DstRC = getVALUDstForVT_VOP3<i64>.ret;
 
   let Outs64 = (outs DstRC:$vdst, SReg_64:$sdst);
   let Asm64 = " $vdst, $sdst, $src0, $src1, $src2";

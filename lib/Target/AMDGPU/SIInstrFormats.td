@@ -187,6 +187,22 @@ class Enc64 {
 }
 
 class VOPDstOperand <RegisterClass rc> : RegisterOperand <rc, "printVOPDst">;
+class VOP3DstOperand <RegisterClass rc> : RegisterOperand <rc>;
+
+let OperandNamespace = "AMDGPU" in {
+def VOPDstOperand16 : VOPDstOperand<VGPR_32> {
+  let OperandType = "OPERAND_REG_DEF16";
+}
+
+def VOP3DstOperand16 : VOP3DstOperand<VGPR_32> {
+  let OperandType = "OPERAND_REG_DEF16";
+}
+
+}
+
+def VOPDstOperand32 : VOPDstOperand<VGPR_32>;
+def VOPDstOperand64 : VOPDstOperand<VReg_64>;
+def VOPDstOperand128 : VOPDstOperand<VReg_128>;
 
 class VINTRPe <bits<2> op> : Enc32 {
   bits<8> vdst;

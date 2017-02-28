@@ -4571,7 +4571,21 @@ void SIInstrInfo::computeKnownBits(const MachineRegisterInfo &MRI,
     KnownZero = 0xffff0000;
     return;
   }
-  default:
+  default: {
+    // XXX - Are there any 16-bit output instructions with second defs?
+    // FIXME:
+    assert(Def->getOperand(0).getReg() == Op.getReg() &&
+           Def->getOperand(0).getSubReg() == Op.getSubReg());
+    if (Def->getDesc().OpInfo[0].OperandType == AMDGPU::OPERAND_REG_DEF16) {
+      // FIXME: This isn't true for all instructions on gfx9, where some new
+      // instructions default to leaving high bits intact and there is a control
+      // bit for old instructions to change zeroing behavior.
+
+      KnownZero = 0xffff0000;
+      return;
+    }
+
     return;
+    }
   }
 }
