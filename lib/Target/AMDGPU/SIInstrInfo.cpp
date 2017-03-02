@@ -3797,16 +3797,11 @@ unsigned SIInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   if (DescSize != 0 && DescSize != 4)
     return DescSize;
 
-  if (Opc == AMDGPU::WAVE_BARRIER)
-    return 0;
-
   // 4-byte instructions may have a 32-bit literal encoded after them. Check
   // operands that coud ever be literals.
   if (isVALU(MI) || isSALU(MI)) {
-    if (isFixedSize(MI)) {
-      assert(DescSize == 4);
+    if (isFixedSize(MI))
       return DescSize;
-    }
 
     int Src0Idx = AMDGPU::getNamedOperandIdx(Opc, AMDGPU::OpName::src0);
     if (Src0Idx == -1)
@@ -3829,7 +3824,6 @@ unsigned SIInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
     return 4;
 
   switch (Opc) {
-  case AMDGPU::SI_MASK_BRANCH:
   case TargetOpcode::IMPLICIT_DEF:
   case TargetOpcode::KILL:
   case TargetOpcode::DBG_VALUE:

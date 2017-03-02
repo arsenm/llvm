@@ -119,6 +119,9 @@ extern char &SIDebuggerInsertNopsID;
 void initializeSIInsertWaitsPass(PassRegistry&);
 extern char &SIInsertWaitsID;
 
+void initializeAMDGPUUnifyDivergentExitNodesPass(PassRegistry&);
+extern char &AMDGPUUnifyDivergentExitNodesID;
+
 Target &getTheAMDGPUTarget();
 Target &getTheGCNTarget();
 
