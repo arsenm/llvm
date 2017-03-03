@@ -28,6 +28,9 @@ using namespace llvm::PatternMatch;
 #define DEBUG_TYPE "structurizecfg"
 
 namespace {
+static cl::opt<bool> OnlyDivergent(
+  "structurize-only-divergent-regions", cl::Hidden,
+  cl::desc("Do not structurize uniform regions"));
 
 // Definition of the complex types used in this pass.
 
@@ -221,6 +224,8 @@ public:
 
   explicit StructurizeCFG(bool SkipUniformRegions = false)
       : RegionPass(ID), SkipUniformRegions(SkipUniformRegions) {
+    if (OnlyDivergent.getNumOccurrences() > 0)
+      SkipUniformRegions = OnlyDivergent;
     initializeStructurizeCFGPass(*PassRegistry::getPassRegistry());
   }
 
