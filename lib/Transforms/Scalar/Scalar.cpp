@@ -95,6 +95,7 @@ void llvm::initializeScalarOpts(PassRegistry &Registry) {
   initializeLoopLoadEliminationPass(Registry);
   initializeLoopSimplifyCFGLegacyPassPass(Registry);
   initializeLoopVersioningPassPass(Registry);
+  initializeUnifyFunctionExitNodesPass(Registry);
 }
 
 void LLVMInitializeScalarOpts(LLVMPassRegistryRef R) {
