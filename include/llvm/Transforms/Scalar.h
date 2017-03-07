@@ -558,6 +558,13 @@ ModulePass *createNameAnonGlobalPass();
 // used.
 //
 FunctionPass *createLibCallsShrinkWrapPass();
+
+//===----------------------------------------------------------------------===//
+//
+// UnifyFunctionExitNodes
+//
+extern char &UnifyFunctionExitNodesID;
+
 } // End llvm namespace
 
 #endif

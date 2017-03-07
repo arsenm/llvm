@@ -295,6 +295,7 @@ int main(int argc, char **argv) {
   initializeUnreachableBlockElimLegacyPassPass(*Registry);
   initializeConstantHoistingLegacyPassPass(*Registry);
   initializeScalarOpts(*Registry);
+  initializeTransformUtils(*Registry);
   initializeVectorization(*Registry);
 
   // Register the target printer for --version.
