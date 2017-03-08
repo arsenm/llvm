@@ -364,9 +364,32 @@ void SIAnnotateControlFlow::closeControlFlow(BasicBlock *BB) {
   }
 
   Value *Exec = popSaved();
-  Instruction *FirstInsertionPt = &*BB->getFirstInsertionPt();
-  if (!isa<UndefValue>(Exec) && !isa<UnreachableInst>(FirstInsertionPt))
-    CallInst::Create(EndCf, Exec, "", FirstInsertionPt);
+  if (isa<UndefValue>(Exec) || isa<UnreachableInst>(FirstInsertionPt))
+    return;
+#if 0
+  Instruction *ExecI = dyn_cast<Instruction>(Exec);
+  if (ExecI) {
+    for (BasicBlock *Pred : predecessors(BB)) {
+      if (!DT->dominates(Pred, ExecI->getParent())) {
+        //assert(isa<UnreachableInst>(BB->getTerminator()));
+
+        PHINode *NewPhi = PHINode::Create(ExecI->getType(), 2, "",
+                                          &BB->front());
+        for (BasicBlock *PredPred : predecessors(BB)) {
+          if (PredPred != ExecI->getParent())
+            NewPhi->addIncoming(ConstantInt::get(ExecI->getType(), -1), PredPred);
+          else
+            NewPhi->addIncoming(ExecI, PredPred);
+        }
+
+        Exec = NewPhi;
+      }
+    }
+  }
+#endif
+
+
+  CallInst::Create(EndCf, Exec, "", &*BB->getFirstInsertionPt());
 }
 
 /// \brief Annotate the control flow with intrinsics so the backend can
