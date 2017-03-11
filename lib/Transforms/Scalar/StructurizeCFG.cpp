@@ -100,6 +100,21 @@ public:
   bool resultIsRememberedBlock() { return ResultIsRemembered; }
 };
 
+static BasicBlock *cloneBBForPred(Function *Func, BasicBlock *Pred, BasicBlock *BB) {
+  BasicBlock *BBClone = BasicBlock::Create(Func->getContext(),
+                                           BB->getName() + ".clone",
+                                           Func,
+                                           BB);
+  for (Instruction &I : *BB) {
+    auto *IClone = I.clone();
+    IClone->setName(I.getName() + ".clone");
+    BBClone->getInstList().push_back(IClone);
+  }
+
+  Pred->replaceSuccessorsPhiUsesWith(BBClone);
+  return BBClone;
+}
+
 /// @brief Transforms the control flow graph on one single entry/exit region
 /// at a time.
 ///
@@ -276,6 +291,7 @@ bool StructurizeCFG::doInitialization(Region *R, RGPassManager &RGM) {
 void StructurizeCFG::orderNodes() {
   ReversePostOrderTraversal<Region*> RPOT(ParentRegion);
   SmallDenseMap<Loop*, unsigned, 8> LoopBlocks;
+
 
   // The reverse post-order traversal of the list gives us an ordering close
   // to what we want.  The only problem with it is that sometimes backedges
@@ -924,6 +940,30 @@ bool StructurizeCFG::runOnRegion(Region *R, RGPassManager &RGM) {
 
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+
+
+  /*
+  SmallVector<std::pair<BasicBlock *, BasicBlock *>, 4> BlocksToClone;
+
+  for (BasicBlock *BB : R->blocks()) {
+    int PredCount = 0;
+    for (BasicBlock *Pred : predecessors(BB)) {
+      if (++PredCount > 2) {
+        if (BB->size() <= 4) {
+          BlocksToClone.push_back(std::make_pair(Pred, BB));
+        }
+      }
+    }
+  }
+
+
+  for (auto Candidate : BlocksToClone) {
+    BasicBlock *Pred = Candidate.first;
+    BasicBlock *BB = Candidate.second;
+
+    BasicBlock *CloneBB = cloneBBForPred(Func, Pred, BB);
+  }
+  */
 
   orderNodes();
   collectInfos();
