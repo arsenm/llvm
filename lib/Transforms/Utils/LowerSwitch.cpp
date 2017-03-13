@@ -403,6 +403,12 @@ void LowerSwitch::processSwitchInst(SwitchInst *SI,
   Value *Val = SI->getCondition();  // The value we are switching on...
   BasicBlock* Default = SI->getDefaultDest();
 
+  if ((CurBlock != &F->getEntryBlock() && pred_empty(CurBlock)) ||
+      CurBlock->getSinglePredecessor() == CurBlock) {
+    DeleteList.insert(CurBlock);
+    return;
+  }
+
   // If there is only the default destination, just branch.
   if (!SI->getNumCases()) {
     BranchInst::Create(Default, CurBlock);
