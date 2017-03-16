@@ -467,24 +467,22 @@ defm V_MAC_F16 : VOP2Inst <"v_mac_f16", VOP_MAC_F16>;
 
 // Note: 16-bit instructions produce a 0 result in the high 16-bits.
 multiclass Arithmetic_i16_Pats <SDPatternOperator op, Instruction inst> {
+  def : Pat <
+    (op i16:$src0, i16:$src1),
+    (inst $src0, $src1)
+  >;
 
-def : Pat<
-  (op i16:$src0, i16:$src1),
-  (inst $src0, $src1)
->;
+  def : Pat<
+    (i32 (zext (op i16:$src0, i16:$src1))),
+    (inst $src0, $src1)
+  >;
 
-def : Pat<
-  (i32 (zext (op i16:$src0, i16:$src1))),
-  (inst $src0, $src1)
->;
-
-def : Pat<
-  (i64 (zext (op i16:$src0, i16:$src1))),
-   (REG_SEQUENCE VReg_64,
-     (inst $src0, $src1), sub0,
-     (V_MOV_B32_e32 (i32 0)), sub1)
->;
-
+  def : Pat<
+    (i64 (zext (op i16:$src0, i16:$src1))),
+     (REG_SEQUENCE VReg_64,
+       (inst $src0, $src1), sub0,
+       (V_MOV_B32_e32 (i32 0)), sub1)
+  >;
 }
 
 multiclass Bits_OpsRev_i16_Pats <SDPatternOperator op, Instruction inst> {
