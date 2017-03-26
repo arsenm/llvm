@@ -276,10 +276,14 @@ define amdgpu_kernel void @v_ctlz_i32_sel_ne_bitwidth(i32 addrspace(1)* noalias 
 }
 
 ; FIXME: Need to handle non-uniform case for function below (load without gep).
+; FIXME: Why difference with VI?
 ; FUNC-LABEL: {{^}}v_ctlz_i7_sel_eq_neg1:
-; GCN: {{buffer|flat}}_load_ubyte [[VAL:v[0-9]+]],
+; GCN-DAG: {{buffer|flat}}_load_ubyte [[VAL:v[0-9]+]],
+; SI-DAG: s_movk_i32 [[MASK:s[0-9]+]], 0x7f
+; VI: v_and_b32_e32 [[VAL]], 0x7f, [[VAL]]
 ; GCN: v_ffbh_u32_e32 [[FFBH:v[0-9]+]], [[VAL]]
-; GCN: v_and_b32_e32 [[TRUNC:v[0-9]+]], 0x7f, [[FFBH]]
+; SI: v_and_b32_e32 [[TRUNC:v[0-9]+]], [[MASK]], [[FFBH]]
+; VI: v_and_b32_e32 [[TRUNC:v[0-9]+]], 0x7f, [[FFBH]]
 ; GCN: {{buffer|flat}}_store_byte [[TRUNC]],
 define amdgpu_kernel void @v_ctlz_i7_sel_eq_neg1(i7 addrspace(1)* noalias %out, i7 addrspace(1)* noalias %valptr) nounwind {
   %tid = call i32 @llvm.r600.read.tidig.x()

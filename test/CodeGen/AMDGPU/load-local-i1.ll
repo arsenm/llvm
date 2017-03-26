@@ -66,8 +66,9 @@ define amdgpu_kernel void @local_load_v64i1(<64 x i1> addrspace(3)* %out, <64 x 
 }
 
 ; FUNC-LABEL: {{^}}local_zextload_i1_to_i32:
-; GCN: ds_read_u8
-; GCN: ds_write_b32
+; GCN: ds_read_u8 [[LOAD:v[0-9]+]]
+; GCN: v_and_b32_e32 [[AND:v[0-9]+]], 1, [[LOAD]]
+; GCN: ds_write_b32 v{{[0-9]+}}, [[AND]]
 define amdgpu_kernel void @local_zextload_i1_to_i32(i32 addrspace(3)* %out, i1 addrspace(3)* %in) #0 {
   %a = load i1, i1 addrspace(3)* %in
   %ext = zext i1 %a to i32

@@ -128,8 +128,11 @@ define amdgpu_kernel void @v_udiv_i16(i32 addrspace(1)* %out, i16 addrspace(1)* 
 }
 
 ; FUNC-LABEL: {{^}}v_udiv_i23:
+; SI: s_mov_b32 [[MASK:s[0-9]+]], 0x7fffff
+; SI: v_and_b32_e32 v{{[0-9]+}}, [[MASK]],
+; SI: v_and_b32_e32 v{{[0-9]+}}, [[MASK]],
 ; SI: v_rcp_f32
-; SI: v_and_b32_e32 [[TRUNC:v[0-9]+]], 0x7fffff, v{{[0-9]+}}
+; SI: v_and_b32_e32 [[TRUNC:v[0-9]+]], [[MASK]], v{{[0-9]+}}
 ; SI: buffer_store_dword [[TRUNC]]
 define amdgpu_kernel void @v_udiv_i23(i32 addrspace(1)* %out, i23 addrspace(1)* %in) {
   %den_ptr = getelementptr i23, i23 addrspace(1)* %in, i23 1

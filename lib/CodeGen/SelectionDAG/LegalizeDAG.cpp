@@ -747,11 +747,9 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
       Result = DAG.getNode(ISD::SIGN_EXTEND_INREG, dl,
                            Result.getValueType(),
                            Result, DAG.getValueType(SrcVT));
-    else if (ExtType == ISD::ZEXTLOAD || NVT == Result.getValueType())
-      // All the top bits are guaranteed to be zero - inform the optimizers.
-      Result = DAG.getNode(ISD::AssertZext, dl,
-                           Result.getValueType(), Result,
-                           DAG.getValueType(SrcVT));
+    else if (ExtType == ISD::ZEXTLOAD || NVT == Result.getValueType()) {
+      Result = DAG.getZeroExtendInReg(Result, dl, SrcVT);
+    }
 
     Value = Result;
     Chain = Ch;
