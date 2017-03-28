@@ -54,7 +54,8 @@ const MCPhysReg *SIRegisterInfo::getCalleeSavedRegs(
     static const MCPhysReg NoCalleeSavedReg = AMDGPU::NoRegister;
     return &NoCalleeSavedReg;
   }
-  }
+
+  return CSR_AMDGPU_MinOccupancy10_SaveList;
 }
 
 const MCPhysReg *
@@ -70,8 +71,24 @@ const uint32_t *SIRegisterInfo::getCallPreservedMask(const MachineFunction &MF,
   case CallingConv::Cold:
     return CSR_AMDGPU_HighRegs_RegMask;
   default:
+#if 0
+  // XXX MF is the caller, not the callee.
+  return CSR_AMDGPU_MinOccupancy10_RegMask;
+#if 0
+  const SIMachineFunctionInfo *FuncInfo = MF.getInfo<SIMachineFunctionInfo>();
+  if (FuncInfo->isEntryFunction())
+#endif
     return nullptr;
+
+  switch (FuncInfo->getMinWavesPerEU()) {
+  case 10:
+    return CSR_AMDGPU_MinOccupancy10_RegMask;
+  case 5:
+    return CSR_AMDGPU_MinOccupancy5_RegMask;
+  default:
+    return CSR_AMDGPU_HighRegs_RegMask;
   }
+#endif
 }
 
 unsigned SIRegisterInfo::getFrameRegister(const MachineFunction &MF) const {

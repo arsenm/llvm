@@ -101,20 +101,67 @@ def CC_AMDGPU_Kernel : CallingConv<[
   CCCustom<"allocateKernArg">
 ]>;
 
-def CSR_AMDGPU_VGPRs_24_255 : CalleeSavedRegs<
-  (sequence "VGPR%u", 24, 255)
->;
-
-def CSR_AMDGPU_VGPRs_32_255 : CalleeSavedRegs<
-  (sequence "VGPR%u", 32, 255)
->;
-
 def CSR_AMDGPU_SGPRs_32_103 : CalleeSavedRegs<
   (sequence "SGPR%u", 32, 103)
 >;
 
-def CSR_AMDGPU_HighRegs : CalleeSavedRegs<
+def CSR_AMDGPU_SGPRs_48_103 : CalleeSavedRegs<
+  (sequence "SGPR%u", 48, 103)
+>;
+
+def CSR_AMDGPU_SGPRs_64_103 : CalleeSavedRegs<
+  (sequence "SGPR%u", 64, 103)
+>;
+
+foreach NumVGPR = { 24, 28, 32, 36, 40, 48, 64, 84, 128 } in {
+  def CSR_AMDGPU_VGPRs_#NumVGPR#_255 : CalleeSavedRegs<
+    (sequence "VGPR%u", NumVGPR, 255)
+  >;
+}
+
+def CSR_AMDGPU_AllVGPRs : CalleeSavedRegs<
+  (sequence "VGPR%u", 0, 255)
+>;
+
+// Min occupancy based on VGPRs, SGPRs capped at 32.
+def CSR_AMDGPU_MinOccupancy10 : CalleeSavedRegs<
+  (add CSR_AMDGPU_VGPRs_24_255, CSR_AMDGPU_SGPRs_32_103)
+>;
+
+def CSR_AMDGPU_MinOccupancy9 : CalleeSavedRegs<
+  (add CSR_AMDGPU_VGPRs_28_255, CSR_AMDGPU_SGPRs_32_103)
+>;
+
+def CSR_AMDGPU_MinOccupancy8 : CalleeSavedRegs<
   (add CSR_AMDGPU_VGPRs_32_255, CSR_AMDGPU_SGPRs_32_103)
+>;
+
+def CSR_AMDGPU_MinOccupancy7 : CalleeSavedRegs<
+  (add CSR_AMDGPU_VGPRs_36_255, CSR_AMDGPU_SGPRs_32_103)
+>;
+
+def CSR_AMDGPU_MinOccupancy6 : CalleeSavedRegs<
+  (add CSR_AMDGPU_VGPRs_40_255, CSR_AMDGPU_SGPRs_32_103)
+>;
+
+def CSR_AMDGPU_MinOccupancy5 : CalleeSavedRegs<
+  (add CSR_AMDGPU_VGPRs_48_255, CSR_AMDGPU_SGPRs_32_103)
+>;
+
+def CSR_AMDGPU_MinOccupancy4 : CalleeSavedRegs<
+  (add CSR_AMDGPU_VGPRs_64_255, CSR_AMDGPU_SGPRs_32_103)
+>;
+
+def CSR_AMDGPU_MinOccupancy3 : CalleeSavedRegs<
+  (add CSR_AMDGPU_VGPRs_84_255, CSR_AMDGPU_SGPRs_32_103)
+>;
+
+def CSR_AMDGPU_MinOccupancy2 : CalleeSavedRegs<
+  (add CSR_AMDGPU_VGPRs_128_255, CSR_AMDGPU_SGPRs_32_103)
+>;
+
+def CSR_AMDGPU_MinOccupancy1 : CalleeSavedRegs<
+  (add CSR_AMDGPU_AllVGPRs, CSR_AMDGPU_SGPRs_32_103)
 >;
 
 // Calling convention for leaf functions
