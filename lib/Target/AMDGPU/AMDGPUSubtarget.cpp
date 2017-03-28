@@ -243,8 +243,12 @@ std::pair<unsigned, unsigned> AMDGPUSubtarget::getFlatWorkGroupSizes(
 
 std::pair<unsigned, unsigned> AMDGPUSubtarget::getWavesPerEU(
   const Function &F) const {
+  CallingConv::ID CC = F.getCallingConv();
+  // FIXME: May need calling conventions to define max allowed registers.
+
   // Default minimum/maximum number of waves per execution unit.
-  std::pair<unsigned, unsigned> Default(1, getMaxWavesPerEU());
+  std::pair<unsigned, unsigned> Default(AMDGPU::isEntryFunctionCC(CC) ? 1 : 8,
+                                        getMaxWavesPerEU());
 
   // Default/requested minimum/maximum flat work group sizes.
   std::pair<unsigned, unsigned> FlatWorkGroupSizes = getFlatWorkGroupSizes(F);
