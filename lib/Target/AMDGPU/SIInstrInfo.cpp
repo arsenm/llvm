@@ -299,7 +299,7 @@ bool SIInstrInfo::getMemOpBaseRegImmOfs(MachineInstr &LdSt, unsigned &BaseReg,
     return true;
   }
 
-  if (isFLAT(LdSt)) {
+  if (isFLAT(LdSt) || isMIMG(LdSt)) {
     const MachineOperand *AddrReg = getNamedOperand(LdSt, AMDGPU::OpName::vaddr);
     BaseReg = AddrReg->getReg();
     Offset = 0;
@@ -326,6 +326,13 @@ bool SIInstrInfo::shouldClusterMemOps(MachineInstr &FirstLdSt,
   } else if (isDS(FirstLdSt) && isDS(SecondLdSt)) {
     FirstDst = getNamedOperand(FirstLdSt, AMDGPU::OpName::vdst);
     SecondDst = getNamedOperand(SecondLdSt, AMDGPU::OpName::vdst);
+  } else if (isMIMG(FirstLdSt) && isMIMG(SecondLdSt)) {
+    FirstDst = getNamedOperand(FirstLdSt, AMDGPU::OpName::vdata);
+    SecondDst = getNamedOperand(SecondLdSt, AMDGPU::OpName::vdata);
+    const MachineOperand *SrSrc0 = getNamedOperand(FirstLdSt, AMDGPU::OpName::srsrc);
+    const MachineOperand *SrSrc1 = getNamedOperand(SecondLdSt, AMDGPU::OpName::srsrc);
+    if (SrSrc0->getReg() != SrSrc1->getReg())
+      return false;
   }
 
   if (!FirstDst || !SecondDst)
