@@ -27,10 +27,22 @@
 
 namespace llvm {
 
+namespace AMDGPUPSV {
+enum AMDGPUPSVKind {
+
+  Buffer = PseudoSourceValue::TargetCustom,
+  Image
+};
+}
+
 class AMDGPUImagePseudoSourceValue : public PseudoSourceValue {
 public:
   explicit AMDGPUImagePseudoSourceValue() :
     PseudoSourceValue(PseudoSourceValue::TargetCustom) { }
+
+  void printCustom(raw_ostream &O) const override {
+    O << "Image";
+  }
 
   bool isConstant(const MachineFrameInfo *) const override {
     // This should probably be true for most images, but we will start by being
@@ -55,6 +67,10 @@ class AMDGPUBufferPseudoSourceValue : public PseudoSourceValue {
 public:
   explicit AMDGPUBufferPseudoSourceValue() :
     PseudoSourceValue(PseudoSourceValue::TargetCustom) { }
+
+  void printCustom(raw_ostream &O) const override {
+    O << "Buffer";
+  }
 
   bool isConstant(const MachineFrameInfo *) const override {
     // This should probably be true for most images, but we will start by being
