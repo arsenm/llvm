@@ -301,6 +301,10 @@ bool SIRegisterInfo::needsFrameBaseReg(MachineInstr *MI, int64_t Offset) const {
   return !isUInt<12>(FullOffset);
 }
 
+// Scratch accesses are really indexed with two base registers. The soffset
+// component is derived from the scratch wave offset register, and is tracked
+// with the frame index's stack ID. Here we are concerned with materializing a
+// the additional VGPR offset.
 void SIRegisterInfo::materializeFrameBaseRegister(MachineBasicBlock *MBB,
                                                   unsigned BaseReg,
                                                   int FrameIdx,
