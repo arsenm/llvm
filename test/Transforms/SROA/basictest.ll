@@ -65,6 +65,67 @@ L2:
   ret i64 %Z
 }
 
+define i64 @test2_addrspacecast(i64 %X) {
+; CHECK-LABEL: @test2_addrspacecast(
+; CHECK-NOT: alloca
+; CHECK: ret i64 %X
+
+entry:
+  %A = alloca [8 x i8]
+  %B = addrspacecast [8 x i8]* %A to i64 addrspace(1)*
+  store i64 %X, i64 addrspace(1)* %B
+  br label %L2
+
+L2:
+  %Z = load i64, i64 addrspace(1)* %B
+  ret i64 %Z
+}
+
+define i64 @test2_addrspacecast_gep(i64 %X, i16 %idx) {
+; CHECK-LABEL: @test2_addrspacecast_gep(
+; CHECK-NOT: alloca
+; CHECK: ret i64 %X
+
+entry:
+  %A = alloca [256 x i8]
+  %B = addrspacecast [256 x i8]* %A to i64 addrspace(1)*
+  %gepA = getelementptr [256 x i8], [256 x i8]* %A, i16 0, i16 32
+  %gepB = getelementptr i64, i64 addrspace(1)* %B, i16 4
+  store i64 %X, i64 addrspace(1)* %gepB, align 1
+  br label %L2
+
+L2:
+  %gepA.bc = bitcast i8* %gepA to i64*
+  %Z = load i64, i64* %gepA.bc, align 1
+  ret i64 %Z
+}
+
+; Avoid crashing when load/storing at at different offsets.
+define i64 @test2_addrspacecast_gep_offset(i64 %X, i16 %idx) {
+; CHECK-LABEL: @test2_addrspacecast_gep_offset(
+; CHECK: %A.sroa.0 = alloca [10 x i8]
+; CHECK: %A.sroa.0.2.gepB.sroa_idx = getelementptr inbounds [10 x i8], [10 x i8]* %A.sroa.0, i16 0, i16 2
+; CHECK: %A.sroa.0.2.gepB.sroa_cast = addrspacecast i8* %A.sroa.0.2.gepB.sroa_idx to i64 addrspace(1)*
+; CHECK: store i64 %X, i64 addrspace(1)* %A.sroa.0.2.gepB.sroa_cast, align 1
+; CHECK: br
+
+; CHECK: %A.sroa.0.0.gepA.bc.sroa_cast = bitcast [10 x i8]* %A.sroa.0 to i64*
+; CHECK: %A.sroa.0.0.A.sroa.0.30.Z = load i64, i64* %A.sroa.0.0.gepA.bc.sroa_cast, align 1
+; CHECK-NEXT: ret
+entry:
+  %A = alloca [256 x i8]
+  %B = addrspacecast [256 x i8]* %A to i64 addrspace(1)*
+  %gepA = getelementptr [256 x i8], [256 x i8]* %A, i16 0, i16 30
+  %gepB = getelementptr i64, i64 addrspace(1)* %B, i16 4
+  store i64 %X, i64 addrspace(1)* %gepB, align 1
+  br label %L2
+
+L2:
+  %gepA.bc = bitcast i8* %gepA to i64*
+  %Z = load i64, i64* %gepA.bc, align 1
+  ret i64 %Z
+}
+
 define void @test3(i8* %dst, i8* %src) {
 ; CHECK-LABEL: @test3(
 
@@ -420,6 +481,25 @@ entry:
   %a = alloca [4 x i8]
   %fptr = bitcast [4 x i8]* %a to float*
   store float 0.0, float* %fptr
+  %ptr = getelementptr [4 x i8], [4 x i8]* %a, i32 0, i32 2
+  %iptr = bitcast i8* %ptr to i16*
+  %val = load i16, i16* %iptr
+  ret i16 %val
+}
+
+define i16 @test5_multi_addrspace_access() {
+; CHECK-LABEL: @test5_multi_addrspace_access(
+; CHECK-NOT: alloca float
+; CHECK:      %[[cast:.*]] = bitcast float 0.0{{.*}} to i32
+; CHECK-NEXT: %[[shr:.*]] = lshr i32 %[[cast]], 16
+; CHECK-NEXT: %[[trunc:.*]] = trunc i32 %[[shr]] to i16
+; CHECK-NEXT: ret i16 %[[trunc]]
+
+entry:
+  %a = alloca [4 x i8]
+  %fptr = bitcast [4 x i8]* %a to float*
+  %fptr.as1 = addrspacecast float* %fptr to float addrspace(1)*
+  store float 0.0, float addrspace(1)* %fptr.as1
   %ptr = getelementptr [4 x i8], [4 x i8]* %a, i32 0, i32 2
   %iptr = bitcast i8* %ptr to i16*
   %val = load i16, i16* %iptr
@@ -820,6 +900,27 @@ entry:
   %cast1 = bitcast %opaque* %x to i8*
   %cast2 = bitcast { i64, i8* }* %a to i8*
   call void @llvm.memcpy.p0i8.p0i8.i32(i8* %cast2, i8* %cast1, i32 16, i32 1, i1 false)
+  %gep = getelementptr inbounds { i64, i8* }, { i64, i8* }* %a, i32 0, i32 0
+  %val = load i64, i64* %gep
+  ret i32 undef
+}
+
+declare void @llvm.memcpy.p0i8.p1i8.i32(i8* nocapture, i8 addrspace(1)* nocapture, i32, i32, i1) nounwind
+
+define i32 @test19_addrspacecast(%opaque* %x) {
+; This input will cause us to try to compute a natural GEP when rewriting
+; pointers in such a way that we try to GEP through the opaque type. Previously,
+; a check for an unsized type was missing and this crashed. Ensure it behaves
+; reasonably now.
+; CHECK-LABEL: @test19_addrspacecast(
+; CHECK-NOT: alloca
+; CHECK: ret i32 undef
+
+entry:
+  %a = alloca { i64, i8* }
+  %cast1 = addrspacecast %opaque* %x to i8 addrspace(1)*
+  %cast2 = bitcast { i64, i8* }* %a to i8*
+  call void @llvm.memcpy.p0i8.p1i8.i32(i8* %cast2, i8 addrspace(1)* %cast1, i32 16, i32 1, i1 false)
   %gep = getelementptr inbounds { i64, i8* }, { i64, i8* }* %a, i32 0, i32 0
   %val = load i64, i64* %gep
   ret i32 undef

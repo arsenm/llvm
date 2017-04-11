@@ -31,5 +31,11 @@ bool detail::PtrUseVisitorBase::adjustOffsetForGEP(GetElementPtrInst &GEPI) {
   if (!IsOffsetKnown)
     return false;
 
-  return GEPI.accumulateConstantOffset(DL, Offset);
+  APInt TmpOffset(DL.getPointerTypeSizeInBits(GEPI.getType()), 0);
+  if (GEPI.accumulateConstantOffset(DL, TmpOffset)) {
+    Offset += TmpOffset.sextOrTrunc(Offset.getBitWidth());
+    return true;
+  }
+
+  return false;
 }
