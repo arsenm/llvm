@@ -3369,13 +3369,28 @@ SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
     SDValue BasePtr = Load->getBasePtr();
     MachineMemOperand *MMO = Load->getMemOperand();
 
+    bool IsF16 = MemVT == MVT::f16;
+
+    ISD::LoadExtType ExtType = IsF16 ? ISD::ZEXTLOAD : ISD::EXTLOAD;
+
     EVT RealMemVT = (MemVT == MVT::i1) ? MVT::i8 : MVT::i16;
 
-    SDValue NewLD = DAG.getExtLoad(ISD::EXTLOAD, DL, MVT::i32, Chain,
+    SDValue NewLD = DAG.getExtLoad(ExtType, DL, MVT::i32, Chain,
                                    BasePtr, RealMemVT, MMO);
 
+    SDValue Val = NewLD;
+    if (IsF16) {
+      Val = DAG.getNode(ISD::AssertZext, DL, MVT::i32, Val,
+                        DAG.getValueType(MVT::i16));
+
+      Val = DAG.getNode(ISD::TRUNCATE, DL, MVT::i16, Val);
+      Val = DAG.getNode(ISD::BITCAST, DL, MVT::f16, Val);
+    } else {
+      Val = DAG.getNode(ISD::TRUNCATE, DL, MemVT, Val);
+    }
+
     SDValue Ops[] = {
-      DAG.getNode(ISD::TRUNCATE, DL, MemVT, NewLD),
+      Val,
       NewLD.getValue(1)
     };
 
