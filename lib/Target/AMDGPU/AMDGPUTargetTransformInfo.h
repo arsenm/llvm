@@ -121,6 +121,7 @@ public:
 
   unsigned getShuffleCost(TTI::ShuffleKind Kind, Type *Tp, int Index,
                           Type *SubTp);
+  bool getCallInstrCost(Function *F, Type *RetTy, ArrayRef<Type *> Tys);
 };
 
 } // end namespace llvm

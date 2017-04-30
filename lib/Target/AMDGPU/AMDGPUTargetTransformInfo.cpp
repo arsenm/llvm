@@ -529,3 +529,9 @@ unsigned AMDGPUTTIImpl::getShuffleCost(TTI::ShuffleKind Kind, Type *Tp, int Inde
 
   return BaseT::getShuffleCost(Kind, Tp, Index, SubTp);
 }
+
+bool AMDGPUTTIImpl::getCallInstrCost(Function *F, Type *RetTy,
+                                     ArrayRef<Type *> Tys) {
+
+  return 100;
+}
