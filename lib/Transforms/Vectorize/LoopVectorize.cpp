@@ -1852,7 +1852,7 @@ public:
 
   /// \return An upper bound for the vectorization factor, or None if
   /// vectorization should be avoided up front.
-  Optional<unsigned> computeMaxVF(bool OptForSize);
+  Optional<unsigned> computeMaxVF(bool OptForSize, bool OptForDivergent);
 
   /// Information about vectorization costs
   struct VectorizationFactor {
@@ -2218,6 +2218,7 @@ public:
 
   /// Plan how to best vectorize, return the best VF and its cost.
   LoopVectorizationCostModel::VectorizationFactor plan(bool OptForSize,
+                                                       bool OptForDivergent,
                                                        unsigned UserVF);
 
   /// Generate the IR code for the vectorized loop.
@@ -6270,7 +6271,8 @@ void InterleavedAccessInfo::analyzeInterleaving(
   }
 }
 
-Optional<unsigned> LoopVectorizationCostModel::computeMaxVF(bool OptForSize) {
+Optional<unsigned> LoopVectorizationCostModel::computeMaxVF(bool OptForSize,
+                                                            bool OptForDivergent) {
   if (!EnableCondStoresVectorization && Legal->getNumPredStores()) {
     ORE->emit(createMissedAnalysis("ConditionalStore")
               << "store that is conditionally executed prevents vectorization");
@@ -6278,29 +6280,29 @@ Optional<unsigned> LoopVectorizationCostModel::computeMaxVF(bool OptForSize) {
     return None;
   }
 
-  if (Legal->getRuntimePointerChecking()->Need && TTI.hasBranchDivergence()) {
-    // TODO: It may by useful to do since it's still likely to be dynamically
-    // uniform if the target can skip.
-    DEBUG(dbgs() << "LV: Not inserting runtime ptr check for divergent target");
-
-    ORE->emit(
-      createMissedAnalysis("CantVersionLoopWithDivergentTarget")
-      << "runtime pointer checks needed. Not enabled for divergent target");
-
-    return None;
-  }
-
-  if (!OptForSize) // Remaining checks deal with scalar loop when OptForSize.
-    return computeFeasibleMaxVF(OptForSize);
-
   if (Legal->getRuntimePointerChecking()->Need) {
-    ORE->emit(createMissedAnalysis("CantVersionLoopWithOptForSize")
-              << "runtime pointer checks needed. Enable vectorization of this "
-                 "loop with '#pragma clang loop vectorize(enable)' when "
-                 "compiling with -Os/-Oz");
-    DEBUG(dbgs()
-          << "LV: Aborting. Runtime ptr check is required with -Os/-Oz.\n");
-    return None;
+    if (OptForSize) {
+      ORE->emit(createMissedAnalysis("CantVersionLoopWithOptForSize")
+                << "runtime pointer checks needed. Enable vectorization of this "
+                "loop with '#pragma clang loop vectorize(enable)' when "
+                "compiling with -Os/-Oz");
+      DEBUG(dbgs()
+            << "LV: Aborting. Runtime ptr check is required with -Os/-Oz.\n");
+
+      return None;
+    }
+
+    if (OptForDivergent) {
+      // TODO: It may by useful to do since it's still likely to be dynamically
+      // uniform if the target can skip.
+      DEBUG(dbgs() << "LV: Not inserting runtime ptr check for divergent target");
+
+      ORE->emit(
+        createMissedAnalysis("CantVersionLoopWithDivergentTarget")
+        << "runtime pointer checks needed. Not enabled for divergent target");
+
+      return None;
+    }
   }
 
   // If we optimize the program for size, avoid creating the tail loop.
@@ -6308,17 +6310,17 @@ Optional<unsigned> LoopVectorizationCostModel::computeMaxVF(bool OptForSize) {
   DEBUG(dbgs() << "LV: Found trip count: " << TC << '\n');
 
   // If we don't know the precise trip count, don't try to vectorize.
-  if (TC < 2) {
+  if (TC < 2 && (OptForSize || OptForDivergent)) {
     ORE->emit(
-        createMissedAnalysis("UnknownLoopCountComplexCFG")
-        << "unable to calculate the loop count due to complex control flow");
-    DEBUG(dbgs() << "LV: Aborting. A tail loop is required with -Os/-Oz.\n");
+      createMissedAnalysis("UnknownLoopCountComplexCFG")
+      << "unable to calculate the loop count due to complex control flow");
+    DEBUG(dbgs() << "LV: Aborting. A tail loop is required with "
+          << (OptForSize ? "-Os/-Oz.\n" : "divergent target.\n"));
     return None;
   }
 
   unsigned MaxVF = computeFeasibleMaxVF(OptForSize);
-
-  if (TC % MaxVF != 0) {
+  if (OptForSize && TC % MaxVF != 0) {
     // If the trip count that we found modulo the vectorization factor is not
     // zero then we require a tail.
     // FIXME: look for a smaller MaxVF that does divide TC rather than give up.
@@ -6327,9 +6329,9 @@ Optional<unsigned> LoopVectorizationCostModel::computeMaxVF(bool OptForSize) {
 
     ORE->emit(createMissedAnalysis("NoTailLoopWithOptForSize")
               << "cannot optimize for size and vectorize at the "
-                 "same time. Enable vectorization of this loop "
-                 "with '#pragma clang loop vectorize(enable)' "
-                 "when compiling with -Os/-Oz");
+              "same time. Enable vectorization of this loop "
+              "with '#pragma clang loop vectorize(enable)' "
+              "when compiling with -Os/-Oz");
     DEBUG(dbgs() << "LV: Aborting. A tail loop is required with -Os/-Oz.\n");
     return None;
   }
@@ -7609,12 +7611,13 @@ void LoopVectorizationCostModel::collectValuesToIgnore() {
 }
 
 LoopVectorizationCostModel::VectorizationFactor
-LoopVectorizationPlanner::plan(bool OptForSize, unsigned UserVF) {
+LoopVectorizationPlanner::plan(bool OptForSize, bool OptForDivergent,
+                               unsigned UserVF) {
 
   // Width 1 means no vectorize, cost 0 means uncomputed cost.
   const LoopVectorizationCostModel::VectorizationFactor NoVectorization = {1U,
                                                                            0U};
-  Optional<unsigned> MaybeMaxVF = CM.computeMaxVF(OptForSize);
+  Optional<unsigned> MaybeMaxVF = CM.computeMaxVF(OptForSize, OptForDivergent);
   if (!MaybeMaxVF.hasValue()) // Cases considered too costly to vectorize.
     return NoVectorization;
 
@@ -7829,6 +7832,10 @@ bool LoopVectorizePass::processLoop(Loop *L) {
   bool OptForSize =
       Hints.getForce() != LoopVectorizeHints::FK_Enabled && F->optForSize();
 
+  bool OptForDivergent =
+    Hints.getForce() != LoopVectorizeHints::FK_Enabled &&
+    TTI->hasBranchDivergence();
+
   // Check the loop for a trip count threshold: vectorize loops with a tiny trip
   // count by optimizing for size, to minimize overheads.
   unsigned ExpectedTC = SE->getSmallConstantMaxTripCount(L);
@@ -7898,7 +7905,7 @@ bool LoopVectorizePass::processLoop(Loop *L) {
 
   // Plan how to best vectorize, return the best VF and its cost.
   LoopVectorizationCostModel::VectorizationFactor VF =
-      LVP.plan(OptForSize, UserVF);
+    LVP.plan(OptForSize, OptForDivergent, UserVF);
 
   // Select the interleave count.
   unsigned IC = CM.selectInterleaveCount(OptForSize, VF.Width, VF.Cost);
