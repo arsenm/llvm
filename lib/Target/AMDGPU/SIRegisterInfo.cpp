@@ -249,12 +249,16 @@ bool SIRegisterInfo::requiresFrameIndexScavenging(
 
 bool SIRegisterInfo::requiresFrameIndexReplacementScavenging(
   const MachineFunction &MF) const {
+  const SIMachineFunctionInfo *Info = MF.getInfo<SIMachineFunctionInfo>();
+  if (!Info->isEntryFunction())
+    return true;
+
   // m0 is needed for the scalar store offset. m0 is unallocatable, so we can't
   // create a virtual register for it during frame index elimination, so the
   // scavenger is directly needed.
   return MF.getFrameInfo().hasStackObjects() &&
          MF.getSubtarget<SISubtarget>().hasScalarStores() &&
-         MF.getInfo<SIMachineFunctionInfo>()->hasSpilledSGPRs();
+         Info->hasSpilledSGPRs();
 }
 
 bool SIRegisterInfo::requiresVirtualBaseRegisters(
