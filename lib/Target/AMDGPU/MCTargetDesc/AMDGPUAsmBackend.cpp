@@ -34,16 +34,20 @@ public:
   void applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                   const MCValue &Target, MutableArrayRef<char> Data,
                   uint64_t Value, bool IsResolved) const override;
+  bool mayNeedRelaxation(const MCInst &Inst) const override;
   bool fixupNeedsRelaxation(const MCFixup &Fixup, uint64_t Value,
                             const MCRelaxableFragment *DF,
-                            const MCAsmLayout &Layout) const override {
-    return false;
-  }
+                            const MCAsmLayout &Layout) const override;
+
+  bool fixupNeedsRelaxationAdvanced(const MCFixup &Fixup, bool Resolved,
+                                    uint64_t Value,
+                                    const MCRelaxableFragment *DF,
+                                    const MCAsmLayout &Layout) const override;
+
   void relaxInstruction(const MCInst &Inst, const MCSubtargetInfo &STI,
                         MCInst &Res) const override {
     llvm_unreachable("Not implemented");
   }
-  bool mayNeedRelaxation(const MCInst &Inst) const override { return false; }
 
   unsigned getMinimumNopSize() const override;
   bool writeNopData(uint64_t Count, MCObjectWriter *OW) const override;
@@ -121,6 +125,43 @@ void AMDGPUAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
   // the fixup value.
   for (unsigned i = 0; i != NumBytes; ++i)
     Data[Offset + i] |= static_cast<uint8_t>((Value >> (i * 8)) & 0xff);
+}
+
+bool AMDGPUAsmBackend::mayNeedRelaxation(const MCInst &Inst) const {
+  return true;
+}
+
+bool AMDGPUAsmBackend::fixupNeedsRelaxation(const MCFixup &Fixup, uint64_t Value,
+                                            const MCRelaxableFragment *DF,
+                                            const MCAsmLayout &Layout) const {
+  switch (Fixup.getKind()) {
+  case FK_PCRel_4:
+  default:
+    return false;
+  }
+}
+
+bool AMDGPUAsmBackend::fixupNeedsRelaxationAdvanced(const MCFixup &Fixup, bool Resolved,
+                                                    uint64_t Value,
+                                                    const MCRelaxableFragment *DF,
+                                                    const MCAsmLayout &Layout) const {
+  switch (Fixup.getKind()) {
+  case FK_PCRel_4: {
+    MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
+
+    // Shift the value into position.
+    Value <<= Info.TargetOffset;
+    //return true;
+  }
+  default:
+    return false;
+  }
+
+}
+
+void AMDGPUAsmBackend::relaxInstruction(const MCInst &Inst, const MCSubtargetInfo &STI,
+                                        MCInst &Res) const {
+  Res = Inst;
 }
 
 const MCFixupKindInfo &AMDGPUAsmBackend::getFixupKindInfo(
