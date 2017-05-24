@@ -33,6 +33,18 @@ static ArrayRef<MCPhysReg> getAllSGPRs(const SISubtarget &ST,
                       ST.getMaxNumSGPRs(MF));
 }
 
+// If FP is an argument:
+// copy from SP to argument in caller
+// if no stack objects: no cost in callee
+//
+// optional copy in callee to high, preserved register?
+
+
+//
+// If FP is global:
+// increment/decrement around
+
+
 void SIFrameLowering::emitFlatScratchInit(const SISubtarget &ST,
                                           MachineFunction &MF,
                                           MachineBasicBlock &MBB) const {
