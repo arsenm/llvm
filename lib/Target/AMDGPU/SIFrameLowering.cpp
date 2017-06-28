@@ -783,3 +783,8 @@ bool SIFrameLowering::hasSP(const MachineFunction &MF) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
   return MFI.hasCalls() || MFI.hasVarSizedObjects();
 }
+
+bool SIFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
+  // TODO: We don't actually support var sized objects.
+  return !MF.getFrameInfo().hasVarSizedObjects();
+}
