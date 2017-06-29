@@ -559,6 +559,7 @@ void SIFrameLowering::emitEpilogue(MachineFunction &MF,
     IsTailCallReturn = RetOpcode == AMDGPU::SI_TCRETURN;
   }
 
+#if 0
   int32_t ArgumentPopSize = 0;
   if (IsTailCallReturn) {
     MachineOperand &StackAdjust = MBBI->getOperand(2);
@@ -703,6 +704,8 @@ MachineBasicBlock::iterator SIFrameLowering::eliminateCallFramePseudoInstr(
   const DebugLoc &DL = I->getDebugLoc();
   unsigned Opc = I->getOpcode();
   bool IsDestroy = Opc == TII->getCallFrameDestroyOpcode();
+
+  int64_t Amount = I->getOperand(0).getImm();
   uint64_t CalleePopAmount = IsDestroy ? I->getOperand(1).getImm() : 0;
   int64_t Amount = I->getOperand(0).getImm();
 
@@ -715,10 +718,12 @@ MachineBasicBlock::iterator SIFrameLowering::eliminateCallFramePseudoInstr(
     const SIMachineFunctionInfo *MFI = MF.getInfo<SIMachineFunctionInfo>();
     unsigned SPReg = MFI->getStackPtrOffsetReg();
 
-    unsigned Op = IsDestroy ? AMDGPU::S_SUB_U32 : AMDGPU::S_ADD_U32;
-    BuildMI(MBB, I, DL, TII->get(Op), SPReg)
-      .addReg(SPReg)
-      .addImm(Amount * ST.getWavefrontSize());
+    if (CalleePopAmount == 0) {
+      unsigned Op = IsDestroy ? AMDGPU::S_SUB_U32 : AMDGPU::S_ADD_U32;
+      BuildMI(MBB, I, DL, TII->get(Op), SPReg)
+        .addReg(SPReg)
+        .addImm(Amount * ST.getWavefrontSize());
+    }
   } else if (CalleePopAmount != 0) {
     llvm_unreachable("is this used?");
   }

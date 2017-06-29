@@ -2120,10 +2120,15 @@ bool SITargetLowering::mayBeEmittedAsTailCall(const CallInst *CI) const {
   return (Attr.getValueAsString() != "true");
 }
 
+static bool doesCalleeRestoreStack(CallingConv::ID CallCC, bool TailCallOpt) {
+  return TailCallOpt;
+}
+
 // The wave scratch offset register is used as the global base pointer.
 SDValue SITargetLowering::LowerCall(CallLoweringInfo &CLI,
                                     SmallVectorImpl<SDValue> &InVals) const {
   SelectionDAG &DAG = CLI.DAG;
+  MachineFunction &MF = DAG.getMachineFunction();
   const SDLoc &DL = CLI.DL;
   SmallVector<ISD::OutputArg, 32> &Outs = CLI.Outs;
   SmallVector<SDValue, 32> &OutVals = CLI.OutVals;
@@ -2135,7 +2140,8 @@ SDValue SITargetLowering::LowerCall(CallLoweringInfo &CLI,
   bool IsVarArg = CLI.IsVarArg;
   bool IsSibCall = false;
   bool IsThisReturn = false;
-  MachineFunction &MF = DAG.getMachineFunction();
+  bool TailCallOpt = MF.getTarget().Options.GuaranteedTailCallOpt;
+
 
   if (IsVarArg) {
     return lowerUnhandledCall(CLI, InVals,
