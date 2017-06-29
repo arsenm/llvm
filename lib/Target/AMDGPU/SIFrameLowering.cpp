@@ -785,6 +785,13 @@ bool SIFrameLowering::hasSP(const MachineFunction &MF) const {
 }
 
 bool SIFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
+
+  // If the offset might not fit in the mubuf immediate offset field, it would
+  // require scavenging an SGPR which could be worse than just modifying SP.
+  if (!isUInt<12>(MFI.getMaxCallFrameSize()))
+    return false;
+
   // TODO: We don't actually support var sized objects.
   return !MF.getFrameInfo().hasVarSizedObjects();
 }
