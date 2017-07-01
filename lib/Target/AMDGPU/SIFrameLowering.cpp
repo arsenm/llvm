@@ -698,7 +698,6 @@ MachineBasicBlock::iterator SIFrameLowering::eliminateCallFramePseudoInstr(
   MachineFunction &MF,
   MachineBasicBlock &MBB,
   MachineBasicBlock::iterator I) const {
-
   const SISubtarget &ST = MF.getSubtarget<SISubtarget>();
   const SIInstrInfo *TII = ST.getInstrInfo();
   const DebugLoc &DL = I->getDebugLoc();
@@ -769,13 +768,28 @@ void SIFrameLowering::emitDebuggerPrologue(MachineFunction &MF,
 }
 
 bool SIFrameLowering::hasFP(const MachineFunction &MF) const {
+#if 1
   // All stack operations are relative to the frame offset SGPR.
   // TODO: Still want to eliminate sometimes.
   const MachineFrameInfo &MFI = MF.getFrameInfo();
 
+  if (MF.getTarget().Options.DisableFramePointerElim(MF))
+    return true;
+
   // XXX - Is this only called after frame is finalized? Should be able to check
   // frame size.
-  return MFI.hasStackObjects() && !allStackObjectsAreDead(MFI);
+  return MFI.hasVarSizedObjects() ||
+    (MFI.hasStackObjects() && !allStackObjectsAreDead(MFI));
+#endif
+
+  const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();
+  // Retain behavior of always omitting the FP for leaf functions when possible.
+  return (MFI.hasCalls() &&
+          MF.getTarget().Options.DisableFramePointerElim(MF)) ||
+         MFI.hasVarSizedObjects() || MFI.isFrameAddressTaken() ||
+         MFI.hasStackMap() || MFI.hasPatchPoint() ||
+         RegInfo->needsStackRealignment(MF);
+
 }
 
 bool SIFrameLowering::hasSP(const MachineFunction &MF) const {
@@ -787,6 +801,8 @@ bool SIFrameLowering::hasSP(const MachineFunction &MF) const {
 bool SIFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
 
+  //return TargetFrameLowering::hasReservedCallFrame(MF);
+
   // If the offset might not fit in the mubuf immediate offset field, it would
   // require scavenging an SGPR which could be worse than just modifying SP.
   if (!isUInt<12>(MFI.getMaxCallFrameSize()))
@@ -794,4 +810,8 @@ bool SIFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
 
   // TODO: We don't actually support var sized objects.
   return !MF.getFrameInfo().hasVarSizedObjects();
+}
+
+bool SIFrameLowering::canSimplifyCallFramePseudos(const MachineFunction &MF) const {
+  return hasReservedCallFrame(MF) || MF.getFrameInfo().hasVarSizedObjects();
 }

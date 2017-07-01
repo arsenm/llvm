@@ -79,6 +79,7 @@ public:
   bool hasFP(const MachineFunction &MF) const override;
   bool hasSP(const MachineFunction &MF) const;
   bool hasReservedCallFrame(const MachineFunction &MF) const override;
+  bool canSimplifyCallFramePseudos(const MachineFunction &MF) const override;
 };
 
 } // end namespace llvm

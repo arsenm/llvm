@@ -90,6 +90,15 @@ define void @callee_no_stack_with_call() #0 {
   ret void
 }
 
+
+
+define void @large_frame([4097 x i8] %arg) #0 {
+  %last = extractvalue [4097 x i8] %arg, 4096
+  store volatile i8 %last, i8 addrspace(1)* undef
+  ret void
+}
+
+
 declare void @external_void_func_void() #0
 
 attributes #0 = { nounwind }
