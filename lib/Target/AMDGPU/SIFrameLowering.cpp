@@ -809,9 +809,11 @@ bool SIFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
     return false;
 
   // TODO: We don't actually support var sized objects.
-  return !MF.getFrameInfo().hasVarSizedObjects();
+  //return !MF.getFrameInfo().hasVarSizedObjects();
+  return !hasFP(MF);
 }
 
 bool SIFrameLowering::canSimplifyCallFramePseudos(const MachineFunction &MF) const {
-  return hasReservedCallFrame(MF) || MF.getFrameInfo().hasVarSizedObjects();
+  return TargetFrameLowering::canSimplifyCallFramePseudos(MF);
+  //return hasReservedCallFrame(MF) || MF.getFrameInfo().hasVarSizedObjects();
 }
