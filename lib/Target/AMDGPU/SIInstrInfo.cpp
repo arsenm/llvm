@@ -2660,7 +2660,7 @@ bool SIInstrInfo::verifyInstruction(const MachineInstr &MI,
   return true;
 }
 
-unsigned SIInstrInfo::getVALUOp(const MachineInstr &MI) {
+unsigned SIInstrInfo::getVALUOp(const MachineInstr &MI) const {
   switch (MI.getOpcode()) {
   default: return AMDGPU::INSTRUCTION_LIST_END;
   case AMDGPU::REG_SEQUENCE: return AMDGPU::REG_SEQUENCE;
@@ -2671,10 +2671,17 @@ unsigned SIInstrInfo::getVALUOp(const MachineInstr &MI) {
     return MI.getOperand(1).isReg() ?
            AMDGPU::COPY : AMDGPU::V_MOV_B32_e32;
   case AMDGPU::S_ADD_I32:
-  case AMDGPU::S_ADD_U32: return AMDGPU::V_ADD_I32_e32;
-  case AMDGPU::S_ADDC_U32: return AMDGPU::V_ADDC_U32_e32;
+  case AMDGPU::S_ADD_U32:
+    if (ST.hasAddNoCarry())
+      return AMDGPU::V_ADD_U32_e64;
+    return AMDGPU::V_ADD_I32_e32;
+  case AMDGPU::S_ADDC_U32:
+    return AMDGPU::V_ADDC_U32_e32;
   case AMDGPU::S_SUB_I32:
-  case AMDGPU::S_SUB_U32: return AMDGPU::V_SUB_I32_e32;
+  case AMDGPU::S_SUB_U32:
+    if (ST.hasAddNoCarry())
+      return AMDGPU::V_SUB_U32_e64;
+    return AMDGPU::V_SUB_I32_e32;
   case AMDGPU::S_SUBB_U32: return AMDGPU::V_SUBB_U32_e32;
   case AMDGPU::S_MUL_I32: return AMDGPU::V_MUL_LO_I32;
   case AMDGPU::S_AND_B32: return AMDGPU::V_AND_B32_e64;
@@ -2719,10 +2726,6 @@ unsigned SIInstrInfo::getVALUOp(const MachineInstr &MI) {
   case AMDGPU::S_CBRANCH_SCC0: return AMDGPU::S_CBRANCH_VCCZ;
   case AMDGPU::S_CBRANCH_SCC1: return AMDGPU::S_CBRANCH_VCCNZ;
   }
-}
-
-bool SIInstrInfo::isSALUOpSupportedOnVALU(const MachineInstr &MI) const {
-  return getVALUOp(MI) != AMDGPU::INSTRUCTION_LIST_END;
 }
 
 const TargetRegisterClass *SIInstrInfo::getOpRegClass(const MachineInstr &MI,
@@ -3435,6 +3438,13 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     switch (Opcode) {
     default:
       break;
+#if 0
+    case AMDGPU::S_ADD_I32: {
+      moveScalarAddSub(Worklist, Inst);
+      Inst.eraseFromParent();
+      continue;
+    }
+#endif
     case AMDGPU::S_AND_B64:
       splitScalar64BitBinaryOp(Worklist, Inst, AMDGPU::V_AND_B32_e64);
       Inst.eraseFromParent();
@@ -3620,6 +3630,34 @@ void SIInstrInfo::moveToVALU(MachineInstr &TopInst) const {
     if (HasDst)
      addUsersToMoveToVALUWorklist(NewDstReg, MRI, Worklist);
   }
+}
+
+// Add/sub require special handling to deal with carry outs.
+bool SIInstrInfo::moveScalarAddSub(SetVectorType &Worklist,
+                                   MachineInstr &Inst) const {
+  if (ST.hasAddNoCarry()) {
+    // Assume there is no user of scc since we don't select this in that case.
+
+    MachineBasicBlock &MBB = *Inst.getParent();
+    MachineRegisterInfo &MRI = MBB.getParent()->getRegInfo();
+    MachineBasicBlock::iterator MII = Inst;
+    const DebugLoc &DL = Inst.getDebugLoc();
+
+    unsigned ResultReg = MRI.createVirtualRegister(&AMDGPU::VGPR_32RegClass);
+
+    unsigned NewOpc = Inst.getOpcode() == AMDGPU::S_ADD_I32 ?
+      AMDGPU::V_ADD_U32_e64 : AMDGPU::V_SUB_U32_e64;
+
+    assert(Inst.getOperand(1).getReg() == AMDGPU::SCC);
+    Inst.RemoveOperand(1);
+
+    Inst.setDesc(get(NewOpc));
+    legalizeOperands(Inst);
+    return true;
+  }
+
+
+  return false;
 }
 
 void SIInstrInfo::lowerScalarAbs(SetVectorType &Worklist,
