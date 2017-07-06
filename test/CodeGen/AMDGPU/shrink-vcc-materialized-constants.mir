@@ -1,0 +1,105 @@
+# RUN: llc -march=amdgcn -verify-machineinstrs -start-before si-shrink-instructions -stop-before si-insert-skips -o - %s | FileCheck -check-prefix=GCN %s
+
+# GCN-LABEL: name: add_v_materialize_imm_src0{{$}}
+# GCN-NOT: MOV
+# GCN: %vgpr0 = V_ADD_I32_e32 256, undef %vgpr0, implicit-def %vcc
+# GCN-NEXT: S_ENDPGM
+---
+name: add_v_materialize_imm_src0
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: vgpr_32 }
+  - { id: 1, class: vgpr_32 }
+  - { id: 2, class: vgpr_32 }
+  - { id: 3, class: sreg_64 }
+body:             |
+  bb.0:
+
+    %0 = V_MOV_B32_e32 256, implicit %exec
+    %1 = IMPLICIT_DEF
+    %2, %3 = V_ADD_I32_e64 %0, %1, implicit %exec
+    S_ENDPGM
+
+...
+---
+# GCN-LABEL: name: add_s_materialize_imm_src0{{$}}
+# GCN: %vgpr0 = V_ADD_I32_e32 256, undef %vgpr0, implicit-def %vcc
+# GCN-NEXT: S_ENDPGM
+name: add_s_materialize_imm_src0
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: sgpr_32 }
+  - { id: 1, class: vgpr_32 }
+  - { id: 2, class: vgpr_32 }
+  - { id: 3, class: sreg_64 }
+body:             |
+  bb.0:
+
+    %0 = S_MOV_B32 256
+    %1 = IMPLICIT_DEF
+    %2, %3 = V_ADD_I32_e64 %0, %1, implicit %exec
+    S_ENDPGM
+
+...
+---
+
+# GCN-LABEL: name: add_v_materialize_imm_src1{{$}}
+# GCN: %vgpr0 = V_ADD_I32_e32 256, undef %vgpr0, implicit-def %vcc
+# GCN-NEXT: S_ENDPGM
+name: add_v_materialize_imm_src1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: vgpr_32 }
+  - { id: 1, class: vgpr_32 }
+  - { id: 2, class: vgpr_32 }
+  - { id: 3, class: sreg_64 }
+body:             |
+  bb.0:
+
+    %0 = V_MOV_B32_e32 256, implicit %exec
+    %1 = IMPLICIT_DEF
+    %2, %3 = V_ADD_I32_e64 %1, %0, implicit %exec
+    S_ENDPGM
+
+...
+---
+# GCN-LABEL: name: add_s_materialize_imm_src1{{$}}
+# GCN: %vgpr0 = V_ADD_I32_e32 256, undef %vgpr0, implicit-def %vcc
+# GCN-NEXT: S_ENDPGM
+name: add_s_materialize_imm_src1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: sgpr_32 }
+  - { id: 1, class: vgpr_32 }
+  - { id: 2, class: vgpr_32 }
+  - { id: 3, class: sreg_64 }
+body:             |
+  bb.0:
+
+    %0 = S_MOV_B32 256
+    %1 = IMPLICIT_DEF
+    %2, %3 = V_ADD_I32_e64 %1, %0, implicit %exec
+    S_ENDPGM
+
+...
+---
+# GCN-LABEL: name: add_v_materialize_imm_src0_multi_use{{$}}
+# GCN: %vgpr0 = V_MOV_B32_e32 256, implicit %exec
+# GCN: V_ADD_I32_e32 %vgpr0, undef %vgpr0, implicit-def %vcc
+ #GCN: S_ENDPGM implicit killed %vgpr0
+name: add_v_materialize_imm_src0_multi_use
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: vgpr_32 }
+  - { id: 1, class: vgpr_32 }
+  - { id: 2, class: vgpr_32 }
+  - { id: 3, class: sreg_64 }
+body:             |
+  bb.0:
+
+    %0 = V_MOV_B32_e32 256, implicit %exec
+    %1 = IMPLICIT_DEF
+    %2, %3 = V_ADD_I32_e64 %0, %1, implicit %exec
+    S_ENDPGM implicit %0
+
+...

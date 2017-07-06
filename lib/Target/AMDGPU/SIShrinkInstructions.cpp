@@ -129,7 +129,7 @@ static bool canShrink(MachineInstr &MI, const SIInstrInfo *TII,
 /// can. This function assumes that \p MI is a VOP1, VOP2, or VOPC instructions.
 static bool foldImmediates(MachineInstr &MI, const SIInstrInfo *TII,
                            MachineRegisterInfo &MRI, bool TryToCommute = true) {
-  assert(TII->isVOP1(MI) || TII->isVOP2(MI) || TII->isVOPC(MI));
+//  assert(TII->isVOP1(MI) || TII->isVOP2(MI) || TII->isVOPC(MI));
 
   int Src0Idx = AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::src0);
 
@@ -143,17 +143,19 @@ static bool foldImmediates(MachineInstr &MI, const SIInstrInfo *TII,
         MachineOperand &MovSrc = Def->getOperand(1);
         bool ConstantFolded = false;
 
-        if (MovSrc.isImm() && (isInt<32>(MovSrc.getImm()) ||
-                               isUInt<32>(MovSrc.getImm()))) {
-          // It's possible to have only one component of a super-reg defined by
-          // a single mov, so we need to clear any subregister flag.
-          Src0.setSubReg(0);
-          Src0.ChangeToImmediate(MovSrc.getImm());
-          ConstantFolded = true;
-        } else if (MovSrc.isFI()) {
-          Src0.setSubReg(0);
-          Src0.ChangeToFrameIndex(MovSrc.getIndex());
-          ConstantFolded = true;
+        if (TII->isOperandLegal(MI, Src0Idx, &MovSrc)) {
+          if (MovSrc.isImm() && (isInt<32>(MovSrc.getImm()) ||
+                                 isUInt<32>(MovSrc.getImm()))) {
+            // It's possible to have only one component of a super-reg defined by
+            // a single mov, so we need to clear any subregister flag.
+            Src0.setSubReg(0);
+            Src0.ChangeToImmediate(MovSrc.getImm());
+            ConstantFolded = true;
+          } else if (MovSrc.isFI()) {
+            Src0.setSubReg(0);
+            Src0.ChangeToFrameIndex(MovSrc.getIndex());
+            ConstantFolded = true;
+          }
         }
 
         if (ConstantFolded) {
@@ -470,30 +472,47 @@ bool SIShrinkInstructions::runOnMachineFunction(MachineFunction &MF) {
       // Check for the bool flag output for instructions like V_ADD_I32_e64.
       const MachineOperand *SDst = TII->getNamedOperand(MI,
                                                         AMDGPU::OpName::sdst);
-
       // Check the carry-in operand for v_addc_u32_e64.
       const MachineOperand *Src2 = TII->getNamedOperand(MI,
                                                         AMDGPU::OpName::src2);
-
       if (SDst) {
-        if (SDst->getReg() != AMDGPU::VCC) {
-          if (TargetRegisterInfo::isVirtualRegister(SDst->getReg()))
-            MRI.setRegAllocationHint(SDst->getReg(), 0, AMDGPU::VCC);
-          continue;
-        }
-
-        // All of the instructions with carry outs also have an SGPR input in
-        // src2.
+        bool MissingVCC = false;
+        unsigned SDstReg = SDst->getReg();
         if (Src2 && Src2->getReg() != AMDGPU::VCC) {
-          if (TargetRegisterInfo::isVirtualRegister(Src2->getReg()))
+          MissingVCC = true;
+          if (TargetRegisterInfo::isVirtualRegister(Src2->getReg())) {
+            // All of the instructions with an SGPR input in src2 also have
+            // carry outs.
             MRI.setRegAllocationHint(Src2->getReg(), 0, AMDGPU::VCC);
+          }
+        }
 
+        if (SDstReg != AMDGPU::VCC) {
+          MissingVCC = true;
+          if (TargetRegisterInfo::isVirtualRegister(SDstReg))
+            MRI.setRegAllocationHint(SDstReg, 0, AMDGPU::VCC);
+        }
+
+        // For immediates with one use, it's a code size savings to force
+        // vcc usage by eliminating a mov.
+        if (!Src2 && foldImmediates(MI, TII, MRI)) {
+          const DebugLoc &DL = MI.getDebugLoc();
+          BuildMI(MBB, I, DL, TII->get(Op32), MI.getOperand(0).getReg())
+            .add(*TII->getNamedOperand(MI, AMDGPU::OpName::src0))
+            .add(*TII->getNamedOperand(MI, AMDGPU::OpName::src1));
+          BuildMI(MBB, I, DL, TII->get(AMDGPU::COPY), SDstReg)
+            .addReg(AMDGPU::VCC, RegState::Kill);
+          ++NumInstructionsShrunk;
+          MI.eraseFromParent();
           continue;
         }
+
+        if (MissingVCC)
+          continue;
       }
 
-      // We can shrink this instruction
-      DEBUG(dbgs() << "Shrinking " << MI);
+    // We can shrink this instruction
+    DEBUG(dbgs() << "Shrinking " << MI);
 
       MachineInstrBuilder Inst32 =
           BuildMI(MBB, I, MI.getDebugLoc(), TII->get(Op32));
