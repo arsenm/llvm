@@ -1,11 +1,11 @@
-; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=SI %s
+; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefix=SI %s
 
 
 declare i32 @llvm.amdgcn.workitem.id.x() readnone
 
 ; SI-LABEL: {{^}}test_i64_vreg:
-; SI: v_add_i32
-; SI: v_addc_u32
+; SI: v_add_i32_e32
+; SI: v_addc_u32_e32
 define amdgpu_kernel void @test_i64_vreg(i64 addrspace(1)* noalias %out, i64 addrspace(1)* noalias %inA, i64 addrspace(1)* noalias %inB) {
   %tid = call i32 @llvm.amdgcn.workitem.id.x() readnone
   %a_ptr = getelementptr i64, i64 addrspace(1)* %inA, i32 %tid
@@ -13,6 +13,44 @@ define amdgpu_kernel void @test_i64_vreg(i64 addrspace(1)* noalias %out, i64 add
   %a = load i64, i64 addrspace(1)* %a_ptr
   %b = load i64, i64 addrspace(1)* %b_ptr
   %result = add i64 %a, %b
+  store i64 %result, i64 addrspace(1)* %out
+  ret void
+}
+
+; SI-LABEL: {{^}}test_i64_vreg_imm_lo32:
+; SI: s_movk_i32 [[K:s[0-9]+]], 0x41
+; SI: v_add_i32_e32 v{{[0-9]+}}, vcc, [[K]], v{{[0-9]+}}
+; SI-NEXT: v_addc_u32_e32  v{{[0-9]+}}, vcc, 0, v{{[0-9]+}}
+define amdgpu_kernel void @test_i64_vreg_imm_lo32(i64 addrspace(1)* noalias %out, i64 addrspace(1)* noalias %inA) {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x() readnone
+  %a_ptr = getelementptr i64, i64 addrspace(1)* %inA, i32 %tid
+  %a = load i64, i64 addrspace(1)* %a_ptr
+  %result = add i64 %a, 65
+  store i64 %result, i64 addrspace(1)* %out
+  ret void
+}
+
+; SI-LABEL: {{^}}test_i64_vreg_imm_hi32:
+; SI: v_mov_b32_e32 [[K:v[0-9]+]], 0x41
+; SI: v_add_i32_e32 v{{[0-9]+}}, vcc, 0, v{{[0-9]+}}
+; SI-NEXT: v_addc_u32_e32  v{{[0-9]+}}, vcc, v{{[0-9]+}}, [[K]], vcc
+define amdgpu_kernel void @test_i64_vreg_imm_hi32(i64 addrspace(1)* noalias %out, i64 addrspace(1)* noalias %inA) {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x() readnone
+  %a_ptr = getelementptr i64, i64 addrspace(1)* %inA, i32 %tid
+  %a = load i64, i64 addrspace(1)* %a_ptr
+  %result = add i64 %a, 279172874240
+  store i64 %result, i64 addrspace(1)* %out
+  ret void
+}
+
+; SI-LABEL: {{^}}test_i64_vreg_inline_imm_hi32:
+; SI: v_add_i32_e32 v{{[0-9]+}}, vcc, 0, v{{[0-9]+}}
+; SI-NEXT: v_addc_u32_e32  v{{[0-9]+}}, vcc, 4, v{{[0-9]+}}
+define amdgpu_kernel void @test_i64_vreg_inline_imm_hi32(i64 addrspace(1)* noalias %out, i64 addrspace(1)* noalias %inA) {
+  %tid = call i32 @llvm.amdgcn.workitem.id.x() readnone
+  %a_ptr = getelementptr i64, i64 addrspace(1)* %inA, i32 %tid
+  %a = load i64, i64 addrspace(1)* %a_ptr
+  %result = add i64 %a, 17179869184
   store i64 %result, i64 addrspace(1)* %out
   ret void
 }
