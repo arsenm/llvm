@@ -85,7 +85,7 @@ static void DFS(BasicBlock *Root, SetVector<BasicBlock*> & Set) {
       DFS(I, Set);
 }
 
-bool AMDGPUAnnotateUniformValues::isClobberedInFunction(LoadInst * Load) {
+bool AMDGPUAnnotateUniformValues::isClobberedInFunction(LoadInst *Load) {
   // 1. get Loop for the Load->getparent();
   // 2. if it exists, collect all the BBs from the most outer
   // loop and check for the writes. If NOT - start DFS over all preds.
@@ -139,7 +139,7 @@ void AMDGPUAnnotateUniformValues::visitLoadInst(LoadInst &I) {
   // We cannot go beyond because of FunctionPass restrictions
   // Thus we can ensure that memory not clobbered for memory
   // operations that live in kernel only.
-  bool NotClobbered = isKernelFunc &&   !isClobberedInFunction(&I);
+  bool NotClobbered = isKernelFunc && !isClobberedInFunction(&I);
   Instruction *PtrI = dyn_cast<Instruction>(Ptr);
   if (!PtrI && NotClobbered && isGlobalLoad(I)) {
     if (isa<Argument>(Ptr) || isa<GlobalValue>(Ptr)) {
@@ -154,7 +154,7 @@ void AMDGPUAnnotateUniformValues::visitLoadInst(LoadInst &I) {
         // Insert GEP at the entry to make it dominate all uses
         PtrI = GetElementPtrInst::Create(
           Ptr->getType()->getPointerElementType(), Ptr,
-          ArrayRef<Value*>(Idx), Twine(""), F->getEntryBlock().getFirstNonPHI());
+          ArrayRef<Value*>(Idx), "", F->getEntryBlock().getFirstNonPHI());
       }
       I.replaceUsesOfWith(Ptr, PtrI);
     }
@@ -186,7 +186,6 @@ bool AMDGPUAnnotateUniformValues::runOnFunction(Function &F) {
   return true;
 }
 
-FunctionPass *
-llvm::createAMDGPUAnnotateUniformValues() {
+FunctionPass *llvm::createAMDGPUAnnotateUniformValues() {
   return new AMDGPUAnnotateUniformValues();
 }
