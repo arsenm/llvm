@@ -321,6 +321,11 @@ def SI_BR_UNDEF : SPseudoInstSI <(outs), (ins sopp_brtarget:$simm16)> {
   let usesCustomInserter = 1;
 }
 
+def SI_PSEUDO_TRAP : SPseudoInstSI <(outs), (ins),
+  [(AMDGPUpseudo_trap)]> {
+  let usesCustomInserter = 1;
+}
+
 def SI_PS_LIVE : PseudoInstSI <
   (outs SReg_64:$dst), (ins),
   [(set i1:$dst, (int_amdgcn_ps_live))]> {

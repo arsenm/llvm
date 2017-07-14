@@ -303,6 +303,9 @@ enum NodeType : unsigned {
   TC_RETURN,
   TRAP,
 
+  // Trap placeholder when we don't really have a trap handler available.
+  PSEUDO_TRAP,
+
   // Masked control flow nodes.
   IF,
   ELSE,

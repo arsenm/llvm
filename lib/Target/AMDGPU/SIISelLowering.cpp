@@ -2504,7 +2504,8 @@ unsigned SITargetLowering::getRegisterByName(const char* RegName, EVT VT,
 // If kill is not the last instruction, split the block so kill is always a
 // proper terminator.
 MachineBasicBlock *SITargetLowering::splitKillBlock(MachineInstr &MI,
-                                                    MachineBasicBlock *BB) const {
+                                                    MachineBasicBlock *BB,
+                                                    unsigned TermOpc) const {
   const SIInstrInfo *TII = getSubtarget()->getInstrInfo();
 
   MachineBasicBlock::iterator SplitPoint(&MI);
@@ -2515,6 +2516,16 @@ MachineBasicBlock *SITargetLowering::splitKillBlock(MachineInstr &MI,
     MI.setDesc(TII->getKillTerminatorFromPseudo(MI.getOpcode()));
     return BB;
   }
+#if 0
+  if (TermOpc == AMDGPU::S_ENDPGM) {
+    MI.setDesc(TII->get(TermOpc));
+    while (!BB->succ_empty())
+      BB->removeSuccessor(BB->succ_begin());
+
+    BB->erase(std::next(&MI), BB->end());
+    return BB;
+  }
+#endif
 
   MachineFunction *MF = BB->getParent();
   MachineBasicBlock *SplitBB
@@ -3589,13 +3600,13 @@ SDValue SITargetLowering::lowerTRAP(SDValue Op, SelectionDAG &DAG) const {
   SDLoc SL(Op);
   MachineFunction &MF = DAG.getMachineFunction();
   SDValue Chain = Op.getOperand(0);
+  SIMachineFunctionInfo *Info = MF.getInfo<SIMachineFunctionInfo>();
 
   unsigned TrapID = Op.getOpcode() == ISD::DEBUGTRAP ?
     SISubtarget::TrapIDLLVMDebugTrap : SISubtarget::TrapIDLLVMTrap;
 
   if (Subtarget->getTrapHandlerAbi() == SISubtarget::TrapHandlerAbiHsa &&
       Subtarget->isTrapHandlerEnabled()) {
-    SIMachineFunctionInfo *Info = MF.getInfo<SIMachineFunctionInfo>();
     unsigned UserSGPR = Info->getQueuePtrUserSGPR();
     assert(UserSGPR != AMDGPU::NoRegister);
 
@@ -3619,7 +3630,7 @@ SDValue SITargetLowering::lowerTRAP(SDValue Op, SelectionDAG &DAG) const {
 
   switch (TrapID) {
   case SISubtarget::TrapIDLLVMTrap:
-    return DAG.getNode(AMDGPUISD::ENDPGM, SL, MVT::Other, Chain);
+    return Chain;
   case SISubtarget::TrapIDLLVMDebugTrap: {
     DiagnosticInfoUnsupported NoTrap(*MF.getFunction(),
                                      "debugtrap handler not supported",

@@ -109,6 +109,11 @@ def AMDGPUtrap : SDNode<"AMDGPUISD::TRAP",
     [SDNPHasChain, SDNPVariadic, SDNPSideEffect, SDNPInGlue]
 >;
 
+def AMDGPUpseudo_trap : SDNode<"AMDGPUISD::PSEUDO_TRAP",
+  SDTypeProfile<0, 0, []>,
+    [SDNPHasChain, SDNPSideEffect, SDNPInGlue]
+>;
+
 def AMDGPUconstdata_ptr : SDNode<
   "AMDGPUISD::CONST_DATA_PTR", SDTypeProfile <1, 1, [SDTCisVT<0, iPTR>,
                                                      SDTCisVT<0, iPTR>]>

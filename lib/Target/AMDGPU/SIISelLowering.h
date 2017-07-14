@@ -242,7 +242,8 @@ public:
                              SelectionDAG &DAG) const override;
 
   MachineBasicBlock *splitKillBlock(MachineInstr &MI,
-                                    MachineBasicBlock *BB) const;
+                                    MachineBasicBlock *BB,
+                                    unsigned NewOpc) const;
 
   MachineBasicBlock *
   EmitInstrWithCustomInserter(MachineInstr &MI,
