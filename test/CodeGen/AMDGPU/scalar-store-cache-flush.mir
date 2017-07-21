@@ -1,7 +1,11 @@
+# RUN: llc -march=amdgcn -run-pass si-insert-waitcnts %s -o - | FileCheck %s
 # RUN: llc -march=amdgcn -run-pass si-insert-waits %s -o - | FileCheck %s
-
 --- |
-  define amdgpu_kernel void @basic_insert_dcache_wb() {
+  define amdgpu_kernel void @kernel_basic_insert_dcache_wb() {
+    ret void
+  }
+
+  define void @func_basic_insert_dcache_wb() {
     ret void
   }
 
@@ -45,19 +49,38 @@
 
 ...
 ---
-# CHECK-LABEL: name: basic_insert_dcache_wb
+# CHECK-LABEL: name: kernel_basic_insert_dcache_wb
 # CHECK: bb.0:
 # CHECK-NEXT: S_STORE_DWORD
 # CHECK-NEXT: S_DCACHE_WB
 # CHECK-NEXT: S_ENDPGM
 
-name: basic_insert_dcache_wb
+name: kernel_basic_insert_dcache_wb
 tracksRegLiveness: false
 
 body: |
   bb.0:
     S_STORE_DWORD_SGPR undef %sgpr2, undef %sgpr0_sgpr1, undef %m0, 0
     S_ENDPGM
+...
+---
+
+# XXX - Should the s_dcache_wb be before the final wait?
+# CHECK-LABEL: name: func_basic_insert_dcache_wb
+# CHECK: bb.0:
+# CHECK-NEXT: S_WAITCNT 0
+# CHECK-NEXT: S_STORE_DWORD
+# CHECK-NEXT: S_WAITCNT 127
+# CHECK-NEXT: S_DCACHE_WB
+# CHECK-NEXT: S_SETPC_B64_return
+
+name: func_basic_insert_dcache_wb
+tracksRegLiveness: false
+
+body: |
+  bb.0:
+    S_STORE_DWORD_SGPR undef %sgpr2, undef %sgpr0_sgpr1, undef %m0, 0
+    S_SETPC_B64_return undef %sgpr30_sgpr31
 ...
 ---
 # Already has an explicitly requested flush after the last store.

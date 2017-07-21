@@ -1840,8 +1840,7 @@ bool SIInsertWaitcnts::runOnMachineFunction(MachineFunction &MF) {
       if (!HaveScalarStores && TII->isScalarStore(*I))
         HaveScalarStores = true;
 
-      if (I->getOpcode() == AMDGPU::S_ENDPGM ||
-          I->getOpcode() == AMDGPU::SI_RETURN_TO_EPILOG)
+      if (I->isReturn())
         EndPgmBlocks.push_back(&MBB);
     }
   }
@@ -1866,9 +1865,7 @@ bool SIInsertWaitcnts::runOnMachineFunction(MachineFunction &MF) {
           SeenDCacheWB = false;
 
         // FIXME: It would be better to insert this before a waitcnt if any.
-        if ((I->getOpcode() == AMDGPU::S_ENDPGM ||
-             I->getOpcode() == AMDGPU::SI_RETURN_TO_EPILOG) &&
-            !SeenDCacheWB) {
+        if (I->isReturn() && !SeenDCacheWB) {
           Modified = true;
           BuildMI(*MBB, I, I->getDebugLoc(), TII->get(AMDGPU::S_DCACHE_WB));
         }
