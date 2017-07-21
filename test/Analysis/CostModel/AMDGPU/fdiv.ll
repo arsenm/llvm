@@ -21,8 +21,9 @@ define amdgpu_kernel void @fdiv_v2f32(<2 x float> addrspace(1)* %out, <2 x float
   ret void
 }
 
+; FIXME: should be 30
 ; ALL: 'fdiv_v3f32'
-; ALL: estimated cost of 30 for {{.*}} fdiv <3 x float>
+; ALL: estimated cost of 40 for {{.*}} fdiv <3 x float>
 define amdgpu_kernel void @fdiv_v3f32(<3 x float> addrspace(1)* %out, <3 x float> addrspace(1)* %vaddr, <3 x float> %b) #0 {
   %vec = load <3 x float>, <3 x float> addrspace(1)* %vaddr
   %add = fdiv <3 x float> %vec, %b
@@ -54,11 +55,12 @@ define amdgpu_kernel void @fdiv_v2f64(<2 x double> addrspace(1)* %out, <2 x doub
   ret void
 }
 
+; FIXME: 87, 99, 96, 108
 ; ALL: 'fdiv_v3f64'
-; CIFASTF64: estimated cost of 87 for {{.*}} fdiv <3 x double>
-; CISLOWF64: estimated cost of 99 for {{.*}} fdiv <3 x double>
-; SIFASTF64: estimated cost of 96 for {{.*}} fdiv <3 x double>
-; SISLOWF64: estimated cost of 108 for {{.*}} fdiv <3 x double>
+; CIFASTF64: estimated cost of 116 for {{.*}} fdiv <3 x double>
+; CISLOWF64: estimated cost of 132 for {{.*}} fdiv <3 x double>
+; SIFASTF64: estimated cost of 128 for {{.*}} fdiv <3 x double>
+; SISLOWF64: estimated cost of 144 for {{.*}} fdiv <3 x double>
 define amdgpu_kernel void @fdiv_v3f64(<3 x double> addrspace(1)* %out, <3 x double> addrspace(1)* %vaddr, <3 x double> %b) #0 {
   %vec = load <3 x double>, <3 x double> addrspace(1)* %vaddr
   %add = fdiv <3 x double> %vec, %b

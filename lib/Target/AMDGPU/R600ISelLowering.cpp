@@ -1596,13 +1596,27 @@ SDValue R600TargetLowering::LowerFormalArguments(
     unsigned PartOffset = VA.getLocMemOffset();
     unsigned Offset = Subtarget->getExplicitKernelArgOffset(MF) + VA.getLocMemOffset();
 
+    EVT LoadVT = VT;
+    if (MemVT.isVector() && MemVT.getVectorNumElements() == 3) {
+      LoadVT = MVT::getVectorVT(MemVT.getVectorElementType().getSimpleVT(), 3);
+    }
+
     MachinePointerInfo PtrInfo(UndefValue::get(PtrTy), PartOffset - ValBase);
     SDValue Arg = DAG.getLoad(
-        ISD::UNINDEXED, Ext, VT, DL, Chain,
+        ISD::UNINDEXED, Ext, LoadVT, DL, Chain,
         DAG.getConstant(Offset, DL, MVT::i32), DAG.getUNDEF(MVT::i32), PtrInfo,
         MemVT, /* Alignment = */ 4, MachineMemOperand::MONonTemporal |
                                         MachineMemOperand::MODereferenceable |
                                         MachineMemOperand::MOInvariant);
+
+    if (MemVT.isVector() && MemVT.getVectorNumElements() == 3) {
+      Arg = DAG.getNode(ISD::INSERT_SUBVECTOR,
+                        DL, VT,
+                        DAG.getUNDEF(VT),
+                        Arg,
+                        DAG.getConstant(0, DL, MVT::i32));
+    }
+
 
     // 4 is the preferred alignment for the CONSTANT memory space.
     InVals.push_back(Arg);

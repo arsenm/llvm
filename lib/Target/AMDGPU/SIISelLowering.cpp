@@ -938,7 +938,19 @@ SDValue SITargetLowering::lowerKernargMemParameter(
                              MachineMemOperand::MODereferenceable |
                              MachineMemOperand::MOInvariant);
 
-  SDValue Val = convertArgType(DAG, VT, MemVT, SL, Load, Signed, Arg);
+  // FIXME: Remove when 96-bit types added as legal.
+  // TODO: Since there is no x3 scalar load, this should probably just do the x4
+  // load and extract the subvector.
+  SDValue Val = Load;
+  if (MemVT.isVector() && MemVT.getVectorNumElements() == 3) {
+    Val = DAG.getNode(ISD::INSERT_SUBVECTOR,
+                       SL, VT,
+                       DAG.getUNDEF(VT),
+                       Val,
+                       DAG.getConstant(0, SL, MVT::i32));
+  }
+
+  Val = convertArgType(DAG, VT, MemVT, SL, Val, Signed, Arg);
   return DAG.getMergeValues({ Val, Load.getValue(1) }, SL);
 }
 

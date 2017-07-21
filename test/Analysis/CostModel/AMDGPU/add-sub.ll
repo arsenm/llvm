@@ -19,8 +19,9 @@ define amdgpu_kernel void @add_v2i32(<2 x i32> addrspace(1)* %out, <2 x i32> add
   ret void
 }
 
+; FIXME: 3
 ; CHECK: 'add_v3i32'
-; CHECK: estimated cost of 3 for {{.*}} add <3 x i32>
+; CHECK: estimated cost of 4 for {{.*}} add <3 x i32>
 define amdgpu_kernel void @add_v3i32(<3 x i32> addrspace(1)* %out, <3 x i32> addrspace(1)* %vaddr, <3 x i32> %b) #0 {
   %vec = load <3 x i32>, <3 x i32> addrspace(1)* %vaddr
   %add = add <3 x i32> %vec, %b
@@ -55,8 +56,9 @@ define amdgpu_kernel void @add_v2i64(<2 x i64> addrspace(1)* %out, <2 x i64> add
   ret void
 }
 
+; FIXME: should be 6
 ; CHECK: 'add_v3i64'
-; CHECK: estimated cost of 6 for {{.*}} add <3 x i64>
+; CHECK: estimated cost of 8 for {{.*}} add <3 x i64>
 define amdgpu_kernel void @add_v3i64(<3 x i64> addrspace(1)* %out, <3 x i64> addrspace(1)* %vaddr, <3 x i64> %b) #0 {
   %vec = load <3 x i64>, <3 x i64> addrspace(1)* %vaddr
   %add = add <3 x i64> %vec, %b
