@@ -151,6 +151,10 @@ public:
 
   InferAddressSpaces() : FunctionPass(ID) {}
 
+  StringRef getPassName() const override {
+    return "Infer Address Spaces";
+  }
+
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
     AU.addRequired<TargetTransformInfoWrapperPass>();

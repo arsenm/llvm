@@ -79,6 +79,10 @@ struct PromoteLegacyPass : public FunctionPass {
     initializePromoteLegacyPassPass(*PassRegistry::getPassRegistry());
   }
 
+  StringRef getPassName() const override {
+    return "Promote Memory to Register";
+  }
+
   // runOnFunction - To run this pass, first we calculate the alloca
   // instructions that are safe for promotion, then we promote each one.
   bool runOnFunction(Function &F) override {
