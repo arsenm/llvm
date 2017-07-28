@@ -104,3 +104,19 @@ unsigned TargetFrameLowering::getStackAlignmentSkew(
 
   return 0;
 }
+
+bool TargetFrameLowering::isSafeForNoCSROpt(const Function *F) const {
+  if (!F->hasLocalLinkage() || F->hasAddressTaken() ||
+      !F->hasFnAttribute(Attribute::NoRecurse))
+    return false;
+
+  // Function should not be optimized as tail call.
+  for (const User *U : F->users()) {
+    if (auto CS = ImmutableCallSite(U)) {
+      if (CS.isTailCall())
+        return false;
+    }
+  }
+
+  return true;
+}

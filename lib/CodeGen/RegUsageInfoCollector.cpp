@@ -81,6 +81,7 @@ void RegUsageInfoCollector::getAnalysisUsage(AnalysisUsage &AU) const {
 bool RegUsageInfoCollector::runOnMachineFunction(MachineFunction &MF) {
   MachineRegisterInfo *MRI = &MF.getRegInfo();
   const TargetRegisterInfo *TRI = MF.getSubtarget().getRegisterInfo();
+  const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
   const TargetMachine &TM = MF.getTarget();
 
   DEBUG(dbgs() << " -------------------- " << getPassName()
@@ -125,7 +126,7 @@ bool RegUsageInfoCollector::runOnMachineFunction(MachineFunction &MF) {
     }
   }
 
-  if (!TargetFrameLowering::isSafeForNoCSROpt(F)) {
+  if (!TFI->isSafeForNoCSROpt(F)) {
     const uint32_t *CallPreservedMask =
         TRI->getCallPreservedMask(MF, F->getCallingConv());
     if (CallPreservedMask) {
