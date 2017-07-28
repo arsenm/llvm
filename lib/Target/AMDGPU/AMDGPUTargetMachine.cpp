@@ -66,6 +66,11 @@ EnableEarlyIfConversion("amdgpu-early-ifcvt", cl::Hidden,
                         cl::desc("Run early if-conversion"),
                         cl::init(false));
 
+static cl::opt<bool>
+EnableOutArg("amdgpu-out-arg", cl::Hidden,
+             cl::desc("Run out arg pass"),
+             cl::init(true));
+
 static cl::opt<bool> EnableR600IfConvert(
   "r600-if-convert",
   cl::desc("Use if conversion pass"),
@@ -411,8 +416,18 @@ void AMDGPUTargetMachine::adjustPassManager(PassManagerBuilder &Builder) {
     [](const PassManagerBuilder &, legacy::PassManagerBase &PM) {
       // Add infer address spaces pass to the opt pipeline after inlining
       // but before SROA to increase SROA opportunities.
+//      if (EnableOutArg)
+//        PM.add(createAMDGPURewriteOutArgumentsPass());
       PM.add(createInferAddressSpacesPass());
   });
+
+  Builder.addExtension(
+    PassManagerBuilder::EP_ScalarOptimizerLate,
+    [](const PassManagerBuilder &, legacy::PassManagerBase &PM) {
+      if (EnableOutArg)
+        PM.add(createAMDGPURewriteOutArgumentsPass());
+  });
+
 }
 
 //===----------------------------------------------------------------------===//
