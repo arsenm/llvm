@@ -4411,8 +4411,18 @@ bool SIInstrInfo::isImmOrMaterializedImm(const MachineRegisterInfo &MRI,
 
   if (Op.isReg()) {
     const MachineInstr *Def = MRI.getUniqueVRegDef(Op.getReg());
-    if (!Def || !Def->isMoveImmediate())
+    if (!Def)
       return false;
+
+    if (!Def->isMoveImmediate()) {
+      if (Def->isCopy()) {
+        // Sometimes extra copies are inserted from SGPRs to VGPRs to satisfy
+        // operand constraints.
+        return isImmOrMaterializedImm(MRI, Def->getOperand(1), Imm);
+      }
+
+      return false;
+    }
 
     const MachineOperand &Src = Def->getOperand(1);
     if (Src.isImm()) {
