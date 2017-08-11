@@ -119,6 +119,11 @@ class SIMachineFunctionInfo final : public AMDGPUMachineFunction {
   /// callee.
   unsigned BytesInStackArgArea = 0;
 
+  /// The number of bytes to restore to deallocate space for incoming
+  /// arguments. Canonically 0 in the C calling convention, but non-zero when
+  /// callee is expected to pop the args.
+  unsigned ArgumentStackToRestore = 0;
+
   bool ReturnsVoid = true;
 
   // A pair of default/requested minimum/maximum flat work group sizes.
@@ -254,6 +259,14 @@ public:
 
   void setBytesInStackArgArea(unsigned Bytes) {
     BytesInStackArgArea = Bytes;
+  }
+
+  unsigned getArgumentStackToRestore() const {
+    return ArgumentStackToRestore;
+  }
+
+  void setArgumentStackToRestore(unsigned bytes) {
+    ArgumentStackToRestore = bytes;
   }
 
   // Add user SGPRs.

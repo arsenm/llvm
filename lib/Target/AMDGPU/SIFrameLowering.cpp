@@ -503,6 +503,9 @@ void SIFrameLowering::emitPrologue(MachineFunction &MF,
       .setMIFlag(MachineInstr::FrameSetup);
   }
 
+
+  //auto PrologueSaveSize = FuncInfo->getCalleeSavedStackSize();
+
   uint32_t NumBytes = MFI.getStackSize();
   if (NumBytes != 0 && hasSP(MF)) {
     BuildMI(MBB, MBBI, DL, TII->get(AMDGPU::S_ADD_U32), StackPtrReg)
@@ -545,9 +548,36 @@ void SIFrameLowering::emitEpilogue(MachineFunction &MF,
     return;
 
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  uint32_t NumBytes = MFI.getStackSize();
+  int32_t NumBytes = MFI.getStackSize();
+
+  bool IsTailCallReturn = false;
 
   DebugLoc DL;
+  if (MBBI != MBB.end()) {
+    DL = MBBI->getDebugLoc();
+    unsigned RetOpcode = MBBI->getOpcode();
+    IsTailCallReturn = RetOpcode == AMDGPU::SI_TCRETURN;
+  }
+
+  int32_t ArgumentPopSize = 0;
+  if (IsTailCallReturn) {
+    MachineOperand &StackAdjust = MBBI->getOperand(2);
+
+    // For a tail-call in a callee-pops-arguments environment, some or all of
+    // the stack may actually be in use for the call's arguments, this is
+    // calculated during LowerCall and consumed here.
+    ArgumentPopSize = StackAdjust.getImm();
+  } else {
+    // ... otherwise the amount to pop is *all* of the argument space,
+    // conveniently stored in the MachineFunctionInfo by
+    // LowerFormalArguments. This will, of course, be zero for the C calling
+    // convention.
+    ArgumentPopSize = FuncInfo->getArgumentStackToRestore();
+  }
+
+  NumBytes -= ArgumentPopSize;
+
+  assert(NumBytes >= 0);
 
   // FIXME: Clarify distinction between no set SP and SP. For callee functions,
   // it's really whether we need SP to be accurate or not.
@@ -556,6 +586,11 @@ void SIFrameLowering::emitEpilogue(MachineFunction &MF,
     BuildMI(MBB, MBBI, DL, TII->get(AMDGPU::S_SUB_U32), StackPtrReg)
       .addReg(StackPtrReg)
       .addImm(NumBytes * ST.getWavefrontSize())
+      .setMIFlag(MachineInstr::FrameDestroy);
+  } else if (ArgumentPopSize != 0) {
+    BuildMI(MBB, MBBI, DL, TII->get(AMDGPU::S_SUB_U32), StackPtrReg)
+      .addReg(StackPtrReg)
+      .addImm(ArgumentPopSize * ST.getWavefrontSize())
       .setMIFlag(MachineInstr::FrameDestroy);
   }
 }
@@ -663,9 +698,6 @@ MachineBasicBlock::iterator SIFrameLowering::eliminateCallFramePseudoInstr(
   MachineFunction &MF,
   MachineBasicBlock &MBB,
   MachineBasicBlock::iterator I) const {
-  int64_t Amount = I->getOperand(0).getImm();
-  if (Amount == 0)
-    return MBB.erase(I);
 
   const SISubtarget &ST = MF.getSubtarget<SISubtarget>();
   const SIInstrInfo *TII = ST.getInstrInfo();
@@ -673,9 +705,10 @@ MachineBasicBlock::iterator SIFrameLowering::eliminateCallFramePseudoInstr(
   unsigned Opc = I->getOpcode();
   bool IsDestroy = Opc == TII->getCallFrameDestroyOpcode();
   uint64_t CalleePopAmount = IsDestroy ? I->getOperand(1).getImm() : 0;
+  int64_t Amount = I->getOperand(0).getImm();
 
   const TargetFrameLowering *TFI = MF.getSubtarget().getFrameLowering();
-  if (!TFI->hasReservedCallFrame(MF)) {
+  if (Amount != 0 && !TFI->hasReservedCallFrame(MF)) {
     unsigned Align = getStackAlignment();
 
     Amount = alignTo(Amount, Align);

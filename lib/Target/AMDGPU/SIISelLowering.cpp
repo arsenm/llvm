@@ -1443,6 +1443,11 @@ void SITargetLowering::insertCopiesSplitCSR(
   }
 }
 
+static bool doesCalleeRestoreStack(CallingConv::ID CallCC,
+                                   bool TailCallOpt) {
+  return CallCC == CallingConv::Fast && TailCallOpt;
+}
+
 SDValue SITargetLowering::LowerFormalArguments(
     SDValue Chain, CallingConv::ID CallConv, bool isVarArg,
     const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
@@ -1689,6 +1694,25 @@ SDValue SITargetLowering::LowerFormalArguments(
   ArgUsageInfo.setFuncArgInfo(*MF.getFunction(), Info->getArgInfo());
 
   unsigned StackArgSize = CCInfo.getNextStackOffset();
+
+  bool TailCallOpt = MF.getTarget().Options.GuaranteedTailCallOpt;
+  if (doesCalleeRestoreStack(CallConv, TailCallOpt)) {
+    // This is a non-standard ABI so by fiat I say we're allowed to make full
+    // use of the stack area to be popped, which must be aligned to 16 bytes in
+    // any case:
+    StackArgSize = alignTo(StackArgSize, 4);
+
+    // If we're expected to restore the stack (e.g. fastcc) then we'll be adding
+    // a multiple of 4.
+    Info->setArgumentStackToRestore(StackArgSize);
+
+    // This realignment carries over to the available bytes below. Our own
+    // callers will guarantee the space is free by giving an aligned value to
+    // CALLSEQ_START.
+  }
+
+  // Even if we're not expected to free up the space, it's useful to know how
+  // much is there while considering tail calls (because we can reuse it).
   Info->setBytesInStackArgArea(StackArgSize);
 
   return Chains.empty() ? Chain :
@@ -2123,11 +2147,6 @@ SDValue SITargetLowering::LowerCall(CallLoweringInfo &CLI,
                               "unsupported indirect call to function ");
   }
 
-  if (IsTailCall && MF.getTarget().Options.GuaranteedTailCallOpt) {
-    return lowerUnhandledCall(CLI, InVals,
-                              "unsupported required tail call to function ");
-  }
-
   // The first 4 bytes are reserved for the callee's emergency stack slot.
   const unsigned CalleeUsableStackOffset = 4;
 
@@ -2187,6 +2206,27 @@ SDValue SITargetLowering::LowerCall(CallLoweringInfo &CLI,
   // arguments to begin at SP+0. Completely unused for non-tail calls.
   int32_t FPDiff = 0;
   MachineFrameInfo &MFI = MF.getFrameInfo();
+
+  if (IsTailCall && !IsSibCall) {
+    unsigned NumReusableBytes = Info->getBytesInStackArgArea();
+
+    // Since callee will pop argument stack as a tail call, we must keep the
+    // popped size 4-byte aligned.
+    NumBytes = alignTo(NumBytes, 4);
+
+    // FPDiff will be negative if this tail call requires more space than we
+    // would automatically have in our incoming argument space. Positive if we
+    // can actually shrink the stack.
+    FPDiff = NumReusableBytes - NumBytes;
+
+    // The stack pointer must be 4-byte aligned at all times it's used for a
+    // memory operation, which in practice means at *all* times and in
+    // particular across call boundaries. Therefore our own arguments started at
+    // a 4-byte aligned SP and the delta applied for the tail call should
+    // satisfy the same constraint.
+    assert(FPDiff % 4 == 0 && "unaligned stack on tail call");
+  }
+
   SmallVector<std::pair<unsigned, SDValue>, 8> RegsToPass;
 
   SDValue CallerSavedFP;
