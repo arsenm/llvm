@@ -3705,6 +3705,13 @@ SDValue SITargetLowering::lowerEXTRACT_VECTOR_ELT(SDValue Op,
   if (SDValue Combined = performExtractVectorEltCombine(Op.getNode(), DCI))
     return Combined;
 
+  if (auto *SV = dyn_cast<ShuffleVectorSDNode>(Vec)) {
+    if (SV->getOperand(1).isUndef()) {
+      //SV->getOperand(0)
+
+    }
+  }
+
   if (const ConstantSDNode *CIdx = dyn_cast<ConstantSDNode>(Idx)) {
     SDValue Result = DAG.getNode(ISD::BITCAST, SL, MVT::i32, Vec);
 
@@ -5956,6 +5963,33 @@ SDValue SITargetLowering::performBuildVectorCombine(
 
   return SDValue();
 }
+
+#if 0
+SDValue SITargetLowering::performBuildVectorCombine(
+  SDNode *N, DAGCombinerInfo &DCI) const {
+  SelectionDAG &DAG = DCI.DAG;
+
+    EVT VT = N->getValueType(0);
+#if 0
+    if (VT == MVT::v2i16 || VT == MVT::v2f16) {
+      SDValue Lo = N->getOperand(0);
+      SDValue Hi = N->getOperand(1);
+      if (Lo.getOpcode() == ISD::BITCAST &&
+          Hi.getOpcode() == ISD::BITCAST &&
+          Lo.getOperand(0).getValueType() == Hi.getOperand(0).getValueType() ) {
+
+        MVT NewVT = MVT::getVectorVT(Lo.getOperand(0).getSimpleValueType(), 2);
+
+        auto X = DAG.getNode(ISD::BUILD_VECTOR, SDLoc(N), NewVT,
+                             Lo.getOperand(0), Hi.getOperand(0));
+        return DAG.getNode(ISD::BITCAST, SDLoc(N), VT, X);
+      }
+    }
+#endif
+
+    return SDValue();
+}
+#endif
 
 unsigned SITargetLowering::getFusedOpcode(const SelectionDAG &DAG,
                                           const SDNode *N0,

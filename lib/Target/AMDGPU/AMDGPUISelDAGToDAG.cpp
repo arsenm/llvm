@@ -188,6 +188,8 @@ private:
   bool SelectVOP3OMods(SDValue In, SDValue &Src,
                        SDValue &Clamp, SDValue &Omod) const;
 
+  template <bool HasAbs>
+  bool SelectVOP3PModsImpl(SDValue In, SDValue &Src, unsigned &SrcMods) const;
   bool SelectVOP3PMods(SDValue In, SDValue &Src, SDValue &SrcMods) const;
   bool SelectVOP3PMods0(SDValue In, SDValue &Src, SDValue &SrcMods,
                         SDValue &Clamp) const;
@@ -1784,7 +1786,7 @@ bool AMDGPUDAGToDAGISel::SelectVOP3ModsImpl(SDValue In, SDValue &Src,
 
 bool AMDGPUDAGToDAGISel::SelectVOP3Mods(SDValue In, SDValue &Src,
                                         SDValue &SrcMods) const {
-  unsigned Mods;
+  unsigned Mods = 0;
   if (SelectVOP3ModsImpl(In, Src, Mods)) {
     SrcMods = CurDAG->getTargetConstant(Mods, SDLoc(In), MVT::i32);
     return true;
@@ -1840,6 +1842,10 @@ static SDValue stripBitcast(SDValue Val) {
   return Val.getOpcode() == ISD::BITCAST ? Val.getOperand(0) : Val;
 }
 
+static SDValue stripTrunc(SDValue Val) {
+  return Val.getOpcode() == ISD::TRUNCATE ? Val.getOperand(0) : Val;
+}
+
 // Figure out if this is really an extract of the high 16-bits of a dword.
 static bool isExtractHiElt(SDValue In, SDValue &Out) {
   In = stripBitcast(In);
@@ -1871,9 +1877,10 @@ static SDValue stripExtractLoElt(SDValue In) {
   return In;
 }
 
-bool AMDGPUDAGToDAGISel::SelectVOP3PMods(SDValue In, SDValue &Src,
-                                         SDValue &SrcMods) const {
-  unsigned Mods = 0;
+template <bool HasAbs>
+bool AMDGPUDAGToDAGISel::SelectVOP3PModsImpl(SDValue In, SDValue &Src,
+                                             unsigned &Mods) const {
+  // Mods is not cleared.
   Src = In;
 
   if (Src.getOpcode() == ISD::FNEG) {
@@ -1911,7 +1918,6 @@ bool AMDGPUDAGToDAGISel::SelectVOP3PMods(SDValue In, SDValue &Src,
       // avoid packing.
 
       Src = Lo;
-      SrcMods = CurDAG->getTargetConstant(Mods, SDLoc(In), MVT::i32);
       return true;
     }
 
@@ -1919,8 +1925,17 @@ bool AMDGPUDAGToDAGISel::SelectVOP3PMods(SDValue In, SDValue &Src,
   }
 
   // Packed instructions do not have abs modifiers.
+  // v_mad_mix_f32/v_mad_mixlo_f16/v_mad_mixhi_f16 are special case VOP3P
+  // instructions which do have abs modifiers.
   Mods |= SISrcMods::OP_SEL_1;
 
+  return true;
+}
+
+bool AMDGPUDAGToDAGISel::SelectVOP3PMods(SDValue In, SDValue &Src,
+                                         SDValue &SrcMods) const {
+  unsigned Mods;
+  SelectVOP3PModsImpl<false>(In, Src, Mods);
   SrcMods = CurDAG->getTargetConstant(Mods, SDLoc(In), MVT::i32);
   return true;
 }

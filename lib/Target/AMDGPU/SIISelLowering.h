@@ -112,7 +112,6 @@ class SITargetLowering final : public AMDGPUTargetLowering {
   SDValue performCvtPkRTZCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performExtractVectorEltCombine(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue performBuildVectorCombine(SDNode *N, DAGCombinerInfo &DCI) const;
-
   unsigned getFusedOpcode(const SelectionDAG &DAG,
                           const SDNode *N0, const SDNode *N1) const;
   SDValue performAddCombine(SDNode *N, DAGCombinerInfo &DCI) const;
