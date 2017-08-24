@@ -327,6 +327,12 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::UMIN, MVT::i16, Legal);
     setOperationAction(ISD::UMAX, MVT::i16, Legal);
 
+#if 0
+    setOperationAction(ISD::OR, MVT::i16, Promote);
+    setOperationAction(ISD::AND, MVT::i16, Promote);
+    setOperationAction(ISD::XOR, MVT::i16, Promote);
+#endif
+
     setOperationAction(ISD::SIGN_EXTEND, MVT::i16, Promote);
     AddPromotedToType(ISD::SIGN_EXTEND, MVT::i16, MVT::i32);
 
