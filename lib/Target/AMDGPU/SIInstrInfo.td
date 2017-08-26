@@ -1625,6 +1625,10 @@ def VOP_I16_I16_I16 : VOPProfile <[i16, i16, i16, untyped]>;
 def VOP_I16_I16_I16_I16 : VOPProfile <[i16, i16, i16, i16, untyped]>;
 def VOP_F16_F16_F16_F16 : VOPProfile <[f16, f16, f16, f16, untyped]>;
 
+def VOP_F16_F16_F16_F16_lo : VOPProfile <[f16, f16, f16, f16, untyped]> {
+  let DstRC = RegisterOperand<VGPR_32_Lo16>;
+}
+
 def VOP_I32_I16_I16_I32 : VOPProfile <[i32, i16, i16, i32, untyped]>;
 
 def VOP_V2F16_V2F16_V2F16 : VOPProfile <[v2f16, v2f16, v2f16, untyped]>;

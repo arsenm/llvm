@@ -19,6 +19,16 @@ class SIReg <string n, bits<16> regIdx = 0> : Register<n>,
   let HWEncoding = regIdx;
 }
 
+class SIRegWithSubRegs <string n, bits<16> regIdx = 0,
+    list<Register> subregs> : RegisterWithSubRegs<n, subregs>,
+  DwarfRegNum<[!cast<int>(HWEncoding)]> {
+  let Namespace = "AMDGPU";
+
+  // This is the not yet the complete register encoding. An additional
+  // bit is set for VGPRs.
+  let HWEncoding = regIdx;
+}
+
 // Special Registers
 def VCC_LO : SIReg<"vcc_lo", 106>;
 def VCC_HI : SIReg<"vcc_hi", 107>;
@@ -90,6 +100,9 @@ def TTMP9 : SIReg <"ttmp9", 121>;
 def TTMP10 : SIReg <"ttmp10", 122>;
 def TTMP11 : SIReg <"ttmp11", 123>;
 
+def sub_lo16 : SubRegIndex<16, 0>;
+def sub_hi16 : SubRegIndex<16, 16>;
+
 multiclass FLAT_SCR_LOHI_m <string n, bits<16> ci_e, bits<16> vi_e> {
   def _ci : SIReg<n, ci_e>;
   def _vi : SIReg<n, vi_e>;
@@ -118,8 +131,17 @@ foreach Index = 0-103 in {
 
 // VGPR registers
 foreach Index = 0-255 in {
-  def VGPR#Index : SIReg <"VGPR"#Index, Index> {
+  def VGPR#Index#_lo16 : SIReg <"VGPR"#Index#"_lo16", Index> {
     let HWEncoding{8} = 1;
+  }
+
+  def VGPR#Index#_hi16 : SIReg <"VGPR"#Index#"_hi16", Index> {
+    let HWEncoding{8} = 1;
+  }
+
+  def VGPR#Index : SIRegWithSubRegs <"VGPR"#Index, Index, [!cast<Register>("VGPR"#Index#"_lo16"), !cast<Register>("VGPR"#Index#"_hi16")]> {
+    let HWEncoding{8} = 1;
+    let SubRegIndices = [sub_lo16, sub_hi16];
   }
 }
 
@@ -212,6 +234,12 @@ def TTMP_128Regs : RegisterTuples<[sub0, sub1, sub2, sub3],
 // i16/f16 only on VI+
 def VGPR_32 : RegisterClass<"AMDGPU", [i32, f32, i16, f16, v2i16, v2f16], 32,
                             (add (sequence "VGPR%u", 0, 255))> {
+  let AllocationPriority = 1;
+  let Size = 32;
+}
+
+def VGPR_32_Lo16 : RegisterClass<"AMDGPU", [i16, f16], 32,
+                               (add (sequence "VGPR%u_lo16", 0, 255))> {
   let AllocationPriority = 1;
   let Size = 32;
 }
