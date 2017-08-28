@@ -1678,8 +1678,10 @@ void AMDGPUDAGToDAGISel::SelectFMAD(SDNode *N) {
          "fmad selected with denormals enabled");
   // TODO: We can select this with f32 denormals enabled if all the sources are
   // converted from f16 (in which case fmad isn't legal).
-
-  if (Sel0 || Sel1 || Sel2) {
+  // mad_mix flushes always f32 denormals. We can only do this if f32 denormals
+  // are disabled, or all sources are f16 converted.
+  if ((Sel0 || Sel1 || Sel2) &&
+      (!Subtarget->hasFP32Denormals() || (Sel0 && Sel1 && Sel1))) {
     // For dummy operands.
     SDValue Zero = CurDAG->getTargetConstant(0, SDLoc(), MVT::i32);
     SDValue Ops[] = {
