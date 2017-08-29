@@ -300,8 +300,13 @@ bool Vectorizer::isConsecutiveAccess(Value *A, Value *B) {
   // Look through GEPs after checking they're the same except for the last
   // index.
   GetElementPtrInst *GEPA = getSourceGEP(A);
+  if (!GEPA)
+    return false;
+
   GetElementPtrInst *GEPB = getSourceGEP(B);
-  if (!GEPA || !GEPB || GEPA->getNumOperands() != GEPB->getNumOperands())
+  if (!GEPB)
+    return false;
+  if (GEPA->getNumOperands() != GEPB->getNumOperands())
     return false;
   unsigned FinalIndex = GEPA->getNumOperands() - 1;
   for (unsigned i = 0; i < FinalIndex; i++)
