@@ -591,9 +591,6 @@ void SIFrameLowering::processFunctionBeforeFrameFinalized(
     }
   }
 
-  if (!MFI.hasStackObjects())
-    return;
-
   const SISubtarget &ST = MF.getSubtarget<SISubtarget>();
   const SIInstrInfo *TII = ST.getInstrInfo();
   const SIRegisterInfo &TRI = TII->getRegisterInfo();
@@ -634,8 +631,10 @@ void SIFrameLowering::processFunctionBeforeFrameFinalized(
   // FIXME: The other checks should be redundant with allStackObjectsAreDead,
   // but currently hasNonSpillStackObjects is set only from source
   // allocas. Stack temps produced from legalization are not counted currently.
-  if (FuncInfo->hasNonSpillStackObjects() || FuncInfo->hasSpilledVGPRs() ||
-      !AllSGPRSpilledToVGPRs || !allStackObjectsAreDead(MFI)) {
+  if (MFI.hasCalls() || /*MFI.hasTailCall() ||*/
+      (MFI.hasStackObjects() &&
+       (FuncInfo->hasNonSpillStackObjects() || FuncInfo->hasSpilledVGPRs() ||
+        !AllSGPRSpilledToVGPRs || !allStackObjectsAreDead(MFI)))) {
     assert(RS && "RegScavenger required if spilling");
 
     // We force this to be at offset 0 so no user object ever has 0 as an
