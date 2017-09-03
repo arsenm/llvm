@@ -1137,6 +1137,32 @@ class COS_Common <bits<11> inst> : R600_1OP <
   let Itinerary = TransALU;
 }
 
+let usesCustomInserter = 1, isCodeGenOnly = 1, isPseudo = 1 in {
+
+class CLAMP <RegisterClass rc> : AMDGPUShaderInst <
+  (outs rc:$dst),
+  (ins rc:$src0),
+  "CLAMP $dst, $src0",
+  [(set f32:$dst, (AMDGPUclamp f32:$src0))]
+>;
+
+class FABS <RegisterClass rc> : AMDGPUShaderInst <
+  (outs rc:$dst),
+  (ins rc:$src0),
+  "FABS $dst, $src0",
+  [(set f32:$dst, (fabs f32:$src0))]
+>;
+
+class FNEG <RegisterClass rc> : AMDGPUShaderInst <
+  (outs rc:$dst),
+  (ins rc:$src0),
+  "FNEG $dst, $src0",
+  [(set f32:$dst, (fneg f32:$src0))]
+>;
+
+} // End usesCustomInserter = 1, isCodeGenOnly = 1, isPseudo = 1
+
+
 def CLAMP_R600 :  CLAMP <R600_Reg32>;
 def FABS_R600 : FABS<R600_Reg32>;
 def FNEG_R600 : FNEG<R600_Reg32>;
@@ -1275,8 +1301,29 @@ let Predicates = [isR600] in {
 
 
 //===----------------------------------------------------------------------===//
-// Regist loads and stores - for indirect addressing
+// Register loads and stores - for indirect addressing
 //===----------------------------------------------------------------------===//
+
+multiclass RegisterLoadStore <RegisterClass dstClass, Operand addrClass,
+                    ComplexPattern addrPat> {
+let UseNamedOperandTable = 1 in {
+  def RegisterLoad : AMDGPUShaderInst <
+    (outs dstClass:$dst),
+    (ins addrClass:$addr, i32imm:$chan),
+    "RegisterLoad $dst, $addr",
+    [(set i32:$dst, (AMDGPUregister_load addrPat:$addr, (i32 timm:$chan)))]> {
+    let isRegisterLoad = 1;
+  }
+
+  def RegisterStore : AMDGPUShaderInst <
+    (outs),
+    (ins dstClass:$val, addrClass:$addr, i32imm:$chan),
+    "RegisterStore $val, $addr",
+    [(AMDGPUregister_store i32:$val, addrPat:$addr, (i32 timm:$chan))]> {
+    let isRegisterStore = 1;
+  }
+}
+}
 
 defm R600_ : RegisterLoadStore <R600_Reg32, FRAMEri, ADDRIndirect>;
 
