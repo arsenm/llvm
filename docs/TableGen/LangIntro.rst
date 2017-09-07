@@ -165,6 +165,9 @@ supported include:
     remaining elements in the list may be arbitrary other values, including
     nested ```dag``' values.
 
+`` !con(a, b)``
+   A dag value that is the result of concatenating the 'a' and 'b' dags.
+
 ``!listconcat(a, b, ...)``
     A list value that is the result of concatenating the 'a' and 'b' lists.
     The lists must have the same element type.
