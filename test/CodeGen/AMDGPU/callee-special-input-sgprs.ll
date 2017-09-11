@@ -193,9 +193,10 @@ define void @use_workgroup_id_yz() #1 {
 ; GCN-NOT: s6
 ; GCN: s_mov_b32 s33, s7
 ; GCN-NOT: s6
+; GCN: s_mov_b32 s32, s33
+; GCN-NOT: s6
 ; GCN: s_mov_b32 s4, s33
 ; GCN-NOT: s6
-; GCN: s_mov_b32 s32, s33
 ; GCN: s_swappc_b64
 define amdgpu_kernel void @kern_indirect_use_workgroup_id_x() #1 {
   call void @use_workgroup_id_x()
@@ -208,9 +209,9 @@ define amdgpu_kernel void @kern_indirect_use_workgroup_id_x() #1 {
 ; GCN: enable_sgpr_workgroup_id_z = 0
 
 ; GCN: s_mov_b32 s33, s8
+; GCN: s_mov_b32 s32, s33
 ; GCN: s_mov_b32 s4, s33
 ; GCN: s_mov_b32 s6, s7
-; GCN: s_mov_b32 s32, s33
 ; GCN: s_swappc_b64
 define amdgpu_kernel void @kern_indirect_use_workgroup_id_y() #1 {
   call void @use_workgroup_id_y()
@@ -239,10 +240,12 @@ define amdgpu_kernel void @kern_indirect_use_workgroup_id_z() #1 {
 ; GCN: s_mov_b32 s33, s8
 ; GCN-NOT: s6
 ; GCN-NOT: s7
+; GCN: s_mov_b32 s32, s33
+; GCN-NOT: s6
+; GCN-NOT: s7
 ; GCN: s_mov_b32 s4, s33
 ; GCN-NOT: s6
 ; GCN-NOT: s7
-; GCN: s_mov_b32 s32, s33
 ; GCN-NOT: s6
 ; GCN-NOT: s7
 ; GCN: s_swappc_b64
@@ -262,13 +265,18 @@ define amdgpu_kernel void @kern_indirect_use_workgroup_id_xy() #1 {
 ; GCN-NOT: s7
 ; GCN-NOT: s8
 
-; GCN: s_mov_b32 s4, s33
+
+; GCN: s_mov_b32 s32, s33
 
 ; GCN-NOT: s6
 ; GCN-NOT: s7
 ; GCN-NOT: s8
 
-; GCN: s_mov_b32 s32, s33
+; GCN: s_mov_b32 s4, s33
+
+; GCN-NOT: s6
+; GCN-NOT: s7
+; GCN-NOT: s8
 
 ; GCN-NOT: s6
 ; GCN-NOT: s7
@@ -286,14 +294,16 @@ define amdgpu_kernel void @kern_indirect_use_workgroup_id_xyz() #1 {
 ; GCN: enable_sgpr_workgroup_id_z = 1
 
 ; GCN: s_mov_b32 s33, s8
-; GCN-NOT: s6
-; GCN-NOT: s7
 
-; GCN: s_mov_b32 s4, s33
 ; GCN-NOT: s6
 ; GCN-NOT: s7
 
 ; GCN: s_mov_b32 s32, s33
+
+; GCN-NOT: s6
+; GCN-NOT: s7
+
+; GCN: s_mov_b32 s4, s33
 ; GCN-NOT: s6
 ; GCN-NOT: s7
 
@@ -310,9 +320,9 @@ define amdgpu_kernel void @kern_indirect_use_workgroup_id_xz() #1 {
 
 ; GCN: s_mov_b32 s33, s9
 ; GCN: s_mov_b32 s6, s7
+; GCN: s_mov_b32 s32, s33
 ; GCN: s_mov_b32 s4, s33
 ; GCN: s_mov_b32 s7, s8
-; GCN: s_mov_b32 s32, s33
 ; GCN: s_swappc_b64
 define amdgpu_kernel void @kern_indirect_use_workgroup_id_yz() #1 {
   call void @use_workgroup_id_yz()
@@ -378,11 +388,11 @@ define void @other_arg_use_workgroup_id_z(i32 %arg0) #1 {
 
 ; GCN-DAG: s_mov_b32 s33, s7
 ; GCN-DAG: v_mov_b32_e32 v0, 0x22b
+; GCN-DAG: s_mov_b32 s32, s33
 
 ; GCN-NOT: s6
 ; GCN: s_mov_b32 s4, s33
 ; GCN-NOT: s6
-; GCN-DAG: s_mov_b32 s32, s33
 ; GCN: s_swappc_b64
 define amdgpu_kernel void @kern_indirect_other_arg_use_workgroup_id_x() #1 {
   call void @other_arg_use_workgroup_id_x(i32 555)
@@ -396,9 +406,10 @@ define amdgpu_kernel void @kern_indirect_other_arg_use_workgroup_id_x() #1 {
 
 ; GCN-DAG: s_mov_b32 s33, s8
 ; GCN-DAG: v_mov_b32_e32 v0, 0x22b
+; GCN-DAG: s_mov_b32 s32, s33
+
 ; GCN: s_mov_b32 s4, s33
 ; GCN-DAG: s_mov_b32 s6, s7
-; GCN-DAG: s_mov_b32 s32, s33
 ; GCN: s_swappc_b64
 define amdgpu_kernel void @kern_indirect_other_arg_use_workgroup_id_y() #1 {
   call void @other_arg_use_workgroup_id_y(i32 555)
@@ -412,10 +423,10 @@ define amdgpu_kernel void @kern_indirect_other_arg_use_workgroup_id_y() #1 {
 
 ; GCN: s_mov_b32 s33, s8
 ; GCN-DAG: v_mov_b32_e32 v0, 0x22b
+; GCN-DAG: s_mov_b32 s32, s33
 ; GCN: s_mov_b32 s4, s33
 ; GCN-DAG: s_mov_b32 s6, s7
 
-; GCN: s_mov_b32 s32, s33
 ; GCN: s_swappc_b64
 define amdgpu_kernel void @kern_indirect_other_arg_use_workgroup_id_z() #1 {
   call void @other_arg_use_workgroup_id_z(i32 555)
@@ -480,8 +491,8 @@ define void @use_every_sgpr_input() #1 {
 ; GCN: s_mov_b64 s[10:11], s[8:9]
 ; GCN: s_mov_b64 s[8:9], s[6:7]
 ; GCN: s_mov_b64 s[6:7], s[4:5]
-; GCN: s_mov_b32 s4, s33
 ; GCN: s_mov_b32 s32, s33
+; GCN: s_mov_b32 s4, s33
 ; GCN: s_swappc_b64
 define amdgpu_kernel void @kern_indirect_use_every_sgpr_input() #1 {
   call void @use_every_sgpr_input()

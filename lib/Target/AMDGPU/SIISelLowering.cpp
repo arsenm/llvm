@@ -3033,6 +3033,7 @@ MachineBasicBlock *SITargetLowering::EmitInstrWithCustomInserter(
   }
   case AMDGPU::SI_CALL_ISEL:
   case AMDGPU::SI_TCRETURN_ISEL: {
+    const SIMachineFunctionInfo *Info = MF->getInfo<SIMachineFunctionInfo>();
     const SIInstrInfo *TII = getSubtarget()->getInstrInfo();
     const DebugLoc &DL = MI.getDebugLoc();
     unsigned ReturnAddrReg = TII->getRegisterInfo().getReturnAddressReg(*MF);
@@ -3061,6 +3062,7 @@ MachineBasicBlock *SITargetLowering::EmitInstrWithCustomInserter(
     for (unsigned I = 1, E = MI.getNumOperands(); I != E; ++I)
       MIB.add(MI.getOperand(I));
 
+    MIB.addReg(Info->getStackPtrOffsetReg(), RegState::Implicit);
     MIB.setMemRefs(MI.memoperands_begin(), MI.memoperands_end());
     MI.eraseFromParent();
     return BB;

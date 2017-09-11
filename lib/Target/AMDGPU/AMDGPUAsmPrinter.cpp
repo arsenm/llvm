@@ -534,6 +534,52 @@ AMDGPUAsmPrinter::SIFunctionResourceInfo AMDGPUAsmPrinter::analyzeResourceUsage(
 
   for (const MachineBasicBlock &MBB : MF) {
     for (const MachineInstr &MI : MBB) {
+      if (MI.isCall()) {
+        // Pseudo used just to encode the underlying global. Is there a better
+        // way to track this?
+
+        const MachineOperand *CalleeOp
+          = TII->getNamedOperand(MI, AMDGPU::OpName::callee);
+        const Function *Callee = cast<Function>(CalleeOp->getGlobal());
+        if (Callee->isDeclaration()) {
+          // If this is a call to an external function, we can't do much. Make
+          // conservative guesses.
+
+          // 48 SGPRs - vcc, - flat_scr, -xnack
+          int MaxSGPRGuess = 47 - getNumExtraSGPRs(ST, true,
+                                                   ST.hasFlatAddressSpace());
+          MaxSGPR = std::max(MaxSGPR, MaxSGPRGuess);
+          MaxVGPR = std::max(MaxVGPR, 23);
+
+          CalleeFrameSize = std::max(CalleeFrameSize, 16384u);
+          Info.UsesVCC = true;
+          Info.UsesFlatScratch = ST.hasFlatAddressSpace();
+          Info.HasDynamicallySizedStack = true;
+        } else {
+          // We force CodeGen to run in SCC order, so the callee's register
+          // usage etc. should be the cumulative usage of all callees.
+          auto I = CallGraphResourceInfo.find(Callee);
+          assert(I != CallGraphResourceInfo.end() &&
+                 "callee should have been handled before caller");
+
+          MaxSGPR = std::max(I->second.NumExplicitSGPR - 1, MaxSGPR);
+          MaxVGPR = std::max(I->second.NumVGPR - 1, MaxVGPR);
+          CalleeFrameSize
+            = std::max(I->second.PrivateSegmentSize, CalleeFrameSize);
+          Info.UsesVCC |= I->second.UsesVCC;
+          Info.UsesFlatScratch |= I->second.UsesFlatScratch;
+          Info.HasDynamicallySizedStack |= I->second.HasDynamicallySizedStack;
+          Info.HasRecursion |= I->second.HasRecursion;
+        }
+
+        if (!Callee->doesNotRecurse())
+          Info.HasRecursion = true;
+
+        // Skip the standard operand checks with a call. We have operands like
+        // SP (which may not have really been used in the callee).
+        continue;
+      }
+
       // TODO: Check regmasks? Do they occur anywhere except calls?
       for (const MachineOperand &MO : MI.operands()) {
         unsigned Width = 0;
@@ -629,48 +675,6 @@ AMDGPUAsmPrinter::SIFunctionResourceInfo AMDGPUAsmPrinter::analyzeResourceUsage(
         } else {
           MaxVGPR = MaxUsed > MaxVGPR ? MaxUsed : MaxVGPR;
         }
-      }
-
-      if (MI.isCall()) {
-        // Pseudo used just to encode the underlying global. Is there a better
-        // way to track this?
-
-        const MachineOperand *CalleeOp
-          = TII->getNamedOperand(MI, AMDGPU::OpName::callee);
-        const Function *Callee = cast<Function>(CalleeOp->getGlobal());
-        if (Callee->isDeclaration()) {
-          // If this is a call to an external function, we can't do much. Make
-          // conservative guesses.
-
-          // 48 SGPRs - vcc, - flat_scr, -xnack
-          int MaxSGPRGuess = 47 - getNumExtraSGPRs(ST, true,
-                                                   ST.hasFlatAddressSpace());
-          MaxSGPR = std::max(MaxSGPR, MaxSGPRGuess);
-          MaxVGPR = std::max(MaxVGPR, 23);
-
-          CalleeFrameSize = std::max(CalleeFrameSize, 16384u);
-          Info.UsesVCC = true;
-          Info.UsesFlatScratch = ST.hasFlatAddressSpace();
-          Info.HasDynamicallySizedStack = true;
-        } else {
-          // We force CodeGen to run in SCC order, so the callee's register
-          // usage etc. should be the cumulative usage of all callees.
-          auto I = CallGraphResourceInfo.find(Callee);
-          assert(I != CallGraphResourceInfo.end() &&
-                 "callee should have been handled before caller");
-
-          MaxSGPR = std::max(I->second.NumExplicitSGPR - 1, MaxSGPR);
-          MaxVGPR = std::max(I->second.NumVGPR - 1, MaxVGPR);
-          CalleeFrameSize
-            = std::max(I->second.PrivateSegmentSize, CalleeFrameSize);
-          Info.UsesVCC |= I->second.UsesVCC;
-          Info.UsesFlatScratch |= I->second.UsesFlatScratch;
-          Info.HasDynamicallySizedStack |= I->second.HasDynamicallySizedStack;
-          Info.HasRecursion |= I->second.HasRecursion;
-        }
-
-        if (!Callee->doesNotRecurse())
-          Info.HasRecursion = true;
       }
     }
   }
