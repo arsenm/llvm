@@ -754,6 +754,5 @@ bool SIFrameLowering::hasFP(const MachineFunction &MF) const {
 bool SIFrameLowering::hasSP(const MachineFunction &MF) const {
   // All stack operations are relative to the frame offset SGPR.
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  return MFI.hasCalls() || MFI.hasVarSizedObjects() ||
-    MF.getFunction()->hasFnAttribute("amdgpu-no-sp-elimination");
+  return MFI.hasCalls() || MFI.hasVarSizedObjects();
 }

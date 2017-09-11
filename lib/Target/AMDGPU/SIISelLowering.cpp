@@ -2171,7 +2171,7 @@ SDValue SITargetLowering::LowerCall(CallLoweringInfo &CLI,
   // Adjust the stack pointer for the new arguments...
   // These operations are automatically eliminated by the prolog/epilog pass
   if (!IsSibCall) {
-    Chain = DAG.getCALLSEQ_START(Chain, 0, 0, DL);
+    Chain = DAG.getCALLSEQ_START(Chain, NumBytes, 0, DL);
 
     unsigned OffsetReg = Info->getScratchWaveOffsetReg();
 
@@ -2364,8 +2364,8 @@ SDValue SITargetLowering::LowerCall(CallLoweringInfo &CLI,
   Chain = Call.getValue(0);
   InFlag = Call.getValue(1);
 
-  uint64_t CalleePopBytes = NumBytes;
-  Chain = DAG.getCALLSEQ_END(Chain, DAG.getTargetConstant(0, DL, MVT::i32),
+  uint64_t CalleePopBytes = 0;
+  Chain = DAG.getCALLSEQ_END(Chain, DAG.getTargetConstant(NumBytes, DL, MVT::i32),
                              DAG.getTargetConstant(CalleePopBytes, DL, MVT::i32),
                              InFlag, DL);
   if (!Ins.empty())
