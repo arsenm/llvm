@@ -90,8 +90,14 @@ void TargetFrameLowering::determineCalleeSaves(MachineFunction &MF,
   const MachineRegisterInfo &MRI = MF.getRegInfo();
   for (unsigned i = 0; CSRegs[i]; ++i) {
     unsigned Reg = CSRegs[i];
-    if (CallsUnwindInit || MRI.isPhysRegModified(Reg))
+    if (CallsUnwindInit || MRI.isPhysRegModified(Reg)) {
+
+      if (MRI.isReserved(Reg)) {
+        dbgs() << "CSRing reserved reg " << PrintReg(Reg, &TRI) << '\n';
+      }
+
       SavedRegs.set(Reg);
+    }
   }
 }
 
