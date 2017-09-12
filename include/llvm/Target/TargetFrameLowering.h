@@ -158,6 +158,16 @@ public:
     return false;
   }
 
+  virtual void emitProloguePreFE(MachineFunction &MF,
+                                 MachineBasicBlock &MBB) const {
+
+  }
+
+  virtual void emitEpiloguePreFE(MachineFunction &MF,
+                                 MachineBasicBlock &MBB) const {
+
+  }
+
   /// emitProlog/emitEpilog - These methods insert prolog and epilog code into
   /// the function.
   virtual void emitPrologue(MachineFunction &MF,

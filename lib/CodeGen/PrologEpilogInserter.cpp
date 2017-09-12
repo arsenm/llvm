@@ -199,6 +199,14 @@ bool PEI::runOnMachineFunction(MachineFunction &Fn) {
   // place all spills in the entry block, all restores in return blocks.
   calculateSaveRestoreBlocks(Fn);
 
+  for (MachineBasicBlock *SaveBlock : SaveBlocks)
+    TFI->emitProloguePreFE(Fn, *SaveBlock);
+
+  // Add epilogue to restore the callee-save registers in each exiting block.
+  for (MachineBasicBlock *RestoreBlock : RestoreBlocks)
+    TFI->emitEpiloguePreFE(Fn, *RestoreBlock);
+
+
   // Handle CSR spilling and restoring, for targets that need it.
   SpillCalleeSavedRegisters(Fn, RS, MinCSFrameIndex, MaxCSFrameIndex,
                             SaveBlocks, RestoreBlocks);
