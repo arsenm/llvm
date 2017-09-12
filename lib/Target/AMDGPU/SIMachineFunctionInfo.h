@@ -226,6 +226,8 @@ private:
   unsigned NumVGPRSpillLanes = 0;
   SmallVector<SGPRSpillVGPRCSR, 2> SpillVGPRs;
 
+  unsigned RestoreFP = AMDGPU::NoRegister;
+
 public:
   SIMachineFunctionInfo(const MachineFunction &MF);
 
@@ -252,6 +254,14 @@ public:
 
   void setBytesInStackArgArea(unsigned Bytes) {
     BytesInStackArgArea = Bytes;
+  }
+
+  unsigned getRestoreFP() const {
+    return RestoreFP;
+  }
+
+  void setRestoreFP(unsigned Reg) {
+    RestoreFP = Reg;
   }
 
   // Add user SGPRs.

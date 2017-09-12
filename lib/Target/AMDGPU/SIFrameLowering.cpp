@@ -420,7 +420,7 @@ void SIFrameLowering::emitEntryFunctionPrologue(MachineFunction &MF,
 
 void SIFrameLowering::emitPrologue(MachineFunction &MF,
                                    MachineBasicBlock &MBB) const {
-  const SIMachineFunctionInfo *FuncInfo = MF.getInfo<SIMachineFunctionInfo>();
+  SIMachineFunctionInfo *FuncInfo = MF.getInfo<SIMachineFunctionInfo>();
   if (FuncInfo->isEntryFunction()) {
     emitEntryFunctionPrologue(MF, MBB);
     return;
@@ -438,6 +438,7 @@ void SIFrameLowering::emitPrologue(MachineFunction &MF,
 
   bool NeedFP = hasFP(MF);
   if (NeedFP) {
+#if 1
     // Split CSR is used for the incoming frame register. We need to insert the
     // SP setup after this.
     while (MBBI != MBB.end() && !MBBI->getFlag(MachineInstr::FrameSetup)) {
@@ -450,6 +451,14 @@ void SIFrameLowering::emitPrologue(MachineFunction &MF,
            MBBI->getOpcode() == AMDGPU::S_MOV_B32 &&
            MBBI->getOperand(1).getReg() == FramePtrReg &&
            "didn't find frame register split CSR in prologue");
+#else
+    MachineRegisterInfo &MRI = MF.getRegInfo();
+    unsigned RestoreFP = MRI.createVirtualRegister(&AMDGPU::SReg_32_XM0RegClass);
+    BuildMI(MBB, MBBI, DL, TII->get(AMDGPU::COPY), RestoreFP)
+      .addReg(FramePtrReg)
+      .setMIFlag(MachineInstr::FrameSetup);
+    FuncInfo->setRestoreFP(RestoreFP);
+#endif
 
     ++MBBI;
 
@@ -499,14 +508,22 @@ void SIFrameLowering::emitEpilogue(MachineFunction &MF,
                               &TII->getRegisterInfo());
   }
 
+
+  DebugLoc DL;
+
+  unsigned RestoreFP = FuncInfo->getRestoreFP();
+  if (RestoreFP != AMDGPU::NoRegister) {
+    BuildMI(MBB, MBBI, DL, TII->get(AMDGPU::COPY), FuncInfo->getFrameOffsetReg())
+      .addReg(RestoreFP)
+      .setMIFlag(MachineInstr::FrameDestroy);
+  }
+
   unsigned StackPtrReg = FuncInfo->getStackPtrOffsetReg();
   if (StackPtrReg == AMDGPU::NoRegister)
     return;
 
   const MachineFrameInfo &MFI = MF.getFrameInfo();
   uint32_t NumBytes = MFI.getStackSize();
-
-  DebugLoc DL;
 
   // FIXME: Clarify distinction between no set SP and SP. For callee functions,
   // it's really whether we need SP to be accurate or not.

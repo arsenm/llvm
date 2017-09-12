@@ -59,6 +59,8 @@ const MCPhysReg *SIRegisterInfo::getCalleeSavedRegs(
 
 const MCPhysReg *
 SIRegisterInfo::getCalleeSavedRegsViaCopy(const MachineFunction *MF) const {
+  return nullptr;
+
   // FIXME
   static MCPhysReg Regs[2];
 
