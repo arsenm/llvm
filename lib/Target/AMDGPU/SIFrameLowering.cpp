@@ -438,6 +438,21 @@ void SIFrameLowering::emitPrologue(MachineFunction &MF,
 
   bool NeedFP = hasFP(MF);
   if (NeedFP) {
+    // Split CSR is used for the incoming frame register. We need to insert the
+    // SP setup after this.
+    while (MBBI != MBB.end() && !MBBI->getFlag(MachineInstr::FrameSetup)) {
+      assert(!MBBI->readsRegister(StackPtrReg));
+      assert(!MBBI->readsRegister(FramePtrReg));
+      ++MBBI;
+    }
+
+    assert(MBBI != MBB.end() &&
+           MBBI->getOpcode() == AMDGPU::S_MOV_B32 &&
+           MBBI->getOperand(1).getReg() == FramePtrReg &&
+           "didn't find frame register split CSR in prologue");
+
+    ++MBBI;
+
     // If we need a base pointer, set it up here. It's whatever the value of
     // the stack pointer is at this point. Any variable size objects will be
     // allocated after this, so we can still use the base pointer to reference
@@ -526,6 +541,55 @@ void SIFrameLowering::processFunctionBeforeFrameFinalized(
   MachineFunction &MF,
   RegScavenger *RS) const {
   MachineFrameInfo &MFI = MF.getFrameInfo();
+  SIMachineFunctionInfo *FuncInfo = MF.getInfo<SIMachineFunctionInfo>();
+
+  if (!FuncInfo->isEntryFunction()) {
+    MachineBasicBlock &MBB = MF.front();
+    MachineBasicBlock::iterator MBBI = MBB.begin();
+
+    // FIXME: Horrible hack to get proper CSR code placement.
+
+    // Split CSR inserted save/restore of FP early so we can get proper regalloc
+    // and avoid doing an actual SGPR spill, which will require evicting a VGPR
+    // to free up one for SGPR spilling which we really don't want in every
+    // call.
+    //
+    // Regular CSR spill code is inserted at the beginning of the entry block,
+    // which depends on the setup frame pointer, setup in emitPrologue. We need
+    // to insert the copy from SP to the FP after we've preserved FP's value, so
+    // move this to the beginning of the function before any CSR spills, so
+    // emitPrologue can insert the FP initialization in the correct place.
+    while (MBBI != MBB.end() && !MBBI->getFlag(MachineInstr::FrameSetup)) {
+      ++MBBI;
+    }
+
+    assert(MBBI != MBB.end() &&
+           MBBI->getOpcode() == AMDGPU::S_MOV_B32 &&
+           MBBI->getOperand(1).getReg() == FuncInfo->getFrameOffsetReg() &&
+           "didn't find frame register split CSR in prologue");
+
+    MachineInstr &SetupInst = *MBBI;
+    SetupInst.removeFromParent();
+    MBB.insert(MBB.begin(), &SetupInst);
+
+    for (MachineBasicBlock &MBB : MF) {
+      if (MBB.isReturnBlock()) {
+        auto I = MBB.rbegin();
+
+        while (I != MBB.rend() && !I->getFlag(MachineInstr::FrameDestroy)) {
+          ++I;
+        }
+
+        assert(I != MBB.rend() &&
+               I->getOpcode() == AMDGPU::S_MOV_B32 &&
+               I->getOperand(0).getReg() == FuncInfo->getFrameOffsetReg() &&
+               "didn't find frame register split CSR in epilogue");
+
+        MachineInstr *DestroyInst = I->removeFromParent();
+        MBB.insert(MBB.getFirstTerminator(), DestroyInst);
+      }
+    }
+  }
 
   if (!MFI.hasStackObjects())
     return;
@@ -533,7 +597,6 @@ void SIFrameLowering::processFunctionBeforeFrameFinalized(
   const SISubtarget &ST = MF.getSubtarget<SISubtarget>();
   const SIInstrInfo *TII = ST.getInstrInfo();
   const SIRegisterInfo &TRI = TII->getRegisterInfo();
-  SIMachineFunctionInfo *FuncInfo = MF.getInfo<SIMachineFunctionInfo>();
   bool AllSGPRSpilledToVGPRs = false;
 
   if (TRI.spillSGPRToVGPR() && FuncInfo->hasSpilledSGPRs()) {

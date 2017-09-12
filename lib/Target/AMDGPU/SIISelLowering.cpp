@@ -1404,10 +1404,15 @@ void SITargetLowering::insertCopiesSplitCSR(
   MachineBasicBlock *Entry,
   const SmallVectorImpl<MachineBasicBlock *> &Exits) const {
   const SIRegisterInfo *TRI = getSubtarget()->getRegisterInfo();
+  MachineFunction *MF = Entry->getParent();
 
-  const MCPhysReg *IStart = TRI->getCalleeSavedRegsViaCopy(Entry->getParent());
+  const MCPhysReg *IStart = TRI->getCalleeSavedRegsViaCopy(MF);
   if (!IStart)
     return;
+
+
+  const SIMachineFunctionInfo *Info = MF->getInfo<SIMachineFunctionInfo>();
+  //MF->addLiveIn(Info->getStackPtrOffsetReg(), &AMDGPU::SGPR_32RegClass);
 
   const TargetInstrInfo *TII = Subtarget->getInstrInfo();
   MachineRegisterInfo *MRI = &Entry->getParent()->getRegInfo();
@@ -1421,17 +1426,32 @@ void SITargetLowering::insertCopiesSplitCSR(
     else
       llvm_unreachable("Unexpected register class in CSRsViaCopy!");
 
+    bool IsSaveFP = *I == Info->getFrameOffsetReg();
+
+    // We need to prevent any optimizations on simple register copies to prevent
+    // this copy from getitng optimized out.
+    unsigned Opcode = IsSaveFP ? AMDGPU::S_MOV_B32 : AMDGPU::COPY;
+
     unsigned NewVR = MRI->createVirtualRegister(RC);
     // Create copy from CSR to a virtual register.
     Entry->addLiveIn(*I);
-    BuildMI(*Entry, MBBI, DebugLoc(), TII->get(TargetOpcode::COPY), NewVR)
-      .addReg(*I);
+    MachineInstrBuilder CopyFrom =
+      BuildMI(*Entry, MBBI, DebugLoc(), TII->get(Opcode), NewVR)
+      .addReg(*I)
+      .setMIFlag(MachineInstr::FrameSetup);
+
+    if (IsSaveFP) {
+      // Add an implicit def to keep this in the prolog before any possible
+      // users of the frame register.
+      CopyFrom.addReg(*I, RegState::ImplicitDefine);
+    }
 
     // Insert the copy-back instructions right before the terminator.
     for (auto *Exit : Exits)
       BuildMI(*Exit, Exit->getFirstTerminator(), DebugLoc(),
-              TII->get(TargetOpcode::COPY), *I)
-        .addReg(NewVR);
+              TII->get(Opcode), *I)
+        .addReg(NewVR)
+        .setMIFlag(MachineInstr::FrameDestroy);
   }
 }
 
