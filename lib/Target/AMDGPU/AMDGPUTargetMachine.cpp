@@ -358,7 +358,6 @@ void AMDGPUTargetMachine::adjustPassManager(PassManagerBuilder &Builder) {
       PM.add(createAMDGPUUnifyMetadataPass());
       if (Internalize) {
         PM.add(createInternalizePass(mustPreserveGV));
-        PM.add(createGlobalDCEPass());
       }
       if (EarlyInline)
         PM.add(createAMDGPUAlwaysInlinePass(false));
