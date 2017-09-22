@@ -600,6 +600,20 @@ class DSReadPat <DS_Pseudo inst, ValueType vt, PatFrag frag> : GCNPat <
   (inst $ptr, (as_i16imm $offset), (i1 0))
 >;
 
+// FIXME: Passing name of PatFrag in workaround. Why doesn't
+// !cast<PatFrag>(frag.NAME#"_m0") work!?
+multiclass DSReadPat_mc<DS_Pseudo inst, ValueType vt, string frag> {
+
+  let OtherPredicates = [LDSRequiresM0Init] in {
+    def : DSReadPat<inst, vt, !cast<PatFrag>(frag#"_m0")>;
+  }
+
+  let OtherPredicates = [NotLDSRequiresM0Init] in {
+    def : DSReadPat<!cast<DS_Pseudo>(inst.NAME#"_gfx9"), vt, !cast<PatFrag>(frag)>;
+  }
+}
+
+
 multiclass DSReadPat_Hi16 <DS_Pseudo inst, PatFrag frag, ValueType vt = i16> {
   def : GCNPat <
     (build_vector vt:$lo, (vt (frag (DS1Addr1Offset i32:$ptr, i32:$offset)))),
@@ -624,8 +638,7 @@ multiclass DSReadPat_Lo16 <DS_Pseudo inst, PatFrag frag, ValueType vt = i16> {
   >;
 }
 
-
-def : DSReadPat <DS_READ_I8,  i32, sextloadi8_local_m0>;
+defm : DSReadPat_mc <DS_READ_I8, i32, "sextloadi8_local">;
 def : DSReadPat <DS_READ_U8,  i32, az_extloadi8_local_m0>;
 def : DSReadPat <DS_READ_I8,  i16, sextloadi8_local_m0>;
 def : DSReadPat <DS_READ_U8,  i16, az_extloadi8_local_m0>;
