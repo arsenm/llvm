@@ -95,6 +95,8 @@ private:
   unsigned read2ST64Opcode(unsigned EltSize) const;
   MachineBasicBlock::iterator mergeRead2Pair(CombineInfo &CI);
 
+  unsigned write2Opcode(unsigned EltSize) const;
+  unsigned write2ST64Opcode(unsigned EltSize) const;
   MachineBasicBlock::iterator mergeWrite2Pair(CombineInfo &CI);
 
 public:
@@ -438,6 +440,20 @@ MachineBasicBlock::iterator  SILoadStoreOptimizer::mergeRead2Pair(
   return Next;
 }
 
+unsigned SILoadStoreOptimizer::write2Opcode(unsigned EltSize) const {
+  if (ST->ldsRequiresM0Init())
+    return (EltSize == 4) ? AMDGPU::DS_WRITE2_B32 : AMDGPU::DS_WRITE2_B64;
+  return (EltSize == 4) ? AMDGPU::DS_WRITE2_B32_gfx9 : AMDGPU::DS_WRITE2_B64_gfx9;
+}
+
+unsigned SILoadStoreOptimizer::write2ST64Opcode(unsigned EltSize) const {
+  if (ST->ldsRequiresM0Init())
+    return (EltSize == 4) ? AMDGPU::DS_WRITE2ST64_B32 : AMDGPU::DS_WRITE2ST64_B64;
+
+  return (EltSize == 4) ?
+    AMDGPU::DS_WRITE2ST64_B32_gfx9 : AMDGPU::DS_WRITE2ST64_B64_gfx9;
+}
+
 MachineBasicBlock::iterator SILoadStoreOptimizer::mergeWrite2Pair(
   CombineInfo &CI) {
   MachineBasicBlock *MBB = CI.I->getParent();
@@ -451,12 +467,8 @@ MachineBasicBlock::iterator SILoadStoreOptimizer::mergeWrite2Pair(
 
   unsigned NewOffset0 = CI.Offset0;
   unsigned NewOffset1 = CI.Offset1;
-  unsigned Opc = (CI.EltSize == 4) ? AMDGPU::DS_WRITE2_B32
-                                   : AMDGPU::DS_WRITE2_B64;
-
-  if (CI.UseST64)
-    Opc = (CI.EltSize == 4) ? AMDGPU::DS_WRITE2ST64_B32
-                            : AMDGPU::DS_WRITE2ST64_B64;
+  unsigned Opc = CI.UseST64 ?
+    write2ST64Opcode(CI.EltSize) : write2Opcode(CI.EltSize);
 
   if (NewOffset0 > NewOffset1) {
     // Canonicalize the merged instruction so the smaller offset comes first.

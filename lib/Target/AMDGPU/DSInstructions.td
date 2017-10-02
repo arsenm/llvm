@@ -432,7 +432,7 @@ defm DS_INC_RTN_U32   : DS_1A1D_RET_mc<"ds_inc_rtn_u32", VGPR_32, "ds_inc_u32">;
 defm DS_DEC_RTN_U32   : DS_1A1D_RET_mc<"ds_dec_rtn_u32", VGPR_32, "ds_dec_u32">;
 defm DS_MIN_RTN_I32   : DS_1A1D_RET_mc<"ds_min_rtn_i32", VGPR_32, "ds_min_i32">;
 defm DS_MAX_RTN_I32   : DS_1A1D_RET_mc<"ds_max_rtn_i32", VGPR_32, "ds_max_i32">;
-defm DS_MIN_RTN_U32   : DS_1A1D_RET_mc<"ds_min_rtn_u32", VGPR_32, "ds_min_rtn_u32">;
+defm DS_MIN_RTN_U32   : DS_1A1D_RET_mc<"ds_min_rtn_u32", VGPR_32, "ds_min_u32">;
 defm DS_MAX_RTN_U32   : DS_1A1D_RET_mc<"ds_max_rtn_u32", VGPR_32, "ds_max_u32">;
 defm DS_AND_RTN_B32   : DS_1A1D_RET_mc<"ds_and_rtn_b32", VGPR_32, "ds_and_b32">;
 defm DS_OR_RTN_B32    : DS_1A1D_RET_mc<"ds_or_rtn_b32", VGPR_32, "ds_or_b32">;
@@ -654,20 +654,6 @@ defm : DSReadPat_mc <DS_READ_B64, v2i32, "load_align8_local">;
 
 } // End AddedComplexity = 100
 
-class DS64Bit4ByteAlignedPat<DS_Pseudo inst, PatFrag frag> : GCNPat <
-  (v2i32 (frag (DS64Bit4ByteAligned i32:$ptr, i8:$offset0, i8:$offset1))),
-  (inst $ptr, $offset0, $offset1, (i1 0))
->;
-
-let OtherPredicates = [LDSRequiresM0Init] in {
-def : DS64Bit4ByteAlignedPat<DS_READ2_B32, load_local_m0>;
-}
-
-let OtherPredicates = [NotLDSRequiresM0Init] in {
-def : DS64Bit4ByteAlignedPat<DS_READ2_B32_gfx9, load_local>;
-}
-
-
 let OtherPredicates = [HasD16LoadStore] in {
 let AddedComplexity = 100 in {
 defm : DSReadPat_Hi16<DS_READ_U16_D16_HI, load_local>;
@@ -686,30 +672,55 @@ class DSWritePat <DS_Pseudo inst, ValueType vt, PatFrag frag> : GCNPat <
   (inst $ptr, $value, (as_i16imm $offset), (i1 0))
 >;
 
-def : DSWritePat <DS_WRITE_B8, i32, truncstorei8_local_m0>;
-def : DSWritePat <DS_WRITE_B16, i32, truncstorei16_local_m0>;
-def : DSWritePat <DS_WRITE_B8, i16, truncstorei8_local_m0>;
-def : DSWritePat <DS_WRITE_B16, i16, store_local_m0>;
-def : DSWritePat <DS_WRITE_B32, i32, store_local_m0>;
+multiclass DSWritePat_mc <DS_Pseudo inst, ValueType vt, string frag> {
+  let OtherPredicates = [LDSRequiresM0Init] in {
+    def : DSWritePat<inst, vt, !cast<PatFrag>(frag#"_m0")>;
+  }
+
+  let OtherPredicates = [NotLDSRequiresM0Init] in {
+    def : DSWritePat<!cast<DS_Pseudo>(inst.NAME#"_gfx9"), vt, !cast<PatFrag>(frag)>;
+  }
+}
+
+defm : DSWritePat_mc <DS_WRITE_B8, i32, "truncstorei8_local">;
+defm : DSWritePat_mc <DS_WRITE_B16, i32, "truncstorei16_local">;
+defm : DSWritePat_mc <DS_WRITE_B8, i16, "truncstorei8_local">;
+defm : DSWritePat_mc <DS_WRITE_B16, i16, "store_local">;
+defm : DSWritePat_mc <DS_WRITE_B32, i32, "store_local">;
 
 let OtherPredicates = [HasD16LoadStore] in {
 def : DSWritePat <DS_WRITE_B16_D16_HI, i32, store_local_hi16>;
 def : DSWritePat <DS_WRITE_B8_D16_HI, i32, truncstorei8_local_hi16>;
 }
 
-let AddedComplexity = 100 in {
 
-def : DSWritePat <DS_WRITE_B64, v2i32, store_align8_local_m0>;
-} // End AddedComplexity = 100
-
-def : GCNPat <
-  (store_local_m0 v2i32:$value, (DS64Bit4ByteAligned i32:$ptr, i8:$offset0,
-                                                               i8:$offset1)),
-  (DS_WRITE2_B32 $ptr, (i32 (EXTRACT_SUBREG $value, sub0)),
-                       (i32 (EXTRACT_SUBREG $value, sub1)), $offset0, $offset1,
-                       (i1 0))
+class DS64Bit4ByteAlignedReadPat<DS_Pseudo inst, PatFrag frag> : GCNPat <
+  (v2i32 (frag (DS64Bit4ByteAligned i32:$ptr, i8:$offset0, i8:$offset1))),
+  (inst $ptr, $offset0, $offset1, (i1 0))
 >;
 
+class DS64Bit4ByteAlignedWritePat<DS_Pseudo inst, PatFrag frag> : GCNPat<
+  (frag v2i32:$value, (DS64Bit4ByteAligned i32:$ptr, i8:$offset0, i8:$offset1)),
+  (inst $ptr, (i32 (EXTRACT_SUBREG $value, sub0)),
+              (i32 (EXTRACT_SUBREG $value, sub1)), $offset0, $offset1,
+              (i1 0))
+>;
+
+let OtherPredicates = [LDSRequiresM0Init] in {
+def : DS64Bit4ByteAlignedReadPat<DS_READ2_B32, load_local_m0>;
+def : DS64Bit4ByteAlignedWritePat<DS_WRITE2_B32, store_local_m0>;
+}
+
+let OtherPredicates = [NotLDSRequiresM0Init] in {
+def : DS64Bit4ByteAlignedReadPat<DS_READ2_B32_gfx9, load_local>;
+def : DS64Bit4ByteAlignedWritePat<DS_WRITE2_B32_gfx9, store_local>;
+}
+
+
+let AddedComplexity = 100 in {
+
+defm : DSWritePat_mc <DS_WRITE_B64, v2i32, "store_align8_local">;
+} // End AddedComplexity = 100
 class DSAtomicRetPat<DS_Pseudo inst, ValueType vt, PatFrag frag> : GCNPat <
   (frag (DS1Addr1Offset i32:$ptr, i32:$offset), vt:$value),
   (inst $ptr, $value, (as_i16imm $offset), (i1 0))
