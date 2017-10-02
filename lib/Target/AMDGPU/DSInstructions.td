@@ -639,26 +639,33 @@ multiclass DSReadPat_Lo16 <DS_Pseudo inst, PatFrag frag, ValueType vt = i16> {
 }
 
 defm : DSReadPat_mc <DS_READ_I8, i32, "sextloadi8_local">;
-def : DSReadPat <DS_READ_U8,  i32, az_extloadi8_local_m0>;
-def : DSReadPat <DS_READ_I8,  i16, sextloadi8_local_m0>;
-def : DSReadPat <DS_READ_U8,  i16, az_extloadi8_local_m0>;
-def : DSReadPat <DS_READ_I16, i32, sextloadi16_local_m0>;
-def : DSReadPat <DS_READ_I16, i32, sextloadi16_local_m0>;
-def : DSReadPat <DS_READ_U16, i32, az_extloadi16_local_m0>;
-def : DSReadPat <DS_READ_U16, i16, load_local_m0>;
-def : DSReadPat <DS_READ_B32, i32, load_local_m0>;
+defm : DSReadPat_mc <DS_READ_U8,  i32, "az_extloadi8_local">;
+defm : DSReadPat_mc <DS_READ_I8,  i16, "sextloadi8_local">;
+defm : DSReadPat_mc <DS_READ_U8,  i16, "az_extloadi8_local">;
+defm : DSReadPat_mc <DS_READ_I16, i32, "sextloadi16_local">;
+defm : DSReadPat_mc <DS_READ_I16, i32, "sextloadi16_local">;
+defm : DSReadPat_mc <DS_READ_U16, i32, "az_extloadi16_local">;
+defm : DSReadPat_mc <DS_READ_U16, i16, "load_local">;
+defm : DSReadPat_mc <DS_READ_B32, i32, "load_local">;
 
 let AddedComplexity = 100 in {
 
-def : DSReadPat <DS_READ_B64, v2i32, load_align8_local_m0>;
+defm : DSReadPat_mc <DS_READ_B64, v2i32, "load_align8_local">;
 
 } // End AddedComplexity = 100
 
-def : GCNPat <
-  (v2i32 (load_local_m0 (DS64Bit4ByteAligned i32:$ptr, i8:$offset0,
-                                                       i8:$offset1))),
-  (DS_READ2_B32 $ptr, $offset0, $offset1, (i1 0))
+class DS64Bit4ByteAlignedPat<DS_Pseudo inst, PatFrag frag> : GCNPat <
+  (v2i32 (frag (DS64Bit4ByteAligned i32:$ptr, i8:$offset0, i8:$offset1))),
+  (inst $ptr, $offset0, $offset1, (i1 0))
 >;
+
+let OtherPredicates = [LDSRequiresM0Init] in {
+def : DS64Bit4ByteAlignedPat<DS_READ2_B32, load_local_m0>;
+}
+
+let OtherPredicates = [NotLDSRequiresM0Init] in {
+def : DS64Bit4ByteAlignedPat<DS_READ2_B32_gfx9, load_local>;
+}
 
 
 let OtherPredicates = [HasD16LoadStore] in {
