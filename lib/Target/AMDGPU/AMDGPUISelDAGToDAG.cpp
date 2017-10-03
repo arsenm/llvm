@@ -2003,8 +2003,18 @@ bool AMDGPUDAGToDAGISel::SelectVOP3PMadMixModsImpl(SDValue In, SDValue &Src,
     Mods |= SISrcMods::OP_SEL_1;
     if (isExtractHiElt(Src, Src)) {
       Mods |= SISrcMods::OP_SEL_0;
+#if 1
+      if ((Mods & SISrcMods::ABS) == 0) {
+        unsigned ModsTmp;
+        SelectVOP3ModsImpl(Src, Src, ModsTmp);
 
-      // TODO: Should we try to look for neg/abs here?
+        if ((ModsTmp & SISrcMods::NEG) != 0)
+          Mods ^= SISrcMods::NEG;
+
+        if ((ModsTmp & SISrcMods::ABS) != 0)
+          Mods |= SISrcMods::ABS;
+      }
+#endif
     }
 
     return true;
