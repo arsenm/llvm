@@ -3774,6 +3774,8 @@ Value *TypePromotionHelper::promoteOperandForTruncAndAnyExt(
   if (SExtOpnd->use_empty())
     TPT.eraseInstruction(SExtOpnd);
 
+  assert(!isa<FPExtInst>(SExt));
+
   // Check if the extension is still needed.
   Instruction *ExtInst = dyn_cast<Instruction>(ExtVal);
   if (!ExtInst || ExtInst->getType() != ExtInst->getOperand(0)->getType()) {
