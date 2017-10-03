@@ -3160,16 +3160,33 @@ bool SITargetLowering::isFMAFasterThanFMulAndFAdd(EVT VT) const {
     // mad available which returns the same result as the separate operations
     // which we should prefer over fma. We can't use this if we want to support
     // denormals, so only report this in these cases.
-    return Subtarget->hasFP32Denormals() && Subtarget->hasFastFMAF32();
+    return Subtarget->hasFastFMAF32();
   case MVT::f64:
     return true;
   case MVT::f16:
-    return Subtarget->has16BitInsts() && Subtarget->hasFP16Denormals();
+    if (!Subtarget->has16BitInsts()) {
+      // Legalized to f32 fma.
+      return Subtarget->hasFastFMAF32();
+    }
+
+    return true;
   default:
     break;
   }
 
   return false;
+}
+
+bool SITargetLowering::isFMADPreferredToFMA(EVT VT) const {
+  VT = VT.getScalarType();
+  switch (VT.getSimpleVT().SimpleTy) {
+  case MVT::f32:
+    return !Subtarget->hasFP32Denormals();
+  case MVT::f16:
+    return !Subtarget->hasFP16Denormals();
+  default:
+    return false;
+  }
 }
 
 //===----------------------------------------------------------------------===//

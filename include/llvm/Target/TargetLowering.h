@@ -2166,6 +2166,12 @@ public:
     return false;
   }
 
+  /// Returs true if an FMAD operation is preferable to an FMA operation when
+  /// either may be used.
+  virtual bool isFMADPreferredToFMA(EVT VT) const {
+    return isOperationLegal(ISD::FMAD, VT);
+  }
+
   /// Return true if it's profitable to narrow operations of type VT1 to
   /// VT2. e.g. on x86, it's profitable to narrow from i32 to i8 but not from
   /// i32 to i16.
