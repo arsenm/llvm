@@ -656,7 +656,8 @@ multiclass FlatSignedLoadPat_Hi16 <FLAT_Pseudo inst, SDPatternOperator node, Val
 
 multiclass FlatLoadPat_Lo16 <FLAT_Pseudo inst, SDPatternOperator node, ValueType vt = i16> {
   def : GCNPat <
-    (build_vector (vt (node (FLATOffset i64:$vaddr, i16:$offset, i1:$slc))), (hi_i16_elt vt:$elt1)),
+    //(build_vector (vt (node (FLATOffset i64:$vaddr, i16:$offset, i1:$slc))), (hi_i16_elt vt:$elt1)),
+    (build_vector (vt (node (FLATOffset i64:$vaddr, i16:$offset, i1:$slc))), (Hi16Elt vt:$elt1)),
     (v2i16 (inst $vaddr, $offset, 0, $slc, $elt1))
   >;
 
