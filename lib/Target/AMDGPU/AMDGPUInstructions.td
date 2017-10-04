@@ -133,6 +133,28 @@ def shl_oneuse : HasOneUseBinOp<shl>;
 
 def select_oneuse : HasOneUseTernaryOp<select>;
 
+def hi_i16_elt : PatLeaf<
+  (vt), [{
+  if (N->getOpcode() != ISD::SRL)
+    return false;
+    if (const auto *RHS = dyn_cast<ConstantSDNode>(N->getOperand(1))
+      return RHS->getZExtValue() == 16;
+    return false;
+}]>;
+
+def hi_f16_elt : PatLeaf<
+  (vt), [{
+  if (N->getOpcode() != ISD::BITCAST)
+    return false;
+  SDValue Tmp = N->getOperand(0);
+
+  if (Tmp.getOpcode() != ISD::SRL)
+    return false;
+    if (const auto *RHS = dyn_cast<ConstantSDNode>(Tmp.getOperand(1))
+      return RHS->getZExtValue() == 16;
+    return false;
+}]>;
+
 //===----------------------------------------------------------------------===//
 // PatLeafs for floating-point comparisons
 //===----------------------------------------------------------------------===//
