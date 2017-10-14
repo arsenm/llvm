@@ -57,12 +57,28 @@ entry:
 ; GFX9-NEXT: v_mov_b32_e32 v0, v1
 ; GFX9-NEXT: s_setpc_b64
 
-; VI: ds_read_u16
+; VI: ds_read_u16 v
 define <2 x i16> @load_local_lo_v2i16_zerolo(i16 addrspace(3)* %in) #0 {
 entry:
   %load = load i16, i16 addrspace(3)* %in
   %build = insertelement <2 x i16> zeroinitializer, i16 %load, i32 0
   ret <2 x i16> %build
+}
+
+; GCN-LABEL: {{^}}load_local_lo_v2f16_fpimm:
+; GCN: s_waitcnt
+; GFX9-NEXT: v_mov_b32_e32 v1, 0
+; GFX9-NEXT: ds_read_u16_d16 v1, v0
+; GFX9-NEXT: s_waitcnt
+; GFX9-NEXT: v_mov_b32_e32 v0, v1
+; GFX9-NEXT: s_setpc_b64
+
+; VI: ds_read_u16 v
+define <2 x half> @load_local_lo_v2f16_fpimm(half addrspace(3)* %in) #0 {
+entry:
+  %load = load half, half addrspace(3)* %in
+  %build = insertelement <2 x half> <half 0.0, half 2.0>, half %load, i32 0
+  ret <2 x half> %build
 }
 
 ; GCN-LABEL: {{^}}load_local_lo_v2f16_reglo_vreg:
@@ -73,7 +89,7 @@ entry:
 ; GFX9-NEXT: s_waitcnt
 ; GFX9-NEXT: s_setpc_b64
 
-; VI: ds_read_u16
+; VI: ds_read_u16 v
 define void @load_local_lo_v2f16_reglo_vreg(half addrspace(3)* %in, half %reg) #0 {
 entry:
   %load = load half, half addrspace(3)* %in
@@ -91,7 +107,7 @@ entry:
 ; GFX9-NEXT: s_waitcnt
 ; GFX9-NEXT: s_setpc_b64
 
-; VI: ds_read_u8
+; VI: ds_read_u8 v
 define void @load_local_lo_v2i16_reglo_vreg_zexti8(i8 addrspace(3)* %in, i16 %reg) #0 {
 entry:
   %load = load i8, i8 addrspace(3)* %in

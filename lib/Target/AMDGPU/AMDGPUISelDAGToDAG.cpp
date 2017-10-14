@@ -2030,6 +2030,27 @@ bool AMDGPUDAGToDAGISel::SelectHi16Elt(SDValue In, SDValue &Src) const {
     return true;
   }
 
+  const APInt *K = nullptr;
+
+  if (ConstantSDNode *C = dyn_cast<ConstantSDNode>(In)) {
+    SDLoc SL(In);
+    SDValue K = CurDAG->getTargetConstant(C->getZExtValue() << 16, SL, MVT::i32);
+    MachineSDNode *MovK = CurDAG->getMachineNode(AMDGPU::V_MOV_B32_e32,
+                                                 SL, MVT::i32, K);
+    Src = SDValue(MovK, 0);
+    return true;
+  }
+
+  if (ConstantFPSDNode *C = dyn_cast<ConstantFPSDNode>(In)) {
+    SDLoc SL(In);
+    SDValue K = CurDAG->getTargetConstant(
+      C->getValueAPF().bitcastToAPInt().getZExtValue() << 16, SL, MVT::i32);
+    MachineSDNode *MovK = CurDAG->getMachineNode(AMDGPU::V_MOV_B32_e32,
+                                                 SL, MVT::i32, K);
+    Src = SDValue(MovK, 0);
+    return true;
+  }
+
   return isExtractHiElt(In, Src);
 }
 

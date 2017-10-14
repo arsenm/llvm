@@ -561,7 +561,7 @@ multiclass DSReadPat_Hi16 <DS_Pseudo inst, PatFrag frag, ValueType vt = i16> {
 
 multiclass DSReadPat_Lo16 <DS_Pseudo inst, PatFrag frag, ValueType vt = i16> {
   def : GCNPat <
-    (build_vector (vt (frag (DS1Addr1Offset i32:$ptr, i32:$offset))), (Hi16Elt vt:$hi)),
+    (build_vector (vt (frag (DS1Addr1Offset i32:$ptr, i32:$offset))), (vt (Hi16Elt vt:$hi))),
     (v2i16 (inst $ptr, (as_i16imm $offset), (i1 0), $hi))
   >;
 
