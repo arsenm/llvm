@@ -15,6 +15,12 @@
 // AMDGPU DAG Profiles
 //===----------------------------------------------------------------------===//
 
+// i64, i1 = i32, i32, i64
+def AMDGPUDTMadMixedIntTernaryOp : SDTypeProfile<2, 3, [
+  SDTCisSameAs<0, 4>, SDTCisVT<1, i1>, SDTCisSameAs<2, 3>, SDTCisInt<0>, SDTCisInt<2>
+]>;
+
+
 def AMDGPUDTIntTernaryOp : SDTypeProfile<1, 3, [
   SDTCisSameAs<0, 1>, SDTCisSameAs<0, 2>, SDTCisInt<0>, SDTCisInt<3>
 ]>;
@@ -320,6 +326,14 @@ def AMDGPUmad_u24 : SDNode<"AMDGPUISD::MAD_U24", AMDGPUDTIntTernaryOp,
   []
 >;
 def AMDGPUmad_i24 : SDNode<"AMDGPUISD::MAD_I24", AMDGPUDTIntTernaryOp,
+  []
+>;
+
+def AMDGPUmad_i64_i32 : SDNode<"AMDGPUISD::MAD_I64_I32", AMDGPUDTMadMixedIntTernaryOp,
+  []
+>;
+
+def AMDGPUmad_u64_u32 : SDNode<"AMDGPUISD::MAD_U64_U32", AMDGPUDTMadMixedIntTernaryOp,
   []
 >;
 
