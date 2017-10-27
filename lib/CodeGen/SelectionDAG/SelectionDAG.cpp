@@ -2662,7 +2662,23 @@ void SelectionDAG::computeKnownBits(SDValue Op, KnownBits &Known,
       break;
     }
     LLVM_FALLTHROUGH;
-  case ISD::ADD:
+  case ISD::ADD: {
+#if 0
+    unsigned BitWidth = Known.getBitWidth();
+
+    KnownBits Known2(BitWidth);
+    // If an initial sequence of bits in the result is not needed, the
+    // corresponding bits in the operands are not needed.
+    KnownBits LHSKnown(BitWidth);
+    computeKnownBits(Op.getOperand(0), LHSKnown, Depth + 1);
+    computeKnownBits(Op.getOperand(1), Known2, Depth + 1);
+
+    bool NSW = Op->getFlags().hasNoSignedWrap();
+    Known = KnownBits::computeForAddSub(true, NSW, LHSKnown, Known2);
+    break;
+#endif
+  }
+
   case ISD::ADDC:
   case ISD::ADDE: {
     // Output known-0 bits are known if clear or set in both the low clear bits
@@ -2694,6 +2710,24 @@ void SelectionDAG::computeKnownBits(SDValue Op, KnownBits &Known,
     Known.Zero.setLowBits(KnownZeroLow);
     if (KnownZeroHigh > 1)
       Known.Zero.setHighBits(KnownZeroHigh - 1);
+
+#if 0
+    // Are we still trying to solve for the sign bit?
+    if (!Known.isSignBitSet()) {
+      ///if (NSW) {
+      if (Op->getFlags().hasNoSignedWrap()) {
+        // Adding two non-negative numbers, or subtracting a negative number from
+        // a non-negative one, can't wrap into negative.
+        if (LHS.isNonNegative() && RHS.isNonNegative())
+          Known.makeNonNegative();
+        // Adding two negative numbers, or subtracting a non-negative number from
+        // a negative one, can't wrap into non-negative.
+        else if (LHS.isNegative() && RHS.isNegative())
+          Known.makeNegative();
+      }
+    }
+#endif
+
     break;
   }
   case ISD::SREM:
