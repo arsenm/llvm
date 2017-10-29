@@ -386,7 +386,7 @@ namespace {
 
     SDValue XformToShuffleWithZero(SDNode *N);
     SDValue ReassociateOps(unsigned Opc, const SDLoc &DL, SDValue LHS,
-                           SDValue RHS);
+                           SDValue RHS, const SDNodeFlags Flags = SDNodeFlags());
 
     SDValue visitShiftByConstant(SDNode *N, ConstantSDNode *Amt);
 
@@ -954,14 +954,18 @@ static bool matchBinaryPredicate(
 }
 
 SDValue DAGCombiner::ReassociateOps(unsigned Opc, const SDLoc &DL, SDValue N0,
-                                    SDValue N1) {
+                                    SDValue N1, const SDNodeFlags OrigFlags) {
   EVT VT = N0.getValueType();
   if (N0.getOpcode() == Opc) {
+    SDNodeFlags Flags;
+    Flags.setNoUnsignedWrap(N0->getFlags().hasNoUnsignedWrap() &&
+                            OrigFlags.hasNoUnsignedWrap());
+
     if (SDNode *L = DAG.isConstantIntBuildVectorOrConstantInt(N0.getOperand(1))) {
       if (SDNode *R = DAG.isConstantIntBuildVectorOrConstantInt(N1)) {
         // reassoc. (op (op x, c1), c2) -> (op x, (op c1, c2))
         if (SDValue OpNode = DAG.FoldConstantArithmetic(Opc, DL, VT, L, R))
-          return DAG.getNode(Opc, DL, VT, N0.getOperand(0), OpNode);
+          return DAG.getNode(Opc, DL, VT, N0.getOperand(0), OpNode, Flags);
         return SDValue();
       }
       if (N0.hasOneUse()) {
@@ -971,27 +975,33 @@ SDValue DAGCombiner::ReassociateOps(unsigned Opc, const SDLoc &DL, SDValue N0,
         if (!OpNode.getNode())
           return SDValue();
         AddToWorklist(OpNode.getNode());
-        return DAG.getNode(Opc, DL, VT, OpNode, N0.getOperand(1));
+        return DAG.getNode(Opc, DL, VT, OpNode, N0.getOperand(1), Flags);
       }
     }
   }
 
   if (N1.getOpcode() == Opc) {
+    SDNodeFlags Flags;
+    Flags.setNoUnsignedWrap(OrigFlags.hasNoUnsignedWrap() &&
+                            N1->getFlags().hasNoUnsignedWrap());
+
     if (SDNode *R = DAG.isConstantIntBuildVectorOrConstantInt(N1.getOperand(1))) {
       if (SDNode *L = DAG.isConstantIntBuildVectorOrConstantInt(N0)) {
         // reassoc. (op c2, (op x, c1)) -> (op x, (op c1, c2))
-        if (SDValue OpNode = DAG.FoldConstantArithmetic(Opc, DL, VT, R, L))
-          return DAG.getNode(Opc, DL, VT, N1.getOperand(0), OpNode);
+        if (SDValue OpNode = DAG.FoldConstantArithmetic(Opc, DL, VT, R, L)) {
+          return DAG.getNode(Opc, DL, VT, N1.getOperand(0), OpNode, Flags);
+        }
         return SDValue();
       }
       if (N1.hasOneUse()) {
         // reassoc. (op x, (op y, c1)) -> (op (op x, y), c1) iff x+c1 has one
         // use
-        SDValue OpNode = DAG.getNode(Opc, SDLoc(N0), VT, N0, N1.getOperand(0));
+        SDValue OpNode = DAG.getNode(Opc, SDLoc(N0), VT, N0, N1.getOperand(0),
+                                     Flags);
         if (!OpNode.getNode())
           return SDValue();
         AddToWorklist(OpNode.getNode());
-        return DAG.getNode(Opc, DL, VT, OpNode, N1.getOperand(1));
+        return DAG.getNode(Opc, DL, VT, OpNode, N1.getOperand(1), Flags);
       }
     }
   }
@@ -1993,8 +2003,11 @@ SDValue DAGCombiner::visitADD(SDNode *N) {
         isa<FrameIndexSDNode>(N0.getOperand(0)) &&
         isa<ConstantSDNode>(N0.getOperand(1)) &&
         DAG.haveNoCommonBitsSet(N0.getOperand(0), N0.getOperand(1))) {
-      SDValue Add0 = DAG.getNode(ISD::ADD, DL, VT, N1, N0.getOperand(1));
-      return DAG.getNode(ISD::ADD, DL, VT, N0.getOperand(0), Add0);
+      SDNodeFlags Flags;
+      Flags.setNoUnsignedWrap(N->getFlags().hasNoUnsignedWrap());
+
+      SDValue Add0 = DAG.getNode(ISD::ADD, DL, VT, N1, N0.getOperand(1), Flags);
+      return DAG.getNode(ISD::ADD, DL, VT, N0.getOperand(0), Add0, Flags);
     }
   }
 
@@ -2002,7 +2015,7 @@ SDValue DAGCombiner::visitADD(SDNode *N) {
     return NewSel;
 
   // reassociate add
-  if (SDValue RADD = ReassociateOps(ISD::ADD, DL, N0, N1))
+  if (SDValue RADD = ReassociateOps(ISD::ADD, DL, N0, N1, N->getFlags()))
     return RADD;
 
   // fold ((0-A) + B) -> B-A
@@ -5638,7 +5651,12 @@ SDValue DAGCombiner::visitSHL(SDNode *N) {
     SDValue Shl1 = DAG.getNode(ISD::SHL, SDLoc(N1), VT, N0.getOperand(1), N1);
     AddToWorklist(Shl0.getNode());
     AddToWorklist(Shl1.getNode());
-    return DAG.getNode(N0.getOpcode(), SDLoc(N), VT, Shl0, Shl1);
+
+    SDNodeFlags Flags;
+    Flags.setNoUnsignedWrap(N->getFlags().hasNoUnsignedWrap() &&
+                            (N0.getOpcode() == ISD::OR ||
+                             N0->getFlags().hasNoUnsignedWrap()));
+    return DAG.getNode(N0.getOpcode(), SDLoc(N), VT, Shl0, Shl1, Flags);
   }
 
   // fold (shl (mul x, c1), c2) -> (mul x, c1 << c2)
