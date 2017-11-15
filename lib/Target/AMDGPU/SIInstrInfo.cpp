@@ -4775,6 +4775,19 @@ SIInstrInfo::getAddNoCarry(MachineBasicBlock &MBB,
            .addReg(UnusedCarry, RegState::Define | RegState::Dead);
 }
 
+MachineInstrBuilder
+SIInstrInfo::getSubNoCarry(MachineBasicBlock &MBB,
+                           MachineBasicBlock::iterator I,
+                           const DebugLoc &DL,
+                           unsigned DestReg) const {
+  MachineRegisterInfo &MRI = MBB.getParent()->getRegInfo();
+
+  unsigned UnusedCarry = MRI.createVirtualRegister(&AMDGPU::SReg_64RegClass);
+
+  return BuildMI(MBB, I, DL, get(AMDGPU::V_SUB_I32_e64), DestReg)
+    .addReg(UnusedCarry, RegState::Define | RegState::Dead);
+}
+
 bool SIInstrInfo::isKillTerminator(unsigned Opcode) {
   switch (Opcode) {
   case AMDGPU::SI_KILL_F32_COND_IMM_TERMINATOR:
