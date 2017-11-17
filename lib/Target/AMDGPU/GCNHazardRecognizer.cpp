@@ -36,15 +36,27 @@ using namespace llvm;
 // Hazard Recoginizer Implementation
 //===----------------------------------------------------------------------===//
 
+// VMCNT is 4 bits, except on GFX9 where it is 6 bits.
+
+// The maximum size of of a VMEM clause is 16
+static cl::opt<unsigned>
+HazardMaxLookAhead("amdgpu-hazard-max-lookahead", cl::Hidden, cl::init(16),
+                   cl::desc("Maximum instruction count to look for hazards"));
+
+
 GCNHazardRecognizer::GCNHazardRecognizer(const MachineFunction &MF) :
   CurrCycleInstr(nullptr),
   MF(MF),
   ST(MF.getSubtarget<SISubtarget>()),
   TII(*ST.getInstrInfo()),
   TRI(TII.getRegisterInfo()),
+  MaxSMEMClauseSize(
+    AMDGPU::getLgkmcntBitMask(AMDGPU::IsaInfo::getIsaVersion(ST.getFeatureBits()))),
+  MaxVMEMClauseSize(
+    AMDGPU::getVmcntBitMask(AMDGPU::IsaInfo::getIsaVersion(ST.getFeatureBits()))),
   ClauseUses(TRI.getNumRegUnits()),
   ClauseDefs(TRI.getNumRegUnits()) {
-  MaxLookAhead = 5;
+  MaxLookAhead = HazardMaxLookAhead;
 }
 
 void GCNHazardRecognizer::EmitInstruction(SUnit *SU) {
@@ -308,6 +320,8 @@ int GCNHazardRecognizer::checkSoftClauseHazards(MachineInstr *MEM) {
 
   bool IsSMRD = TII.isSMRD(*MEM);
 
+  const unsigned MaxClauseSize = IsSMRD ? MaxSMEMClauseSize : MaxVMEMClauseSize;
+
   resetClause();
 
   // A soft-clause is any group of consecutive SMEM instructions.  The
@@ -320,6 +334,8 @@ int GCNHazardRecognizer::checkSoftClauseHazards(MachineInstr *MEM) {
   // (including itself). If we encounter this situaion, we need to break the
   // clause by inserting a non SMEM instruction.
 
+  unsigned ClauseSize = 1;
+
   for (MachineInstr *MI : EmittedInstrs) {
     // When we hit a non-SMEM instruction then we have passed the start of the
     // clause and we can stop.
@@ -330,7 +346,12 @@ int GCNHazardRecognizer::checkSoftClauseHazards(MachineInstr *MEM) {
       break;
 
     addClauseInst(*MI);
+    ++ClauseSize;
   }
+
+  // The clause will be broken by the required s_waitcnt.
+  if (ClauseSize >= MaxClauseSize)
+    return 0;
 
   if (ClauseDefs.none())
     return 0;

@@ -38,6 +38,8 @@ class GCNHazardRecognizer final : public ScheduleHazardRecognizer {
   const SISubtarget &ST;
   const SIInstrInfo &TII;
   const SIRegisterInfo &TRI;
+  unsigned MaxSMEMClauseSize;
+  unsigned MaxVMEMClauseSize;
 
   /// RegUnits of uses in the current soft memory clause.
   BitVector ClauseUses;
