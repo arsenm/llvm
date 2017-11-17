@@ -325,10 +325,10 @@ class SOP2_64_32_32 <string opName, list<dag> pattern=[]> : SOP2_Pseudo <
 
 let Defs = [SCC] in { // Carry out goes to SCC
 let isCommutable = 1 in {
-def S_ADD_U32 : SOP2_32 <"s_add_u32">;
-def S_ADD_I32 : SOP2_32 <"s_add_i32",
+def S_ADD_U32 : SOP2_32 <"s_add_u32",
   [(set i32:$sdst, (add SSrc_b32:$src0, SSrc_b32:$src1))]
 >;
+def S_ADD_I32 : SOP2_32 <"s_add_i32">;
 } // End isCommutable = 1
 
 def S_SUB_U32 : SOP2_32 <"s_sub_u32">;
