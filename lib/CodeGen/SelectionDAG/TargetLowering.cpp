@@ -3262,8 +3262,8 @@ bool TargetLowering::expandMUL_LOHI(unsigned Opcode, EVT VT, SDLoc dl,
   if (!MakeMUL_LOHI(LH, RL, Lo, Hi, false))
     return false;
 
-  Next = DAG.getNode(ISD::ADDC, dl, DAG.getVTList(VT, MVT::Glue), Next,
-                     Merge(Lo, Hi));
+  Next = DAG.getNode(ISD::ADDCARRY, dl, DAG.getVTList(VT, MVT::i1), Next,
+                     Merge(Lo, Hi), DAG.getConstant(0, dl, MVT::i1));
 
   SDValue Carry = Next.getValue(1);
   Result.push_back(DAG.getNode(ISD::TRUNCATE, dl, HiLoVT, Next));
@@ -3273,7 +3273,7 @@ bool TargetLowering::expandMUL_LOHI(unsigned Opcode, EVT VT, SDLoc dl,
     return false;
 
   SDValue Zero = DAG.getConstant(0, dl, HiLoVT);
-  Hi = DAG.getNode(ISD::ADDE, dl, DAG.getVTList(HiLoVT, MVT::Glue), Hi, Zero,
+  Hi = DAG.getNode(ISD::ADDCARRY, dl, DAG.getVTList(HiLoVT, MVT::i1), Hi, Zero,
                    Carry);
   Next = DAG.getNode(ISD::ADD, dl, VT, Next, Merge(Lo, Hi));
 
