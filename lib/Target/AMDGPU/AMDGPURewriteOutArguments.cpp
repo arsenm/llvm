@@ -44,8 +44,6 @@
 
 #include "AMDGPU.h"
 #include "Utils/AMDGPUBaseInfo.h"
-
-#if 0
 #include "llvm/Analysis/MemoryDependenceAnalysis.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
@@ -60,15 +58,6 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
-#else
-
-#include "llvm/ADT/BitVector.h"
-#include "llvm/ADT/SetVector.h"
-#include "llvm/ADT/Statistic.h"
-#include "llvm/Analysis/MemorySSA.h"
-#include "llvm/Analysis/MemorySSAUpdater.h"
-#endif
-
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
@@ -111,6 +100,7 @@ namespace {
 class AMDGPURewriteOutArguments : public FunctionPass {
 private:
   const DataLayout *DL = nullptr;
+  MemoryDependenceResults *MDA = nullptr;
 
   bool checkArgumentUses(Value &Arg) const;
   bool isOutArgumentCandidate(Argument &Arg) const;
@@ -125,8 +115,7 @@ public:
   AMDGPURewriteOutArguments() : FunctionPass(ID) {}
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequired<MemorySSAWrapperPass>();
-    AU.addPreserved<MemorySSAWrapperPass>();
+    AU.addRequired<MemoryDependenceWrapperPass>();
     FunctionPass::getAnalysisUsage(AU);
   }
 
@@ -138,7 +127,7 @@ public:
 
 INITIALIZE_PASS_BEGIN(AMDGPURewriteOutArguments, DEBUG_TYPE,
                       "AMDGPU Rewrite Out Arguments", false, false)
-INITIALIZE_PASS_DEPENDENCY(MemorySSAWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(MemoryDependenceWrapperPass)
 INITIALIZE_PASS_END(AMDGPURewriteOutArguments, DEBUG_TYPE,
                     "AMDGPU Rewrite Out Arguments", false, false)
 
@@ -242,10 +231,7 @@ bool AMDGPURewriteOutArguments::runOnFunction(Function &F) {
       AMDGPU::isEntryFunctionCC(F.getCallingConv()))
     return false;
 
-  //MDA = &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
-
-  MemorySSA &MSSA = getAnalysis<MemorySSAWrapperPass>().getMSSA();
-  MemorySSAUpdater MSSAUpdater(&MSSA);
+  MDA = &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
 
   unsigned ReturnNumRegs = 0;
   SmallSet<int, 4> OutArgIndexes;
@@ -312,41 +298,11 @@ bool AMDGPURewriteOutArguments::runOnFunction(Function &F) {
       if (ArgNumRegs + ReturnNumRegs > MaxNumRetRegs)
         continue;
 
-
-      const MemorySSA::AccessList *Acc = MSSA.getBlockAccesses(&F.front());
-      if (Acc) {
-        dbgs() << "Entry acc:\n";
-        for (auto &X : *Acc) {
-          dbgs() << X << '\n';
-
-          const MemoryDef &MD = cast<MemoryDef>(X);
-
-
-        }
-      } else {
-        dbgs() << "No entry acc\n";
-      }
-
       // An argument is convertible only if all exit blocks are able to replace
       // it.
       for (ReturnInst *RI : Returns) {
         BasicBlock *BB = RI->getParent();
 
-#if 0
-        //MemoryAccess *Acc = MSSA.getWalker()->getClobberingMemoryAccess(RI);
-        const MemorySSA::AccessList *Acc = MSSA.getBlockAccesses(BB);
-        if (Acc) {
-          for (auto &X : *Acc) {
-            dbgs() << X << '\n';
-          }
-        } else {
-          dbgs() << "No acc\n";
-        }
-#endif
-
-        ThisReplaceable = false;
-
-#if 0
         MemDepResult Q = MDA->getPointerDependencyFrom(MemoryLocation(OutArg),
                                                        true, BB->end(), BB, RI);
         StoreInst *SI = nullptr;
@@ -360,7 +316,6 @@ bool AMDGPURewriteOutArguments::runOnFunction(Function &F) {
           ThisReplaceable = false;
           break;
         }
-#endif
       }
 
       if (!ThisReplaceable)
