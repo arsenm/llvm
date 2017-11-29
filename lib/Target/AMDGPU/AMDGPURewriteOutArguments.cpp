@@ -97,7 +97,9 @@ STATISTIC(NumOutArgumentFunctionsReplaced,
 
 namespace {
 
-class AMDGPURewriteOutArguments : public FunctionPass {
+using ReplacementVec = SmallVector<std::pair<Argument *, Value *>, 4>;
+
+class AMDGPURewriteOutArguments : public ModulePass {
 private:
   const DataLayout *DL = nullptr;
   MemoryDependenceResults *MDA = nullptr;
@@ -112,15 +114,16 @@ private:
 public:
   static char ID;
 
-  AMDGPURewriteOutArguments() : FunctionPass(ID) {}
+  AMDGPURewriteOutArguments() : ModulePass(ID) {}
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<MemoryDependenceWrapperPass>();
-    FunctionPass::getAnalysisUsage(AU);
+    ModulePass::getAnalysisUsage(AU);
   }
 
   bool doInitialization(Module &M) override;
-  bool runOnFunction(Function &F) override;
+  bool runOnFunction(Function &F, DenseMap<ReturnInst *, ReplacementVec> &);
+  bool runOnModule(Module &M) override;
 };
 
 } // end anonymous namespace
@@ -222,9 +225,11 @@ bool AMDGPURewriteOutArguments::isVec3ToVec4Shuffle(Type *Ty0, Type* Ty1) const 
 }
 #endif
 
-bool AMDGPURewriteOutArguments::runOnFunction(Function &F) {
-  if (skipFunction(F))
-    return false;
+bool AMDGPURewriteOutArguments::runOnFunction(
+  Function &F,
+  DenseMap<ReturnInst *, ReplacementVec> &Replacements) {
+  ///if (skipFunction(F))
+  //return false;
 
   // TODO: Could probably handle variadic functions.
   if (F.isVarArg() || F.hasStructRetAttr() ||
@@ -258,9 +263,6 @@ bool AMDGPURewriteOutArguments::runOnFunction(Function &F) {
   if (OutArgs.empty())
     return false;
 
-  using ReplacementVec = SmallVector<std::pair<Argument *, Value *>, 4>;
-
-  DenseMap<ReturnInst *, ReplacementVec> Replacements;
 
   SmallVector<ReturnInst *, 4> Returns;
   for (BasicBlock &BB : F) {
@@ -429,6 +431,75 @@ bool AMDGPURewriteOutArguments::runOnFunction(Function &F) {
     }
   }
 
+
+
+  for (Value::user_iterator I = F.user_begin(), E = F.user_end(); I != E; ) {
+    CallSite CS(*I++);
+    if (!CS)
+      continue;
+
+    CallInst *Call = dyn_cast<CallInst>(CS.getInstruction());
+    if (!Call)
+      continue;
+
+    IRBuilder<> B(Call);
+
+    SmallVector<Value *, 16> NewCallArgs;
+
+    // FIXME: Verify argument lists match
+
+    for (unsigned J = 0, JE = CS.getNumArgOperands(); J != JE; ++J) {
+      if (!OutArgIndexes.count(J)) {
+        NewCallArgs.push_back(CS.getArgument(J));
+        continue;
+      }
+    }
+
+    CallInst *NewCall = B.CreateCall(NewFunc, NewCallArgs);
+
+    int RetIdx = RetTy->isVoidTy() ? 0 : 1;
+
+    Value *NewRetVal = nullptr;
+    if (!RetTy->isVoidTy()) {
+      NewRetVal = B.CreateExtractValue(NewCall, 0);
+    }
+
+
+
+    for (Argument &Arg : F.args()) {
+      if (!OutArgIndexes.count(Arg.getArgNo())) {
+        NewCallArgs.push_back(CS.getArgument(Arg.getArgNo()));
+        continue;
+      }
+
+
+      PointerType *ArgType = cast<PointerType>(Arg.getType());
+
+      auto *EltTy = ArgType->getElementType();
+      unsigned Align = Arg.getParamAlignment();
+      if (Align == 0)
+        Align = DL->getABITypeAlignment(EltTy);
+
+      Value *Val = B.CreateExtractValue(NewCall, RetIdx++);
+      Type *PtrTy = Val->getType()->getPointerTo(ArgType->getAddressSpace());
+
+      // We can peek through bitcasts, so the type may not match.
+      Value *PtrVal = B.CreateBitCast(&Arg, PtrTy);
+
+      B.CreateAlignedStore(Val, PtrVal, Align);
+    }
+
+
+    if (NewRetVal) {
+      Call->replaceAllUsesWith(NewRetVal);
+      Call->eraseFromParent();
+    }
+  }
+
+
+
+#if 0
+
   SmallVector<Value *, 16> StubCallArgs;
   for (Argument &Arg : F.args()) {
     if (OutArgIndexes.count(Arg.getArgNo())) {
@@ -473,11 +544,29 @@ bool AMDGPURewriteOutArguments::runOnFunction(Function &F) {
 
   // The function is now a stub we want to inline.
   F.addFnAttr(Attribute::AlwaysInline);
+#endif
 
   ++NumOutArgumentFunctionsReplaced;
   return true;
 }
 
-FunctionPass *llvm::createAMDGPURewriteOutArgumentsPass() {
+bool AMDGPURewriteOutArguments::runOnModule(Module &M) {
+  if (skipModule(M))
+    return false;
+
+  bool Changed = false;
+  for (Function &Fn : M) {
+    if (Fn.isDeclaration())
+      continue;
+
+
+    DenseMap<ReturnInst *, ReplacementVec> Replacements;
+    Changed |= runOnFunction(Fn, Replacements);
+  }
+
+  return Changed;
+}
+
+ModulePass *llvm::createAMDGPURewriteOutArgumentsPass() {
   return new AMDGPURewriteOutArguments();
 }

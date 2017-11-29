@@ -57,7 +57,7 @@ FunctionPass *createAMDGPUSimplifyLibCallsPass(const TargetOptions &);
 FunctionPass *createAMDGPUUseNativeCallsPass();
 FunctionPass *createAMDGPUCodeGenPreparePass();
 FunctionPass *createAMDGPUMachineCFGStructurizerPass();
-FunctionPass *createAMDGPURewriteOutArgumentsPass();
+ModulePass *createAMDGPURewriteOutArgumentsPass();
 
 void initializeAMDGPUDAGToDAGISelPass(PassRegistry&);
 
