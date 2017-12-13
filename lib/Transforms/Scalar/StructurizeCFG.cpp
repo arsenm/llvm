@@ -367,9 +367,49 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
     BasicBlock *BB = N->getNodeAs<BasicBlock>();
     BranchInst *Term = cast<BranchInst>(BB->getTerminator());
 
-    for (BasicBlock *Succ : Term->successors())
-      if (Visited.count(Succ))
-        Loops[Succ] = BB;
+    DEBUG(dbgs() << "analyze successors: " << *Term << '\n');
+    for (BasicBlock *Succ : Term->successors()) {
+
+      if (Visited.count(Succ) != DT->dominates(Succ, BB)) {
+
+        dbgs() << "Succ: " << Succ->getName()
+               << " visited: " << Visited.count(Succ)
+               << " dominates: " << DT->dominates(Succ, BB)
+               << " BB: " << BB->getName() << '\n';
+
+
+        llvm_unreachable("succ != dominates");
+      }
+
+
+#if 1
+      if (Visited.count(Succ)) {
+#else
+      if (DT->dominates(Succ, BB)) {
+#endif
+        auto &X = Loops[Succ];
+
+
+        DEBUG(
+          if (X != nullptr) {
+            dbgs() << "OVERWRITING LOOPS BLOCK "
+                   << X->getName()
+                   << " with "
+                   << BB->getName()
+                   << '\n';
+            //llvm_unreachable("overwrote block");
+          } else {
+            dbgs() << "SETTING LOOPS BLOCK "
+                   << BB->getName()
+                   << '\n';
+          }
+        );
+
+        //assert(X == nullptr);
+        X = BB;
+        //Loops[Succ] = BB;
+      }
+    }
   }
 }
 
