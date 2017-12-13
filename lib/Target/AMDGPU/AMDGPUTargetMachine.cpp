@@ -752,6 +752,10 @@ bool GCNPassConfig::addPreISel() {
   // supported.
   addPass(createAMDGPUAnnotateKernelFeaturesPass());
 
+  // FIXME: Workaround for pass dependency combination of StructurizeCFG failing
+  // to schedule unless also explicitly added here.
+  addPass(&LowerSwitchID);
+
   // Merge divergent exit nodes. StructurizeCFG won't recognize the multi-exit
   // regions formed by them.
   addPass(&AMDGPUUnifyDivergentExitNodesID);

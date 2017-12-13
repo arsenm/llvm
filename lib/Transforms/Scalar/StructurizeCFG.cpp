@@ -14,10 +14,11 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/DivergenceAnalysis.h"
+#include "llvm/Analysis/DominanceFrontier.h"
 #include "llvm/Analysis/LoopInfo.h"
+#include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/RegionInfo.h"
 #include "llvm/Analysis/RegionIterator.h"
-#include "llvm/Analysis/RegionPass.h"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
@@ -44,6 +45,7 @@
 #include <algorithm>
 #include <cassert>
 #include <utility>
+#include <queue>
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -165,7 +167,7 @@ public:
 /// while the true side continues the general flow. So the loop condition
 /// consist of a network of PHI nodes where the true incoming values expresses
 /// breaks and the false values expresses continue states.
-class StructurizeCFG : public RegionPass {
+class StructurizeCFG : public FunctionPass {
   bool SkipUniformRegions;
 
   Type *Boolean;
@@ -243,25 +245,32 @@ public:
   static char ID;
 
   explicit StructurizeCFG(bool SkipUniformRegions = false)
-      : RegionPass(ID), SkipUniformRegions(SkipUniformRegions) {
+      : FunctionPass(ID), SkipUniformRegions(SkipUniformRegions) {
     initializeStructurizeCFGPass(*PassRegistry::getPassRegistry());
   }
 
-  bool doInitialization(Region *R, RGPassManager &RGM) override;
+  bool doInitialization(Module &M) override;
 
-  bool runOnRegion(Region *R, RGPassManager &RGM) override;
+  bool skipUniformRegion(Region &R, bool &Changed) const;
+  bool addRegionIntoQueue(Region &R, std::deque<Region *> &RQ) const;
+  bool runOnRegion(Region *R);
+
+  bool runOnFunction(Function &F) override;
 
   StringRef getPassName() const override { return "Structurize control flow"; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     if (SkipUniformRegions)
       AU.addRequired<DivergenceAnalysis>();
+
     AU.addRequiredID(LowerSwitchID);
-    AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<PostDominatorTreeWrapperPass>();
+    AU.addRequired<DominanceFrontierWrapperPass>();
 
     AU.addPreserved<DominatorTreeWrapperPass>();
-    RegionPass::getAnalysisUsage(AU);
+    FunctionPass::getAnalysisUsage(AU);
   }
 };
 
@@ -271,16 +280,17 @@ char StructurizeCFG::ID = 0;
 
 INITIALIZE_PASS_BEGIN(StructurizeCFG, "structurizecfg", "Structurize the CFG",
                       false, false)
-INITIALIZE_PASS_DEPENDENCY(DivergenceAnalysis)
 INITIALIZE_PASS_DEPENDENCY(LowerSwitch)
+INITIALIZE_PASS_DEPENDENCY(DivergenceAnalysis)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-INITIALIZE_PASS_DEPENDENCY(RegionInfoPass)
+INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(DominanceFrontierWrapperPass)
 INITIALIZE_PASS_END(StructurizeCFG, "structurizecfg", "Structurize the CFG",
                     false, false)
 
 /// \brief Initialize the types and constants used in the pass
-bool StructurizeCFG::doInitialization(Region *R, RGPassManager &RGM) {
-  LLVMContext &Context = R->getEntry()->getContext();
+bool StructurizeCFG::doInitialization(Module &M) {
+  LLVMContext &Context = M.getContext();
 
   Boolean = Type::getInt1Ty(Context);
   BoolTrue = ConstantInt::getTrue(Context);
@@ -878,9 +888,9 @@ void StructurizeCFG::rebuildSSA() {
     }
 }
 
-static bool hasOnlyUniformBranches(const Region *R,
+static bool hasOnlyUniformBranches(const Region &R,
                                    const DivergenceAnalysis &DA) {
-  for (const BasicBlock *BB : R->blocks()) {
+  for (const BasicBlock *BB : R.blocks()) {
     const BranchInst *Br = dyn_cast<BranchInst>(BB->getTerminator());
     if (!Br || !Br->isConditional())
       continue;
@@ -892,35 +902,40 @@ static bool hasOnlyUniformBranches(const Region *R,
   return true;
 }
 
+bool StructurizeCFG::skipUniformRegion(Region &R, bool &Changed) const {
+  if (!SkipUniformRegions)
+    return false;
+  // TODO: We could probably be smarter here with how we handle sub-regions.
+  auto &DA = getAnalysis<DivergenceAnalysis>();
+  if (hasOnlyUniformBranches(R, DA)) {
+    DEBUG(dbgs() << "Skipping region with uniform control flow: " << R << '\n');
+
+    // Mark all direct child block terminators as having been treated as
+    // uniform. To account for a possible future in which non-uniform
+    // sub-regions are treated more cleverly, indirect children are not
+    // marked as uniform.
+    MDNode *MD = MDNode::get(Func->getParent()->getContext(), {});
+    for (RegionNode *E : R.elements()) {
+      if (E->isSubRegion())
+        continue;
+
+      if (Instruction *Term = E->getEntry()->getTerminator()) {
+        Term->setMetadata("structurizecfg.uniform", MD);
+        Changed = true;
+      }
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
 /// \brief Run the transformation for each region found
-bool StructurizeCFG::runOnRegion(Region *R, RGPassManager &RGM) {
+bool StructurizeCFG::runOnRegion(Region *R) {
   if (R->isTopLevelRegion())
     return false;
 
-  if (SkipUniformRegions) {
-    // TODO: We could probably be smarter here with how we handle sub-regions.
-    auto &DA = getAnalysis<DivergenceAnalysis>();
-    if (hasOnlyUniformBranches(R, DA)) {
-      DEBUG(dbgs() << "Skipping region with uniform control flow: " << *R << '\n');
-
-      // Mark all direct child block terminators as having been treated as
-      // uniform. To account for a possible future in which non-uniform
-      // sub-regions are treated more cleverly, indirect children are not
-      // marked as uniform.
-      MDNode *MD = MDNode::get(R->getEntry()->getParent()->getContext(), {});
-      for (RegionNode *E : R->elements()) {
-        if (E->isSubRegion())
-          continue;
-
-        if (Instruction *Term = E->getEntry()->getTerminator())
-          Term->setMetadata("structurizecfg.uniform", MD);
-      }
-
-      return false;
-    }
-  }
-
-  Func = R->getEntry()->getParent();
   ParentRegion = R;
 
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
@@ -946,6 +961,57 @@ bool StructurizeCFG::runOnRegion(Region *R, RGPassManager &RGM) {
   LoopConds.clear();
 
   return true;
+}
+
+// Recurse through all subregions and all regions  into RQ.
+// The IR may still be modified even though all branches are uniform since
+// metadata is added.
+bool StructurizeCFG::addRegionIntoQueue(Region &R, std::deque<Region *> &RQ) const {
+  bool Changed;
+
+  if (!skipUniformRegion(R, Changed))
+    RQ.push_back(&R);
+
+
+  for (auto &E : R) {
+    if (!skipUniformRegion(*E, Changed))
+      addRegionIntoQueue(*E, RQ);
+  }
+
+  return Changed;
+}
+
+bool StructurizeCFG::runOnFunction(Function &F) {
+ Func = &F;
+
+  auto DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  auto PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
+  auto DF = &getAnalysis<DominanceFrontierWrapperPass>().getDominanceFrontier();
+
+  bool Changed = false;
+
+  RegionInfo RI;
+  RI.recalculate(F, DT, PDT, DF);
+
+  std::deque<Region *> RQ;
+  if (addRegionIntoQueue(*RI.getTopLevelRegion(), RQ))
+    Changed = true;
+
+  while (!RQ.empty()) {
+    Region *CurrentRegion = RQ.back();
+
+    if (runOnRegion(CurrentRegion)) {
+      Changed = true;
+
+#ifndef NDEBUG
+      DT->verifyDomTree();
+#endif
+    }
+
+    RQ.pop_back();
+  }
+
+  return Changed;
 }
 
 Pass *llvm::createStructurizeCFGPass(bool SkipUniformRegions) {
