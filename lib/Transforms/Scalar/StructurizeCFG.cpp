@@ -1569,14 +1569,29 @@ bool StructurizeCFG::runOnFunction(Function &F) {
   auto DF = &getAnalysis<DominanceFrontierWrapperPass>().getDominanceFrontier();
 
   bool Changed = false;
-
+  bool Restart = false;
   RegionInfo RI;
+  std::deque<Region *> RQ;
+
+restart:
+  Restart = false;
+
+
+
   RI.recalculate(F, DT, PDT, DF);
   this->RI = &RI;
 
-  std::deque<Region *> RQ;
-  if (addRegionIntoQueue(*RI.getTopLevelRegion(), RQ))
+  if (Restart) {
+    RQ.clear();
+    PDT->recalculate(F);
+    DF->analyze(*DT);
+    RI.recalculate(F, DT, PDT, DF);
+    Restart = false;
+  }
+
+  if (addRegionIntoQueue(*RI.getTopLevelRegion(), RQ)) {
     Changed = true;
+  }
 
   while (!RQ.empty()) {
     Region *CurrentRegion = RQ.back();
