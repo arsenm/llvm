@@ -49,6 +49,115 @@
 #include <utility>
 #include <queue>
 
+
+namespace llvm {
+
+template <typename WrappedIteratorT,
+          typename T>
+struct wrapped_uniqueptr_iterator
+    : iterator_adaptor_base<
+  wrapped_uniqueptr_iterator<WrappedIteratorT, T>, WrappedIteratorT,
+          typename std::iterator_traits<WrappedIteratorT>::iterator_category,
+          T> {
+
+private:
+  mutable T Ptr;
+
+public:
+  wrapped_uniqueptr_iterator() = default;
+  template <typename U>
+  wrapped_uniqueptr_iterator(U &&u)
+      : wrapped_uniqueptr_iterator::iterator_adaptor_base(std::forward<U &&>(u)) {}
+
+  T &operator*() {
+    return Ptr = this->I->get()->getNode();
+  }
+
+
+};
+
+template <> struct GraphTraits<Inverse<RegionNode*>> {
+  using NodeRef = RegionNode *;
+  using ChildIteratorType = wrapped_uniqueptr_iterator<Region::iterator, RegionNode*>;
+
+  static NodeRef getEntryNode(Inverse<RegionNode *> G) {
+    return G.Graph;
+  }
+  static ChildIteratorType child_begin(NodeRef N) {
+    auto *EntryBB = N->getEntry();
+    auto *RI = N->getParent()->getRegionInfo();
+    auto *R = RI->getRegionFor(EntryBB);
+
+    //assert(R);
+    //return ChildIteratorType(R);
+    //return N->begin();
+    llvm_unreachable("implement me");
+  }
+
+  static ChildIteratorType child_end(NodeRef N) {
+    //return N->end();
+    llvm_unreachable("implement me");
+  }
+
+#if 0
+  //using nodes_iterator = pointer_iterator<Region::iterator>;
+  //using nodes_iterator = pointer_iterator<Region::iterator>;
+  //using nodes_iterator = wrapped_uniqueptr_iterator<Region::iterator>;
+  using nodes_iterator = ChildIteratorType;
+
+
+  static nodes_iterator nodes_begin(Inverse<RegionNode *> *G) {
+    auto *EntryBB = G->Graph->getEntry();
+    auto *RI = G->Graph->getParent()->getRegionInfo();
+    auto *R = RI->getRegionFor(EntryBB);
+
+    return nodes_iterator(R);
+  }
+
+  static nodes_iterator nodes_end(Inverse<RegionNode *> *G) {
+    llvm_unreachable("implement me");
+  }
+#endif
+};
+
+
+template <> struct GraphTraits<Inverse<Region*>> :
+  public GraphTraits<Inverse<RegionNode*>> {
+  static NodeRef getEntryNode(Inverse<Region *> G) {
+    return G.Graph->getNode();
+  }
+};
+
+
+
+
+
+// Provide global definitions of inverse depth first iterators...
+template <class T>
+struct iscc_iterator : public scc_iterator<Inverse<T>> {
+  iscc_iterator(const scc_iterator<Inverse<T>> &V)
+    : scc_iterator<Inverse<T>>(V) {}
+};
+
+template <class T>
+iscc_iterator<T> iscc_begin(const T& G) {
+  return iscc_iterator<T>::begin(Inverse<T>(G));
+}
+
+template <class T>
+iscc_iterator<T> iscc_end(const T& G){
+  return iscc_iterator<T>::end(Inverse<T>(G));
+}
+
+
+template <class T>
+iterator_range<iscc_iterator<T>> inverse_scc(const T& G) {
+  return make_range(iscc_begin(G), iscc_end(G));
+}
+
+}
+
+
 using namespace llvm;
 using namespace llvm::PatternMatch;
 
