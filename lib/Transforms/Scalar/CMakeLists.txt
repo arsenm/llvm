@@ -65,6 +65,7 @@ add_llvm_library(LLVMScalarOpts
   SpeculateAroundPHIs.cpp
   StraightLineStrengthReduce.cpp
   StructurizeCFG.cpp
+  NewStructurizeCFG.cpp
   TailRecursionElimination.cpp
 
   ADDITIONAL_HEADER_DIRS
