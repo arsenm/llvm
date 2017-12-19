@@ -168,6 +168,7 @@ public:
 /// consist of a network of PHI nodes where the true incoming values expresses
 /// breaks and the false values expresses continue states.
 class StructurizeCFG : public FunctionPass {
+  RegionInfo *RI;
   bool SkipUniformRegions;
 
   Type *Boolean;
@@ -196,7 +197,7 @@ class StructurizeCFG : public FunctionPass {
 
   RegionNode *PrevNode;
 
-  void orderNodes();
+  void orderNodes(Region *R);
 
   void analyzeLoops(RegionNode *N);
 
@@ -237,7 +238,7 @@ class StructurizeCFG : public FunctionPass {
 
   void handleLoops(bool ExitUseAllowed, BasicBlock *LoopEnd);
 
-  void createFlow();
+  void createFlow(BasicBlock *RegionEntry, BasicBlock *RegionExit);
 
   void rebuildSSA();
 
@@ -301,7 +302,7 @@ bool StructurizeCFG::doInitialization(Module &M) {
 }
 
 /// \brief Build up the general order of nodes
-void StructurizeCFG::orderNodes() {
+void StructurizeCFG::orderNodes(Region *ParentRegion) {
   ReversePostOrderTraversal<Region*> RPOT(ParentRegion);
   SmallDenseMap<Loop*, unsigned, 8> LoopBlocks;
 
@@ -419,14 +420,14 @@ Value *StructurizeCFG::buildCondition(BranchInst *Term, unsigned Idx,
 
 /// \brief Analyze the predecessors of each block and build up predicates
 void StructurizeCFG::gatherPredicates(RegionNode *N) {
-  RegionInfo *RI = ParentRegion->getRegionInfo();
   BasicBlock *BB = N->getEntry();
+  Region *ParentRegion = N->getParent();
   BBPredicates &Pred = Predicates[BB];
   BBPredicates &LPred = LoopPreds[BB];
 
   for (BasicBlock *P : predecessors(BB)) {
     // Ignore it if it's a branch from outside into our region entry
-    if (!ParentRegion->contains(P))
+    if (!N->getParent()->contains(P))
       continue;
 
     Region *R = RI->getRegionFor(P);
@@ -678,7 +679,7 @@ BasicBlock *StructurizeCFG::getNextFlow(BasicBlock *Dominator) {
   BasicBlock *Flow = BasicBlock::Create(Context, FlowBlockName,
                                         Func, Insert);
   DT->addNewBlock(Flow, Dominator);
-  ParentRegion->getRegionInfo()->setRegionFor(Flow, ParentRegion);
+  RI->setRegionFor(Flow, ParentRegion);
   return Flow;
 }
 
@@ -832,9 +833,9 @@ void StructurizeCFG::handleLoops(bool ExitUseAllowed,
 
 /// After this function control flow looks like it should be, but
 /// branches and PHI nodes only have undefined conditions.
-void StructurizeCFG::createFlow() {
-  BasicBlock *Exit = ParentRegion->getExit();
-  bool EntryDominatesExit = DT->dominates(ParentRegion->getEntry(), Exit);
+void StructurizeCFG::createFlow(BasicBlock *RegionEntry,
+                                BasicBlock *RegionExit) {
+  bool EntryDominatesExit = DT->dominates(RegionEntry, RegionExit);
 
   DeletedPhis.clear();
   AddedPhis.clear();
@@ -849,7 +850,7 @@ void StructurizeCFG::createFlow() {
   }
 
   if (PrevNode)
-    changeExit(PrevNode, Exit, EntryDominatesExit);
+    changeExit(PrevNode, RegionExit, EntryDominatesExit);
   else
     assert(EntryDominatesExit);
 }
@@ -941,9 +942,9 @@ bool StructurizeCFG::runOnRegion(Region *R) {
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 
-  orderNodes();
+  orderNodes(R);
   collectInfos();
-  createFlow();
+  createFlow(R->getEntry(), R->getExit());
   insertConditions(false);
   insertConditions(true);
   setPhiValues();
@@ -992,6 +993,7 @@ bool StructurizeCFG::runOnFunction(Function &F) {
 
   RegionInfo RI;
   RI.recalculate(F, DT, PDT, DF);
+  this->RI = &RI;
 
   std::deque<Region *> RQ;
   if (addRegionIntoQueue(*RI.getTopLevelRegion(), RQ))
