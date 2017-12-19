@@ -191,6 +191,7 @@ void initializeLegacyLICMPassPass(PassRegistry&);
 void initializeLegacyLoopSinkPassPass(PassRegistry&);
 void initializeLegalizerPass(PassRegistry&);
 void initializeLibCallsShrinkWrapLegacyPassPass(PassRegistry&);
+void initializeLinearizeCFGPass(PassRegistry&);
 void initializeLintPass(PassRegistry&);
 void initializeLiveDebugValuesPass(PassRegistry&);
 void initializeLiveDebugVariablesPass(PassRegistry&);
