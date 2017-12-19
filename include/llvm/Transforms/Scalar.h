@@ -288,6 +288,15 @@ Pass *createStructurizeCFGPass(bool SkipUniformRegions = false);
 
 //===----------------------------------------------------------------------===//
 //
+// CFG Structurization - Remove irreducible control flow
+//
+///
+/// When \p SkipUniformRegions is true the structizer will not structurize
+/// regions that only contain uniform branches.
+Pass *createLinearizeCFGPass(bool SkipUniformRegions = false);
+
+//===----------------------------------------------------------------------===//
+//
 // BreakCriticalEdges - Break all of the critical edges in the CFG by inserting
 // a dummy basic block. This pass may be "required" by passes that cannot deal
 // with critical edges. For this usage, a pass must call:

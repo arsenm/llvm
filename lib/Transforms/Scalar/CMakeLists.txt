@@ -22,6 +22,7 @@ add_llvm_library(LLVMScalarOpts
   InferAddressSpaces.cpp
   JumpThreading.cpp
   LICM.cpp
+  LinearizeCFG.cpp
   LoopAccessAnalysisPrinter.cpp
   LoopSink.cpp
   LoopDeletion.cpp
