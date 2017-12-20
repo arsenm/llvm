@@ -19,6 +19,7 @@
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/RegionInfo.h"
 #include "llvm/Analysis/RegionIterator.h"
+#include "llvm/ADT/SCCIterator.h"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
@@ -51,6 +52,8 @@ using namespace llvm;
 using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "structurizecfg"
+
+#define USEFUL_NAMES 0
 
 // The name for newly created blocks.
 static const char *const FlowBlockName = "Flow";
@@ -301,8 +304,57 @@ bool StructurizeCFG::doInitialization(Module &M) {
   return false;
 }
 
+static void printRegionNode(const RegionNode *N) {
+  if (!N) {
+    dbgs() << " NULL REGION NODE\n";
+    return;
+  }
+
+  if (N->isSubRegion()) {
+    BasicBlock *Enter = N->getNodeAs<Region>()->getEnteringBlock();
+    BasicBlock *Exit = N->getNodeAs<Region>()->getExit();
+
+    dbgs() << "  subregion: " << Enter->getName() << " -> " << Exit->getName() << '\n';
+  } else {
+    BasicBlock *BB = N->getNodeAs<BasicBlock>();
+    dbgs() << " BB " << BB->getName() << '\n';
+  }
+
+}
+
+
+static void printSCCRegion(Region *R) {
+  dbgs() << "Region SCC order:\n";
+  scc_iterator<Region *> I = scc_begin(R);
+  for (; !I.isAtEnd(); ++I) {
+    dbgs() << "\nSCC break\n";
+    const std::vector<RegionNode *> &Nodes = *I;
+    for (RegionNode *N : Nodes) {
+      printRegionNode(N);
+    }
+  }
+}
+
+static void printSCCFunc(Function *F) {
+  dbgs() << "Function SCC order:\n";
+  scc_iterator<Function *> I = scc_begin(F);
+  for (; !I.isAtEnd(); ++I) {
+    dbgs() << "\nSCC break\n";
+    const std::vector<BasicBlock *> &Nodes = *I;
+    for (BasicBlock *BB : Nodes) {
+      dbgs() << "BB " << BB->getName() << '\n';
+    }
+  }
+}
+
 /// \brief Build up the general order of nodes
 void StructurizeCFG::orderNodes(Region *ParentRegion) {
+  DEBUG(
+    printSCCRegion(ParentRegion);
+    dbgs() << "\n\n\n\n";
+    printSCCFunc(Func);
+  );
+
   ReversePostOrderTraversal<Region*> RPOT(ParentRegion);
   SmallDenseMap<Loop*, unsigned, 8> LoopBlocks;
 
@@ -312,8 +364,37 @@ void StructurizeCFG::orderNodes(Region *ParentRegion) {
   for (RegionNode *RN : RPOT) {
     BasicBlock *BB = RN->getEntry();
     Loop *Loop = LI->getLoopFor(BB);
+
+    DEBUG(
+      dbgs() << "Loop for " << BB->getName()
+      << " depth " << (Loop ? Loop->getLoopDepth() : -1)
+      << ":\n  ";
+      if (Loop)
+        Loop->dump();
+      else
+        dbgs() << "<null>\n";
+    );
+
+
     ++LoopBlocks[Loop];
   }
+
+  DEBUG(dbgs() << "Size of nodes: " << std::distance(RPOT.begin(), RPOT.end()) << '\n');
+
+  DEBUG(
+    dbgs() << "Loop depths:\n";
+    for (auto I = RPOT.begin(), E = RPOT.end(); I != E; ++I) {
+      BasicBlock *BB = (*I)->getEntry();
+      auto *L = LI->getLoopFor(BB);
+      unsigned LoopDepth = LI->getLoopDepth(BB);
+      dbgs() << "  " << (L != nullptr) << " depth = " << LoopDepth <<  " " << BB->getName()
+             << " loop name " << (L ? L->getName() : "<no loop>")
+             << '\n';
+    }
+
+    dbgs() << "\n\n\n";
+  );
+
 
   unsigned CurrentLoopDepth = 0;
   Loop *CurrentLoop = nullptr;
@@ -321,27 +402,48 @@ void StructurizeCFG::orderNodes(Region *ParentRegion) {
     BasicBlock *BB = (*I)->getEntry();
     unsigned LoopDepth = LI->getLoopDepth(BB);
 
-    if (is_contained(Order, *I))
+    if (is_contained(Order, *I)) {
+      DEBUG(dbgs() << "is_contained continue: " << BB->getName() << '\n');
       continue;
+    }
+
+    DEBUG(dbgs() << "Check unvisited region: " << BB->getName() << '\n');
 
     if (LoopDepth < CurrentLoopDepth) {
+      DEBUG(dbgs() << "LoopDepth < CurrentLoopDepth: "
+            << LoopDepth <<
+            " < " << CurrentLoopDepth << '\n');
+
+
       // Make sure we have visited all blocks in this loop before moving back to
       // the outer loop.
 
       auto LoopI = I;
       while (unsigned &BlockCount = LoopBlocks[CurrentLoop]) {
+        assert(BlockCount >= 0);
         LoopI++;
         BasicBlock *LoopBB = (*LoopI)->getEntry();
         if (LI->getLoopFor(LoopBB) == CurrentLoop) {
+          assert(BlockCount >= 0);
           --BlockCount;
           Order.push_back(*LoopI);
         }
       }
+    } else {
+      DEBUG(dbgs() << "XX LoopDepth >= CurrentLoopDepth: "
+            << LoopDepth <<
+            " < " << CurrentLoopDepth << '\n');
     }
 
     CurrentLoop = LI->getLoopFor(BB);
-    if (CurrentLoop)
+    if (CurrentLoop) {
+      DEBUG(dbgs() << "--LoopBlocks[CurrentLoop]: loop for "
+            << BB->getName() << '\n');
+      assert(LoopBlocks[CurrentLoop] >= 0);
       LoopBlocks[CurrentLoop]--;
+    } else {
+      DEBUG(dbgs() << "No loop for " << BB->getName() << '\n');
+    }
 
     CurrentLoopDepth = LoopDepth;
     Order.push_back(*I);
@@ -359,8 +461,11 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
   if (N->isSubRegion()) {
     // Test for exit as back edge
     BasicBlock *Exit = N->getNodeAs<Region>()->getExit();
-    if (Visited.count(Exit))
-      Loops[Exit] = N->getEntry();
+    if (Visited.count(Exit)) {
+      auto &X = Loops[Exit];
+      assert(X == nullptr);
+      X = N->getEntry();
+    }
 
   } else {
     // Test for successors as back edge
@@ -370,15 +475,18 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
     DEBUG(dbgs() << "analyze successors: " << *Term << '\n');
     for (BasicBlock *Succ : Term->successors()) {
 
+      // FIXME: This is broken in testcases with effective multiple exits
       if (Visited.count(Succ) != DT->dominates(Succ, BB)) {
 
-        dbgs() << "Succ: " << Succ->getName()
-               << " visited: " << Visited.count(Succ)
-               << " dominates: " << DT->dominates(Succ, BB)
-               << " BB: " << BB->getName() << '\n';
+        DEBUG(
+          dbgs() << "Succ: " << Succ->getName()
+          << " visited: " << Visited.count(Succ)
+          << " dominates: " << DT->dominates(Succ, BB)
+          << " BB: " << BB->getName() << '\n';
+          );
 
 
-        llvm_unreachable("succ != dominates");
+        //llvm_unreachable("succ != dominates");
       }
 
 
@@ -411,6 +519,17 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
       }
     }
   }
+
+  DEBUG(
+    dbgs() << "\n\n\nBLOCKS IN LOOPS:\n";
+    for (auto &X : Loops) {
+      dbgs() << "  "
+             << X.first->getName()
+             << " -> "
+             << X.second->getName()
+             << '\n';
+    }
+  );
 }
 
 /// \brief Invert the given condition
@@ -528,16 +647,26 @@ void StructurizeCFG::collectInfos() {
   // Reset the visited nodes
   Visited.clear();
 
+  DEBUG(
+    dbgs() << "\n\n\nREVERSED ORDER:\n";
+    for (RegionNode *RN : reverse(Order))
+      printRegionNode(RN);
+    dbgs() << "\n\n\n\n";
+  );
+
   for (RegionNode *RN : reverse(Order)) {
     DEBUG(dbgs() << "Visiting: "
                  << (RN->isSubRegion() ? "SubRegion with entry: " : "")
                  << RN->getEntry()->getName() << " Loop Depth: "
-                 << LI->getLoopDepth(RN->getEntry()) << "\n");
+                 << LI->getLoopDepth(RN->getEntry()) << '\n');
+
 
     // Analyze all the conditions leading to a node
     gatherPredicates(RN);
 
     // Remember that we've seen this node
+    DEBUG(dbgs() << "ENTRY VISIT: " << RN->getEntry()->getName() << '\n');
+
     Visited.insert(RN->getEntry());
 
     // Find the last back edges
@@ -586,7 +715,11 @@ void StructurizeCFG::insertConditions(bool Loops) {
       if (!Dominator.resultIsRememberedBlock())
         PhiInserter.AddAvailableValue(Dominator.result(), Default);
 
-      Term->setCondition(PhiInserter.GetValueInMiddleOfBlock(Parent));
+      auto *NewPhi = PhiInserter.GetValueInMiddleOfBlock(Parent);
+#if USEFUL_NAMES
+      NewPhi->setName("cond.phi");
+#endif
+      Term->setCondition(NewPhi);
     }
   }
 }
@@ -696,19 +829,33 @@ void StructurizeCFG::changeExit(RegionNode *Node, BasicBlock *NewExit,
     }
 
     // Change the dominator (if requested)
-    if (Dominator)
+    if (Dominator) {
+      DEBUG(dbgs() << "Subregion Change dominator of " << NewExit->getName() << " to " << Dominator->getName() << '\n');
       DT->changeImmediateDominator(NewExit, Dominator);
+    }
 
     // Update the region info
     SubRegion->replaceExit(NewExit);
+
+    DEBUG(dbgs() << "Replacing subregion exit with " << NewExit->getName() << '\n');
+
   } else {
     BasicBlock *BB = Node->getNodeAs<BasicBlock>();
     killTerminator(BB);
     BranchInst::Create(NewExit, BB);
     addPhiValues(BB, NewExit);
-    if (IncludeDominator)
+
+    DEBUG(dbgs() << "Changing exit from " << BB->getName() << " to " << NewExit->getName() << '\n');
+
+
+    if (IncludeDominator) {
       DT->changeImmediateDominator(NewExit, BB);
+      DEBUG(dbgs() << "Block Change dominator of " << NewExit->getName() << " to " << BB->getName() << '\n');
+    }
+
   }
+
+  //DT->verifyDomTree();
 }
 
 /// \brief Create a new flow node and update dominator tree and region info
@@ -716,10 +863,18 @@ BasicBlock *StructurizeCFG::getNextFlow(BasicBlock *Dominator) {
   LLVMContext &Context = Func->getContext();
   BasicBlock *Insert = Order.empty() ? ParentRegion->getExit() :
                        Order.back()->getEntry();
-  BasicBlock *Flow = BasicBlock::Create(Context, FlowBlockName,
+  BasicBlock *Flow = BasicBlock::Create(Context,
+                                        #if USEFUL_NAMES
+                                        Twine("flow.") + Dominator->getName(),
+                                        #else
+                                        FlowBlockName,
+                                        #endif
+
                                         Func, Insert);
   DT->addNewBlock(Flow, Dominator);
   RI->setRegionFor(Flow, ParentRegion);
+
+  DEBUG(dbgs() << "Created new flow: " << Flow->getName() << '\n');
   return Flow;
 }
 
@@ -728,15 +883,23 @@ BasicBlock *StructurizeCFG::needPrefix(bool NeedEmpty) {
   BasicBlock *Entry = PrevNode->getEntry();
 
   if (!PrevNode->isSubRegion()) {
+    DEBUG(
+      dbgs() << "Prev node not a subregion: "
+      << PrevNode->getNodeAs<BasicBlock>()->getName() << '\n';
+    );
+
     killTerminator(Entry);
-    if (!NeedEmpty || Entry->getFirstInsertionPt() == Entry->end())
+    if (!NeedEmpty || Entry->getFirstInsertionPt() == Entry->end()) {
+      DEBUG(dbgs() << "return Entry\n");
       return Entry;
+    }
   }
 
   // create a new flow node
   BasicBlock *Flow = getNextFlow(Entry);
 
   // and wire it up
+  DEBUG(dbgs() << "Change exit need prefix\n");
   changeExit(PrevNode, Flow, true);
   PrevNode = ParentRegion->getBBNode(Flow);
   return Flow;
@@ -745,19 +908,32 @@ BasicBlock *StructurizeCFG::needPrefix(bool NeedEmpty) {
 /// \brief Returns the region exit if possible, otherwise just a new flow node
 BasicBlock *StructurizeCFG::needPostfix(BasicBlock *Flow,
                                         bool ExitUseAllowed) {
-  if (!Order.empty() || !ExitUseAllowed)
+  if (!Order.empty() || !ExitUseAllowed) {
+    DEBUG(dbgs() << "needPostfix getNextFlow\n");
     return getNextFlow(Flow);
+  }
 
   BasicBlock *Exit = ParentRegion->getExit();
   DT->changeImmediateDominator(Exit, Flow);
+  //DT->verifyDomTree();
   addPhiValues(Flow, Exit);
   return Exit;
 }
 
 /// \brief Set the previous node
 void StructurizeCFG::setPrevNode(BasicBlock *BB) {
+  DEBUG(dbgs() << "Set prevNode to " << BB->getName() << '\n');
+
   PrevNode = ParentRegion->contains(BB) ? ParentRegion->getBBNode(BB)
                                         : nullptr;
+
+  DEBUG(
+    dbgs() << "Prev node set: ";
+    if (PrevNode)
+      dbgs() << "<null PrevNode>\n";
+    else
+      dbgs() << "yes" << '\n';
+  );
 }
 
 /// \brief Does BB dominate all the predicates of Node?
@@ -784,8 +960,10 @@ bool StructurizeCFG::isPredictableTrue(RegionNode *Node) {
     if (V != BoolTrue)
       return false;
 
-    if (!Dominated && DT->dominates(BB, PrevNode->getEntry()))
+    if (!Dominated && DT->dominates(BB, PrevNode->getEntry())) {
+      //assert(DT->properlyDominates(BB, PrevNode->getEntry()));
       Dominated = true;
+    }
   }
 
   // TODO: The dominator check is too strict
@@ -799,12 +977,15 @@ void StructurizeCFG::wireFlow(bool ExitUseAllowed,
   Visited.insert(Node->getEntry());
 
   if (isPredictableTrue(Node)) {
+    DEBUG(dbgs() << "isPredictable true\n");
     // Just a linear flow
     if (PrevNode) {
+      DEBUG(dbgs() << "Just a linear flow, change exit\n");
       changeExit(PrevNode, Node->getEntry(), true);
     }
     PrevNode = Node;
   } else {
+    DEBUG(dbgs() << "Not predictable true\n");
     // Insert extra prefix node (or reuse last one)
     BasicBlock *Flow = needPrefix(false);
 
@@ -815,7 +996,11 @@ void StructurizeCFG::wireFlow(bool ExitUseAllowed,
     // let it point to entry and next block
     Conditions.push_back(BranchInst::Create(Entry, Next, BoolUndef, Flow));
     addPhiValues(Flow, Entry);
+
+    DEBUG(dbgs() << "Change idom of " << Entry->getName() << " to " << Flow->getName() << '\n');
+
     DT->changeImmediateDominator(Entry, Flow);
+    //DT->verifyDomTree();
 
     PrevNode = Node;
     while (!Order.empty() && !Visited.count(LoopEnd) &&
@@ -830,16 +1015,31 @@ void StructurizeCFG::wireFlow(bool ExitUseAllowed,
 
 void StructurizeCFG::handleLoops(bool ExitUseAllowed,
                                  BasicBlock *LoopEnd) {
+  DEBUG(
+    dbgs() << "\nHANDLE LOOPS: LoopEnd = ";
+    if (LoopEnd) {
+      dbgs() << LoopEnd->getName() << '\n';
+    } else {
+      dbgs() << "<null LoopEnd>\n";
+    }
+  );
+
   RegionNode *Node = Order.back();
   BasicBlock *LoopStart = Node->getEntry();
 
   if (!Loops.count(LoopStart)) {
+    DEBUG(dbgs() << "Loops does not contain: " << LoopStart->getName() << '\n');
     wireFlow(ExitUseAllowed, LoopEnd);
     return;
+  } else {
+    DEBUG(dbgs() << "Loops DOES contain: " << LoopStart->getName() << '\n');
   }
 
-  if (!isPredictableTrue(Node))
+  if (!isPredictableTrue(Node)) {
     LoopStart = needPrefix(true);
+
+    DEBUG(dbgs() << "Looked for loop start prefix: " << LoopStart->getName() << '\n');
+  }
 
   LoopEnd = Loops[Node->getEntry()];
   wireFlow(false, LoopEnd);
@@ -860,6 +1060,7 @@ void StructurizeCFG::handleLoops(bool ExitUseAllowed,
                          LoopStart);
     BranchInst::Create(LoopStart, NewEntry);
     DT->setNewRoot(NewEntry);
+    //DT->verifyDomTree();
   }
 
   // Create an extra loop end node
@@ -869,6 +1070,8 @@ void StructurizeCFG::handleLoops(bool ExitUseAllowed,
                                          BoolUndef, LoopEnd));
   addPhiValues(LoopEnd, LoopStart);
   setPrevNode(Next);
+
+  DEBUG(dbgs() << "Creating extra loop end node: " << LoopEnd->getName() << '\n');
 }
 
 /// After this function control flow looks like it should be, but
@@ -889,10 +1092,17 @@ void StructurizeCFG::createFlow(BasicBlock *RegionEntry,
     handleLoops(EntryDominatesExit, nullptr);
   }
 
-  if (PrevNode)
+  if (PrevNode) {
+    DEBUG(
+      dbgs() << "Changing exit of PrevNode ";
+      printRegionNode(PrevNode);
+    );
+
     changeExit(PrevNode, RegionExit, EntryDominatesExit);
-  else
+  } else {
+    DEBUG(dbgs() << "No prev node\n");
     assert(EntryDominatesExit);
+  }
 }
 
 /// Handle a rare case where the disintegrated nodes instructions
@@ -990,10 +1200,14 @@ bool StructurizeCFG::runOnRegion(Region *R) {
   setPhiValues();
   rebuildSSA();
 
+  DT->verifyDomTree();
+  //LI->verifyLoop();
+  getAnalysis<LoopInfoWrapperPass>().verifyAnalysis();
+
   // Cleanup
   Order.clear();
   Visited.clear();
-  DeletedPhis.clear();
+  assert(DeletedPhis.empty());
   AddedPhis.clear();
   Predicates.clear();
   Conditions.clear();
