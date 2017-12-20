@@ -355,8 +355,56 @@ void StructurizeCFG::orderNodes(Region *ParentRegion) {
     printSCCFunc(Func);
   );
 
+#if 0
+  Order.clear();
+
+  scc_iterator<Function *> I = scc_begin(Func);
+  for (; !I.isAtEnd(); ++I) {
+    const std::vector<BasicBlock *> &Nodes = *I;
+    for (BasicBlock *BB : Nodes) {
+      Region *R = RI->getRegionFor(BB);
+      if (R->isTopLevelRegion())
+        continue;
+      if (R != ParentRegion) {
+        dbgs() << "Different regions\n";
+        printRegionNode(R->getNode());
+        printRegionNode(ParentRegion->getNode());
+        continue;
+      }
+      if (!is_contained(Order, R->getNode())) {
+        Order.push_back(R->getNode());
+      } else {
+        dbgs() << "Already contained: ";
+        printRegionNode(R->getNode());
+      }
+    }
+  }
+
+  ReversePostOrderTraversal<Region*> RPOT(ParentRegion);
+  DEBUG(dbgs() << "Size of nodes: " << std::distance(RPOT.begin(), RPOT.end()) << '\n');
+  DEBUG(dbgs() << "Size of order: " << Order.size() << '\n');
+
+  assert(std::distance(RPOT.begin(), RPOT.end()) ==
+         Order.size());
+
+  return;
+#endif
+
+#if 1
+  scc_iterator<Region *> I = scc_begin(ParentRegion);
+  for (Order.clear(); !I.isAtEnd(); ++I) {
+    const std::vector<RegionNode *> &Nodes = *I;
+    Order.append(Nodes.begin(), Nodes.end());
+  }
+
+  return;
+#endif
+
+
+#if 0
   ReversePostOrderTraversal<Region*> RPOT(ParentRegion);
   SmallDenseMap<Loop*, unsigned, 8> LoopBlocks;
+
 
   // The reverse post-order traversal of the list gives us an ordering close
   // to what we want.  The only problem with it is that sometimes backedges
@@ -454,6 +502,7 @@ void StructurizeCFG::orderNodes(Region *ParentRegion) {
   // rather than re-working the whole pass to operate on the list in order,
   // we just reverse the list and continue to operate on it in reverse.
   std::reverse(Order.begin(), Order.end());
+#endif
 }
 
 /// \brief Determine the end of the loops
