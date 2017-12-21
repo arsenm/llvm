@@ -647,8 +647,19 @@ void StructurizeCFG::gatherPredicates(RegionNode *N) {
         if (Succ != BB)
           continue;
 
-        if (Visited.count(P)) {
-          // Normal forward edge
+        bool ForwardEdge = Visited.count(P);
+
+        DEBUG(
+          dbgs() << (ForwardEdge ? "Forward" : "Back")
+          << " edge: "
+          << P->getName()
+          << " -> "
+          << Succ->getName()
+          << '\n'
+        );
+
+        if (ForwardEdge) {
+          // Normal forward edge.
           if (Term->isConditional()) {
             // Try to treat it like an ELSE block
             BasicBlock *Other = Term->getSuccessor(!i);
@@ -676,10 +687,21 @@ void StructurizeCFG::gatherPredicates(RegionNode *N) {
         continue;
 
       BasicBlock *Entry = R->getEntry();
-      if (Visited.count(Entry))
+      bool ForwardEdge = Visited.count(Entry);
+      if (ForwardEdge)
         Pred[Entry] = BoolTrue;
       else
         LPred[Entry] = BoolFalse;
+
+      DEBUG(
+          dbgs() << "Region exit "
+          << (ForwardEdge ? "forward" : "back")
+          << " edge: "
+          << Entry->getName()
+          << " -> "
+          << P->getName()
+          << '\n'
+        );
     }
   }
 }
