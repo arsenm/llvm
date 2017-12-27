@@ -335,6 +335,13 @@ static void printSCCRegion(Region *R) {
   }
 }
 
+static void printRPORegion(Region *R) {
+  dbgs() << "Region RPO order:\n";
+  ReversePostOrderTraversal<Region*> RPOT(R);
+  for (RegionNode *RN : RPOT)
+    printRegionNode(RN);
+}
+
 static void printSCCFunc(Function *F) {
   dbgs() << "Function SCC order:\n";
   scc_iterator<Function *> I = scc_begin(F);
@@ -353,6 +360,9 @@ void StructurizeCFG::orderNodes(Region *ParentRegion) {
     printSCCRegion(ParentRegion);
     dbgs() << "\n\n\n\n";
     printSCCFunc(Func);
+    dbgs() << "\n\n\n\n";
+    printRPORegion(ParentRegion);
+    dbgs() << "\n\n\n\n";
   );
 
 #if 0
@@ -514,6 +524,10 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
       auto &X = Loops[Exit];
       assert(X == nullptr);
       X = N->getEntry();
+
+      dbgs() << "Subregion back edge found: "
+             << " exit: " << Exit->getName() << ' ';
+      printRegionNode(N);
     }
 
   } else {
@@ -743,6 +757,31 @@ void StructurizeCFG::collectInfos() {
     // Find the last back edges
     analyzeLoops(RN);
   }
+
+#if 0
+    SmallVector<std::pair<const BasicBlock *, const BasicBlock *>, 8> Edges;
+  FindFunctionBackedges(*Func, Edges);
+
+  for (auto X : Edges) {
+    Loops[const_cast<BasicBlock *>(X.second)] = const_cast<BasicBlock *>(X.first);
+  }
+
+  return;
+#endif
+
+
+  DEBUG(
+    dbgs() << "\n\n\nBLOCKS IN LOOPS:\n";
+    for (auto &X : Loops) {
+      dbgs() << "  "
+             << X.first->getName()
+             << " -> "
+             << X.second->getName()
+             << '\n';
+    }
+
+    dbgs() << "END BLOCKS IN LOOPS\n";
+  );
 }
 
 /// \brief Insert the missing branch conditions
