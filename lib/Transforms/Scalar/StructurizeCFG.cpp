@@ -566,8 +566,10 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
       assert(X == nullptr);
       X = N->getEntry();
 
-      dbgs() << "Subregion back edge found: "
-             << " exit: " << Exit->getName() << ' ';
+      DEBUG(
+        dbgs() << "Subregion back edge found: "
+        << " exit: " << (Exit ? Exit->getName() : " <null>") << ' ';
+      );
       printRegionNode(N);
     }
 
