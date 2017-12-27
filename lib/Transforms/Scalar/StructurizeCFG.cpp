@@ -200,6 +200,7 @@ class StructurizeCFG : public FunctionPass {
 
   RegionNode *PrevNode;
 
+  void detectBackedges(Function &F);
   void orderNodes(Region *R);
 
   void analyzeLoops(RegionNode *N);
@@ -352,6 +353,46 @@ static void printSCCFunc(Function *F) {
       dbgs() << "BB " << BB->getName() << '\n';
     }
   }
+}
+
+void StructurizeCFG::detectBackedges(Function &F) {
+  SmallVector<BasicBlock *, 16> Order;
+
+
+  dbgs() << "***DETECT BACKEDGES***\n";
+  SmallPtrSet<BasicBlock *, 8> Visited;
+
+#if 0
+  scc_iterator<Function *> I = scc_begin(&F);
+  for (; !I.isAtEnd(); ++I) {
+    const std::vector<BasicBlock *> &Nodes = *I;
+    for (BasicBlock *BB : Nodes) {
+      Order.append(Nodes.begin(), Nodes.end());
+    }
+  }
+
+  std::reverse(Order.begin(), Order.end());
+#endif
+
+#if 1
+  ReversePostOrderTraversal<Function*> RPOT(&F);
+  for (BasicBlock *BB : RPOT)
+    Order.push_back(BB);
+
+#endif
+
+  for (BasicBlock *BB : Order) {
+    Visited.insert(BB);
+
+    for (BasicBlock *Succ : successors(BB)) {
+      if (Visited.count(Succ)) {
+        dbgs() << "Backedge found: " << BB->getName() << " -> "
+               << Succ->getName() << '\n';
+        }
+    }
+  }
+
+  dbgs() << "***END DETECT BACKEDGES***\n\n\n";
 }
 
 /// \brief Build up the general order of nodes
