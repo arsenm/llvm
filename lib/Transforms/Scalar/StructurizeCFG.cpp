@@ -315,7 +315,11 @@ static void printRegionNode(const RegionNode *N) {
     BasicBlock *Enter = N->getNodeAs<Region>()->getEnteringBlock();
     BasicBlock *Exit = N->getNodeAs<Region>()->getExit();
 
-    dbgs() << "  subregion: " << Enter->getName() << " -> " << Exit->getName() << '\n';
+    dbgs() << "  subregion: "
+           << (Enter ? Enter->getName() : "<null entry>")
+           << " -> "
+           << (Exit ? Exit->getName() : "<null exit>")
+           << '\n';
   } else {
     BasicBlock *BB = N->getNodeAs<BasicBlock>();
     dbgs() << " BB " << BB->getName() << '\n';
