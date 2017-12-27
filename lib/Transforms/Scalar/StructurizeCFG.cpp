@@ -13,6 +13,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/DivergenceAnalysis.h"
 #include "llvm/Analysis/DominanceFrontier.h"
 #include "llvm/Analysis/LoopInfo.h"
@@ -186,6 +187,7 @@ class StructurizeCFG : public FunctionPass {
   LoopInfo *LI;
 
   SmallVector<RegionNode *, 8> Order;
+  SmallVector<RegionNode *, 8> SCCOrder;
   BBSet Visited;
 
   BBPhiMap DeletedPhis;
@@ -202,6 +204,7 @@ class StructurizeCFG : public FunctionPass {
 
   void detectBackedges(Function &F);
   void orderNodes(Region *R);
+  void orderNodesProcess(Region *R);
 
   void analyzeLoops(RegionNode *N);
 
@@ -445,12 +448,23 @@ void StructurizeCFG::orderNodes(Region *ParentRegion) {
   return;
 #endif
 
-#if 1
+#if 0
+  assert(Order.empty());
+  //assert(SCCOrder.empty());
+  SCCOrder.clear();
   scc_iterator<Region *> I = scc_begin(ParentRegion);
-  for (Order.clear(); !I.isAtEnd(); ++I) {
+  for (; !I.isAtEnd(); ++I) {
     const std::vector<RegionNode *> &Nodes = *I;
+    SCCOrder.append(Nodes.begin(), Nodes.end());
     Order.append(Nodes.begin(), Nodes.end());
   }
+
+  return;
+#endif
+
+#if 1
+  for (RegionNode *RN : ReversePostOrderTraversal<Region*>(ParentRegion))
+    Order.push_back(RN);
 
   return;
 #endif
@@ -460,6 +474,7 @@ void StructurizeCFG::orderNodes(Region *ParentRegion) {
   ReversePostOrderTraversal<Region*> RPOT(ParentRegion);
   SmallDenseMap<Loop*, unsigned, 8> LoopBlocks;
 
+  assert(Order.empty());
 
   // The reverse post-order traversal of the list gives us an ordering close
   // to what we want.  The only problem with it is that sometimes backedges
@@ -560,6 +575,93 @@ void StructurizeCFG::orderNodes(Region *ParentRegion) {
 #endif
 }
 
+void StructurizeCFG::orderNodesProcess(Region *ParentRegion) {
+  ReversePostOrderTraversal<Region*> RPOT(ParentRegion);
+  SmallDenseMap<Loop*, unsigned, 8> LoopBlocks;
+
+  assert(Order.empty());
+
+  for (RegionNode *RN : RPOT) {
+    BasicBlock *BB = RN->getEntry();
+    Loop *Loop = LI->getLoopFor(BB);
+
+    DEBUG(
+      dbgs() << "Loop for " << BB->getName()
+      << " depth " << (Loop ? Loop->getLoopDepth() : -1)
+      << ":\n  ";
+      if (Loop)
+        Loop->dump();
+      else
+        dbgs() << "<null>\n";
+    );
+
+
+    ++LoopBlocks[Loop];
+  }
+
+
+
+  unsigned CurrentLoopDepth = 0;
+  Loop *CurrentLoop = nullptr;
+  for (auto I = RPOT.begin(), E = RPOT.end(); I != E; ++I) {
+    BasicBlock *BB = (*I)->getEntry();
+    unsigned LoopDepth = LI->getLoopDepth(BB);
+
+    if (is_contained(Order, *I)) {
+      DEBUG(dbgs() << "is_contained continue: " << BB->getName() << '\n');
+      continue;
+    }
+
+    DEBUG(dbgs() << "Check unvisited region: " << BB->getName() << '\n');
+
+    if (LoopDepth < CurrentLoopDepth) {
+      DEBUG(dbgs() << "LoopDepth < CurrentLoopDepth: "
+            << LoopDepth <<
+            " < " << CurrentLoopDepth << '\n');
+
+
+      // Make sure we have visited all blocks in this loop before moving back to
+      // the outer loop.
+
+      auto LoopI = I;
+      while (unsigned &BlockCount = LoopBlocks[CurrentLoop]) {
+        assert(BlockCount >= 0);
+        LoopI++;
+        BasicBlock *LoopBB = (*LoopI)->getEntry();
+        if (LI->getLoopFor(LoopBB) == CurrentLoop) {
+          assert(BlockCount >= 0);
+          --BlockCount;
+          Order.push_back(*LoopI);
+        }
+      }
+    } else {
+      DEBUG(dbgs() << "XX LoopDepth >= CurrentLoopDepth: "
+            << LoopDepth <<
+            " < " << CurrentLoopDepth << '\n');
+    }
+
+    CurrentLoop = LI->getLoopFor(BB);
+    if (CurrentLoop) {
+      DEBUG(dbgs() << "--LoopBlocks[CurrentLoop]: loop for "
+            << BB->getName() << '\n');
+      assert(LoopBlocks[CurrentLoop] >= 0);
+      LoopBlocks[CurrentLoop]--;
+    } else {
+      DEBUG(dbgs() << "No loop for " << BB->getName() << '\n');
+    }
+
+    CurrentLoopDepth = LoopDepth;
+    Order.push_back(*I);
+  }
+
+  // This pass originally used a post-order traversal and then operated on
+  // the list in reverse. Now that we are using a reverse post-order traversal
+  // rather than re-working the whole pass to operate on the list in order,
+  // we just reverse the list and continue to operate on it in reverse.
+  std::reverse(Order.begin(), Order.end());
+
+}
+
 /// \brief Determine the end of the loops
 void StructurizeCFG::analyzeLoops(RegionNode *N) {
   if (N->isSubRegion()) {
@@ -585,6 +687,13 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
     DEBUG(dbgs() << "analyze successors: " << *Term << '\n');
     for (BasicBlock *Succ : Term->successors()) {
 
+      /*
+      if (!N->getParent()->contains(Succ)) {
+        DEBUG(dbgs() << "Skip successor outside region\n");
+        continue;
+      }
+      */
+
       // FIXME: This is broken in testcases with effective multiple exits
       if (Visited.count(Succ) != DT->dominates(Succ, BB)) {
 
@@ -596,7 +705,7 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
           );
 
 
-        //llvm_unreachable("succ != dominates");
+
       }
 
 
@@ -630,6 +739,7 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
     }
   }
 
+    /*
   DEBUG(
     dbgs() << "\n\n\nBLOCKS IN LOOPS:\n";
     for (auto &X : Loops) {
@@ -640,6 +750,7 @@ void StructurizeCFG::analyzeLoops(RegionNode *N) {
              << '\n';
     }
   );
+    */
 }
 
 /// \brief Invert the given condition
@@ -690,7 +801,7 @@ Value *StructurizeCFG::buildCondition(BranchInst *Term, unsigned Idx,
 /// \brief Analyze the predecessors of each block and build up predicates
 void StructurizeCFG::gatherPredicates(RegionNode *N) {
   BasicBlock *BB = N->getEntry();
-  Region *ParentRegion = N->getParent();
+  //Region *ParentRegion = N->getParent();
   BBPredicates &Pred = Predicates[BB];
   BBPredicates &LPred = LoopPreds[BB];
 
@@ -701,7 +812,7 @@ void StructurizeCFG::gatherPredicates(RegionNode *N) {
 
     Region *R = RI->getRegionFor(P);
     if (R == ParentRegion) {
-      // It's a top level block in our region
+      // It's a top level block in our region.
       BranchInst *Term = cast<BranchInst>(P->getTerminator());
       for (unsigned i = 0, e = Term->getNumSuccessors(); i != e; ++i) {
         BasicBlock *Succ = Term->getSuccessor(i);
@@ -786,7 +897,10 @@ void StructurizeCFG::collectInfos() {
     dbgs() << "\n\n\n\n";
   );
 
-  for (RegionNode *RN : reverse(Order)) {
+  assert(!Order.empty());
+
+  //for (RegionNode *RN : reverse(SCCOrder)) {
+  for (RegionNode *RN : Order) {
     DEBUG(dbgs() << "Visiting: "
                  << (RN->isSubRegion() ? "SubRegion with entry: " : "")
                  << RN->getEntry()->getName() << " Loop Depth: "
@@ -1217,7 +1331,7 @@ void StructurizeCFG::handleLoops(bool ExitUseAllowed,
                          LoopStart);
     BranchInst::Create(LoopStart, NewEntry);
     DT->setNewRoot(NewEntry);
-    //DT->verifyDomTree();
+    DT->verifyDomTree();
   }
 
   // Create an extra loop end node
@@ -1351,6 +1465,58 @@ bool StructurizeCFG::runOnRegion(Region *R) {
 
   orderNodes(R);
   collectInfos();
+
+#if 0
+  Order.clear();
+
+  scc_iterator<Region *> I = scc_begin(R);
+  for (; !I.isAtEnd(); ++I) {
+    const std::vector<RegionNode *> &Nodes = *I;
+    Order.append(Nodes.begin(), Nodes.end());
+  }
+
+#endif
+
+#if 0
+  scc_iterator<Region *> I = scc_begin(R);
+  for (; !I.isAtEnd(); ++I) {
+    auto Tmp = Nodes;
+
+    std::stable_sort(Tmp.begin(),
+                     Tmp.end(),
+                     [this](const RegionNode *LHS, const RegionNode *RHS) -> bool {
+                       const BasicBlock *LHSBB = LHS->getEntry();
+                       const BasicBlock *RHSBB = RHS->getEntry();
+                       return LI->getLoopDepth(LHSBB) > LI->getLoopDepth(RHSBB);
+                     });
+
+
+    Order.append(Tmp.begin(), Tmp.end());
+
+    //Order.append(Nodes.begin(), Nodes.end());
+    //Order.append(Nodes.rbegin(), Nodes.rend());
+  }
+#endif
+
+#if 0
+  Order.clear();
+  orderNodesProcess(R);
+#endif
+
+#if 1
+  std::reverse(Order.begin(), Order.end());
+#endif
+
+#if 0
+  std::stable_sort(
+    Order.begin(), Order.end(),
+    [this](const RegionNode *LHS, const RegionNode *RHS) -> bool {
+      const BasicBlock *LHSBB = LHS->getEntry();
+      const BasicBlock *RHSBB = RHS->getEntry();
+      return LI->getLoopDepth(LHSBB) > LI->getLoopDepth(RHSBB);
+    });
+#endif
+
   createFlow(R->getEntry(), R->getExit());
   insertConditions(false);
   insertConditions(true);
