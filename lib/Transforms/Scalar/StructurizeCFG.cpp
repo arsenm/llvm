@@ -1390,7 +1390,9 @@ bool StructurizeCFG::addRegionIntoQueue(Region &R, std::deque<Region *> &RQ) con
 }
 
 bool StructurizeCFG::runOnFunction(Function &F) {
- Func = &F;
+  Func = &F;
+
+  DEBUG(detectBackedges(F));
 
   auto DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   auto PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
