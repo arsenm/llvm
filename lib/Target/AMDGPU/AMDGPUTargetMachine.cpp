@@ -55,6 +55,11 @@ static cl::opt<bool> EnableR600StructurizeCFG(
   cl::desc("Use StructurizeCFG IR pass"),
   cl::init(true));
 
+static cl::opt<bool> EnableLinearizeCFG(
+  "amdgpu-linearize-cfg",
+  cl::desc("Use LinearizeCFG IR pass"),
+  cl::init(false));
+
 static cl::opt<bool> EnableSROA(
   "amdgpu-sroa",
   cl::desc("Run SROA after promote alloca pass"),
@@ -752,11 +757,19 @@ bool GCNPassConfig::addPreISel() {
   // supported.
   addPass(createAMDGPUAnnotateKernelFeaturesPass());
 
-  // Merge divergent exit nodes. StructurizeCFG won't recognize the multi-exit
-  // regions formed by them.
-  addPass(&AMDGPUUnifyDivergentExitNodesID);
+
   if (!LateCFGStructurize) {
-    addPass(createStructurizeCFGPass(true)); // true -> SkipUniformRegions
+    if (EnableLinearizeCFG) {
+      addPass(&LowerSwitchID); // XXX  Workaround
+
+      addPass(createLinearizeCFGPass(true)); // true -> SkipUniformRegions
+    } else {
+      // Merge divergent exit nodes. StructurizeCFG won't recognize the multi-exit
+      // regions formed by them.
+      addPass(&AMDGPUUnifyDivergentExitNodesID);
+
+      addPass(createStructurizeCFGPass(true)); // true -> SkipUniformRegions
+    }
   }
   addPass(createSinkingPass());
   addPass(createAMDGPUAnnotateUniformValues());
