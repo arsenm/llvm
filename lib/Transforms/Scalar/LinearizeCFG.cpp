@@ -34,8 +34,11 @@
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Analysis/DivergenceAnalysis.h"
+#include "llvm/Analysis/DominanceFrontier.h"
 //#include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
+#include "llvm/Analysis/RegionInfo.h"
+#include "llvm/Analysis/RegionIterator.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/BasicBlock.h"
@@ -74,6 +77,22 @@ using namespace llvm::PatternMatch;
 
 namespace {
 
+raw_ostream &operator<<(raw_ostream &OS, const RegionNode &N) {
+  if (N.isSubRegion()) {
+    BasicBlock *Enter = N.getNodeAs<Region>()->getEnteringBlock();
+    BasicBlock *Exit = N.getNodeAs<Region>()->getExit();
+
+    OS << "  subregion: "
+           << (Enter ? Enter->getName() : "<null entry>")
+           << " -> "
+           << (Exit ? Exit->getName() : "<null exit>");
+  } else {
+    BasicBlock *BB = N.getNodeAs<BasicBlock>();
+    OS << " BB " << BB->getName();
+  }
+
+  return OS;
+}
 
 // Provide global definitions of inverse depth first iterators...
 template <class T>
@@ -336,6 +355,9 @@ public:
     //AU.addRequired<LoopInfoWrapperPass>();
 
     AU.addPreserved<DominatorTreeWrapperPass>();
+
+    AU.addRequired<DominanceFrontierWrapperPass>();
+
 
     AU.addRequired<TargetTransformInfoWrapperPass>();
     FunctionPass::getAnalysisUsage(AU);
@@ -1082,6 +1104,9 @@ bool LinearizeCFG::runOnFunction(Function &F) {
   //LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
 
+  auto DF = &getAnalysis<DominanceFrontierWrapperPass>().getDominanceFrontier();
+
+
   findUnstructuredEdges();
 
   DEBUG(
@@ -1092,6 +1117,51 @@ bool LinearizeCFG::runOnFunction(Function &F) {
     printRPOFunc(F);
     dbgs() << "\n\n";
   );
+
+  RegionInfo RI;
+  RI.recalculate(F, DT, PDT, DF);
+
+  Region &R = *RI.getTopLevelRegion();
+
+#if 0
+  ReversePostOrderTraversal<Region *> RPOT(&R);
+  dbgs() << "Regions:\n";
+  for (RegionNode *N : RPOT) {
+    dbgs() << *N << '\n';
+  }
+
+
+  for (auto &X : R) {
+
+
+  }
+#endif
+
+  SetVector<BasicBlock *> SV;
+
+  dbgs() << "Region check\n";
+  unsigned UnstructCount = 0;
+  for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
+    Region *BR = RI.getRegionFor(BB);
+    BasicBlock *Entry = BR->getEnteringBlock();
+    if (Entry)
+      dbgs() << "  " << Entry->getName() << '\n';
+    else
+      dbgs() << " null \n";
+
+
+
+    SV.insert(Entry);
+    if (BR == RI.getTopLevelRegion()) {
+      ++UnstructCount;
+      SV.insert(BB);
+    }
+    BR->dump();
+  }
+  dbgs() << "End region check: " << UnstructCount << '\n';
+
+
+
 
 
   if (SkipUniformRegions)
