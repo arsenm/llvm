@@ -1288,18 +1288,26 @@ bool LinearizeCFG::runOnFunction(Function &F) {
         // union
         // blocks post dom by CIPDom && reachable from cidom
 
+        dbgs() << "CIDomblocks:\n";
+        for (BasicBlock *BB : CIDomBlocks) {
+          dbgs() << "  " << BB->getName() << '\n';
+        }
 
+        dbgs() << "CIPDomBlocks\n";
+        for (BasicBlock *BB : CIPDomBlocks) {
+          dbgs() << "  " << BB->getName() << '\n';
+        }
 
         for (BasicBlock *BB : CIDomBlocks) {
           if (isPotentiallyReachable(BB, CIPDom, DT)) {
-            if (UnstructuredBlocks.insert(BB).second)
+            if (UnstructuredBlocks.insert(BB))
               Inserted = true;
           }
         }
 
         for (BasicBlock *BB : CIPDomBlocks) {
-          if (isPotentiallyReachable(CIPDom, BB, DT)) {
-            if (UnstructuredBlocks.insert(BB).second)
+          if (isPotentiallyReachable(CIDom, BB, DT)) {
+            if (UnstructuredBlocks.insert(BB))
               Inserted = true;
           }
         }
