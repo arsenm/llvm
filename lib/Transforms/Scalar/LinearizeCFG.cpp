@@ -273,10 +273,8 @@ class LinearizeCFG : public FunctionPass {
   DivergenceAnalysis *DA = nullptr;
   bool SkipUniformRegions;
 
-  Type *Boolean;
   ConstantInt *BoolTrue;
   ConstantInt *BoolFalse;
-  UndefValue *BoolUndef;
 
   Function *Func;
   BasicBlock *UnreachableBlock;
@@ -505,10 +503,8 @@ INITIALIZE_PASS_END(LinearizeCFG, "linearize-cfg", "Structurize the CFG with lin
 bool LinearizeCFG::doInitialization(Module &M) {
   LLVMContext &Context = M.getContext();
 
-  Boolean = Type::getInt1Ty(Context);
   BoolTrue = ConstantInt::getTrue(Context);
   BoolFalse = ConstantInt::getFalse(Context);
-  BoolUndef = UndefValue::get(Boolean);
 
   return false;
 }
