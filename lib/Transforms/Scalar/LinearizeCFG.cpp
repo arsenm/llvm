@@ -294,9 +294,10 @@ class LinearizeCFG : public FunctionPass {
   DenseMap<BasicBlock *, BasicBlock *> BEGuardMap;
   DenseMap<BasicBlock *, unsigned> BlockNumbers;
 
-  BasicBlock *getBEGuardBlock(BasicBlock *BB) const;
+  BasicBlock *getBEGuardBlock(const BasicBlock *BB) const;
   BasicBlock *getOrInsertGuardBlock(BasicBlock *BB);
-  BasicBlock *getGuardBlock(BasicBlock *BB);
+  BasicBlock *getGuardBlock(const BasicBlock *BB) const;
+
   Value *insertGuardVar(IRBuilder<> &Builder, BasicBlock *BB);
   unsigned getBlockNumber(BasicBlock *BB) const;
   void rebuildSSA();
@@ -345,6 +346,7 @@ public:
                          ArrayRef<BasicBlockEdge> UnstructEdges);
 
   void linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlocks);
+  bool verifyGuardedBlockEdges(ArrayRef<BasicBlock *> GuardedBlocks) const;
 
   void releaseMemory() override;
   bool runOnFunction(Function &F) override;
@@ -909,7 +911,7 @@ unsigned LinearizeCFG::getBlockNumber(BasicBlock *BB) const {
   llvm_unreachable("block not numbered");
 }
 
-BasicBlock *LinearizeCFG::getBEGuardBlock(BasicBlock *BB) const {
+BasicBlock *LinearizeCFG::getBEGuardBlock(const BasicBlock *BB) const {
   auto I = BEGuardMap.find(BB);
   if (I != BEGuardMap.end())
     return I->second;
@@ -931,7 +933,7 @@ BasicBlock *LinearizeCFG::getOrInsertGuardBlock(BasicBlock *BB) {
   return Guard;
 }
 
-BasicBlock *LinearizeCFG::getGuardBlock(BasicBlock *BB) {
+BasicBlock *LinearizeCFG::getGuardBlock(const BasicBlock *BB) const {
   assert(BB);
   auto I = GuardMap.find(BB);
   return (I != GuardMap.end()) ? I->second : nullptr;
