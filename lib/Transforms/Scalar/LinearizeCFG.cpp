@@ -294,6 +294,7 @@ class LinearizeCFG : public FunctionPass {
   DenseMap<BasicBlock *, unsigned> BlockNumbers;
 
   BasicBlock *getBEGuardBlock(BasicBlock *BB) const;
+  BasicBlock *getOrInsertGuardBlock(BasicBlock *BB);
   BasicBlock *getGuardBlock(BasicBlock *BB);
   Value *insertGuardVar(IRBuilder<> &Builder, BasicBlock *BB);
   unsigned getBlockNumber(BasicBlock *BB) const;
@@ -342,8 +343,7 @@ public:
   void pickBlocksToGuard(SmallVectorImpl<BasicBlock *> &Blocks,
                          ArrayRef<BasicBlockEdge> UnstructEdges);
 
-  void linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlocks,
-                       BasicBlock *CIPDom);
+  void linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlocks);
 
   void releaseMemory() override;
   bool runOnFunction(Function &F) override;
@@ -915,7 +915,7 @@ BasicBlock *LinearizeCFG::getBEGuardBlock(BasicBlock *BB) const {
   return nullptr;
 }
 
-BasicBlock *LinearizeCFG::getGuardBlock(BasicBlock *BB) {
+BasicBlock *LinearizeCFG::getOrInsertGuardBlock(BasicBlock *BB) {
   assert(BB);
 
   auto I = GuardMap.find(BB);
@@ -928,6 +928,12 @@ BasicBlock *LinearizeCFG::getGuardBlock(BasicBlock *BB) {
   GuardMap[BB] = Guard;
   InvGuardMap[Guard] = BB;
   return Guard;
+}
+
+BasicBlock *LinearizeCFG::getGuardBlock(BasicBlock *BB) {
+  assert(BB);
+  auto I = GuardMap.find(BB);
+  return (I != GuardMap.end()) ? I->second : nullptr;
 }
 
 Value *LinearizeCFG::insertGuardVar(IRBuilder<> &Builder, BasicBlock *BB) {
@@ -1160,8 +1166,9 @@ void LinearizeCFG::pickBlocksToGuard(
   for (BasicBlockEdge Edge : UnstructuredEdges) {
     //UnstructuredBlocks.clear();
 
-    //UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getStart()));
-    //UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getEnd()));
+    // XXX - Remove cidom?
+    UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getStart()));
+    UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getEnd()));
 
 
     BasicBlock *CIDom = DT->findNearestCommonDominator(
@@ -1277,11 +1284,77 @@ void LinearizeCFG::pickBlocksToGuard(
   }
 }
 
-void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlocks,
-                                   BasicBlock *CIPDom) {
+void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlocks) {
   IRBuilder<> Builder(Func->getContext());
   // TODO: Make this type target dependent.
   GuardVarInserter.Initialize(Builder.getInt32Ty(), "guard.var");
+
+
+
+  // FIXME: For some reason this is dependent on the order and is
+  // non-deterministic with set iteration.
+  BasicBlock *CIDom = findCIDOM(OrderedUnstructuredBlocks);
+  BasicBlock *CIPDom = findCIPDOM(OrderedUnstructuredBlocks);
+
+  DEBUG(dbgs() <<  "CIDOM: " << CIDom->getName()
+                << "  CIPDOM: " << CIPDom->getName() << '\n');
+
+  DEBUG(
+    dbgs() << "Before modify DT\n";
+    DT->print(dbgs());
+  );
+
+
+  /*
+  if (UnstructuredBlocks.count(CIDom)) {
+    // Get post dominator outside of the set.
+    // XXX - Is this correct?
+    if (auto C = DT->getNode(CIDom)->getIDom()) {
+      CIDom = C->getBlock();
+    } else {
+#if 1
+      BasicBlock *DummyIDom
+        = BasicBlock::Create(Func->getContext(),
+                             "dummy.idom",
+                             Func, CIDom);
+
+      // FIXME: Update predecessor phis
+      BranchInst::Create(CIDom, DummyIDom);
+
+      if (DT->getRoot() == CIDom) {
+        DT->setNewRoot(DummyIDom);
+      } else {
+        DT->insertEdge(DummyIDom, CIDom);
+      }
+
+      // Make sure the right vale of the initial guard variable is still valid
+      // after splitting.
+      //GuardVarInserter.AddAvailableValue(DummyIDom, InitialBlockNumber);
+      PDT->insertEdge(DummyIDom, CIDom);
+#endif
+
+      // XXX - PDT not updated
+      //BasicBlock *OldCIDom = SplitBlock(CIDom, &*CIDom->begin(), DT);
+
+      //PDT->insertEdge();
+    }
+  }
+  DT->verifyDomTree();
+
+  if (UnstructuredBlocks.count(CIPDom)) {
+    // Get post dominator outside of the set.
+    // XXX - Is this correct?
+    BasicBlock *IDom = PDT->getNode(CIPDom)->getIDom()->getBlock();
+    if (IDom)
+      CIPDom = IDom;
+    else {
+      unsigned BlockNum = getBlockNumber(CIPDom);
+      CIPDom = SplitBlock(CIPDom, CIPDom->getTerminator(), DT);
+      BlockNumbers[CIPDom] = BlockNum;
+    }
+  }
+  */
+
 
   struct ExtraEdge {
     BasicBlock *BB;
@@ -1308,15 +1381,23 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     GuardVarInserter.AddAvailableValue(Pred, InitialBlockNumber);
 
   for (BasicBlock *BB : OrderedUnstructuredBlocks) {
+    DT->verifyDomTree();
     SmallVector<BasicBlock *, 2> Preds(pred_begin(BB), pred_end(BB));
+    assert(!Preds.empty() &&
+           "FIXME: SplitBlockPredecessors does not properly update the dom tree for entry block");
+
     BasicBlock *Guard = SplitBlockPredecessors(BB, Preds, ".guard", DT);
     assert(Guard && "failed to split block");
     GuardMap[BB] = Guard;
     InvGuardMap[Guard] = BB;
 
     unsigned BBRPONum = RPONumbers[BB];
+
+    RPONumbers[Guard] = BBRPONum; // XXX
+
     for (BasicBlock *Succ : successors(BB)) {
-      if (RPONumbers[Succ] <= BBRPONum) {
+      unsigned SuccRPO = RPONumbers[Succ];
+      if (SuccRPO <= BBRPONum) {
         BasicBlock *BackEdgeDest = Succ;
 
         BasicBlock *BEGuard = SplitEdge(BB, BackEdgeDest, DT);
@@ -1357,11 +1438,12 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
     bool Last = I == E;
 
-    BasicBlock *Guard = getGuardBlock(BB);
+    BasicBlock *Guard = getOrInsertGuardBlock(BB);
 
     // idom->guard already inserted by split
     if (PrevGuard) {
       addBrPrevGuardToGuard(Builder, PrevGuard, Guard, "prev.guard");
+      DT->verifyDomTree();
     }
 
     if (PrevBlock) {
@@ -1379,6 +1461,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
           OldSucc->removePredecessor(PrevBlock);
 
           PrevBlockBI->replaceUsesOfWith(OldSucc, Guard);
+          assert(!pred_empty(OldSucc));
 
           DEBUG(dbgs() << "Remap phi update\n");
           addAndUpdatePhis(PrevBlock, Guard);
@@ -1390,9 +1473,38 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
           DT->applyUpdates(Updates);
         }
+
+        DT->verifyDomTree();
       }
+
+      /*
+
+      if (std::distance(succ_begin(PrevBlock), succ_end(PrevBlock)) > 1) {
+        auto *BI = dyn_cast<BranchInst>(PrevBlock->getTerminator());
+        BasicBlock *Other = getOtherDest(BI, Guard);
+
+        //if (std::distance(pred_begin(Other), pred_end(PrevBlock)) > 1) {
+          removeBranchTo(Builder, PrevBlock, Other);
+          //}
+      }
+      */
     }
 
+
+    /*
+    auto *BI = cast<BranchInst>(BB->getTerminator());
+    if (BI->isConditional()) {
+      BasicBlock *Succ0 = BI->getSuccessor(0);
+      BasicBlock *Succ1 = BI->getSuccessor(1);
+
+      BasicBlock *SuccGuard0 = getGuardBlock(Succ0);
+      BasicBlock *SuccGuard1 = getGuardBlock(Succ1);
+    }
+    */
+
+
+#if 1
+    // FIXME: This condition is now broken since some blocks may not be guarded.
     if (hasTwoGuardedSuccessors(BB)) {
       BasicBlock *NextBlock = Last ? nullptr : *I;
       BasicBlock *NextGuard = getGuardBlock(NextBlock);
@@ -1406,12 +1518,14 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
       ExtraEdges.push_back(EE);
     }
+#endif
 
 
     BasicBlock *BEGuard = getBEGuardBlock(BB);
 
     if (Last) {
       addBrPrevGuardToGuard(Builder, Guard, CIPDom, "last");
+      DT->verifyDomTree();
     }
 
     PrevGuard = Guard;
@@ -1437,7 +1551,11 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
       PrevGuard = BEGuard;
       PrevBlock = nullptr;
     }
+
+    DT->verifyDomTree();
   }
+
+
 
   DEBUG(
     dbgs() << "Recorded extra edges:\n";
@@ -1592,8 +1710,11 @@ bool LinearizeCFG::runOnFunction(Function &F) {
   //SetVector<BasicBlock *> UnstructuredBlocks;
   if (LinearizeWholeFunction) {
     // Process the entire function.
-    for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func))
-      OrderedUnstructuredBlocks.push_back(BB);
+    for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
+      // FIXME: May need special handling for function exits as well.
+      if (BB != &Func->getEntryBlock())
+        OrderedUnstructuredBlocks.push_back(BB);
+    }
   } else {
     pickBlocksToGuard(OrderedUnstructuredBlocks, UnstructuredEdges);
     DEBUG(
@@ -1635,82 +1756,15 @@ bool LinearizeCFG::runOnFunction(Function &F) {
 
 
 
-
-  // FIXME: For some reason this is dependent on the order and is
-  // non-deterministic with set iteration.
-  BasicBlock *CIDom = findCIDOM(OrderedUnstructuredBlocks);
-  BasicBlock *CIPDom = findCIPDOM(OrderedUnstructuredBlocks);
-
-  DT->verifyDomTree();
-
-  DEBUG(dbgs() <<  "CIDOM: " << CIDom->getName()
-                << "  CIPDOM: " << CIPDom->getName() << '\n');
-
-  DEBUG(
-    dbgs() << "Before modify DT\n";
-    DT->print(dbgs());
-  );
-
-
-  /*
-  if (UnstructuredBlocks.count(CIDom)) {
-    // Get post dominator outside of the set.
-    // XXX - Is this correct?
-    if (auto C = DT->getNode(CIDom)->getIDom()) {
-      CIDom = C->getBlock();
-    } else {
-#if 1
-      BasicBlock *DummyIDom
-        = BasicBlock::Create(Func->getContext(),
-                             "dummy.idom",
-                             Func, CIDom);
-
-      // FIXME: Update predecessor phis
-      BranchInst::Create(CIDom, DummyIDom);
-
-      if (DT->getRoot() == CIDom) {
-        DT->setNewRoot(DummyIDom);
-      } else {
-        DT->insertEdge(DummyIDom, CIDom);
-      }
-
-      // Make sure the right vale of the initial guard variable is still valid
-      // after splitting.
-      //GuardVarInserter.AddAvailableValue(DummyIDom, InitialBlockNumber);
-      PDT->insertEdge(DummyIDom, CIDom);
-#endif
-
-      // XXX - PDT not updated
-      //BasicBlock *OldCIDom = SplitBlock(CIDom, &*CIDom->begin(), DT);
-
-      //PDT->insertEdge();
-    }
-  }
-  DT->verifyDomTree();
-
-  if (UnstructuredBlocks.count(CIPDom)) {
-    // Get post dominator outside of the set.
-    // XXX - Is this correct?
-    BasicBlock *IDom = PDT->getNode(CIPDom)->getIDom()->getBlock();
-    if (IDom)
-      CIPDom = IDom;
-    else {
-      unsigned BlockNum = getBlockNumber(CIPDom);
-      CIPDom = SplitBlock(CIPDom, CIPDom->getTerminator(), DT);
-      BlockNumbers[CIPDom] = BlockNum;
-    }
-  }
-  */
-
   DT->verifyDomTree();
 
 
 
-  linearizeBlocks(OrderedUnstructuredBlocks, CIPDom);
-
+  linearizeBlocks(OrderedUnstructuredBlocks);
+  DT->verifyDomTree();
   rebuildSSA();
-
   DT->verifyDomTree();
+
 
 
   // We probably didn't really need a dummy CIDom block, but added it just in
