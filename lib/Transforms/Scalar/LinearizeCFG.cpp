@@ -336,7 +336,11 @@ public:
 
   void numberBlocks();
 
-  bool isEffectivelyUnconditional(const BranchInst *BI) const;
+  void identifyUnstructuredEdges(
+    SmallVectorImpl<BasicBlockEdge> &UnstructuredEdges);
+
+  void pickBlocksToGuard(SmallVectorImpl<BasicBlock *> &Blocks,
+                         ArrayRef<BasicBlockEdge> UnstructEdges);
 
   void linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlocks,
                        BasicBlock *CIPDom);
@@ -1049,9 +1053,228 @@ void LinearizeCFG::numberBlocks() {
   }
 }
 
-bool LinearizeCFG::isEffectivelyUnconditional(const BranchInst *BI) const {
-  //return BI->isUnconditional() || BI->getCondition() == BoolTrue;
-  return BI->isUnconditional();
+void LinearizeCFG::identifyUnstructuredEdges(
+  SmallVectorImpl<BasicBlockEdge> &UnstructuredEdges) {
+
+  std::vector<std::vector<BasicBlock *>> SCCOrdered;
+
+
+  scc_iterator<Function *> I = scc_begin(Func);
+  for (; !I.isAtEnd(); ++I) {
+    const std::vector<BasicBlock *> &Nodes = *I;
+    SCCOrdered.emplace_back(Nodes.rbegin(), Nodes.rend());
+  }
+
+  DEBUG(
+    dbgs() << "\nSCC reordered:\n";
+    for (const std::vector<BasicBlock *> &SCC : reverse(SCCOrdered)) {
+      for (const BasicBlock *BB : SCC) {
+        dbgs() << "  BB " << BB->getName() << '\n';
+      }
+    }
+  );
+
+  if (0) {
+    DenseMap<BasicBlock *, unsigned> RPONumbers;
+
+    unsigned RPONum = 0;
+    for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
+      dbgs() << "RPO Num: " << BB->getName() << " = " << RPONum << '\n';
+      RPONumbers[BB] = RPONum++;
+    }
+
+    for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
+      unsigned BBRPO = RPONumbers[BB];
+
+      for (BasicBlock *Succ : successors(BB)) {
+        unsigned SuccRPO = RPONumbers[Succ];
+        if (SuccRPO > BBRPO) {
+          if (!DT->isReachableFromEntry(Succ)) {
+            dbgs() << "UNSTRUCTURED FORWARD EDGE: "
+                   << BB->getName() << " -> " << Succ->getName() << '\n';
+          }
+
+        } else {
+          dbgs() << "Back edge: " << BB->getName() << " -> " << Succ->getName() << '\n';
+          if (
+            !DT->dominates(Succ, BB)) {
+            //!DT->dominates(BB, Succ)) {
+            dbgs() << "UNSTRUCTURED EDGE: "
+                   << BB->getName() << " -> " << Succ->getName() << '\n';
+
+            UnstructuredEdges.push_back(BasicBlockEdge(BB, Succ));
+          }
+        }
+      }
+    }
+  } else {
+    DEBUG(dbgs() << "\n\n\nSCC unstructured detection:\n");
+    for (const std::vector<BasicBlock *> &SCC : reverse(SCCOrdered)) {
+      for (BasicBlock *BB : SCC) {
+        for (BasicBlock *Succ : successors(BB)) {
+          BasicBlockEdge Edge(BB, Succ);
+          if (isUnstructuredEdge(Edge)) {
+            DEBUG(dbgs() << "Type 1 Unstructured edge: "
+                  << BB->getName()
+                  << " -> "
+                  << Succ->getName() << '\n');
+            UnstructuredEdges.push_back(Edge);
+            continue;
+          }
+
+          auto DestSCC = findContainedSCC(SCCOrdered, Edge.getEnd());
+          if (!is_contained(SCC, Edge.getEnd()) && // not in same loop
+              sccHasLoop(DestSCC) && // bj is in a loop
+              !dominatesAllBlocks(DT, DestSCC, Edge.getEnd())) {// bj does not dominate other blocks in loop
+            DEBUG(dbgs() << "Type 2 Unstructured edge: "
+                  << BB->getName()
+                  << " -> "
+                  << Succ->getName() << '\n');
+            UnstructuredEdges.push_back(Edge);
+            continue;
+          }
+
+          if (sccHasLoop(SCC) && // Bi is in a loop block
+              !is_contained(SCC, Edge.getEnd()) && // Bj not in same loop
+              !postdominatesAllBlocks(PDT, SCC, Edge.getStart())) { // Bi does not post dominate other blocks in loop
+            DEBUG(dbgs() << "Type 3 Unstructured edge: "
+                  << BB->getName()
+                  << " -> "
+                  << Succ->getName() << '\n');
+            UnstructuredEdges.push_back(Edge);
+            continue;
+          }
+
+        }
+      }
+    }
+  }
+}
+
+void LinearizeCFG::pickBlocksToGuard(
+  SmallVectorImpl<BasicBlock *> &OrderedUnstructuredBlocks,
+  ArrayRef<BasicBlockEdge> UnstructuredEdges) {
+  SetVector<BasicBlock *> UnstructuredBlocks;
+
+  // Find the minimum unstructured region.
+  for (BasicBlockEdge Edge : UnstructuredEdges) {
+    //UnstructuredBlocks.clear();
+
+    //UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getStart()));
+    //UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getEnd()));
+
+
+    BasicBlock *CIDom = DT->findNearestCommonDominator(
+      const_cast<BasicBlock *>(Edge.getStart()),
+      const_cast<BasicBlock *>(Edge.getEnd()));
+
+    BasicBlock *CIPDom = PDT->findNearestCommonDominator(
+      const_cast<BasicBlock *>(Edge.getStart()),
+      const_cast<BasicBlock *>(Edge.getEnd()));
+
+#if 1
+    if (!CIPDom)
+      report_fatal_error("FIXME no CIPDOM");
+#endif
+
+    unsigned IterationCount = 0;
+    bool Inserted = false;
+    do {
+      IterationCount++;
+      Inserted = false;
+
+      //BasicBlock *CIDom = findCIDOM(UnstructuredBlocks.getArrayRef());
+      //BasicBlock *CIPDom = findCIPDOM(UnstructuredBlocks.getArrayRef());
+
+      dbgs() << "Found CIDom: " << CIDom->getName() << '\n';
+      dbgs() << "Found CIPDom: " << CIPDom->getName() << '\n';
+
+
+      //DomTreeNode *CIDomNode = DT->getNode(CIDom)->getIDom();
+
+      /*
+        if (UnstructuredBlocks.count(CIPDom)) {
+        DomTreeNode *CIPDomNode = PDT->getNode(CIPDom)->getIDom();
+
+        auto Tmp = CIPDomNode->getBlock();
+        if (Tmp)
+        CIPDom = Tmp;
+        }
+      */
+
+      //assert(CIDomNode);
+      //assert(CIPDomNode);
+
+
+#if 1
+      if (!CIPDom)
+        report_fatal_error("FIXME no CIPDOM");
+#endif
+
+      SmallVector<BasicBlock *, 8> CIDomBlocks;
+      SmallVector<BasicBlock *, 8> CIPDomBlocks;
+      DT->getDescendants(CIDom, CIDomBlocks);
+      PDT->getDescendants(CIPDom, CIPDomBlocks);
+
+      // Blocks dominated by CIDom && can reach cipdom
+      // union
+      // blocks post dom by CIPDom && reachable from cidom
+
+      dbgs() << "CIDomblocks:\n";
+      for (BasicBlock *BB : CIDomBlocks) {
+        dbgs() << "  " << BB->getName() << '\n';
+      }
+
+      dbgs() << "CIPDomBlocks\n";
+      for (BasicBlock *BB : CIPDomBlocks) {
+        dbgs() << "  " << BB->getName() << '\n';
+      }
+
+
+      for (BasicBlock *BB : CIDomBlocks) {
+        if (BB == CIPDom || BB == CIDom)
+          continue;
+
+        bool IsReach0 = isPotentiallyReachable(BB, CIPDom, DT);
+        dbgs() << "CIPDom Reachable: " << BB->getName() << " -> " << CIPDom->getName() << ": " << IsReach0 << '\n';
+
+        if (IsReach0) {
+          if (UnstructuredBlocks.insert(BB)) {
+            Inserted = true;
+
+            CIDom = DT->findNearestCommonDominator(CIDom, BB);
+            CIPDom = PDT->findNearestCommonDominator(CIPDom, BB);
+          }
+        }
+      }
+
+      for (BasicBlock *BB : CIPDomBlocks) {
+        if (BB == CIPDom || BB == CIDom)
+          continue;
+
+        bool IsReach1 = isPotentiallyReachable(CIDom, BB, DT);
+        dbgs() << "CIDom Reaches: " << CIDom->getName() << " -> " << BB->getName() << ": " << IsReach1 << '\n';
+        if (isPotentiallyReachable(CIDom, BB, DT)) {
+          if (UnstructuredBlocks.insert(BB)) {
+            Inserted = true;
+
+            CIDom = DT->findNearestCommonDominator(CIDom, BB);
+            CIPDom = PDT->findNearestCommonDominator(CIPDom, BB);
+          }
+        }
+      }
+
+    } while (Inserted);
+
+
+    //UnstructuredBlocks.insert(CIPDom);
+  }
+
+
+  for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
+    if (UnstructuredBlocks.count(BB))
+      OrderedUnstructuredBlocks.push_back(BB);
+  }
 }
 
 void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlocks,
@@ -1344,134 +1567,8 @@ bool LinearizeCFG::runOnFunction(Function &F) {
 
   numberBlocks();
 
-  std::vector<std::vector<BasicBlock *>> SCCOrdered;
-
-
-  scc_iterator<Function *> I = scc_begin(Func);
-  for (; !I.isAtEnd(); ++I) {
-    const std::vector<BasicBlock *> &Nodes = *I;
-    SCCOrdered.emplace_back(Nodes.rbegin(), Nodes.rend());
-  }
-
-  DEBUG(
-    dbgs() << "\nSCC reordered:\n";
-    for (const std::vector<BasicBlock *> &SCC : reverse(SCCOrdered)) {
-      for (const BasicBlock *BB : SCC) {
-        dbgs() << "  BB " << BB->getName() << '\n';
-      }
-    }
-  );
-
   SmallVector<BasicBlockEdge, 8> UnstructuredEdges;
-
-
-#if 0
-
-#endif
-
-  if (0) {
-    DenseMap<BasicBlock *, unsigned> RPONumbers;
-
-    unsigned RPONum = 0;
-    for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
-      dbgs() << "RPO Num: " << BB->getName() << " = " << RPONum << '\n';
-      RPONumbers[BB] = RPONum++;
-    }
-
-    for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
-      unsigned BBRPO = RPONumbers[BB];
-
-      for (BasicBlock *Succ : successors(BB)) {
-        unsigned SuccRPO = RPONumbers[Succ];
-        if (SuccRPO > BBRPO) {
-          if (!DT->isReachableFromEntry(Succ)) {
-            dbgs() << "UNSTRUCTURED FORWARD EDGE: "
-                   << BB->getName() << " -> " << Succ->getName() << '\n';
-          }
-
-        } else {
-          dbgs() << "Back edge: " << BB->getName() << " -> " << Succ->getName() << '\n';
-          if (
-            !DT->dominates(Succ, BB)) {
-            //!DT->dominates(BB, Succ)) {
-            dbgs() << "UNSTRUCTURED EDGE: "
-                   << BB->getName() << " -> " << Succ->getName() << '\n';
-
-            UnstructuredEdges.push_back(BasicBlockEdge(BB, Succ));
-          }
-        }
-      }
-    }
-  } else {
-    DEBUG(dbgs() << "\n\n\nSCC unstructured detection:\n");
-    for (const std::vector<BasicBlock *> &SCC : reverse(SCCOrdered)) {
-      for (BasicBlock *BB : SCC) {
-        for (BasicBlock *Succ : successors(BB)) {
-          BasicBlockEdge Edge(BB, Succ);
-          if (isUnstructuredEdge(Edge)) {
-            DEBUG(dbgs() << "Type 1 Unstructured edge: "
-                  << BB->getName()
-                  << " -> "
-                  << Succ->getName() << '\n');
-            UnstructuredEdges.push_back(Edge);
-            continue;
-          }
-
-          auto DestSCC = findContainedSCC(SCCOrdered, Edge.getEnd());
-          if (!is_contained(SCC, Edge.getEnd()) && // not in same loop
-              sccHasLoop(DestSCC) && // bj is in a loop
-              !dominatesAllBlocks(DT, DestSCC, Edge.getEnd())) {// bj does not dominate other blocks in loop
-            DEBUG(dbgs() << "Type 2 Unstructured edge: "
-                  << BB->getName()
-                  << " -> "
-                  << Succ->getName() << '\n');
-            UnstructuredEdges.push_back(Edge);
-            continue;
-          }
-
-          if (sccHasLoop(SCC) && // Bi is in a loop block
-              !is_contained(SCC, Edge.getEnd()) && // Bj not in same loop
-              !postdominatesAllBlocks(PDT, SCC, Edge.getStart())) { // Bi does not post dominate other blocks in loop
-            DEBUG(dbgs() << "Type 3 Unstructured edge: "
-                  << BB->getName()
-                  << " -> "
-                  << Succ->getName() << '\n');
-            UnstructuredEdges.push_back(Edge);
-            continue;
-          }
-
-        }
-      }
-    }
-  }
-
-
-
-  BasicBlock *BB1 = nullptr;
-  BasicBlock *BB3 = nullptr;
-  BasicBlock *BB4 = nullptr;
-  BasicBlock *BB5 = nullptr;
-  BasicBlock *BB6 = nullptr;
-
-  for (BasicBlock &BB : *Func) {
-    if (BB.getName() == "b1")
-      BB1 = &BB;
-    else if (BB.getName() == "b3")
-      BB3 = &BB;
-    else if (BB.getName() == "b4")
-      BB4 = &BB;
-    else if (BB.getName() == "b5")
-      BB5 = &BB;
-    else if (BB.getName() == "b6")
-      BB6 = &BB;
-
-  }
-
-  //assert(BB1 && BB3 && BB4 && BB5);
-  //UnstructuredEdges.push_back(BasicBlockEdge(BB1, BB5));
-  //UnstructuredEdges.push_back(BasicBlockEdge(BB3, BB4));
-
-
+  identifyUnstructuredEdges(UnstructuredEdges);
 
 
   DEBUG(dbgs() << "Found " << UnstructuredEdges.size()
@@ -1485,138 +1582,24 @@ bool LinearizeCFG::runOnFunction(Function &F) {
   );
 
 
+  SmallVector<BasicBlock *, 8> OrderedUnstructuredBlocks;
 
 
   //DenseSet<BasicBlock *> UnstructuredBlocks;
-  SetVector<BasicBlock *> UnstructuredBlocks;
+  //SetVector<BasicBlock *> UnstructuredBlocks;
   if (LinearizeWholeFunction) {
     // Process the entire function.
-    for (BasicBlock &BB : *Func)
-      UnstructuredBlocks.insert(&BB);
+    for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func))
+      OrderedUnstructuredBlocks.push_back(BB);
   } else {
-
-    // Find the minimum unstructured region.
-    for (BasicBlockEdge Edge : UnstructuredEdges) {
-      //UnstructuredBlocks.clear();
-
-      //UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getStart()));
-      //UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getEnd()));
-
-
-      BasicBlock *CIDom = DT->findNearestCommonDominator(const_cast<BasicBlock *>(Edge.getStart()),
-                                                         const_cast<BasicBlock *>(Edge.getEnd()));
-
-      BasicBlock *CIPDom = PDT->findNearestCommonDominator(const_cast<BasicBlock *>(Edge.getStart()),
-                                                           const_cast<BasicBlock *>(Edge.getEnd()));
-
-
-      unsigned IterationCount = 0;
-      bool Inserted = false;
-      do {
-        IterationCount++;
-        Inserted = false;
-
-        //BasicBlock *CIDom = findCIDOM(UnstructuredBlocks.getArrayRef());
-        //BasicBlock *CIPDom = findCIPDOM(UnstructuredBlocks.getArrayRef());
-
-        dbgs() << "Found CIDom: " << CIDom->getName() << '\n';
-        dbgs() << "Found CIPDom: " << CIPDom->getName() << '\n';
-
-        for (BasicBlock *BB : UnstructuredBlocks) {
-
-        }
-
-        //DomTreeNode *CIDomNode = DT->getNode(CIDom)->getIDom();
-
-        /*
-        if (UnstructuredBlocks.count(CIPDom)) {
-          DomTreeNode *CIPDomNode = PDT->getNode(CIPDom)->getIDom();
-
-          auto Tmp = CIPDomNode->getBlock();
-          if (Tmp)
-            CIPDom = Tmp;
-        }
-        */
-
-        //assert(CIDomNode);
-        //assert(CIPDomNode);
-
-
-#if 1
-        if (!CIPDom)
-          report_fatal_error("FIXME no CIPDOM");
-#endif
-
-        SmallVector<BasicBlock *, 8> CIDomBlocks;
-        SmallVector<BasicBlock *, 8> CIPDomBlocks;
-        DT->getDescendants(CIDom, CIDomBlocks);
-        PDT->getDescendants(CIPDom, CIPDomBlocks);
-
-        // Blocks dominated by CIDom && can reach cipdom
-        // union
-        // blocks post dom by CIPDom && reachable from cidom
-
-        dbgs() << "CIDomblocks:\n";
-        for (BasicBlock *BB : CIDomBlocks) {
-          dbgs() << "  " << BB->getName() << '\n';
-        }
-
-        dbgs() << "CIPDomBlocks\n";
-        for (BasicBlock *BB : CIPDomBlocks) {
-          dbgs() << "  " << BB->getName() << '\n';
-        }
-
-
-        for (BasicBlock *BB : CIDomBlocks) {
-          if (BB == CIPDom || BB == CIDom)
-            continue;
-
-          bool IsReach0 = isPotentiallyReachable(BB, CIPDom, DT);
-          dbgs() << "CIPDom Reachable: " << BB->getName() << " -> " << CIPDom->getName() << ": " << IsReach0 << '\n';
-
-          if (IsReach0) {
-            if (UnstructuredBlocks.insert(BB)) {
-              Inserted = true;
-
-              CIDom = DT->findNearestCommonDominator(CIDom, BB);
-              CIPDom = PDT->findNearestCommonDominator(CIPDom, BB);
-            }
-          }
-        }
-
-        for (BasicBlock *BB : CIPDomBlocks) {
-          if (BB == CIPDom || BB == CIDom)
-            continue;
-
-          bool IsReach1 = isPotentiallyReachable(CIDom, BB, DT);
-          dbgs() << "CIDom Reaches: " << CIDom->getName() << " -> " << BB->getName() << ": " << IsReach1 << '\n';
-          if (isPotentiallyReachable(CIDom, BB, DT)) {
-            if (UnstructuredBlocks.insert(BB)) {
-              Inserted = true;
-
-              CIDom = DT->findNearestCommonDominator(CIDom, BB);
-              CIPDom = PDT->findNearestCommonDominator(CIPDom, BB);
-            }
-          }
-        }
-
-      } while (Inserted);
-
-
-      //UnstructuredBlocks.insert(CIPDom);
-
-      dbgs() << "Inner loop iteration count: " << IterationCount << '\n';
-
-
-    }
+    pickBlocksToGuard(OrderedUnstructuredBlocks, UnstructuredEdges);
+    DEBUG(
+      dbgs() << "Unstructured blocks:\n";
+      for (BasicBlock *BB : OrderedUnstructuredBlocks) {
+        dbgs() << "  " << BB->getName() << '\n';
+      }
+      );
   }
-
-  DEBUG(
-    dbgs() << "Unstructured blocks:\n";
-    for (BasicBlock *BB : UnstructuredBlocks) {
-      dbgs() << "  " << BB->getName() << '\n';
-    }
-  );
 
 
 
@@ -1641,17 +1624,11 @@ bool LinearizeCFG::runOnFunction(Function &F) {
 
   //UnstructuredBlocks.insert(BB6);
 
-  if (UnstructuredBlocks.empty()) {
+  if (OrderedUnstructuredBlocks.empty()) {
     DEBUG(dbgs() << "No unstructured blocks\n");
     return false;
   }
 
-  SmallVector<BasicBlock *, 8> OrderedUnstructuredBlocks;
-
-  for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
-    if (UnstructuredBlocks.count(BB))
-      OrderedUnstructuredBlocks.push_back(BB);
-  }
 
 
 
@@ -1671,6 +1648,8 @@ bool LinearizeCFG::runOnFunction(Function &F) {
     DT->print(dbgs());
   );
 
+
+  /*
   if (UnstructuredBlocks.count(CIDom)) {
     // Get post dominator outside of the set.
     // XXX - Is this correct?
@@ -1704,7 +1683,6 @@ bool LinearizeCFG::runOnFunction(Function &F) {
       //PDT->insertEdge();
     }
   }
-
   DT->verifyDomTree();
 
   if (UnstructuredBlocks.count(CIPDom)) {
@@ -1719,19 +1697,11 @@ bool LinearizeCFG::runOnFunction(Function &F) {
       BlockNumbers[CIPDom] = BlockNum;
     }
   }
+  */
 
   DT->verifyDomTree();
 
 
-
-  DEBUG(
-    dbgs() << "Ordered unstructured:\n";
-    for (BasicBlock *BB : OrderedUnstructuredBlocks) {
-      dbgs() << "  " << BB->getName() << '\n';
-    }
-
-    DT->print(dbgs());
-  );
 
   linearizeBlocks(OrderedUnstructuredBlocks, CIPDom);
 
