@@ -1283,14 +1283,21 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
   // TODO: Make this type target dependent.
   GuardVarInserter.Initialize(Builder.getInt32Ty(), "guard.var");
 
-  DenseSet<BasicBlock *> Visited;
-
   struct ExtraEdge {
     BasicBlock *BB;
     unsigned SuccNum;
   };
 
   SmallVector<ExtraEdge, 8> ExtraEdges;
+
+  DenseMap<BasicBlock *, unsigned> RPONumbers;
+
+  {
+    unsigned RPONum = 0;
+    for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
+      RPONumbers[BB] = RPONum++;
+    }
+  }
 
   // The incoming guard ID is ID of the first block in the region. The compare
   // against it will trivially fold away.
@@ -1307,11 +1314,9 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     GuardMap[BB] = Guard;
     InvGuardMap[Guard] = BB;
 
-    Visited.insert(BB);
-    Visited.insert(Guard);
-
+    unsigned BBRPONum = RPONumbers[BB];
     for (BasicBlock *Succ : successors(BB)) {
-      if (Visited.count(Succ)) {
+      if (RPONumbers[Succ] <= BBRPONum) {
         BasicBlock *BackEdgeDest = Succ;
 
         BasicBlock *BEGuard = SplitEdge(BB, BackEdgeDest, DT);
@@ -1319,12 +1324,10 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
         BlockNumbers[BEGuard] = getBlockNumber(BB); // ???
         BEGuardMap[BB] = BEGuard;
-        Visited.insert(BEGuard); // ???
       }
     }
   }
 
-  Visited.clear();
   rebuildSSA(); // XXX Is this necessary here
 
   BasicBlock *PrevGuard = nullptr;
