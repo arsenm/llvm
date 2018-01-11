@@ -375,25 +375,172 @@ static bool verifyBlockPhis(const BasicBlock *BB) {
 }
 
 static bool hasMultipleSuccessors(const BasicBlock *BB) {
-  return !BB->getSingleSuccessor() && !succ_empty(BB);
+  //return !BB->getSingleSuccessor() && !succ_empty(BB);
+
+  //return std::distance(succ_begin(BB), succ_end(BB)) > 1;
+  return std::distance(succ_begin(BB), succ_end(BB)) > 1;
 }
 
 static bool hasMultiplePredecessors(const BasicBlock *BB) {
-  return !BB->getSinglePredecessor() && !pred_empty(BB);
+  return std::distance(pred_begin(BB), pred_end(BB)) > 1;
+//  return !BB->getSinglePredecessor() && !pred_empty(BB);
+}
+
+static bool hasMultipleSuccessorsExcept(const BasicBlock *BB,
+                                        const BasicBlock *Except) {
+  //return !BB->getSingleSuccessor() && !succ_empty(BB);
+
+  //return std::distance(succ_begin(BB), succ_end(BB)) > 1;
+  //return std::distance(succ_begin(BB), succ_end(BB)) > 1;
+
+  unsigned Count = 0;
+  for (const BasicBlock *Pred : successors(BB)) {
+    if (Pred != Except)
+      ++Count;
+  }
+
+  return Count > 1;
+}
+
+static bool hasMultiplePredecessorsExcept(const BasicBlock *BB,
+                                          const BasicBlock *Except) {
+  unsigned Count = 0;
+  for (const BasicBlock *Pred : predecessors(BB)) {
+    if (Pred != Except)
+      ++Count;
+  }
+
+  return Count > 1;
+
+
+  //return std::distance(pred_begin(BB), pred_end(BB)) > 1;
+//  return !BB->getSinglePredecessor() && !pred_empty(BB);
+}
+
+
+static bool dominatesOtherPred(const BasicBlock *BB,
+                               const BasicBlock *IncomingPred,
+                               const DominatorTree *DT,
+                               const PostDominatorTree *PDT) {
+  unsigned Count = 0;
+  for (const BasicBlock *Pred : predecessors(BB)) {
+    ++Count;
+    if (Pred == IncomingPred) {
+      continue;
+    }
+
+    if (DT->dominates(BB, Pred) || PDT->dominates(BB, Pred) ||
+        DT->dominates(Pred, BB) || PDT->dominates(Pred, BB))
+      return true;
+  }
+
+  return Count > 1;
+
+  return false;
 }
 
 bool LinearizeCFG::isUnstructuredEdge(BasicBlockEdge Edge) const {
   // An edge from block Bi to Bj is said to be unstructured if any of the
   // following three conditions is satisfied:
+  DEBUG(dbgs() << "\nCheck edge: " << Edge.getStart()->getName() << " -> " << Edge.getEnd()->getName() << '\n');
 
-  //  Block Bi has multiple successors, block Bj has multiple predecessors, and
-  //  neither of Bi or Bj dominates nor postdominates the other,
+
+
+
+
+
+
+  DEBUG(dbgs() << "Bi multiple successors: " << hasMultipleSuccessors(Edge.getStart()) << '\n');
+  DEBUG(dbgs() << "bj multiple predecessors: " << hasMultiplePredecessors(Edge.getEnd()) << '\n');
+
+
+
+  DEBUG(
+    dbgs() << "Dom checks: i dom j:\n  "
+    << Edge.getStart()->getName() << " dominates " << Edge.getEnd()->getName() << ": " << DT->dominates(Edge.getStart(), Edge.getEnd()) << '\n'
+    << " j dom i: " << Edge.getEnd()->getName() << " dominates " << Edge.getStart()->getName() << ": " << DT->dominates(Edge.getEnd(), Edge.getStart()) << '\n'
+    << "PostDom checks: i dom j:\n  "
+    << Edge.getStart()->getName() << " postdominates " << Edge.getEnd()->getName() << ": " << PDT->dominates(Edge.getStart(), Edge.getEnd()) << '\n'
+    << " j dom i: " << Edge.getEnd()->getName() << " postdominates " << Edge.getStart()->getName() << ": " << PDT->dominates(Edge.getEnd(), Edge.getStart()) << '\n';
+  );
+
+#if 0
+  if ((hasMultipleSuccessors(Edge.getStart()) &&
+       hasMultiplePredecessors(Edge.getEnd())))
+    return true;
+  return false;
+#endif
+
+
+
+  if (hasMultiplePredecessors(Edge.getEnd()) &&
+      !PDT->dominates(Edge.getEnd(), Edge.getStart())) {
+
+    return true;
+
   if (hasMultipleSuccessors(Edge.getStart()) &&
-      hasMultiplePredecessors(Edge.getEnd()) &&
-      !DT->dominates(Edge.getStart(), Edge.getEnd()) &&
+      !DT->dominates(Edge.getStart(), Edge.getEnd()))
+    return true;
+  }
+
+
+
+  /*
+  if (hasMultipleSuccessors(Edge.getStart()) &&
+      !PDT->dominates(Edge.getEnd(), Edge.getStart()))
+    return true;
+
+  if (hasMultiplePredecessors(Edge.getEnd()) &&
+      !DT->dominates(Edge.getStart(), Edge.getEnd()))
+    return true;
+  */
+
+#if 0
+  if (!DT->dominates(Edge.getStart(), Edge.getEnd()) &&
       !DT->dominates(Edge.getEnd(), Edge.getStart()) &&
       !PDT->dominates(Edge.getStart(), Edge.getEnd()) &&
       !PDT->dominates(Edge.getEnd(), Edge.getStart())) {
+    return true;
+  }
+#endif
+  return false;
+
+  /*
+  if (hasMultiplePredecessors(Edge.getEnd()) &&
+      !PDT->dominates(Edge.getEnd(), Edge.getStart()))
+    return true;
+
+  if (hasMultipleSuccessors(Edge.getEnd()) &&
+      !DT->dominates(Edge.getStart(), Edge.getEnd())) {
+    return true;
+  }
+
+  return false;
+  */
+  //  Block Bi has multiple successors, block Bj has multiple predecessors, and
+  //  neither of Bi or Bj dominates nor postdominates the other,
+  /*
+  if ((hasMultipleSuccessorsExcept(Edge.getStart(), Edge.getEnd()) &&
+       hasMultiplePredecessorsExcept(Edge.getEnd(), Edge.getStart())) &&
+  */
+
+  /*
+  if ((hasMultipleSuccessors(Edge.getStart()) &&
+       hasMultiplePredecessors(Edge.getEnd())) &&
+      !DT->dominates(Edge.getStart(), Edge.getEnd()) &&
+      !PDT->dominates(Edge.getEnd(), Edge.getStart())) {
+    return true;
+  }
+
+  return false;
+  */
+  if ((hasMultipleSuccessors(Edge.getStart()) &&
+       hasMultiplePredecessors(Edge.getEnd())) &&
+
+      (!DT->dominates(Edge.getStart(), Edge.getEnd()) &&
+       !DT->dominates(Edge.getEnd(), Edge.getStart()) &&
+       !PDT->dominates(Edge.getStart(), Edge.getEnd()) &&
+       !PDT->dominates(Edge.getEnd(), Edge.getStart()))) {
     return true;
   }
 
