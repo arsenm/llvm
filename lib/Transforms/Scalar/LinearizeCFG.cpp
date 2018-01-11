@@ -16,7 +16,8 @@
 // Each unstructured block has a guard block inserted as its predecessor. The
 // unstructured block assigns a unique block ID for each successor for a guard
 // variable. The unstructured block has a single unconditional branch to the
-// next block's guard.
+// next block's guard. After linearization a guarded block will have one
+// predecessor, the guard block, and one successor, the next guard block.
 //
 // Each guard block checks the incoming successor ID, and enters the guarded
 // block if the ID matches.
