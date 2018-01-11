@@ -616,7 +616,8 @@ BasicBlock *LinearizeCFG::findCIDOM(ArrayRef<BasicBlock *> Set) const {
 BasicBlock *LinearizeCFG::findCIDOM(const DenseSet<BasicBlock *> &Set) const {
   NearestCommonDominator<> NCD(DT);
   for (BasicBlock *BB : Set)
-    NCD.addAndRememberBlock(BB);
+    NCD.addBlock(BB);
+    //NCD.addAndRememberBlock(BB);
   return NCD.result();
 }
 
@@ -630,7 +631,8 @@ BasicBlock *LinearizeCFG::findCIPDOM(ArrayRef<BasicBlock *> Set) const {
 BasicBlock *LinearizeCFG::findCIPDOM(const DenseSet<BasicBlock *> &Set) const {
   NearestCommonDominator<PostDominatorTree> NCD(PDT);
   for (BasicBlock *BB : Set)
-    NCD.addAndRememberBlock(BB);
+    NCD.addBlock(BB);
+    //NCD.addAndRememberBlock(BB);
   return NCD.result();
 }
 
