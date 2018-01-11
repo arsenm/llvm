@@ -23,6 +23,9 @@
 //
 // An additional guard is introduced for back edges.
 //
+// This can be applied even to some structured CFGs in order to allow
+// interleaving of different divergent subregions.
+//
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ADT/DenseMap.h"
