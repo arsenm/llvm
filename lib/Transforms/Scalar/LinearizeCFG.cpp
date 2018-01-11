@@ -1494,26 +1494,25 @@ bool LinearizeCFG::runOnFunction(Function &F) {
     for (BasicBlockEdge Edge : UnstructuredEdges) {
       //UnstructuredBlocks.clear();
 
-      UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getStart()));
-      UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getEnd()));
+      //UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getStart()));
+      //UnstructuredBlocks.insert(const_cast<BasicBlock *>(Edge.getEnd()));
 
-      bool Inserted = false;
 
-      /*
       BasicBlock *CIDom = DT->findNearestCommonDominator(const_cast<BasicBlock *>(Edge.getStart()),
                                                          const_cast<BasicBlock *>(Edge.getEnd()));
 
       BasicBlock *CIPDom = PDT->findNearestCommonDominator(const_cast<BasicBlock *>(Edge.getStart()),
                                                            const_cast<BasicBlock *>(Edge.getEnd()));
-      */
 
 
       unsigned IterationCount = 0;
-      bool Done = false;
+      bool Inserted = false;
       do {
         IterationCount++;
-        BasicBlock *CIDom = findCIDOM(UnstructuredBlocks.getArrayRef());
-        BasicBlock *CIPDom = findCIPDOM(UnstructuredBlocks.getArrayRef());
+        Inserted = false;
+
+        //BasicBlock *CIDom = findCIDOM(UnstructuredBlocks.getArrayRef());
+        //BasicBlock *CIPDom = findCIPDOM(UnstructuredBlocks.getArrayRef());
 
         dbgs() << "Found CIDom: " << CIDom->getName() << '\n';
         dbgs() << "Found CIPDom: " << CIPDom->getName() << '\n';
@@ -1563,10 +1562,7 @@ bool LinearizeCFG::runOnFunction(Function &F) {
         }
 
 
-        DenseSet<BasicBlock *> UN2;
         for (BasicBlock *BB : CIDomBlocks) {
-          // getDescendants returns CIDom itself
-
           if (BB == CIPDom || BB == CIDom)
             continue;
 
@@ -1574,10 +1570,11 @@ bool LinearizeCFG::runOnFunction(Function &F) {
           dbgs() << "CIPDom Reachable: " << BB->getName() << " -> " << CIPDom->getName() << ": " << IsReach0 << '\n';
 
           if (IsReach0) {
-            if (UN2.insert(BB).second) {
-              //Inserted = true;
-              //CIDom = DT->findNearestCommonDominator(BB, CIDom);
-              //CIPDom = PDT->findNearestCommonDominator(BB, CIPDom);
+            if (UnstructuredBlocks.insert(BB)) {
+              Inserted = true;
+
+              CIDom = DT->findNearestCommonDominator(CIDom, BB);
+              CIPDom = PDT->findNearestCommonDominator(CIPDom, BB);
             }
           }
         }
@@ -1589,38 +1586,17 @@ bool LinearizeCFG::runOnFunction(Function &F) {
           bool IsReach1 = isPotentiallyReachable(CIDom, BB, DT);
           dbgs() << "CIDom Reaches: " << CIDom->getName() << " -> " << BB->getName() << ": " << IsReach1 << '\n';
           if (isPotentiallyReachable(CIDom, BB, DT)) {
-            if (UN2.insert(BB).second) {
-              //Inserted = true;
-              //CIDom = DT->findNearestCommonDominator(BB, CIDom);
-              //CIPDom = PDT->findNearestCommonDominator(BB, CIPDom);
+            if (UnstructuredBlocks.insert(BB)) {
+              Inserted = true;
+
+              CIDom = DT->findNearestCommonDominator(CIDom, BB);
+              CIPDom = PDT->findNearestCommonDominator(CIPDom, BB);
             }
           }
         }
 
-        dbgs() << "UN2:\n";
-        for (BasicBlock *ZZ : UN2) {
-          dbgs() << "  " << ZZ->getName() << '\n';
-        }
+      } while (Inserted);
 
-        DenseSet<BasicBlock *> UN1;
-        for (BasicBlock *XX : UnstructuredBlocks)
-          UN1.insert(XX);
-
-
-        if (set_difference(UN1, UN2).empty() &&
-            set_difference(UN2, UN1).empty()) {
-          Done = true;
-        }
-
-        UN1 = UN2;
-
-        UnstructuredBlocks.clear();
-        for (BasicBlock *YY : UN1)
-          UnstructuredBlocks.insert(YY);
-      } while (!Done);
-
-      //dbgs() << "Final CIDom: " << CIDom->getName() << '\n';
-      //dbgs() << "Final CIPDom: " << CIPDom->getName() << '\n';
 
       //UnstructuredBlocks.insert(CIPDom);
 

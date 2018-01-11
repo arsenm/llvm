@@ -764,7 +764,6 @@ bool GCNPassConfig::addPreISel() {
       addPass(&LowerSwitchID); // XXX  Workaround
 
       addPass(createLinearizeCFGPass(true)); // true -> SkipUniformRegions
-      addPass(&BreakCriticalEdgesID); // XXX - Add as si-annotate-control-flow dependency, or stop introducing critical edges?
     } else {
       // Merge divergent exit nodes. StructurizeCFG won't recognize the multi-exit
       // regions formed by them.
