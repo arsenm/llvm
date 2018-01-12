@@ -1241,8 +1241,8 @@ void LinearizeCFG::pickBlocksToGuard(
       //BasicBlock *CIDom = findCIDOM(UnstructuredBlocks.getArrayRef());
       //BasicBlock *CIPDom = findCIPDOM(UnstructuredBlocks.getArrayRef());
 
-      dbgs() << "Found CIDom: " << CIDom->getName() << '\n';
-      dbgs() << "Found CIPDom: " << CIPDom->getName() << '\n';
+      DEBUG(dbgs() << "Found CIDom: " << CIDom->getName() << '\n');
+      DEBUG(dbgs() << "Found CIPDom: " << CIPDom->getName() << '\n');
 
 
       //DomTreeNode *CIDomNode = DT->getNode(CIDom)->getIDom();
@@ -1275,16 +1275,17 @@ void LinearizeCFG::pickBlocksToGuard(
       // union
       // blocks post dom by CIPDom && reachable from cidom
 
-      dbgs() << "CIDomblocks:\n";
-      for (BasicBlock *BB : CIDomBlocks) {
-        dbgs() << "  " << BB->getName() << '\n';
-      }
+      DEBUG(
+        dbgs() << "CIDomblocks:\n";
+        for (BasicBlock *BB : CIDomBlocks) {
+          dbgs() << "  " << BB->getName() << '\n';
+        }
 
-      dbgs() << "CIPDomBlocks\n";
-      for (BasicBlock *BB : CIPDomBlocks) {
-        dbgs() << "  " << BB->getName() << '\n';
-      }
-
+        dbgs() << "CIPDomBlocks\n";
+        for (BasicBlock *BB : CIPDomBlocks) {
+          dbgs() << "  " << BB->getName() << '\n';
+        }
+      );
 
       for (BasicBlock *BB : CIDomBlocks) {
         //if (BB == CIPDom || BB == CIDom)
@@ -1292,7 +1293,7 @@ void LinearizeCFG::pickBlocksToGuard(
           continue;
 
         bool IsReach0 = isPotentiallyReachable(BB, CIPDom, DT);
-        dbgs() << "CIPDom Reachable: " << BB->getName() << " -> " << CIPDom->getName() << ": " << IsReach0 << '\n';
+        DEBUG(dbgs() << "CIPDom Reachable: " << BB->getName() << " -> " << CIPDom->getName() << ": " << IsReach0 << '\n');
 
         if (IsReach0) {
           if (UnstructuredBlocks.insert(BB)) {
@@ -1310,7 +1311,7 @@ void LinearizeCFG::pickBlocksToGuard(
           continue;
 
         bool IsReach1 = isPotentiallyReachable(CIDom, BB, DT);
-        dbgs() << "CIDom Reaches: " << CIDom->getName() << " -> " << BB->getName() << ": " << IsReach1 << '\n';
+        DEBUG(dbgs() << "CIDom Reaches: " << CIDom->getName() << " -> " << BB->getName() << ": " << IsReach1 << '\n');
         if (isPotentiallyReachable(CIDom, BB, DT)) {
           if (UnstructuredBlocks.insert(BB)) {
             Inserted = true;
@@ -1766,10 +1767,6 @@ bool LinearizeCFG::runOnFunction(Function &F) {
   auto DF = &getAnalysis<DominanceFrontierWrapperPass>().getDominanceFrontier();
 
 
-
-  //findUnstructuredEdges();
-
-  /*
   DEBUG(
     printSCCFunc(F);
     dbgs() << "\n\n\n\n";
@@ -1778,8 +1775,7 @@ bool LinearizeCFG::runOnFunction(Function &F) {
     printRPOFunc(F);
     dbgs() << "\n\n";
   );
-  */
-  printRPOFunc(F);
+
 
   RegionInfo RI;
   RI.recalculate(F, DT, PDT, DF);
