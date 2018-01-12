@@ -73,7 +73,7 @@ b1:
 
 b2:
   %load.b2 = load volatile i32, i32 addrspace(1)* undef
-  br i1 %cond1, label %b3, label %b5
+  br i1 %cond1, label %b5, label %b3
 
 b3:
   %phi.b3 = phi i32 [%load.b1, %b1], [%load.b2, %b2]
@@ -104,7 +104,7 @@ exit:
 ; Test with phis in every block to make sure those are all updated
 ; correctly.
 
-define void @figure1_phis() {
+define void @figure1b_phis() {
 ; CHECK-LABEL: @figure1_phis(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store volatile i32 0, i32 addrspace(1)* undef
