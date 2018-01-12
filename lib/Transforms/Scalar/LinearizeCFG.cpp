@@ -1571,7 +1571,9 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
       MadeChange = false;
 
       for (BasicBlock *GuardPred : predecessors(Guard)) {
-        if (GuardPred != PrevBlock && GuardPred != PrevGuard) {
+        if (GuardPred != PrevBlock && GuardPred != PrevGuard &&
+            (is_contained(OrderedUnstructuredBlocks, GuardPred) ||
+             isGuardBlock(GuardPred))) {
           DEBUG(dbgs() << "Prune extra edge: " << GuardPred->getName()
                 << " -> " << Guard->getName() << '\n');
 
