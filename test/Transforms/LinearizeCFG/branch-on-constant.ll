@@ -90,3 +90,16 @@ b1:
 b2:
   ret void
 }
+
+@gv = addrspace(3) global i32 undef
+
+define void @constexpr_br() {
+entry:
+  br i1 icmp ne (i32 addrspace(3)* inttoptr (i32 4 to i32 addrspace(3)*), i32 addrspace(3)* @gv), label %b1, label %b2
+
+b1:
+  br label %b2
+
+b2:
+  ret void
+}

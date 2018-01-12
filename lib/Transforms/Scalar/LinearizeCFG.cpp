@@ -291,6 +291,18 @@ class LinearizeCFG : public FunctionPass {
 
   DenseMap<BasicBlock *, BasicBlock *> GuardMap;
   DenseMap<BasicBlock *, BasicBlock *> InvGuardMap;
+  DenseMap<BasicBlock *, BasicBlock *> InvBEGuardMap;
+
+
+  bool isGuardBlock(const BasicBlock *BB) const {
+    return InvGuardMap.find(BB) != InvGuardMap.end();
+  }
+
+  bool isBEGuardBlock(const BasicBlock *BB) const {
+    return InvBEGuardMap.find(BB) != InvBEGuardMap.end();
+  }
+
+
   DenseMap<BasicBlock *, BasicBlock *> BEGuardMap;
   DenseMap<BasicBlock *, unsigned> BlockNumbers;
 
@@ -350,10 +362,6 @@ public:
 
   void releaseMemory() override;
   bool runOnFunction(Function &F) override;
-
-  StringRef getPassName() const override {
-    return "Structurize control flow";
-  }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     if (SkipUniformRegions)
@@ -874,6 +882,14 @@ static unsigned getOtherDestIndex(BranchInst *BI, BasicBlock *BB) {
   return (Succ0 == BB) ? 1 : 0;
 }
 
+static unsigned getDestIndex(BranchInst *BI, BasicBlock *BB) {
+  BasicBlock *Succ0 = BI->getSuccessor(0);
+  BasicBlock *Succ1 = BI->getSuccessor(1);
+
+  assert(Succ0 != Succ1 && "FIXME: Handle this case");
+  return (Succ0 == BB) ? 0 : 1;
+}
+
 void LinearizeCFG::addAndUpdatePhis(BasicBlock *PrevGuard,
                                          BasicBlock *Guard) {
   for (PHINode &P : Guard->phis()) {
@@ -931,13 +947,33 @@ BasicBlock *LinearizeCFG::getOrInsertGuardBlock(BasicBlock *BB) {
 
   SmallVector<BasicBlock *, 2> Preds(pred_begin(BB), pred_end(BB));
 
+  unsigned OldSize = Func->size();
+
   assert(!Preds.empty() &&
          "FIXME: SplitBlockPredecessors does not properly update the dom tree for entry block");
 
   BasicBlock *Guard = SplitBlockPredecessors(BB, Preds, ".guard", DT);
+
+  unsigned NewSize = Func->size();
+
+  assert(NewSize == OldSize + 1);
+
+  /*
+  IRBuilder<> Builder(Func->getContext());
+
+  if (BB == &Func->getEntryBlock()) {
+
+    for (BasicBlock *Pred : predecessors(Guard)) {
+      GuardVarInserter.AddAvailableValue(Pred,
+                                         Builder.getInt32(getBlockNumber(BB)));
+    }
+  }
+  */
   assert(Guard && "failed to split block for guard");
   GuardMap[BB] = Guard;
   InvGuardMap[Guard] = BB;
+
+  DT->verifyDomTree();
   return Guard;
 }
 
@@ -1000,6 +1036,7 @@ void LinearizeCFG::addBrPrevGuardToGuard(
     return;
 
   Value *PrevGuardVar = GuardVarInserter.GetValueInMiddleOfBlock(PrevGuard);
+
   ConstantInt *SuccID
     = Builder.getInt32(getBlockNumber(PrevGuardSucc));
   Value *PrevGuardCond = Builder.CreateICmpEQ(PrevGuardVar,
@@ -1373,6 +1410,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
       BlockNumbers[CIPDom] = BlockNum;
     }
   }
+
   */
 
 
@@ -1385,6 +1423,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
   DenseMap<BasicBlock *, unsigned> RPONumbers;
 
+
   {
     unsigned RPONum = 0;
     for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
@@ -1392,6 +1431,10 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     }
   }
 
+
+  DenseSet<BasicBlock *> OrigFuncBlocks;
+  for (BasicBlock &BB : *Func)
+    OrigFuncBlocks.insert(&BB);
 
   {
     GuardVarInserter.Initialize(Builder.getInt32Ty(), "guard.var");
@@ -1421,11 +1464,14 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
       if (SuccRPO <= BBRPONum) {
         BasicBlock *BackEdgeDest = Succ;
 
+        unsigned OldSize = Func->size();
         BasicBlock *BEGuard = SplitEdge(BB, BackEdgeDest, DT);
+        assert(Func->size() == OldSize + 1);
         assert(BEGuard);
 
         BlockNumbers[BEGuard] = getBlockNumber(BB); // ???
         BEGuardMap[BB] = BEGuard;
+        InvBEGuardMap[BEGuard] = BB;
       }
     }
   }
@@ -1437,6 +1483,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
   DT->verifyDomTree();
 
+  /*
   auto hasTwoGuardedSuccessors = [this](const BasicBlock *BB) -> bool {
     unsigned SuccCount = 0;
     for (const BasicBlock *Succ : successors(BB)) {
@@ -1449,18 +1496,19 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
     return SuccCount == 2;
   };
+  */
 
   // FIXME: There's no real reason these need to be separate loops.
   for (auto I = OrderedUnstructuredBlocks.begin(), E = OrderedUnstructuredBlocks.end();
        I != E;) {
     DT->verifyDomTree();
     BasicBlock *BB = *I;
+
     insertGuardVar(Builder, BB);
 
     ++I;
 
     bool Last = I == E;
-
     BasicBlock *Guard = getOrInsertGuardBlock(BB);
 
     // idom->guard already inserted by split
@@ -1480,8 +1528,9 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
       if (PrevBlockBI && PrevBlockBI->isUnconditional()) {
         BasicBlock *OldSucc = PrevBlockBI->getSuccessor(0);
 
-        //if (OldSucc != Guard && is_contained(OrderedUnstructuredBlocks, OldSucc)) {
-        if (OldSucc != Guard) {
+        if (OldSucc != Guard && isGuardBlock(OldSucc)) {
+        //if (OldSucc != Guard && !OrigFuncBlocks.count(OldSucc)) {
+          //if (OldSucc != Guard) {
           assert(verifyBlockPhis(Guard));
 
           OldSucc->removePredecessor(PrevBlock);
@@ -1513,7 +1562,8 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     BasicBlock *BEGuard = getBEGuardBlock(BB);
 
 #if 1
-    if (PrevBlock && PrevGuard && !BEGuard) {
+    //if (PrevBlock && PrevGuard/* && !BEGuard*/) {
+    if (PrevBlock) {
       bool MadeChange = false;
 
       redo:
@@ -1526,7 +1576,20 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
           auto *PredBI = cast<BranchInst>(GuardPred->getTerminator());
           if (PredBI->isUnconditional()) {
-            llvm_unreachable("nooo");
+            // In simple cases the guard branch condition was trivial, so the
+            // extra edge was fuckd up.
+
+            /*
+            ExtraEdge EE;
+            EE.BB = GuardPred;
+            EE.SuccNum = 0;
+            ExtraEdges.push_back(EE);
+            */
+            //llvm_unreachable("nooo");
+            // XXX - assert backedge
+
+
+            /*
             Guard->removePredecessor(GuardPred);
             PredBI->replaceUsesOfWith(GuardPred, Guard);
 
@@ -1542,15 +1605,20 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
             };
 
             DT->applyUpdates(Updates);
-            DT->verifyDomTree();
 
+            DT->verifyDomTree();
+            */
           } else {
 
-            removeBranchTo(Builder, GuardPred, Guard);
+            //ExtraEdge EE;
+            //EE.BB = GuardPred;
+            //EE.SuccNum = getDestIndex(PredBI, Guard);
+            //ExtraEdges.push_back(EE);
 
+            removeBranchTo(Builder, GuardPred, Guard);
+            MadeChange = true;
           }
 
-          MadeChange = true;
           break;
         }
       }
@@ -1592,12 +1660,23 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
       BasicBlock *ExtraSplit = nullptr;
       if (std::distance(succ_begin(Guard), succ_end(Guard)) == 2) {
+
+        assert(Last);
+
+        /*
+
+
+        unsigned OldSize = Func->size();
         ExtraSplit = SplitEdge(Guard, BB, DT);
+        assert(Func->size() == OldSize + 1);
         assert(ExtraSplit);
         BlockNumbers[ExtraSplit] = getBlockNumber(BB);
 
+        llvm_unreachable("had to do extra split");
+
         // FIXME: Can eliminate the second compare in the split block.
         addBrPrevGuardToGuard(Builder, BB, BEGuard, "be.guard");
+        */
       } else {
         addBrPrevGuardToGuard(Builder, Guard, BEGuard, "be.guard");
       }
@@ -1619,7 +1698,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
   );
 
   // FIXME: Should be able to prune these edges during the main loop.
-  if (0) {
+  if (1) {
     // Cleanup extra edges. A guarded block should only ever end in an
     // unconditional branch to the next guard block.
 
