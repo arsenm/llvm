@@ -290,8 +290,10 @@ class LinearizeCFG : public FunctionPass {
   SSAUpdater GuardVarInserter;
 
   DenseMap<BasicBlock *, BasicBlock *> GuardMap;
+  DenseMap<BasicBlock *, BasicBlock *> BEGuardMap;
   DenseMap<BasicBlock *, BasicBlock *> InvGuardMap;
   DenseMap<BasicBlock *, BasicBlock *> InvBEGuardMap;
+  DenseMap<BasicBlock *, unsigned> BlockNumbers;
 
 
   bool isGuardBlock(const BasicBlock *BB) const {
@@ -301,10 +303,6 @@ class LinearizeCFG : public FunctionPass {
   bool isBEGuardBlock(const BasicBlock *BB) const {
     return InvBEGuardMap.find(BB) != InvBEGuardMap.end();
   }
-
-
-  DenseMap<BasicBlock *, BasicBlock *> BEGuardMap;
-  DenseMap<BasicBlock *, unsigned> BlockNumbers;
 
   BasicBlock *getBEGuardBlock(const BasicBlock *BB) const;
   BasicBlock *getOrInsertGuardBlock(BasicBlock *BB);
@@ -662,14 +660,16 @@ BasicBlock *LinearizeCFG::findCIPDOM(const DenseSet<BasicBlock *> &Set) const {
 
 char LinearizeCFG::ID = 0;
 
-INITIALIZE_PASS_BEGIN(LinearizeCFG, "linearize-cfg", "Structurize the CFG with linearization",
+INITIALIZE_PASS_BEGIN(LinearizeCFG, "linearize-cfg",
+                      "Structurize the CFG with linearization",
                       false, false)
 INITIALIZE_PASS_DEPENDENCY(DivergenceAnalysis)
 INITIALIZE_PASS_DEPENDENCY(LowerSwitch)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(PostDominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DominanceFrontierWrapperPass)
-INITIALIZE_PASS_END(LinearizeCFG, "linearize-cfg", "Structurize the CFG with linearization",
+INITIALIZE_PASS_END(LinearizeCFG, "linearize-cfg",
+                    "Structurize the CFG with linearization",
                     false, false)
 
 /// \brief Initialize the types and constants used in the pass
@@ -1751,6 +1751,8 @@ void LinearizeCFG::releaseMemory() {
   GuardMap.clear();
   InvGuardMap.clear();
   BEGuardMap.clear();
+  InvBEGuardMap.clear();
+  BlockNumbers.clear();
 }
 
 bool LinearizeCFG::runOnFunction(Function &F) {
@@ -1760,6 +1762,8 @@ bool LinearizeCFG::runOnFunction(Function &F) {
   assert(GuardMap.empty());
   assert(BEGuardMap.empty());
   assert(InvGuardMap.empty());
+  assert(InvBEGuardMap.empty());
+  assert(BlockNumbers.empty());
 
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
