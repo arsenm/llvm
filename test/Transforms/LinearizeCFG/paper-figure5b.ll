@@ -573,3 +573,294 @@ b6:
 exit:
   ret void
 }
+
+; structured condition skips over unstructured region.
+define void @guarded_figure5b_phis(i1 %cond0, i32 %n) {
+; CHECK-LABEL: @guarded_figure5b_phis(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    store volatile i32 100, i32 addrspace(1)* null
+; CHECK-NEXT:    br i1 [[COND0:%.*]], label [[B0:%.*]], label [[EXIT:%.*]]
+; CHECK:       b0:
+; CHECK-NEXT:    [[B0_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[B1:%.*]]
+; CHECK:       b1:
+; CHECK-NEXT:    [[B1_PHI:%.*]] = phi i32 [ [[B0_LOAD]], [[B0]] ]
+; CHECK-NEXT:    store volatile i32 [[B1_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    [[B1_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[B2_GUARD:%.*]]
+; CHECK:       b2.guard:
+; CHECK-NEXT:    [[I_INC18:%.*]] = phi i32 [ [[I_INC19:%.*]], [[B4_SPLIT:%.*]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[B4_LOAD16:%.*]] = phi i32 [ [[B4_LOAD17:%.*]], [[B4_SPLIT]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[B2_LOAD13:%.*]] = phi i32 [ [[B2_LOAD14:%.*]], [[B4_SPLIT]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[I11:%.*]] = phi i32 [ [[I12:%.*]], [[B4_SPLIT]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[B6_PHI_PH9:%.*]] = phi i32 [ [[B6_PHI_PH10:%.*]], [[B4_SPLIT]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 3, [[B4_SPLIT]] ], [ 3, [[B1]] ]
+; CHECK-NEXT:    [[I_PH:%.*]] = phi i32 [ [[I_INC19]], [[B4_SPLIT]] ], [ 0, [[B1]] ]
+; CHECK-NEXT:    [[B2_PHI_PH:%.*]] = phi i32 [ [[B4_LOAD17]], [[B4_SPLIT]] ], [ [[B1_LOAD]], [[B1]] ]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 3
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[B2:%.*]], label [[B3_GUARD:%.*]]
+; CHECK:       b2:
+; CHECK-NEXT:    [[I:%.*]] = phi i32 [ [[I_PH]], [[B2_GUARD]] ]
+; CHECK-NEXT:    [[B2_PHI:%.*]] = phi i32 [ [[B2_PHI_PH]], [[B2_GUARD]] ]
+; CHECK-NEXT:    store volatile i32 [[B2_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    [[B2_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    [[CMP:%.*]] = icmp slt i32 [[I]], [[N:%.*]]
+; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[CMP]], i32 6, i32 4
+; CHECK-NEXT:    br i1 [[CMP]], label [[B5_GUARD:%.*]], label [[B3_GUARD]]
+; CHECK:       b3.guard:
+; CHECK-NEXT:    [[B2_LOAD14]] = phi i32 [ [[B2_LOAD13]], [[B2_GUARD]] ], [ [[B2_LOAD]], [[B2]] ]
+; CHECK-NEXT:    [[I12]] = phi i32 [ [[I11]], [[B2_GUARD]] ], [ [[I]], [[B2]] ]
+; CHECK-NEXT:    [[GUARD_VAR1:%.*]] = phi i32 [ [[GUARD_VAR]], [[B2_GUARD]] ], [ [[TMP0]], [[B2]] ]
+; CHECK-NEXT:    [[PREV_GUARD2:%.*]] = icmp eq i32 [[GUARD_VAR1]], 4
+; CHECK-NEXT:    br i1 [[PREV_GUARD2]], label [[B3:%.*]], label [[B4_GUARD:%.*]]
+; CHECK:       b3:
+; CHECK-NEXT:    [[B3_PHI:%.*]] = phi i32 [ [[B2_LOAD14]], [[B3_GUARD]] ]
+; CHECK-NEXT:    store volatile i32 3, i32 addrspace(1)* null
+; CHECK-NEXT:    [[B3_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    [[COND1:%.*]] = load volatile i1, i1 addrspace(1)* null
+; CHECK-NEXT:    [[TMP1:%.*]] = select i1 [[COND1]], i32 5, i32 7
+; CHECK-NEXT:    br label [[B4_GUARD]]
+; CHECK:       b4.guard:
+; CHECK-NEXT:    [[B6_PHI_PH10]] = phi i32 [ [[B6_PHI_PH9]], [[B3_GUARD]] ], [ [[B3_LOAD]], [[B3]] ]
+; CHECK-NEXT:    [[GUARD_VAR3:%.*]] = phi i32 [ [[GUARD_VAR1]], [[B3_GUARD]] ], [ [[TMP1]], [[B3]] ]
+; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR3]], 5
+; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[B4:%.*]], label [[B4_SPLIT]]
+; CHECK:       b4:
+; CHECK-NEXT:    [[B4_PHI:%.*]] = phi i32 [ [[B6_PHI_PH10]], [[B4_GUARD]] ]
+; CHECK-NEXT:    [[B4_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    store volatile i32 [[B4_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    [[I_INC:%.*]] = add nsw i32 [[I12]], 1
+; CHECK-NEXT:    br label [[B4_SPLIT]]
+; CHECK:       b4.split:
+; CHECK-NEXT:    [[I_INC19]] = phi i32 [ [[I_INC18]], [[B4_GUARD]] ], [ [[I_INC]], [[B4]] ]
+; CHECK-NEXT:    [[B4_LOAD17]] = phi i32 [ [[B4_LOAD16]], [[B4_GUARD]] ], [ [[B4_LOAD]], [[B4]] ]
+; CHECK-NEXT:    [[GUARD_VAR4:%.*]] = phi i32 [ [[GUARD_VAR3]], [[B4_GUARD]] ], [ 5, [[B4]] ]
+; CHECK-NEXT:    [[PREV_GUARD5:%.*]] = icmp eq i32 [[GUARD_VAR4]], 3
+; CHECK-NEXT:    br i1 [[PREV_GUARD5]], label [[B2_GUARD]], label [[B5_GUARD]]
+; CHECK:       b5.guard:
+; CHECK-NEXT:    [[B2_LOAD15:%.*]] = phi i32 [ [[B2_LOAD14]], [[B4_SPLIT]] ], [ [[B2_LOAD]], [[B2]] ]
+; CHECK-NEXT:    [[B6_PHI_PH8:%.*]] = phi i32 [ [[B6_PHI_PH10]], [[B4_SPLIT]] ], [ [[B6_PHI_PH9]], [[B2]] ]
+; CHECK-NEXT:    [[GUARD_VAR6:%.*]] = phi i32 [ [[GUARD_VAR4]], [[B4_SPLIT]] ], [ [[TMP0]], [[B2]] ]
+; CHECK-NEXT:    [[PREV_GUARD7:%.*]] = icmp eq i32 [[GUARD_VAR6]], 6
+; CHECK-NEXT:    br i1 [[PREV_GUARD7]], label [[B5:%.*]], label [[B6_GUARD:%.*]]
+; CHECK:       b5:
+; CHECK-NEXT:    [[B5_PHI:%.*]] = phi i32 [ [[B2_LOAD15]], [[B5_GUARD]] ]
+; CHECK-NEXT:    [[B5_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    store volatile i32 [[B5_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[B6_GUARD]]
+; CHECK:       b6.guard:
+; CHECK-NEXT:    [[B6_PHI_PH:%.*]] = phi i32 [ [[B5_LOAD]], [[B5]] ], [ [[B6_PHI_PH8]], [[B5_GUARD]] ]
+; CHECK-NEXT:    br label [[B6:%.*]]
+; CHECK:       b6:
+; CHECK-NEXT:    [[B6_PHI:%.*]] = phi i32 [ [[B6_PHI_PH]], [[B6_GUARD]] ]
+; CHECK-NEXT:    store volatile i32 [[B6_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[EXIT]]
+; CHECK:       exit:
+; CHECK-NEXT:    [[EXIT_PHI:%.*]] = phi i32 [ [[B6_PHI]], [[B6]] ], [ [[ENTRY_LOAD]], [[ENTRY:%.*]] ]
+; CHECK-NEXT:    store volatile i32 [[EXIT_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    ret void
+;
+entry:
+  %entry.load = load volatile i32, i32 addrspace(1)* null
+  store volatile i32 100, i32 addrspace(1)* null
+  br i1 %cond0, label %b0, label %exit
+
+b0:
+  %b0.load = load volatile i32, i32 addrspace(1)* null
+  br label %b1
+
+b1:
+  %b1.phi = phi i32 [ %b0.load, %b0 ]
+  store volatile i32 %b1.phi, i32 addrspace(1)* null
+  %b1.load = load volatile i32, i32 addrspace(1)* null
+  br label %b2
+
+b2:
+  %i = phi i32 [ 0, %b1 ], [ %i.inc, %b4 ]
+  %b2.phi = phi i32 [ %b1.load, %b1 ], [ %b4.load, %b4 ]
+  store volatile i32 %b2.phi, i32 addrspace(1)* null
+  %b2.load = load volatile i32, i32 addrspace(1)* null
+  %cmp = icmp slt i32 %i, %n
+  br i1 %cmp, label %b5, label %b3
+
+b3:
+  %b3.phi = phi i32 [ %b2.load, %b2 ]
+  store volatile i32 3, i32 addrspace(1)* null
+  %b3.load = load volatile i32, i32 addrspace(1)* null
+  %cond1 = load volatile i1, i1 addrspace(1)* null
+  br i1 %cond1, label %b4, label %b6
+
+b4:
+  %b4.phi = phi i32 [ %b3.load, %b3 ]
+  %b4.load = load volatile i32, i32 addrspace(1)* null
+  store volatile i32 %b4.phi, i32 addrspace(1)* null
+  %i.inc = add nsw i32 %i, 1
+  br label %b2
+
+b5:
+  %b5.phi = phi i32 [ %b2.load, %b2 ]
+  %b5.load = load volatile i32, i32 addrspace(1)* null
+  store volatile i32 %b5.phi, i32 addrspace(1)* null
+  br label %b6
+
+b6:
+  %b6.phi = phi i32 [ %b3.load, %b3 ], [ %b5.load, %b5 ]
+  store volatile i32 %b6.phi, i32 addrspace(1)* null
+  br label %exit
+
+exit:
+  %exit.phi = phi i32 [ %b6.phi, %b6 ], [ %entry.load, %entry ]
+  store volatile i32 %exit.phi, i32 addrspace(1)* null
+  ret void
+}
+
+; The block before the unstructured region has 2 predecessors
+define void @multiple_entry_unstructured_region_figure5b_phis(i1 %cond0, i32 %n) {
+; CHECK-LABEL: @multiple_entry_unstructured_region_figure5b_phis(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    store volatile i32 100, i32 addrspace(1)* null
+; CHECK-NEXT:    br i1 [[COND0:%.*]], label [[PRE_0:%.*]], label [[PRE_1:%.*]]
+; CHECK:       pre.0:
+; CHECK-NEXT:    [[PRE_0_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    store volatile i32 123, i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[B1:%.*]]
+; CHECK:       pre.1:
+; CHECK-NEXT:    [[PRE_1_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    store volatile i32 123, i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[B1]]
+; CHECK:       b1:
+; CHECK-NEXT:    [[B1_PHI:%.*]] = phi i32 [ [[PRE_0_LOAD]], [[PRE_0]] ], [ [[PRE_1_LOAD]], [[PRE_1]] ]
+; CHECK-NEXT:    store volatile i32 [[B1_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    [[B1_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[B2_GUARD:%.*]]
+; CHECK:       b2.guard:
+; CHECK-NEXT:    [[I_INC18:%.*]] = phi i32 [ [[I_INC19:%.*]], [[B4_SPLIT:%.*]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[B4_LOAD16:%.*]] = phi i32 [ [[B4_LOAD17:%.*]], [[B4_SPLIT]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[B2_LOAD13:%.*]] = phi i32 [ [[B2_LOAD14:%.*]], [[B4_SPLIT]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[I11:%.*]] = phi i32 [ [[I12:%.*]], [[B4_SPLIT]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[B6_PHI_PH9:%.*]] = phi i32 [ [[B6_PHI_PH10:%.*]], [[B4_SPLIT]] ], [ undef, [[B1]] ]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 4, [[B4_SPLIT]] ], [ 4, [[B1]] ]
+; CHECK-NEXT:    [[I_PH:%.*]] = phi i32 [ [[I_INC19]], [[B4_SPLIT]] ], [ 0, [[B1]] ]
+; CHECK-NEXT:    [[B2_PHI_PH:%.*]] = phi i32 [ [[B4_LOAD17]], [[B4_SPLIT]] ], [ [[B1_LOAD]], [[B1]] ]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 4
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[B2:%.*]], label [[B3_GUARD:%.*]]
+; CHECK:       b2:
+; CHECK-NEXT:    [[I:%.*]] = phi i32 [ [[I_PH]], [[B2_GUARD]] ]
+; CHECK-NEXT:    [[B2_PHI:%.*]] = phi i32 [ [[B2_PHI_PH]], [[B2_GUARD]] ]
+; CHECK-NEXT:    store volatile i32 [[B2_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    [[B2_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    [[CMP:%.*]] = icmp slt i32 [[I]], [[N:%.*]]
+; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[CMP]], i32 7, i32 5
+; CHECK-NEXT:    br i1 [[CMP]], label [[B5_GUARD:%.*]], label [[B3_GUARD]]
+; CHECK:       b3.guard:
+; CHECK-NEXT:    [[B2_LOAD14]] = phi i32 [ [[B2_LOAD13]], [[B2_GUARD]] ], [ [[B2_LOAD]], [[B2]] ]
+; CHECK-NEXT:    [[I12]] = phi i32 [ [[I11]], [[B2_GUARD]] ], [ [[I]], [[B2]] ]
+; CHECK-NEXT:    [[GUARD_VAR1:%.*]] = phi i32 [ [[GUARD_VAR]], [[B2_GUARD]] ], [ [[TMP0]], [[B2]] ]
+; CHECK-NEXT:    [[PREV_GUARD2:%.*]] = icmp eq i32 [[GUARD_VAR1]], 5
+; CHECK-NEXT:    br i1 [[PREV_GUARD2]], label [[B3:%.*]], label [[B4_GUARD:%.*]]
+; CHECK:       b3:
+; CHECK-NEXT:    [[B3_PHI:%.*]] = phi i32 [ [[B2_LOAD14]], [[B3_GUARD]] ]
+; CHECK-NEXT:    store volatile i32 3, i32 addrspace(1)* null
+; CHECK-NEXT:    [[B3_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    [[COND1:%.*]] = load volatile i1, i1 addrspace(1)* null
+; CHECK-NEXT:    [[TMP1:%.*]] = select i1 [[COND1]], i32 6, i32 8
+; CHECK-NEXT:    br label [[B4_GUARD]]
+; CHECK:       b4.guard:
+; CHECK-NEXT:    [[B6_PHI_PH10]] = phi i32 [ [[B6_PHI_PH9]], [[B3_GUARD]] ], [ [[B3_LOAD]], [[B3]] ]
+; CHECK-NEXT:    [[GUARD_VAR3:%.*]] = phi i32 [ [[GUARD_VAR1]], [[B3_GUARD]] ], [ [[TMP1]], [[B3]] ]
+; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR3]], 6
+; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[B4:%.*]], label [[B4_SPLIT]]
+; CHECK:       b4:
+; CHECK-NEXT:    [[B4_PHI:%.*]] = phi i32 [ [[B6_PHI_PH10]], [[B4_GUARD]] ]
+; CHECK-NEXT:    [[B4_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    store volatile i32 [[B4_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    [[I_INC:%.*]] = add nsw i32 [[I12]], 1
+; CHECK-NEXT:    br label [[B4_SPLIT]]
+; CHECK:       b4.split:
+; CHECK-NEXT:    [[I_INC19]] = phi i32 [ [[I_INC18]], [[B4_GUARD]] ], [ [[I_INC]], [[B4]] ]
+; CHECK-NEXT:    [[B4_LOAD17]] = phi i32 [ [[B4_LOAD16]], [[B4_GUARD]] ], [ [[B4_LOAD]], [[B4]] ]
+; CHECK-NEXT:    [[GUARD_VAR4:%.*]] = phi i32 [ [[GUARD_VAR3]], [[B4_GUARD]] ], [ 6, [[B4]] ]
+; CHECK-NEXT:    [[PREV_GUARD5:%.*]] = icmp eq i32 [[GUARD_VAR4]], 4
+; CHECK-NEXT:    br i1 [[PREV_GUARD5]], label [[B2_GUARD]], label [[B5_GUARD]]
+; CHECK:       b5.guard:
+; CHECK-NEXT:    [[B2_LOAD15:%.*]] = phi i32 [ [[B2_LOAD14]], [[B4_SPLIT]] ], [ [[B2_LOAD]], [[B2]] ]
+; CHECK-NEXT:    [[B6_PHI_PH8:%.*]] = phi i32 [ [[B6_PHI_PH10]], [[B4_SPLIT]] ], [ [[B6_PHI_PH9]], [[B2]] ]
+; CHECK-NEXT:    [[GUARD_VAR6:%.*]] = phi i32 [ [[GUARD_VAR4]], [[B4_SPLIT]] ], [ [[TMP0]], [[B2]] ]
+; CHECK-NEXT:    [[PREV_GUARD7:%.*]] = icmp eq i32 [[GUARD_VAR6]], 7
+; CHECK-NEXT:    br i1 [[PREV_GUARD7]], label [[B5:%.*]], label [[B6_GUARD:%.*]]
+; CHECK:       b5:
+; CHECK-NEXT:    [[B5_PHI:%.*]] = phi i32 [ [[B2_LOAD15]], [[B5_GUARD]] ]
+; CHECK-NEXT:    [[B5_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
+; CHECK-NEXT:    store volatile i32 [[B5_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[B6_GUARD]]
+; CHECK:       b6.guard:
+; CHECK-NEXT:    [[B6_PHI_PH:%.*]] = phi i32 [ [[B5_LOAD]], [[B5]] ], [ [[B6_PHI_PH8]], [[B5_GUARD]] ]
+; CHECK-NEXT:    br label [[B6:%.*]]
+; CHECK:       b6:
+; CHECK-NEXT:    [[B6_PHI:%.*]] = phi i32 [ [[B6_PHI_PH]], [[B6_GUARD]] ]
+; CHECK-NEXT:    store volatile i32 [[B6_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[EXIT:%.*]]
+; CHECK:       exit:
+; CHECK-NEXT:    store volatile i32 [[B6_PHI]], i32 addrspace(1)* null
+; CHECK-NEXT:    ret void
+;
+entry:
+  %entry.load = load volatile i32, i32 addrspace(1)* null
+  store volatile i32 100, i32 addrspace(1)* null
+  br i1 %cond0, label %pre.0, label %pre.1
+
+pre.0:
+  %pre.0.load = load volatile i32, i32 addrspace(1)* null
+  store volatile i32 123, i32 addrspace(1)* null
+  br label %b1
+
+pre.1:
+  %pre.1.load = load volatile i32, i32 addrspace(1)* null
+  store volatile i32 123, i32 addrspace(1)* null
+  br label %b1
+
+b1:
+  %b1.phi = phi i32 [ %pre.0.load, %pre.0 ], [ %pre.1.load, %pre.1 ]
+  store volatile i32 %b1.phi, i32 addrspace(1)* null
+  %b1.load = load volatile i32, i32 addrspace(1)* null
+  br label %b2
+
+b2:
+  %i = phi i32 [ 0, %b1 ], [ %i.inc, %b4 ]
+  %b2.phi = phi i32 [ %b1.load, %b1 ], [ %b4.load, %b4 ]
+  store volatile i32 %b2.phi, i32 addrspace(1)* null
+  %b2.load = load volatile i32, i32 addrspace(1)* null
+  %cmp = icmp slt i32 %i, %n
+  br i1 %cmp, label %b5, label %b3
+
+b3:
+  %b3.phi = phi i32 [ %b2.load, %b2 ]
+  store volatile i32 3, i32 addrspace(1)* null
+  %b3.load = load volatile i32, i32 addrspace(1)* null
+  %cond1 = load volatile i1, i1 addrspace(1)* null
+  br i1 %cond1, label %b4, label %b6
+
+b4:
+  %b4.phi = phi i32 [ %b3.load, %b3 ]
+  %b4.load = load volatile i32, i32 addrspace(1)* null
+  store volatile i32 %b4.phi, i32 addrspace(1)* null
+  %i.inc = add nsw i32 %i, 1
+  br label %b2
+
+b5:
+  %b5.phi = phi i32 [ %b2.load, %b2 ]
+  %b5.load = load volatile i32, i32 addrspace(1)* null
+  store volatile i32 %b5.phi, i32 addrspace(1)* null
+  br label %b6
+
+b6:
+  %b6.phi = phi i32 [ %b3.load, %b3 ], [ %b5.load, %b5 ]
+  store volatile i32 %b6.phi, i32 addrspace(1)* null
+  br label %exit
+
+exit:
+  store volatile i32 %b6.phi, i32 addrspace(1)* null
+  ret void
+}
