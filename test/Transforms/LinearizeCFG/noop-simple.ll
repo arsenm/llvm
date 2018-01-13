@@ -98,43 +98,21 @@ define void @for_loop(i32 addrspace(1)* %out, i32 %n) {
 ; CHECK-LABEL: @for_loop(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* undef
-; CHECK-NEXT:    br label [[LOOP_HEADER_GUARD:%.*]]
-; CHECK:       loop.header.guard:
-; CHECK-NEXT:    [[I_INC8:%.*]] = phi i32 [ [[I_INC9:%.*]], [[FOR_BODY_SPLIT:%.*]] ], [ undef, [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[LOOP_HEADER_LOAD6:%.*]] = phi i32 [ [[LOOP_HEADER_LOAD7:%.*]], [[FOR_BODY_SPLIT]] ], [ undef, [[ENTRY]] ]
-; CHECK-NEXT:    [[I_03:%.*]] = phi i32 [ [[I_04:%.*]], [[FOR_BODY_SPLIT]] ], [ undef, [[ENTRY]] ]
-; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 2, [[FOR_BODY_SPLIT]] ], [ 1, [[ENTRY]] ]
-; CHECK-NEXT:    [[I_0_PH:%.*]] = phi i32 [ [[I_INC9]], [[FOR_BODY_SPLIT]] ], [ 0, [[ENTRY]] ]
-; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
-; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[LOOP_HEADER:%.*]], label [[FOR_BODY_GUARD:%.*]]
+; CHECK-NEXT:    br label [[LOOP_HEADER:%.*]]
 ; CHECK:       loop.header:
-; CHECK-NEXT:    [[I_0:%.*]] = phi i32 [ [[I_0_PH]], [[LOOP_HEADER_GUARD]] ]
+; CHECK-NEXT:    [[I_0:%.*]] = phi i32 [ 0, [[ENTRY:%.*]] ], [ [[I_INC:%.*]], [[FOR_BODY:%.*]] ]
 ; CHECK-NEXT:    [[LOOP_HEADER_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* undef
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i32 [[I_0]], [[N:%.*]]
-; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[CMP]], i32 2, i32 3
-; CHECK-NEXT:    br i1 [[CMP]], label [[FOR_BODY_GUARD]], label [[FOR_END:%.*]]
-; CHECK:       for.body.guard:
-; CHECK-NEXT:    [[LOOP_HEADER_LOAD7]] = phi i32 [ [[LOOP_HEADER_LOAD6]], [[LOOP_HEADER_GUARD]] ], [ [[LOOP_HEADER_LOAD]], [[LOOP_HEADER]] ]
-; CHECK-NEXT:    [[I_04]] = phi i32 [ [[I_03]], [[LOOP_HEADER_GUARD]] ], [ [[I_0]], [[LOOP_HEADER]] ]
-; CHECK-NEXT:    [[GUARD_VAR1:%.*]] = phi i32 [ [[GUARD_VAR]], [[LOOP_HEADER_GUARD]] ], [ [[TMP0]], [[LOOP_HEADER]] ]
-; CHECK-NEXT:    [[LAST:%.*]] = icmp eq i32 [[GUARD_VAR1]], 2
-; CHECK-NEXT:    br i1 [[LAST]], label [[FOR_BODY:%.*]], label [[FOR_END]]
+; CHECK-NEXT:    br i1 [[CMP]], label [[FOR_BODY]], label [[FOR_END:%.*]]
 ; CHECK:       for.body:
-; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR1]], 2
-; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[FOR_BODY_SPLIT2:%.*]], label [[FOR_BODY_SPLIT]]
-; CHECK:       for.body.split2:
-; CHECK-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[OUT:%.*]], i32 [[I_04]]
-; CHECK-NEXT:    store i32 [[I_04]], i32 addrspace(1)* [[ARRAYIDX]], align 4
-; CHECK-NEXT:    [[I_INC:%.*]] = add i32 [[I_04]], 1
+; CHECK-NEXT:    [[ARRAYIDX:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[OUT:%.*]], i32 [[I_0]]
+; CHECK-NEXT:    store i32 [[I_0]], i32 addrspace(1)* [[ARRAYIDX]], align 4
+; CHECK-NEXT:    [[I_INC]] = add i32 [[I_0]], 1
 ; CHECK-NEXT:    [[ARRAYIDX3:%.*]] = getelementptr inbounds i32, i32 addrspace(1)* [[OUT]], i32 [[I_INC]]
-; CHECK-NEXT:    store i32 [[I_04]], i32 addrspace(1)* [[ARRAYIDX3]], align 4
-; CHECK-NEXT:    br label [[FOR_BODY_SPLIT]]
-; CHECK:       for.body.split:
-; CHECK-NEXT:    [[I_INC9]] = phi i32 [ [[I_INC8]], [[FOR_BODY]] ], [ [[I_INC]], [[FOR_BODY_SPLIT2]] ]
-; CHECK-NEXT:    br label [[LOOP_HEADER_GUARD]]
+; CHECK-NEXT:    store i32 [[I_0]], i32 addrspace(1)* [[ARRAYIDX3]], align 4
+; CHECK-NEXT:    br label [[LOOP_HEADER]]
 ; CHECK:       for.end:
-; CHECK-NEXT:    [[LOOP_HEADER_LOAD5:%.*]] = phi i32 [ [[LOOP_HEADER_LOAD7]], [[FOR_BODY_GUARD]] ], [ [[LOOP_HEADER_LOAD]], [[LOOP_HEADER]] ]
-; CHECK-NEXT:    store volatile i32 [[LOOP_HEADER_LOAD5]], i32 addrspace(1)* undef
+; CHECK-NEXT:    store volatile i32 [[LOOP_HEADER_LOAD]], i32 addrspace(1)* undef
 ; CHECK-NEXT:    ret void
 ;
 entry:

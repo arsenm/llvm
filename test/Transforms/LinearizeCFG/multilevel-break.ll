@@ -4,45 +4,18 @@
 define void @multi_else_break(i32 %limit0, i32 %limit1) {
 ; CHECK-LABEL: @multi_else_break(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    br label [[LOOP_OUTER_GUARD:%.*]]
-; CHECK:       loop.outer.guard:
-; CHECK-NEXT:    [[I_INC6:%.*]] = phi i32 [ [[I_INC7:%.*]], [[ENDIF_LOOP_OUTER_GUARD_CRIT_EDGE:%.*]] ], [ undef, [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[I_PH1:%.*]] = phi i32 [ [[I_PH:%.*]], [[ENDIF_LOOP_OUTER_GUARD_CRIT_EDGE]] ], [ undef, [[ENTRY]] ]
-; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 1, [[ENDIF_LOOP_OUTER_GUARD_CRIT_EDGE]] ], [ 1, [[ENTRY]] ]
-; CHECK-NEXT:    [[LOOP_OUTER_PHI_PH:%.*]] = phi i32 [ [[I_INC7]], [[ENDIF_LOOP_OUTER_GUARD_CRIT_EDGE]] ], [ 0, [[ENTRY]] ]
-; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
-; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[LOOP_OUTER:%.*]], label [[LOOP_GUARD:%.*]]
+; CHECK-NEXT:    br label [[LOOP_OUTER:%.*]]
 ; CHECK:       loop.outer:
-; CHECK-NEXT:    [[LOOP_OUTER_PHI:%.*]] = phi i32 [ [[LOOP_OUTER_PHI_PH]], [[LOOP_OUTER_GUARD]] ]
-; CHECK-NEXT:    br label [[LOOP_GUARD]]
-; CHECK:       loop.guard:
-; CHECK-NEXT:    [[I_INC5:%.*]] = phi i32 [ [[I_INC7]], [[ENDIF_LOOP_GUARD_CRIT_EDGE:%.*]] ], [ [[I_INC6]], [[LOOP_OUTER]] ], [ [[I_INC6]], [[LOOP_OUTER_GUARD]] ]
-; CHECK-NEXT:    [[GUARD_VAR2:%.*]] = phi i32 [ [[TMP1:%.*]], [[ENDIF_LOOP_GUARD_CRIT_EDGE]] ], [ 2, [[LOOP_OUTER]] ], [ [[GUARD_VAR]], [[LOOP_OUTER_GUARD]] ]
-; CHECK-NEXT:    [[I_PH]] = phi i32 [ [[I_INC7]], [[ENDIF_LOOP_GUARD_CRIT_EDGE]] ], [ [[LOOP_OUTER_PHI]], [[LOOP_OUTER]] ], [ [[I_PH1]], [[LOOP_OUTER_GUARD]] ]
-; CHECK-NEXT:    [[PREV_GUARD3:%.*]] = icmp eq i32 [[GUARD_VAR2]], 2
-; CHECK-NEXT:    br i1 [[PREV_GUARD3]], label [[LOOP:%.*]], label [[ENDIF_GUARD:%.*]]
+; CHECK-NEXT:    [[LOOP_OUTER_PHI:%.*]] = phi i32 [ 0, [[ENTRY:%.*]] ], [ [[I_INC:%.*]], [[ENDIF:%.*]] ]
+; CHECK-NEXT:    br label [[LOOP:%.*]]
 ; CHECK:       loop:
-; CHECK-NEXT:    [[I:%.*]] = phi i32 [ [[I_PH]], [[LOOP_GUARD]] ]
-; CHECK-NEXT:    [[I_INC:%.*]] = add i32 [[I]], 1
+; CHECK-NEXT:    [[I:%.*]] = phi i32 [ [[LOOP_OUTER_PHI]], [[LOOP_OUTER]] ], [ [[I_INC]], [[ENDIF]] ]
+; CHECK-NEXT:    [[I_INC]] = add i32 [[I]], 1
 ; CHECK-NEXT:    [[CMP0:%.*]] = icmp slt i32 [[I]], [[LIMIT0:%.*]]
-; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[CMP0]], i32 3, i32 4
-; CHECK-NEXT:    br i1 [[CMP0]], label [[ENDIF_GUARD]], label [[EXIT:%.*]]
-; CHECK:       endif.guard:
-; CHECK-NEXT:    [[I_INC7]] = phi i32 [ [[I_INC5]], [[LOOP_GUARD]] ], [ [[I_INC]], [[LOOP]] ]
-; CHECK-NEXT:    [[GUARD_VAR4:%.*]] = phi i32 [ [[GUARD_VAR2]], [[LOOP_GUARD]] ], [ [[TMP0]], [[LOOP]] ]
-; CHECK-NEXT:    [[LAST:%.*]] = icmp eq i32 [[GUARD_VAR4]], 3
-; CHECK-NEXT:    br i1 [[LAST]], label [[ENDIF:%.*]], label [[EXIT]]
+; CHECK-NEXT:    br i1 [[CMP0]], label [[ENDIF]], label [[EXIT:%.*]]
 ; CHECK:       endif:
-; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR4]], 3
-; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[ENDIF_SPLIT:%.*]], label [[ENDIF_LOOP_OUTER_GUARD_CRIT_EDGE]]
-; CHECK:       endif.split:
-; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i32 [[I_INC7]], [[LIMIT1:%.*]]
-; CHECK-NEXT:    [[TMP1]] = select i1 [[CMP1]], i32 3, i32 3
-; CHECK-NEXT:    br i1 [[CMP1]], label [[ENDIF_LOOP_GUARD_CRIT_EDGE]], label [[ENDIF_LOOP_OUTER_GUARD_CRIT_EDGE]]
-; CHECK:       endif.loop.outer.guard_crit_edge:
-; CHECK-NEXT:    br label [[LOOP_OUTER_GUARD]]
-; CHECK:       endif.loop.guard_crit_edge:
-; CHECK-NEXT:    br label [[LOOP_GUARD]]
+; CHECK-NEXT:    [[CMP1:%.*]] = icmp eq i32 [[I_INC]], [[LIMIT1:%.*]]
+; CHECK-NEXT:    br i1 [[CMP1]], label [[LOOP]], label [[LOOP_OUTER]]
 ; CHECK:       exit:
 ; CHECK-NEXT:    store volatile i32 9, i32 addrspace(1)* undef
 ; CHECK-NEXT:    ret void
@@ -75,10 +48,10 @@ define void @multi_if_break_loop(i32 %id, i32 %arg) {
 ; CHECK-NEXT:    [[TMP:%.*]] = sub i32 [[ID:%.*]], [[ARG:%.*]]
 ; CHECK-NEXT:    br label [[BB1_GUARD:%.*]]
 ; CHECK:       bb1.guard:
-; CHECK-NEXT:    [[LOAD021:%.*]] = phi i32 [ [[LOAD022:%.*]], [[CASE1_BB1_GUARD_CRIT_EDGE:%.*]] ], [ [[LOAD022]], [[CASE0_BB1_GUARD_CRIT_EDGE:%.*]] ], [ undef, [[BB:%.*]] ]
-; CHECK-NEXT:    [[LSR_IV_NEXT19:%.*]] = phi i32 [ [[LSR_IV_NEXT20:%.*]], [[CASE1_BB1_GUARD_CRIT_EDGE]] ], [ [[LSR_IV_NEXT20]], [[CASE0_BB1_GUARD_CRIT_EDGE]] ], [ undef, [[BB]] ]
+; CHECK-NEXT:    [[LOAD020:%.*]] = phi i32 [ [[LOAD021:%.*]], [[CASE1_BB1_GUARD_CRIT_EDGE:%.*]] ], [ [[LOAD021]], [[CASE0_BB1_GUARD_CRIT_EDGE:%.*]] ], [ undef, [[BB:%.*]] ]
+; CHECK-NEXT:    [[LSR_IV_NEXT18:%.*]] = phi i32 [ [[LSR_IV_NEXT19:%.*]], [[CASE1_BB1_GUARD_CRIT_EDGE]] ], [ [[LSR_IV_NEXT19]], [[CASE0_BB1_GUARD_CRIT_EDGE]] ], [ undef, [[BB]] ]
 ; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 1, [[CASE1_BB1_GUARD_CRIT_EDGE]] ], [ 1, [[CASE0_BB1_GUARD_CRIT_EDGE]] ], [ 1, [[BB]] ]
-; CHECK-NEXT:    [[LSR_IV_PH:%.*]] = phi i32 [ [[LSR_IV_NEXT20]], [[CASE1_BB1_GUARD_CRIT_EDGE]] ], [ [[LSR_IV_NEXT20]], [[CASE0_BB1_GUARD_CRIT_EDGE]] ], [ undef, [[BB]] ]
+; CHECK-NEXT:    [[LSR_IV_PH:%.*]] = phi i32 [ [[LSR_IV_NEXT19]], [[CASE1_BB1_GUARD_CRIT_EDGE]] ], [ [[LSR_IV_NEXT19]], [[CASE0_BB1_GUARD_CRIT_EDGE]] ], [ undef, [[BB]] ]
 ; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
 ; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[BB1:%.*]], label [[NODEBLOCK_GUARD:%.*]]
 ; CHECK:       bb1:
@@ -88,28 +61,29 @@ define void @multi_if_break_loop(i32 %id, i32 %arg) {
 ; CHECK-NEXT:    [[LOAD0:%.*]] = load volatile i32, i32 addrspace(1)* undef, align 4
 ; CHECK-NEXT:    br label [[NODEBLOCK_GUARD]]
 ; CHECK:       NodeBlock.guard:
-; CHECK-NEXT:    [[LOAD022]] = phi i32 [ [[LOAD021]], [[BB1_GUARD]] ], [ [[LOAD0]], [[BB1]] ]
-; CHECK-NEXT:    [[LSR_IV_NEXT20]] = phi i32 [ [[LSR_IV_NEXT19]], [[BB1_GUARD]] ], [ [[LSR_IV_NEXT]], [[BB1]] ]
+; CHECK-NEXT:    [[LOAD021]] = phi i32 [ [[LOAD020]], [[BB1_GUARD]] ], [ [[LOAD0]], [[BB1]] ]
+; CHECK-NEXT:    [[LSR_IV_NEXT19]] = phi i32 [ [[LSR_IV_NEXT18]], [[BB1_GUARD]] ], [ [[LSR_IV_NEXT]], [[BB1]] ]
 ; CHECK-NEXT:    [[GUARD_VAR3:%.*]] = phi i32 [ [[GUARD_VAR]], [[BB1_GUARD]] ], [ 2, [[BB1]] ]
 ; CHECK-NEXT:    [[PREV_GUARD4:%.*]] = icmp eq i32 [[GUARD_VAR3]], 2
 ; CHECK-NEXT:    br i1 [[PREV_GUARD4]], label [[NODEBLOCK:%.*]], label [[LEAFBLOCK1_GUARD:%.*]]
 ; CHECK:       NodeBlock:
-; CHECK-NEXT:    [[PIVOT:%.*]] = icmp slt i32 [[LOAD022]], 1
+; CHECK-NEXT:    [[PIVOT:%.*]] = icmp slt i32 [[LOAD021]], 1
 ; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[PIVOT]], i32 4, i32 3
-; CHECK-NEXT:    br label [[LEAFBLOCK1_GUARD]]
+; CHECK-NEXT:    br i1 [[PIVOT]], label [[LEAFBLOCK_GUARD:%.*]], label [[LEAFBLOCK1_GUARD]]
 ; CHECK:       LeafBlock1.guard:
 ; CHECK-NEXT:    [[GUARD_VAR5:%.*]] = phi i32 [ [[GUARD_VAR3]], [[NODEBLOCK_GUARD]] ], [ [[TMP0]], [[NODEBLOCK]] ]
 ; CHECK-NEXT:    [[PREV_GUARD6:%.*]] = icmp eq i32 [[GUARD_VAR5]], 3
 ; CHECK-NEXT:    br i1 [[PREV_GUARD6]], label [[LEAFBLOCK1:%.*]], label [[CASE1_GUARD:%.*]]
 ; CHECK:       LeafBlock1:
-; CHECK-NEXT:    [[SWITCHLEAF2:%.*]] = icmp eq i32 [[LOAD022]], 1
+; CHECK-NEXT:    [[SWITCHLEAF2:%.*]] = icmp eq i32 [[LOAD021]], 1
 ; CHECK-NEXT:    [[TMP1:%.*]] = select i1 [[SWITCHLEAF2]], i32 6, i32 7
 ; CHECK-NEXT:    br label [[CASE1_GUARD]]
 ; CHECK:       LeafBlock.guard:
-; CHECK-NEXT:    [[PREV_GUARD11:%.*]] = icmp eq i32 [[GUARD_VAR8:%.*]], 4
+; CHECK-NEXT:    [[GUARD_VAR10:%.*]] = phi i32 [ [[GUARD_VAR8:%.*]], [[CASE1_BB1_GUARD_CRIT_EDGE]] ], [ [[TMP0]], [[NODEBLOCK]] ]
+; CHECK-NEXT:    [[PREV_GUARD11:%.*]] = icmp eq i32 [[GUARD_VAR10]], 4
 ; CHECK-NEXT:    br i1 [[PREV_GUARD11]], label [[LEAFBLOCK:%.*]], label [[NEWDEFAULT_GUARD:%.*]]
 ; CHECK:       LeafBlock:
-; CHECK-NEXT:    [[SWITCHLEAF:%.*]] = icmp eq i32 [[LOAD022]], 0
+; CHECK-NEXT:    [[SWITCHLEAF:%.*]] = icmp eq i32 [[LOAD021]], 0
 ; CHECK-NEXT:    [[TMP2:%.*]] = select i1 [[SWITCHLEAF]], i32 5, i32 7
 ; CHECK-NEXT:    br label [[NEWDEFAULT_GUARD]]
 ; CHECK:       case0.guard:
@@ -137,20 +111,16 @@ define void @multi_if_break_loop(i32 %id, i32 %arg) {
 ; CHECK:       case1.bb1.guard_crit_edge:
 ; CHECK-NEXT:    [[GUARD_VAR8]] = phi i32 [ [[GUARD_VAR7]], [[CASE1_GUARD]] ], [ [[TMP4]], [[CASE1]] ]
 ; CHECK-NEXT:    [[PREV_GUARD9:%.*]] = icmp eq i32 [[GUARD_VAR8]], 1
-; CHECK-NEXT:    br i1 [[PREV_GUARD9]], label [[BB1_GUARD]], label [[LEAFBLOCK_GUARD:%.*]]
+; CHECK-NEXT:    br i1 [[PREV_GUARD9]], label [[BB1_GUARD]], label [[LEAFBLOCK_GUARD]]
 ; CHECK:       NewDefault.guard:
-; CHECK-NEXT:    [[GUARD_VAR12]] = phi i32 [ [[GUARD_VAR8]], [[LEAFBLOCK_GUARD]] ], [ [[TMP2]], [[LEAFBLOCK]] ]
+; CHECK-NEXT:    [[GUARD_VAR12]] = phi i32 [ [[GUARD_VAR10]], [[LEAFBLOCK_GUARD]] ], [ [[TMP2]], [[LEAFBLOCK]] ]
 ; CHECK-NEXT:    [[PREV_GUARD13:%.*]] = icmp eq i32 [[GUARD_VAR12]], 7
 ; CHECK-NEXT:    br i1 [[PREV_GUARD13]], label [[NEWDEFAULT]], label [[CASE0_GUARD]]
 ; CHECK:       NewDefault:
 ; CHECK-NEXT:    br label [[CASE0_GUARD]]
 ; CHECK:       bb9.guard:
-; CHECK-NEXT:    [[GUARD_VAR18:%.*]] = phi i32 [ [[GUARD_VAR16]], [[CASE0_BB1_GUARD_CRIT_EDGE]] ], [ [[TMP3]], [[CASE0]] ], [ [[TMP4]], [[CASE1]] ]
-; CHECK-NEXT:    [[LAST:%.*]] = icmp eq i32 [[GUARD_VAR18]], 8
-; CHECK-NEXT:    br i1 [[LAST]], label [[BB9:%.*]], label [[BB9_SPLIT:%.*]]
+; CHECK-NEXT:    br label [[BB9:%.*]]
 ; CHECK:       bb9:
-; CHECK-NEXT:    br label [[BB9_SPLIT]]
-; CHECK:       bb9.split:
 ; CHECK-NEXT:    ret void
 ;
 bb:
