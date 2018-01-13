@@ -8,51 +8,42 @@ define void @backedge2() {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* null
 ; CHECK-NEXT:    [[COND0:%.*]] = load volatile i1, i1 addrspace(1)* null
-; CHECK-NEXT:    br i1 [[COND0]], label [[HEADER0_GUARD:%.*]], label [[HEADER1_GUARD:%.*]]
-; CHECK:       header0.guard:
-; CHECK-NEXT:    [[TMP0:%.*]] = phi i32 [ [[TMP4:%.*]], [[LOOP_HEADER0_GUARD_CRIT_EDGE:%.*]] ], [ undef, [[ENTRY:%.*]] ]
-; CHECK-NEXT:    [[HEADER1_LOAD12:%.*]] = phi i32 [ [[HEADER1_LOAD13:%.*]], [[LOOP_HEADER0_GUARD_CRIT_EDGE]] ], [ undef, [[ENTRY]] ]
-; CHECK-NEXT:    [[GUARD_VAR37:%.*]] = phi i32 [ [[GUARD_VAR38:%.*]], [[LOOP_HEADER0_GUARD_CRIT_EDGE]] ], [ 1, [[ENTRY]] ]
-; CHECK-NEXT:    [[PHI_PH1:%.*]] = phi i32 [ [[PHI_PH:%.*]], [[LOOP_HEADER0_GUARD_CRIT_EDGE]] ], [ undef, [[ENTRY]] ]
-; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ [[TMP4]], [[LOOP_HEADER0_GUARD_CRIT_EDGE]] ], [ 1, [[ENTRY]] ]
-; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
-; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[HEADER0:%.*]], label [[LOOP_GUARD:%.*]]
+; CHECK-NEXT:    br i1 [[COND0]], label [[HEADER0:%.*]], label [[HEADER1_GUARD:%.*]]
 ; CHECK:       header0:
+; CHECK-NEXT:    [[HEADER1_LOAD9:%.*]] = phi i32 [ [[HEADER1_LOAD10:%.*]], [[LOOP_HEADER0_CRIT_EDGE:%.*]] ], [ undef, [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[GUARD_VAR14:%.*]] = phi i32 [ [[GUARD_VAR15:%.*]], [[LOOP_HEADER0_CRIT_EDGE]] ], [ 1, [[ENTRY]] ]
 ; CHECK-NEXT:    [[HEADER0_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
-; CHECK-NEXT:    br label [[LOOP_GUARD]]
+; CHECK-NEXT:    br label [[LOOP_GUARD:%.*]]
 ; CHECK:       header1.guard:
-; CHECK-NEXT:    [[TMP1:%.*]] = phi i32 [ undef, [[ENTRY]] ], [ [[TMP3:%.*]], [[LOOP:%.*]] ], [ [[TMP4]], [[LOOP_HEADER0_GUARD_CRIT_EDGE]] ]
-; CHECK-NEXT:    [[HEADER1_LOAD11:%.*]] = phi i32 [ undef, [[ENTRY]] ], [ [[HEADER1_LOAD13]], [[LOOP]] ], [ [[HEADER1_LOAD13]], [[LOOP_HEADER0_GUARD_CRIT_EDGE]] ]
-; CHECK-NEXT:    [[GUARD_VAR9:%.*]] = phi i32 [ 1, [[ENTRY]] ], [ [[TMP3]], [[LOOP]] ], [ [[GUARD_VAR4:%.*]], [[LOOP_HEADER0_GUARD_CRIT_EDGE]] ]
-; CHECK-NEXT:    [[GUARD_VAR3:%.*]] = phi i32 [ 1, [[ENTRY]] ], [ [[TMP3]], [[LOOP]] ], [ [[GUARD_VAR38]], [[LOOP_HEADER0_GUARD_CRIT_EDGE]] ]
-; CHECK-NEXT:    [[BE_GUARD10:%.*]] = icmp eq i32 [[GUARD_VAR9]], 2
-; CHECK-NEXT:    br i1 [[BE_GUARD10]], label [[HEADER1:%.*]], label [[HEADER1_SPLIT:%.*]]
+; CHECK-NEXT:    [[HEADER1_LOAD8:%.*]] = phi i32 [ undef, [[ENTRY]] ], [ [[HEADER1_LOAD10]], [[LOOP:%.*]] ], [ [[HEADER1_LOAD10]], [[LOOP_HEADER0_CRIT_EDGE]] ]
+; CHECK-NEXT:    [[GUARD_VAR6:%.*]] = phi i32 [ 1, [[ENTRY]] ], [ [[TMP0:%.*]], [[LOOP]] ], [ [[GUARD_VAR2:%.*]], [[LOOP_HEADER0_CRIT_EDGE]] ]
+; CHECK-NEXT:    [[GUARD_VAR1:%.*]] = phi i32 [ 1, [[ENTRY]] ], [ [[TMP0]], [[LOOP]] ], [ [[GUARD_VAR15]], [[LOOP_HEADER0_CRIT_EDGE]] ]
+; CHECK-NEXT:    [[BE_GUARD7:%.*]] = icmp eq i32 [[GUARD_VAR6]], 2
+; CHECK-NEXT:    br i1 [[BE_GUARD7]], label [[HEADER1:%.*]], label [[HEADER1_SPLIT:%.*]]
 ; CHECK:       header1:
 ; CHECK-NEXT:    [[HEADER1_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
 ; CHECK-NEXT:    br label [[HEADER1_SPLIT]]
 ; CHECK:       header1.split:
-; CHECK-NEXT:    [[HEADER1_LOAD14:%.*]] = phi i32 [ [[HEADER1_LOAD11]], [[HEADER1_GUARD]] ], [ [[HEADER1_LOAD]], [[HEADER1]] ]
+; CHECK-NEXT:    [[HEADER1_LOAD11:%.*]] = phi i32 [ [[HEADER1_LOAD8]], [[HEADER1_GUARD]] ], [ [[HEADER1_LOAD]], [[HEADER1]] ]
 ; CHECK-NEXT:    br label [[LOOP_GUARD]]
 ; CHECK:       loop.guard:
-; CHECK-NEXT:    [[TMP2:%.*]] = phi i32 [ [[TMP1]], [[HEADER1_SPLIT]] ], [ [[TMP0]], [[HEADER0]] ], [ [[TMP0]], [[HEADER0_GUARD]] ]
-; CHECK-NEXT:    [[HEADER1_LOAD13]] = phi i32 [ [[HEADER1_LOAD14]], [[HEADER1_SPLIT]] ], [ [[HEADER1_LOAD12]], [[HEADER0]] ], [ [[HEADER1_LOAD12]], [[HEADER0_GUARD]] ]
-; CHECK-NEXT:    [[GUARD_VAR36:%.*]] = phi i32 [ [[GUARD_VAR3]], [[HEADER1_SPLIT]] ], [ [[GUARD_VAR37]], [[HEADER0]] ], [ [[GUARD_VAR37]], [[HEADER0_GUARD]] ]
-; CHECK-NEXT:    [[GUARD_VAR2:%.*]] = phi i32 [ [[GUARD_VAR3]], [[HEADER1_SPLIT]] ], [ 3, [[HEADER0]] ], [ [[GUARD_VAR]], [[HEADER0_GUARD]] ]
-; CHECK-NEXT:    [[PHI_PH]] = phi i32 [ [[HEADER1_LOAD14]], [[HEADER1_SPLIT]] ], [ [[HEADER0_LOAD]], [[HEADER0]] ], [ [[PHI_PH1]], [[HEADER0_GUARD]] ]
-; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR2]], 3
-; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[LOOP]], label [[LOOP_HEADER0_GUARD_CRIT_EDGE]]
+; CHECK-NEXT:    [[HEADER1_LOAD10]] = phi i32 [ [[HEADER1_LOAD11]], [[HEADER1_SPLIT]] ], [ [[HEADER1_LOAD9]], [[HEADER0]] ]
+; CHECK-NEXT:    [[GUARD_VAR13:%.*]] = phi i32 [ [[GUARD_VAR1]], [[HEADER1_SPLIT]] ], [ [[GUARD_VAR14]], [[HEADER0]] ]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ [[GUARD_VAR1]], [[HEADER1_SPLIT]] ], [ 3, [[HEADER0]] ]
+; CHECK-NEXT:    [[PHI_PH:%.*]] = phi i32 [ [[HEADER1_LOAD11]], [[HEADER1_SPLIT]] ], [ [[HEADER0_LOAD]], [[HEADER0]] ]
+; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 3
+; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[LOOP]], label [[LOOP_HEADER0_CRIT_EDGE]]
 ; CHECK:       loop:
 ; CHECK-NEXT:    [[PHI:%.*]] = phi i32 [ [[PHI_PH]], [[LOOP_GUARD]] ]
 ; CHECK-NEXT:    store volatile i32 [[PHI]], i32 addrspace(1)* null
 ; CHECK-NEXT:    [[COND1:%.*]] = load volatile i1, i1 addrspace(1)* null
-; CHECK-NEXT:    [[TMP3]] = select i1 [[COND1]], i32 3, i32 2
-; CHECK-NEXT:    br i1 [[COND1]], label [[LOOP_HEADER0_GUARD_CRIT_EDGE]], label [[HEADER1_GUARD]]
-; CHECK:       loop.header0.guard_crit_edge:
-; CHECK-NEXT:    [[TMP4]] = phi i32 [ [[TMP2]], [[LOOP_GUARD]] ], [ [[TMP3]], [[LOOP]] ]
-; CHECK-NEXT:    [[GUARD_VAR38]] = phi i32 [ [[GUARD_VAR36]], [[LOOP_GUARD]] ], [ [[TMP3]], [[LOOP]] ]
-; CHECK-NEXT:    [[GUARD_VAR4]] = phi i32 [ [[GUARD_VAR2]], [[LOOP_GUARD]] ], [ [[TMP3]], [[LOOP]] ]
-; CHECK-NEXT:    [[PREV_GUARD5:%.*]] = icmp eq i32 [[GUARD_VAR4]], 1
-; CHECK-NEXT:    br i1 [[PREV_GUARD5]], label [[HEADER0_GUARD]], label [[HEADER1_GUARD]]
+; CHECK-NEXT:    [[TMP0]] = select i1 [[COND1]], i32 3, i32 2
+; CHECK-NEXT:    br i1 [[COND1]], label [[LOOP_HEADER0_CRIT_EDGE]], label [[HEADER1_GUARD]]
+; CHECK:       loop.header0_crit_edge:
+; CHECK-NEXT:    [[GUARD_VAR15]] = phi i32 [ [[GUARD_VAR13]], [[LOOP_GUARD]] ], [ [[TMP0]], [[LOOP]] ]
+; CHECK-NEXT:    [[GUARD_VAR2]] = phi i32 [ [[GUARD_VAR]], [[LOOP_GUARD]] ], [ [[TMP0]], [[LOOP]] ]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR2]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[HEADER0]], label [[HEADER1_GUARD]]
 ;
 entry:
   store volatile i32 1, i32 addrspace(1)* null

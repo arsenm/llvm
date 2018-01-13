@@ -6,8 +6,6 @@
 define void @figure6b(i1 %cond0, i1 %cond1, i1 %cond2) {
 ; CHECK-LABEL: @figure6b(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    br label [[B1_GUARD:%.*]]
-; CHECK:       b1.guard:
 ; CHECK-NEXT:    br label [[B1:%.*]]
 ; CHECK:       b1:
 ; CHECK-NEXT:    [[LOAD_B1:%.*]] = load volatile i32, i32 addrspace(1)* null
@@ -94,8 +92,6 @@ exit:
 define void @figure6b_swap_br_b3(i1 %cond0, i1 %cond1, i1 %cond2) {
 ; CHECK-LABEL: @figure6b_swap_br_b3(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    br label [[B1_GUARD:%.*]]
-; CHECK:       b1.guard:
 ; CHECK-NEXT:    br label [[B1:%.*]]
 ; CHECK:       b1:
 ; CHECK-NEXT:    [[LOAD_B1:%.*]] = load volatile i32, i32 addrspace(1)* null
@@ -182,8 +178,6 @@ exit:
 define void @figure6b_phis(i1 %cond0, i1 %cond1, i1 %cond2) {
 ; CHECK-LABEL: @figure6b_phis(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    br label [[B1_GUARD:%.*]]
-; CHECK:       b1.guard:
 ; CHECK-NEXT:    br label [[B1:%.*]]
 ; CHECK:       b1:
 ; CHECK-NEXT:    [[LOAD_B1:%.*]] = load volatile i32, i32 addrspace(1)* null

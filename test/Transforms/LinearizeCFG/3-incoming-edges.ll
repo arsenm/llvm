@@ -5,9 +5,7 @@ define void @incoming_3_edges_no_loop(i32 addrspace(1)* %out, i32 %n, i1 %arg0, 
 ; CHECK-LABEL: @incoming_3_edges_no_loop(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
-; CHECK-NEXT:    br i1 [[ARG0:%.*]], label [[MULTI_PRED_GUARD:%.*]], label [[CONTINUE0_GUARD:%.*]]
-; CHECK:       continue0.guard:
-; CHECK-NEXT:    br label [[CONTINUE0:%.*]]
+; CHECK-NEXT:    br i1 [[ARG0:%.*]], label [[MULTI_PRED_GUARD:%.*]], label [[CONTINUE0:%.*]]
 ; CHECK:       continue0:
 ; CHECK-NEXT:    [[CONTINUE0_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
 ; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[ARG1:%.*]], i32 3, i32 2

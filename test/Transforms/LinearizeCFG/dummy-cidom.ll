@@ -5,9 +5,7 @@ define void @dummy_cidom_phis(i1 %cond0) {
 ; CHECK-LABEL: @dummy_cidom_phis(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* undef
-; CHECK-NEXT:    br i1 [[COND0:%.*]], label [[B1_GUARD:%.*]], label [[B2_GUARD:%.*]]
-; CHECK:       b1.guard:
-; CHECK-NEXT:    br label [[B1:%.*]]
+; CHECK-NEXT:    br i1 [[COND0:%.*]], label [[B1:%.*]], label [[B2_GUARD:%.*]]
 ; CHECK:       b1:
 ; CHECK-NEXT:    [[B1_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* undef
 ; CHECK-NEXT:    br label [[B2_GUARD]]

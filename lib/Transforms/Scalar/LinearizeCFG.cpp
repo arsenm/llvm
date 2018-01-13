@@ -1449,16 +1449,26 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
       GuardVarInserter.AddAvailableValue(Pred, InitialBlockNumber);
   }
 
+  bool First = true;
+
   for (BasicBlock *BB : OrderedUnstructuredBlocks) {
     DT->verifyDomTree();
-    BasicBlock *Guard = getOrInsertGuardBlock(BB);
-    assert(Guard && "failed to split block");
-    GuardMap[BB] = Guard;
-    InvGuardMap[Guard] = BB;
 
     unsigned BBRPONum = RPONumbers[BB];
 
-    RPONumbers[Guard] = BBRPONum; // XXX
+    if (First) {
+      // Don't bother inserting a guard block for the entry point. The guard
+      // variable will trivially be the first block, and we'll just leave behind
+      // a branch on a phi of the same value.
+      First = false;
+    } else {
+      BasicBlock *Guard = getOrInsertGuardBlock(BB);
+      assert(Guard && "failed to split block");
+      GuardMap[BB] = Guard;
+      InvGuardMap[Guard] = BB;
+      RPONumbers[Guard] = BBRPONum; // XXX
+    }
+
 
     for (BasicBlock *Succ : successors(BB)) {
       unsigned SuccRPO = RPONumbers[Succ];
@@ -1510,7 +1520,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     ++I;
 
     bool Last = I == E;
-    BasicBlock *Guard = getOrInsertGuardBlock(BB);
+    BasicBlock *Guard = getGuardBlock(BB);
 
     // idom->guard already inserted by split
     if (PrevGuard) {
