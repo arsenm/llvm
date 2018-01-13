@@ -57,22 +57,22 @@ define void @multi_if_break_loop(i32 %id, i32 %arg) {
 ; CHECK-NEXT:    br label [[NODEBLOCK:%.*]]
 ; CHECK:       NodeBlock:
 ; CHECK-NEXT:    [[PIVOT:%.*]] = icmp slt i32 [[LOAD0]], 1
-; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[PIVOT]], i32 4, i32 3
+; CHECK-NEXT:    [[NODEBLOCK_SUCC_ID:%.*]] = select i1 [[PIVOT]], i32 4, i32 3
 ; CHECK-NEXT:    br i1 [[PIVOT]], label [[LEAFBLOCK_GUARD:%.*]], label [[LEAFBLOCK1_GUARD:%.*]]
 ; CHECK:       LeafBlock1.guard:
-; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[TMP0]], 3
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[NODEBLOCK_SUCC_ID]], 3
 ; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[LEAFBLOCK1:%.*]], label [[CASE1_GUARD:%.*]]
 ; CHECK:       LeafBlock1:
 ; CHECK-NEXT:    [[SWITCHLEAF2:%.*]] = icmp eq i32 [[LOAD0]], 1
-; CHECK-NEXT:    [[TMP1:%.*]] = select i1 [[SWITCHLEAF2]], i32 6, i32 7
+; CHECK-NEXT:    [[LEAFBLOCK1_SUCC_ID:%.*]] = select i1 [[SWITCHLEAF2]], i32 6, i32 7
 ; CHECK-NEXT:    br label [[CASE1_GUARD]]
 ; CHECK:       LeafBlock.guard:
-; CHECK-NEXT:    [[GUARD_VAR5:%.*]] = phi i32 [ [[GUARD_VAR3:%.*]], [[CASE1_BB1_CRIT_EDGE]] ], [ [[TMP0]], [[NODEBLOCK]] ]
+; CHECK-NEXT:    [[GUARD_VAR5:%.*]] = phi i32 [ [[GUARD_VAR3:%.*]], [[CASE1_BB1_CRIT_EDGE]] ], [ [[NODEBLOCK_SUCC_ID]], [[NODEBLOCK]] ]
 ; CHECK-NEXT:    [[PREV_GUARD6:%.*]] = icmp eq i32 [[GUARD_VAR5]], 4
 ; CHECK-NEXT:    br i1 [[PREV_GUARD6]], label [[LEAFBLOCK:%.*]], label [[NEWDEFAULT_GUARD:%.*]]
 ; CHECK:       LeafBlock:
 ; CHECK-NEXT:    [[SWITCHLEAF:%.*]] = icmp eq i32 [[LOAD0]], 0
-; CHECK-NEXT:    [[TMP2:%.*]] = select i1 [[SWITCHLEAF]], i32 5, i32 7
+; CHECK-NEXT:    [[LEAFBLOCK_SUCC_ID:%.*]] = select i1 [[SWITCHLEAF]], i32 5, i32 7
 ; CHECK-NEXT:    br label [[NEWDEFAULT_GUARD]]
 ; CHECK:       case0.guard:
 ; CHECK-NEXT:    [[GUARD_VAR9:%.*]] = phi i32 [ 8, [[NEWDEFAULT:%.*]] ], [ [[GUARD_VAR7:%.*]], [[NEWDEFAULT_GUARD]] ]
@@ -81,27 +81,27 @@ define void @multi_if_break_loop(i32 %id, i32 %arg) {
 ; CHECK:       case0:
 ; CHECK-NEXT:    [[LOAD1:%.*]] = load volatile i32, i32 addrspace(1)* undef, align 4
 ; CHECK-NEXT:    [[CMP1:%.*]] = icmp slt i32 [[TMP]], [[LOAD1]]
-; CHECK-NEXT:    [[TMP3:%.*]] = select i1 [[CMP1]], i32 5, i32 8
+; CHECK-NEXT:    [[CASE0_SUCC_ID:%.*]] = select i1 [[CMP1]], i32 5, i32 8
 ; CHECK-NEXT:    br i1 [[CMP1]], label [[CASE0_BB1_CRIT_EDGE]], label [[BB9_GUARD:%.*]]
 ; CHECK:       case0.bb1_crit_edge:
-; CHECK-NEXT:    [[GUARD_VAR11:%.*]] = phi i32 [ [[GUARD_VAR9]], [[CASE0_GUARD:%.*]] ], [ [[TMP3]], [[CASE0]] ]
+; CHECK-NEXT:    [[GUARD_VAR11:%.*]] = phi i32 [ [[GUARD_VAR9]], [[CASE0_GUARD:%.*]] ], [ [[CASE0_SUCC_ID]], [[CASE0]] ]
 ; CHECK-NEXT:    [[PREV_GUARD12:%.*]] = icmp eq i32 [[GUARD_VAR11]], 1
 ; CHECK-NEXT:    br i1 [[PREV_GUARD12]], label [[BB1]], label [[BB9_GUARD]]
 ; CHECK:       case1.guard:
-; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ [[TMP0]], [[LEAFBLOCK1_GUARD]] ], [ [[TMP1]], [[LEAFBLOCK1]] ]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ [[NODEBLOCK_SUCC_ID]], [[LEAFBLOCK1_GUARD]] ], [ [[LEAFBLOCK1_SUCC_ID]], [[LEAFBLOCK1]] ]
 ; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 6
 ; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[CASE1:%.*]], label [[CASE1_BB1_CRIT_EDGE]]
 ; CHECK:       case1:
 ; CHECK-NEXT:    [[LOAD2:%.*]] = load volatile i32, i32 addrspace(1)* undef, align 4
 ; CHECK-NEXT:    [[CMP2:%.*]] = icmp slt i32 [[TMP]], [[LOAD2]]
-; CHECK-NEXT:    [[TMP4:%.*]] = select i1 [[CMP2]], i32 6, i32 8
+; CHECK-NEXT:    [[CASE1_SUCC_ID:%.*]] = select i1 [[CMP2]], i32 6, i32 8
 ; CHECK-NEXT:    br i1 [[CMP2]], label [[CASE1_BB1_CRIT_EDGE]], label [[BB9_GUARD]]
 ; CHECK:       case1.bb1_crit_edge:
-; CHECK-NEXT:    [[GUARD_VAR3]] = phi i32 [ [[GUARD_VAR]], [[CASE1_GUARD]] ], [ [[TMP4]], [[CASE1]] ]
+; CHECK-NEXT:    [[GUARD_VAR3]] = phi i32 [ [[GUARD_VAR]], [[CASE1_GUARD]] ], [ [[CASE1_SUCC_ID]], [[CASE1]] ]
 ; CHECK-NEXT:    [[PREV_GUARD4:%.*]] = icmp eq i32 [[GUARD_VAR3]], 1
 ; CHECK-NEXT:    br i1 [[PREV_GUARD4]], label [[BB1]], label [[LEAFBLOCK_GUARD]]
 ; CHECK:       NewDefault.guard:
-; CHECK-NEXT:    [[GUARD_VAR7]] = phi i32 [ [[GUARD_VAR5]], [[LEAFBLOCK_GUARD]] ], [ [[TMP2]], [[LEAFBLOCK]] ]
+; CHECK-NEXT:    [[GUARD_VAR7]] = phi i32 [ [[GUARD_VAR5]], [[LEAFBLOCK_GUARD]] ], [ [[LEAFBLOCK_SUCC_ID]], [[LEAFBLOCK]] ]
 ; CHECK-NEXT:    [[PREV_GUARD8:%.*]] = icmp eq i32 [[GUARD_VAR7]], 7
 ; CHECK-NEXT:    br i1 [[PREV_GUARD8]], label [[NEWDEFAULT]], label [[CASE0_GUARD]]
 ; CHECK:       NewDefault:

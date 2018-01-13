@@ -16,8 +16,8 @@ define void @backedge2() {
 ; CHECK-NEXT:    br label [[LOOP_GUARD:%.*]]
 ; CHECK:       header1.guard:
 ; CHECK-NEXT:    [[HEADER1_LOAD8:%.*]] = phi i32 [ undef, [[ENTRY]] ], [ [[HEADER1_LOAD10]], [[LOOP:%.*]] ], [ [[HEADER1_LOAD10]], [[LOOP_HEADER0_CRIT_EDGE]] ]
-; CHECK-NEXT:    [[GUARD_VAR6:%.*]] = phi i32 [ 1, [[ENTRY]] ], [ [[TMP0:%.*]], [[LOOP]] ], [ [[GUARD_VAR2:%.*]], [[LOOP_HEADER0_CRIT_EDGE]] ]
-; CHECK-NEXT:    [[GUARD_VAR1:%.*]] = phi i32 [ 1, [[ENTRY]] ], [ [[TMP0]], [[LOOP]] ], [ [[GUARD_VAR15]], [[LOOP_HEADER0_CRIT_EDGE]] ]
+; CHECK-NEXT:    [[GUARD_VAR6:%.*]] = phi i32 [ 1, [[ENTRY]] ], [ [[LOOP_SUCC_ID:%.*]], [[LOOP]] ], [ [[GUARD_VAR2:%.*]], [[LOOP_HEADER0_CRIT_EDGE]] ]
+; CHECK-NEXT:    [[GUARD_VAR1:%.*]] = phi i32 [ 1, [[ENTRY]] ], [ [[LOOP_SUCC_ID]], [[LOOP]] ], [ [[GUARD_VAR15]], [[LOOP_HEADER0_CRIT_EDGE]] ]
 ; CHECK-NEXT:    [[BE_GUARD7:%.*]] = icmp eq i32 [[GUARD_VAR6]], 2
 ; CHECK-NEXT:    br i1 [[BE_GUARD7]], label [[HEADER1:%.*]], label [[HEADER1_SPLIT:%.*]]
 ; CHECK:       header1:
@@ -37,11 +37,11 @@ define void @backedge2() {
 ; CHECK-NEXT:    [[PHI:%.*]] = phi i32 [ [[PHI_PH]], [[LOOP_GUARD]] ]
 ; CHECK-NEXT:    store volatile i32 [[PHI]], i32 addrspace(1)* null
 ; CHECK-NEXT:    [[COND1:%.*]] = load volatile i1, i1 addrspace(1)* null
-; CHECK-NEXT:    [[TMP0]] = select i1 [[COND1]], i32 3, i32 2
+; CHECK-NEXT:    [[LOOP_SUCC_ID]] = select i1 [[COND1]], i32 3, i32 2
 ; CHECK-NEXT:    br i1 [[COND1]], label [[LOOP_HEADER0_CRIT_EDGE]], label [[HEADER1_GUARD]]
 ; CHECK:       loop.header0_crit_edge:
-; CHECK-NEXT:    [[GUARD_VAR15]] = phi i32 [ [[GUARD_VAR13]], [[LOOP_GUARD]] ], [ [[TMP0]], [[LOOP]] ]
-; CHECK-NEXT:    [[GUARD_VAR2]] = phi i32 [ [[GUARD_VAR]], [[LOOP_GUARD]] ], [ [[TMP0]], [[LOOP]] ]
+; CHECK-NEXT:    [[GUARD_VAR15]] = phi i32 [ [[GUARD_VAR13]], [[LOOP_GUARD]] ], [ [[LOOP_SUCC_ID]], [[LOOP]] ]
+; CHECK-NEXT:    [[GUARD_VAR2]] = phi i32 [ [[GUARD_VAR]], [[LOOP_GUARD]] ], [ [[LOOP_SUCC_ID]], [[LOOP]] ]
 ; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR2]], 1
 ; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[HEADER0]], label [[HEADER1_GUARD]]
 ;

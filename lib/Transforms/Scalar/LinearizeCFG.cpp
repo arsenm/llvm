@@ -996,7 +996,8 @@ Value *LinearizeCFG::insertGuardVar(IRBuilder<> &Builder, BasicBlock *BB) {
     GuardVal = Builder.CreateSelect(
       BI->getCondition(),
       Builder.getInt32(getBlockNumber(BI->getSuccessor(0))),
-      Builder.getInt32(getBlockNumber(BI->getSuccessor(1))));
+      Builder.getInt32(getBlockNumber(BI->getSuccessor(1))),
+      Twine(BB->getName()) + ".succ.id");
   } else {
     GuardVal = Builder.getInt32(getBlockNumber(BI->getSuccessor(0)));
   }
