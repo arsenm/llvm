@@ -1580,7 +1580,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
           auto *PredBI = cast<BranchInst>(GuardPred->getTerminator());
           if (PredBI->isUnconditional()) {
             // In simple cases the guard branch condition was trivial, so the
-            // extra edge was fuckd up.
+            // extra edge was
 
             /*
             ExtraEdge EE;
