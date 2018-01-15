@@ -41,8 +41,13 @@ public:
   // Returns true if V is uniform/non-divergent.
   bool isUniform(const Value *V) const { return !isDivergent(V); }
 
+  bool isDivergentlyReachedBlock(const BasicBlock *BB) const {
+    return DivergentlyReachedBlocks.count(BB);
+  }
+
 private:
   // Stores all divergent values.
   DenseSet<const Value *> DivergentValues;
+  DenseSet<const BasicBlock *> DivergentlyReachedBlocks;
 };
 } // End llvm namespace

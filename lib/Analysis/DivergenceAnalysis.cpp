@@ -82,8 +82,9 @@ namespace {
 class DivergencePropagator {
 public:
   DivergencePropagator(Function &F, TargetTransformInfo &TTI, DominatorTree &DT,
-                       PostDominatorTree &PDT, DenseSet<const Value *> &DV)
-      : F(F), TTI(TTI), DT(DT), PDT(PDT), DV(DV) {}
+                       PostDominatorTree &PDT, DenseSet<const Value *> &DV,
+                       DenseSet<const BasicBlock *> &DB)
+    : F(F), TTI(TTI), DT(DT), PDT(PDT), DV(DV), DB(DB) {}
   void populateWithSourcesOfDivergence();
   void propagate();
 
@@ -107,6 +108,7 @@ private:
   PostDominatorTree &PDT;
   std::vector<Value *> Worklist; // Stack for DFS.
   DenseSet<const Value *> &DV;   // Stores all divergent values.
+  DenseSet<const BasicBlock *> &DB; // Stores all divergent blocks;
 };
 
 void DivergencePropagator::populateWithSourcesOfDivergence() {
@@ -231,6 +233,7 @@ void DivergencePropagator::computeInfluenceRegion(
   addSuccessorsToInfluenceRegion(Start, End, InfluenceRegion, InfluenceStack);
   while (!InfluenceStack.empty()) {
     BasicBlock *BB = InfluenceStack.back();
+    DB.insert(BB);
     InfluenceStack.pop_back();
     addSuccessorsToInfluenceRegion(BB, End, InfluenceRegion, InfluenceStack);
   }
@@ -296,7 +299,7 @@ bool DivergenceAnalysis::runOnFunction(Function &F) {
   auto &PDT = getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   DivergencePropagator DP(F, TTI,
                           getAnalysis<DominatorTreeWrapperPass>().getDomTree(),
-                          PDT, DivergentValues);
+                          PDT, DivergentValues, DivergentlyReachedBlocks);
   DP.populateWithSourcesOfDivergence();
   DP.propagate();
   return false;
@@ -326,4 +329,8 @@ void DivergenceAnalysis::print(raw_ostream &OS, const Module *) const {
     if (DivergentValues.count(&I))
       OS << "DIVERGENT:" << I << "\n";
   }
+
+  OS << "Divergently reached blocks:\n";
+  for (const BasicBlock *BB : DivergentlyReachedBlocks)
+    OS << "  " << BB->getName() << '\n';
 }
