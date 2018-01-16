@@ -289,11 +289,17 @@ public:
 
   static Value *invert(Value *Condition);
   BasicBlock *getUnreachableBlock();
+  BasicBlock *getNewUnreachableBlock();
   BasicBlock *cloneBlock(BasicBlock *BB);
 
   bool doInitialization(Module &M) override;
 
   void addAndUpdatePhis(BasicBlock *PrevGuard, BasicBlock *Guard);
+
+  void addDummyBr(
+    IRBuilder<> &Builder,
+    BasicBlock *Src, BasicBlock *Dest,
+    StringRef CmpSuffix = "dummy.cmp");
 
   void addEdge(
     IRBuilder<> &Builder,
@@ -311,6 +317,8 @@ public:
     BasicBlock *PhiReplacePred = nullptr);
 
   void numberBlocks();
+  void computePDF();
+  void identifyDivergentlyReachableBlocks();
 
   void identifyUnstructuredEdges(
     SmallVectorImpl<BasicBlockEdge> &UnstructuredEdges);
@@ -709,6 +717,11 @@ BasicBlock *LinearizeCFG::getUnreachableBlock() {
   return UnreachableBlock;
 }
 
+BasicBlock *LinearizeCFG::getNewUnreachableBlock() {
+  return BasicBlock::Create(Func->getContext(),
+                            "linearizecfg.unreachable", Func);
+}
+
 BasicBlock *LinearizeCFG::cloneBlock(BasicBlock *BB) {
   /*
 
@@ -1015,6 +1028,42 @@ Value *LinearizeCFG::insertGuardVar(IRBuilder<> &Builder, BasicBlock *BB) {
   return GuardVal;
 }
 
+void LinearizeCFG::addDummyBr(
+  IRBuilder<> &Builder,
+  BasicBlock *Src, BasicBlock *Dest,
+  StringRef CmpSuffix) {
+
+  DEBUG(dbgs() << "Add dummy branch " << Src->getName() << " -> "
+               << Dest->getName() << '\n');
+
+  TerminatorInst *TI = Src->getTerminator();
+
+  if (isa<UnreachableInst>(TI) || isa<ReturnInst>(TI)) {
+    Src->getInstList().pop_back();  // Remove the ret/unreachable inst.
+    BranchInst::Create(Dest, Src);
+
+    DT->insertEdge(Src, Dest);
+    PDT->insertEdge(Src, Dest);
+    return;
+  }
+
+  if (BranchInst *BI = dyn_cast<BranchInst>(TI)) {
+    if (BI->isUnconditional()) {
+      BranchInst::Create(BI->getSuccessor(0), Dest, Builder.getTrue(), Src);
+      BI->eraseFromParent();
+      DT->insertEdge(Src, Dest);
+      PDT->insertEdge(Src, Dest);
+      return;
+    }
+
+    BasicBlock *Split = SplitEdge(Src, BI->getSuccessor(0), DT);
+    addDummyBr(Builder, Split, Dest, CmpSuffix);
+    return;
+  }
+
+  llvm_unreachable("TODO");
+}
+
 // Accept the possiblity that a conditioanl branch may already exist.
 void LinearizeCFG::addEdge(
   IRBuilder<> &Builder,
@@ -1075,7 +1124,7 @@ void LinearizeCFG::addBrPrevGuardToGuard(
     BI->replaceUsesOfWith(PrevGuardSucc, Guard);
     PrevGuard->replaceSuccessorsPhiUsesWith(Guard);
 
-    DominatorTree::UpdateType Updates[2] = {
+    DominatorTree::UpdtaeType Updates[2] = {
       { DominatorTree::Delete, PrevGuard, PrevGuardSucc },
       { DominatorTree::Insert, PrevGuard, Guard }
     };
@@ -1134,6 +1183,60 @@ void LinearizeCFG::numberBlocks() {
   for (BasicBlock &BB : *Func) {
     BlockNumbers[&BB] = BlockNum++;
   }
+}
+
+void LinearizeCFG::computePDF() {
+  DenseMap<BasicBlock *, SetVector<BasicBlock*>> PDF;
+
+  for (BasicBlock &BB : *Func) {
+    if (std::distance(succ_begin(&BB), succ_end(&BB)) > 1) {
+      for (BasicBlock *Succ : successors(&BB)) {
+        DomTreeNode *Runner = PDT->getNode(Succ);
+        DomTreeNode *Sentinel = PDT->getNode(&BB)->getIDom();
+        while (Runner && Runner != Sentinel) {
+          PDF[Runner->getBlock()].insert(&BB);
+          Runner = Runner->getIDom();
+        }
+      }
+    }
+  }
+}
+
+void LinearizeCFG::identifyDivergentlyReachableBlocks() {
+  assert(DA);
+
+  DenseSet<BasicBlock *> InfluenceRegion;
+
+  dbgs() << "Divergently reachable blocks:\n";
+  for (BasicBlock &BB : *Func) {
+    bool DivBlock = DA->isDivergentlyReachedBlock(&BB);
+    dbgs() << "  " << BB.getName() << ": " << DivBlock << '\n';
+
+
+    if (DivBlock && succ_empty(&BB)) {
+
+
+    }
+  }
+
+
+
+
+/*
+  df_iterator_default_set<BasicBlock*> Reachable;
+
+  // Iterate over the reachable blocks in DFS order.
+  for (auto DFI = df_ext_begin(Func, Reachable),
+            DFE = df_ext_end(Func, Reachable);
+       DFI != DFE; ++DFI) {
+    BasicBlock *BB = *DFI;
+    TerminatorInst *TI = BB->getTerminator();
+    if (!DA->isUniform(TI)) {
+
+    }
+
+  }
+*/
 }
 
 void LinearizeCFG::identifyUnstructuredEdges(
@@ -1256,15 +1359,13 @@ void LinearizeCFG::pickBlocksToGuard(
       const_cast<BasicBlock *>(Edge.getStart()),
       const_cast<BasicBlock *>(Edge.getEnd()));
 
-#if 1
+#if 0
     if (!CIPDom)
       report_fatal_error("FIXME no CIPDOM");
 #endif
 
-    unsigned IterationCount = 0;
     bool Inserted = false;
     do {
-      IterationCount++;
       Inserted = false;
 
       //BasicBlock *CIDom = findCIDOM(UnstructuredBlocks.getArrayRef());
@@ -1272,8 +1373,8 @@ void LinearizeCFG::pickBlocksToGuard(
 
       DEBUG(
         dbgs() << "Found CIDom: " << CIDom->getName() << '\n';
-        dbgs() << "Found CIPDom: "
-               << (CIPDom ? CIPDom->getName() : "<null>") << '\n';
+        dbgs() << "Found CIPDom: " <<
+                  (CIPDom ? CIPDom->getName() : "<null>") << '\n'
       );
 
       //DomTreeNode *CIDomNode = DT->getNode(CIDom)->getIDom();
@@ -1292,7 +1393,7 @@ void LinearizeCFG::pickBlocksToGuard(
       //assert(CIPDomNode);
 
 
-#if 1
+#if 0
       if (!CIPDom)
         report_fatal_error("FIXME no CIPDOM");
 #endif
@@ -1300,7 +1401,28 @@ void LinearizeCFG::pickBlocksToGuard(
       SmallVector<BasicBlock *, 8> CIDomBlocks;
       SmallVector<BasicBlock *, 8> CIPDomBlocks;
       DT->getDescendants(CIDom, CIDomBlocks);
-      PDT->getDescendants(CIPDom, CIPDomBlocks);
+
+      if (!CIPDom) {
+
+
+
+      }
+
+      if (CIPDom) {
+        PDT->getDescendants(CIPDom, CIPDomBlocks);
+      } else {
+
+        for (BasicBlock *Root : PDT->getRoots()) {
+          SmallVector<BasicBlock *, 8> Tmp;
+          PDT->getDescendants(Root, Tmp);
+
+          for (BasicBlock *X : Tmp) {
+            if (!is_contained(CIPDomBlocks, X))
+              CIPDomBlocks.push_back(X);
+          }
+        }
+
+      }
 
       // Blocks dominated by CIDom && can reach cipdom
       // union
@@ -1318,20 +1440,44 @@ void LinearizeCFG::pickBlocksToGuard(
         }
       );
 
-      for (BasicBlock *BB : CIDomBlocks) {
-        //if (BB == CIPDom || BB == CIDom)
-        if (BB == CIDom)
-          continue;
 
-        bool IsReach0 = isPotentiallyReachable(BB, CIPDom, DT);
-        DEBUG(dbgs() << "CIPDom Reachable: " << BB->getName() << " -> " << CIPDom->getName() << ": " << IsReach0 << '\n');
 
-        if (IsReach0) {
-          if (UnstructuredBlocks.insert(BB)) {
-            Inserted = true;
+      if (CIPDom) {
+        for (BasicBlock *BB : CIDomBlocks) {
+          //if (BB == CIPDom || BB == CIDom)
+          if (BB == CIDom)
+            continue;
 
-            CIDom = DT->findNearestCommonDominator(CIDom, BB);
-            CIPDom = PDT->findNearestCommonDominator(CIPDom, BB);
+          bool IsReach0 = isPotentiallyReachable(BB, CIPDom, DT);
+          DEBUG(dbgs() << "CIPDom Reachable: " << BB->getName() << " -> " << CIPDom->getName() << ": " << IsReach0 << '\n');
+
+          if (IsReach0) {
+            if (UnstructuredBlocks.insert(BB)) {
+              Inserted = true;
+
+              CIDom = DT->findNearestCommonDominator(CIDom, BB);
+              CIPDom = PDT->findNearestCommonDominator(CIPDom, BB);
+            }
+          }
+        }
+      } else {
+        for (BasicBlock *BB : CIDomBlocks) {
+          //if (BB == CIPDom || BB == CIDom)
+          if (BB == CIDom)
+            continue;
+
+          for (BasicBlock *Root : PDT->getRoots()) {
+            bool IsReach0 = isPotentiallyReachable(BB, Root, DT);
+            DEBUG(dbgs() << "Root Reachable: " << BB->getName() << " -> " << Root->getName() << ": " << IsReach0 << '\n');
+
+            if (IsReach0) {
+              if (UnstructuredBlocks.insert(BB)) {
+                Inserted = true;
+
+                CIDom = DT->findNearestCommonDominator(CIDom, BB);
+                //CIPDom = PDT->findNearestCommonDominator(CIPDom, BB);
+              }
+            }
           }
         }
       }
@@ -1359,6 +1505,8 @@ void LinearizeCFG::pickBlocksToGuard(
     //UnstructuredBlocks.insert(CIPDom);
   }
 
+  //BasicBlock *CIDom = findCIDOM(UnstructuredBlocks.getArrayRef());
+  //BasicBlock *CIPDom = findCIPDOM(UnstructuredBlocks.getArrayRef());
 
   for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
     if (UnstructuredBlocks.count(BB))
@@ -1399,10 +1547,64 @@ void LinearizeCFG::pruneExtraEdge(IRBuilder<> &Builder,
     goto redo;
 }
 
+static BasicBlock *unifyReturnBlockSet(Function &F,
+                                       ArrayRef<BasicBlock *> ReturningBlocks,
+                                       DominatorTree *DT,
+                                       PostDominatorTree *PDT,
+                                       //const TargetTransformInfo &TTI,
+                                       StringRef Name) {
+  // Otherwise, we need to insert a new basic block into the function, add a PHI
+  // nodes (if the function returns values), and convert all of the return
+  // instructions into unconditional branches.
+  BasicBlock *NewRetBlock = BasicBlock::Create(F.getContext(), Name, &F);
+
+  PHINode *PN = nullptr;
+  if (F.getReturnType()->isVoidTy()) {
+    ReturnInst::Create(F.getContext(), nullptr, NewRetBlock);
+  } else {
+    // If the function doesn't return void... add a PHI node to the block...
+    PN = PHINode::Create(F.getReturnType(), ReturningBlocks.size(),
+                         "UnifiedRetVal");
+    NewRetBlock->getInstList().push_back(PN);
+    ReturnInst::Create(F.getContext(), PN, NewRetBlock);
+  }
+
+  SmallVector<DominatorTree::UpdateType, 4> Updates;
+
+  // Loop over all of the blocks, replacing the return instruction with an
+  // unconditional branch.
+  for (BasicBlock *BB : ReturningBlocks) {
+    // Add an incoming element to the PHI node for every return instruction that
+    // is merging into this new block...
+    if (PN) {
+      TerminatorInst *TI = BB->getTerminator();
+      Value *IncomingVal = isa<ReturnInst>(TI) ?
+        TI->getOperand(0) : UndefValue::get(F.getReturnType());
+      PN->addIncoming(IncomingVal, BB);
+    }
+
+    BB->getInstList().pop_back();  // Remove the return insn
+    BranchInst::Create(NewRetBlock, BB);
+
+    Updates.push_back({DominatorTree::Insert, BB, NewRetBlock});
+  }
+
+  DT->applyUpdates(Updates);
+  PDT->applyUpdates(Updates);
+
+
+  /*
+  for (BasicBlock *BB : ReturningBlocks) {
+    // Cleanup possible branch to unconditional branch to the return.
+    simplifyCFG(BB, TTI, {2});
+  }
+  */
+
+  return NewRetBlock;
+}
+
 void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlocks) {
   assert(!OrderedUnstructuredBlocks.empty());
-  numberBlocks();
-
 
   IRBuilder<> Builder(Func->getContext());
 
@@ -1411,69 +1613,108 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
   BasicBlock *CIDom = findCIDOM(OrderedUnstructuredBlocks);
   BasicBlock *CIPDom = findCIPDOM(OrderedUnstructuredBlocks);
 
-  DEBUG(dbgs() <<  "CIDOM: " << CIDom->getName()
-                << "  CIPDOM: " << CIPDom->getName() << '\n');
-
   DEBUG(
-    dbgs() << "Before modify DT\n";
-    DT->print(dbgs());
+    dbgs() <<  "CIDOM: " << CIDom->getName()
+           << "  CIPDOM: " << (CIPDom ? CIPDom->getName() : "<null>") << '\n';
   );
 
+  SmallVector<BasicBlock *, 4> UnreachableBlocks;
+  SmallVector<BasicBlock *, 4> RetBlocks;
+  SmallVector<BasicBlock *, 4> LoopBlocks;
+
+
+  std::vector<BasicBlock *> NewOrder; // FIXME: Hack
+  BasicBlock *DummyUnreachable = nullptr;
+
   if (!CIPDom) {
-    report_fatal_error("No CIPDOM");
-  }
+    //report_fatal_error("No CIPDOM");
 
 
-  /*
-  if (UnstructuredBlocks.count(CIDom)) {
-    // Get post dominator outside of the set.
-    // XXX - Is this correct?
-    if (auto C = DT->getNode(CIDom)->getIDom()) {
-      CIDom = C->getBlock();
-    } else {
-#if 1
-      BasicBlock *DummyIDom
-        = BasicBlock::Create(Func->getContext(),
-                             "dummy.idom",
-                             Func, CIDom);
 
-      // FIXME: Update predecessor phis
-      BranchInst::Create(CIDom, DummyIDom);
+    Type *RetTy = Func->getReturnType();
+    SSAUpdater RetValues;
+    if (!RetTy->isVoidTy())
+      RetValues.Initialize(RetTy, "unified.return.val");
 
-      if (DT->getRoot() == CIDom) {
-        DT->setNewRoot(DummyIDom);
+    for (BasicBlock *Root : PDT->getRoots()) {
+      TerminatorInst *TI = Root->getTerminator();
+      if (auto *RI = dyn_cast<ReturnInst>(TI)) {
+        RetBlocks.push_back(Root);
+      } else if (isa<UnreachableInst>(TI))
+        UnreachableBlocks.push_back(Root);
+      else
+        LoopBlocks.push_back(Root);
+    }
+
+    if (!LoopBlocks.empty()) {
+      DummyUnreachable = getUnreachableBlock();
+      UnreachableBlocks.push_back(DummyUnreachable);
+    }
+
+
+    BasicBlock *DummyReturn = nullptr;
+
+    if (!UnreachableBlocks.empty()) {
+      //llvm_unreachable("todo");
+      RetBlocks.append(UnreachableBlocks.begin(), UnreachableBlocks.end());
+    }
+
+    if (!RetBlocks.empty()) {
+      //DummyReturn = BasicBlock::Create(Func->getContext(),
+      //"linearizecfg.unified.return", Func);
+
+      DummyReturn = unifyReturnBlockSet(*Func, RetBlocks, DT, PDT, "linearizecfg.unified.return");
+    }
+
+
+    /*
+    for (BasicBlock *BB : UnreachableBlocks) {
+      addDummyBr(Builder, BB, DummyUnreachable);
+    }
+    */
+
+    for (BasicBlock *BB : RetBlocks) {
+      //addDummyBr(Builder, BB, DummyReturn);
+    }
+
+
+    for (BasicBlock *BB : LoopBlocks) {
+      addDummyBr(Builder, BB, DummyUnreachable);
+    }
+
+    /*
+    if (!RetBlocks.empty()) {
+      if (RetTy->isVoidTy()) {
+        ReturnInst::Create(Func->getContext(), DummyReturn);
       } else {
-        DT->insertEdge(DummyIDom, CIDom);
+        ReturnInst::Create(Func->getContext(),
+
+                           DummyReturn);
       }
-
-      // Make sure the right vale of the initial guard variable is still valid
-      // after splitting.
-      //GuardVarInserter.AddAvailableValue(DummyIDom, InitialBlockNumber);
-      PDT->insertEdge(DummyIDom, CIDom);
-#endif
-
-      // XXX - PDT not updated
-      //BasicBlock *OldCIDom = SplitBlock(CIDom, &*CIDom->begin(), DT);
-
-      //PDT->insertEdge();
     }
-  }
-  DT->verifyDomTree();
+    */
 
-  if (is_contained(OrderedUnstructuredBlocks, CIPDom)) {
-    // Get post dominator outside of the set.
-    // XXX - Is this correct?
-    BasicBlock *IDom = PDT->getNode(CIPDom)->getIDom()->getBlock();
-    if (IDom)
-      CIPDom = IDom;
-    else {
-      unsigned BlockNum = getBlockNumber(CIPDom);
-      CIPDom = SplitBlock(CIPDom, CIPDom->getTerminator(), DT);
-      BlockNumbers[CIPDom] = BlockNum;
+
+    // FIXME: ugly hack
+
+    for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
+      if (is_contained(OrderedUnstructuredBlocks, BB) || BB == DummyUnreachable
+          || BB == DummyReturn)
+        NewOrder.push_back(BB);
     }
+
+
+    assert(PDT->verify());
+
+
+    OrderedUnstructuredBlocks = NewOrder;
+
+    // TODO: Assert new return block is the cipdom
+    CIPDom = findCIPDOM(NewOrder);
+    assert(CIPDom && "still failed to find cipdom");
   }
 
-  */
+  numberBlocks();
 
   // TODO: Make this type target dependent.
   GuardVarInserter.Initialize(Builder.getInt32Ty(), "guard.var");
@@ -1495,7 +1736,6 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
 
   DenseMap<BasicBlock *, unsigned> RPONumbers;
-
 
   {
     unsigned RPONum = 0;
@@ -1577,6 +1817,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
     bool Last = I == E;
     BasicBlock *Guard = getGuardBlock(BB);
+    //assert(Guard && "missing guard block");
 
     DEBUG(dbgs() << "\n\nVisit block: " << BB->getName() << '\n');
     assert(verifyBlockPhis(Guard));
@@ -1659,6 +1900,24 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     }
   }
 
+
+  /*
+  pruneExtraEdge(Builder,
+                 OrderedUnstructuredBlocks,
+                 CIPDom,
+                 OrderedUnstructuredBlocks.back(),
+                 getGuardBlock(OrderedUnstructuredBlocks.back()));
+  */
+#if 0
+  for (BasicBlock *BB : LoopBlocks) {
+    DeferredDominance DDT(*DT);
+    BB->dump();
+
+    ConstantFoldTerminator(BB, true, nullptr, &DDT);
+    DDT.flush();
+  }
+#endif
+
   // Typically the first guard block ends up being trivial with the same
   // incoming guard variable phi from every successor. It may not if there is a
   // back edge. to the first block.
@@ -1687,6 +1946,40 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
   if (!MergeBlockIntoPredecessor(FirstGuarded, DT)) {
     FirstGuard->setName(OldName);
   }
+
+  DT->verifyDomTree();
+
+#if 0
+  for (auto I = Func->begin(); I != Func->end();) {
+    BasicBlock &BB = *I;
+    ++I;
+    DeferredDominance DDT(*DT);
+    //BB->dump();
+
+    ConstantFoldTerminator(&BB, true, nullptr, &DDT);
+    DDT.flush();
+  }
+#endif
+
+#if 0
+  if (DummyUnreachable) {
+    for (auto I = DummyUnreachable->use_begin();
+         I != DummyUnreachable->use_end();) {
+      BranchInst *BI = cast<BranchInst>(I->getUser());
+      ++I;
+      DeferredDominance DDT(*DT);
+
+      // TODO: Delete conditional branches too
+
+      ConstantFoldTerminator(BI->getParent(), true, nullptr, &DDT);
+      DDT.flush();
+
+
+    }
+  }
+
+#endif
+
 }
 
 // FIXME: Broken with backedges
@@ -1744,9 +2037,12 @@ bool LinearizeCFG::runOnFunction(Function &F) {
   PDT = &getAnalysis<PostDominatorTreeWrapperPass>().getPostDomTree();
   //LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   TTI = &getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+  if (SkipUniformRegions)
+    DA = &getAnalysis<DivergenceAnalysis>();
 
   auto DF = &getAnalysis<DominanceFrontierWrapperPass>().getDominanceFrontier();
 
+  //identifyDivergentlyReachableBlocks();
 
   DEBUG(
     printSCCFunc(F);
@@ -1866,21 +2162,6 @@ bool LinearizeCFG::runOnFunction(Function &F) {
 #endif
   }
 
-  SmallVector<BasicBlockEdge, 8> UnstructuredEdges;
-  identifyUnstructuredEdges(UnstructuredEdges);
-
-
-  DEBUG(dbgs() << "Found " << UnstructuredEdges.size()
-               << " unstructured edges\n");
-
-
-  DEBUG(
-    for (BasicBlockEdge EE : UnstructuredEdges) {
-      dbgs() << ": " << EE.getStart()->getName() << " -> " << EE.getEnd()->getName() << '\n';
-    }
-  );
-
-
   SmallVector<BasicBlock *, 8> OrderedUnstructuredBlocks;
 
   //DenseSet<BasicBlock *> UnstructuredBlocks;
@@ -1891,6 +2172,20 @@ bool LinearizeCFG::runOnFunction(Function &F) {
       OrderedUnstructuredBlocks.push_back(BB);
     }
   } else {
+    SmallVector<BasicBlockEdge, 8> UnstructuredEdges;
+    identifyUnstructuredEdges(UnstructuredEdges);
+
+
+    DEBUG(dbgs() << "Found " << UnstructuredEdges.size()
+          << " unstructured edges\n");
+
+
+    DEBUG(
+      for (BasicBlockEdge EE : UnstructuredEdges) {
+        dbgs() << ": " << EE.getStart()->getName() << " -> " << EE.getEnd()->getName() << '\n';
+      }
+    );
+
     pickBlocksToGuard(OrderedUnstructuredBlocks, UnstructuredEdges);
     DEBUG(
       dbgs() << "Unstructured blocks:\n";

@@ -42,10 +42,12 @@ entry:
   br i1 %cond0, label %bb2, label %bb1
 
 bb1:
-  unreachable
+  %bb1.load = load volatile i32, i32 addrspace(1)* null
+  br label %bb4
 
 bb2:
-  unreachable
+  %bb2.load = load volatile i32, i32 addrspace(1)* null
+  br i1 %cond1, label %bb4, label %bb3
 
 bb3:
   %bb3.load = load volatile i32, i32 addrspace(1)* null
@@ -119,3 +121,25 @@ bb4:
   store volatile i32 %bb4.phi, i32 addrspace(1)* null
   ret void
 }
+
+
+; define void @switch_phi_error_2(i1 %cond0, i1 %cond1) {
+; entry:
+;   br i1 %cond0, label %bb2, label %bb1
+
+; bb1:
+;   %bb1.load = load volatile i32, i32 addrspace(1)* null
+;   br label %bb4
+
+; bb2:
+;   %bb2.load = load volatile i32, i32 addrspace(1)* null
+;   br i1 %cond1, label %bb4, label %bb3
+
+; bb3:
+;   br label %bb4
+
+; bb4:
+;   %bb4.phi = phi i32 [ %bb1.load, %bb1 ], [ %bb2.load, %bb2 ], [ undef, %bb3 ]
+;   store volatile i32 %bb4.phi, i32 addrspace(1)* null
+;   ret void
+; }

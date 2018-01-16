@@ -5,27 +5,26 @@
 
 define void @unreachable_ret(i1 %cond0) {
 ; CHECK-LABEL: @unreachable_ret(
-; CHECK-NEXT:  dummy.idom:
-; CHECK-NEXT:    br label [[ENTRY_GUARD:%.*]]
-; CHECK:       entry.guard:
-; CHECK-NEXT:    br label [[ENTRY:%.*]]
-; CHECK:       entry:
+; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* undef
-; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
+; CHECK-NEXT:    [[ENTRY_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
 ; CHECK-NEXT:    br label [[RET_GUARD:%.*]]
 ; CHECK:       bb.unreach.guard:
-; CHECK-NEXT:    [[LAST:%.*]] = icmp eq i32 [[TMP0]], 1
-; CHECK-NEXT:    br i1 [[LAST]], label [[BB_UNREACH:%.*]], label [[BB_UNREACH_SPLIT:%.*]]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 3, [[RET:%.*]] ], [ [[ENTRY_SUCC_ID]], [[RET_GUARD]] ]
+; CHECK-NEXT:    [[PREV_GUARD1:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD1]], label [[BB_UNREACH:%.*]], label [[LINEARIZECFG_UNIFIED_RETURN_GUARD:%.*]]
 ; CHECK:       bb.unreach:
 ; CHECK-NEXT:    store volatile i32 [[ENTRY_LOAD]], i32 addrspace(1)* undef
-; CHECK-NEXT:    br label [[BB_UNREACH_SPLIT]]
-; CHECK:       bb.unreach.split:
-; CHECK-NEXT:    unreachable
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN_GUARD]]
 ; CHECK:       ret.guard:
-; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[TMP0]], 2
-; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[RET:%.*]], label [[BB_UNREACH_GUARD:%.*]]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[ENTRY_SUCC_ID]], 2
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[RET]], label [[BB_UNREACH_GUARD:%.*]]
 ; CHECK:       ret:
 ; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* undef
+; CHECK-NEXT:    br label [[BB_UNREACH_GUARD]]
+; CHECK:       linearizecfg.unified.return.guard:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN:%.*]]
+; CHECK:       linearizecfg.unified.return:
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -42,6 +41,33 @@ ret:
 }
 
 define i32 @unreachable_ret_nonvoid(i1 %cond0) {
+; CHECK-LABEL: @unreachable_ret_nonvoid(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* undef
+; CHECK-NEXT:    [[ENTRY_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
+; CHECK-NEXT:    br label [[RET_GUARD:%.*]]
+; CHECK:       bb.unreach.guard:
+; CHECK-NEXT:    [[RET_LOAD2:%.*]] = phi i32 [ [[RET_LOAD:%.*]], [[RET:%.*]] ], [ undef, [[RET_GUARD]] ]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 3, [[RET]] ], [ [[ENTRY_SUCC_ID]], [[RET_GUARD]] ]
+; CHECK-NEXT:    [[PREV_GUARD1:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD1]], label [[BB_UNREACH:%.*]], label [[LINEARIZECFG_UNIFIED_RETURN_GUARD:%.*]]
+; CHECK:       bb.unreach:
+; CHECK-NEXT:    store volatile i32 [[ENTRY_LOAD]], i32 addrspace(1)* undef
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN_GUARD]]
+; CHECK:       ret.guard:
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[ENTRY_SUCC_ID]], 2
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[RET]], label [[BB_UNREACH_GUARD:%.*]]
+; CHECK:       ret:
+; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* undef
+; CHECK-NEXT:    [[RET_LOAD]] = load volatile i32, i32 addrspace(1)* undef
+; CHECK-NEXT:    br label [[BB_UNREACH_GUARD]]
+; CHECK:       linearizecfg.unified.return.guard:
+; CHECK-NEXT:    [[UNIFIEDRETVAL_PH:%.*]] = phi i32 [ undef, [[BB_UNREACH]] ], [ [[RET_LOAD2]], [[BB_UNREACH_GUARD]] ]
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN:%.*]]
+; CHECK:       linearizecfg.unified.return:
+; CHECK-NEXT:    [[UNIFIEDRETVAL:%.*]] = phi i32 [ [[UNIFIEDRETVAL_PH]], [[LINEARIZECFG_UNIFIED_RETURN_GUARD]] ]
+; CHECK-NEXT:    ret i32 [[UNIFIEDRETVAL]]
+;
 entry:
   %entry.load = load volatile i32, i32 addrspace(1)* undef
   br i1 %cond0, label %bb.unreach, label %ret
@@ -58,28 +84,27 @@ ret:
 
 define void @unreachable_unreachable(i1 %cond0) {
 ; CHECK-LABEL: @unreachable_unreachable(
-; CHECK-NEXT:  dummy.idom:
-; CHECK-NEXT:    br label [[ENTRY_GUARD:%.*]]
-; CHECK:       entry.guard:
-; CHECK-NEXT:    br label [[ENTRY:%.*]]
-; CHECK:       entry:
+; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* undef
-; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
+; CHECK-NEXT:    [[ENTRY_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
 ; CHECK-NEXT:    br label [[UNREACH1_BB_GUARD:%.*]]
 ; CHECK:       unreach0.bb.guard:
-; CHECK-NEXT:    [[LAST:%.*]] = icmp eq i32 [[TMP0]], 1
-; CHECK-NEXT:    br i1 [[LAST]], label [[UNREACH0_BB:%.*]], label [[UNREACH0_BB_SPLIT:%.*]]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 3, [[UNREACH1_BB:%.*]] ], [ [[ENTRY_SUCC_ID]], [[UNREACH1_BB_GUARD]] ]
+; CHECK-NEXT:    [[PREV_GUARD1:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD1]], label [[UNREACH0_BB:%.*]], label [[LINEARIZECFG_UNIFIED_RETURN_GUARD:%.*]]
 ; CHECK:       unreach0.bb:
 ; CHECK-NEXT:    store volatile i32 [[ENTRY_LOAD]], i32 addrspace(1)* undef
-; CHECK-NEXT:    br label [[UNREACH0_BB_SPLIT]]
-; CHECK:       unreach0.bb.split:
-; CHECK-NEXT:    unreachable
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN_GUARD]]
 ; CHECK:       unreach1.bb.guard:
-; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[TMP0]], 2
-; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[UNREACH1_BB:%.*]], label [[UNREACH0_BB_GUARD:%.*]]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[ENTRY_SUCC_ID]], 2
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[UNREACH1_BB]], label [[UNREACH0_BB_GUARD:%.*]]
 ; CHECK:       unreach1.bb:
 ; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* undef
-; CHECK-NEXT:    unreachable
+; CHECK-NEXT:    br label [[UNREACH0_BB_GUARD]]
+; CHECK:       linearizecfg.unified.return.guard:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN:%.*]]
+; CHECK:       linearizecfg.unified.return:
+; CHECK-NEXT:    ret void
 ;
 entry:
   %entry.load = load volatile i32, i32 addrspace(1)* undef
@@ -96,27 +121,26 @@ unreach1.bb:
 
 define void @ret_ret(i1 %cond0) {
 ; CHECK-LABEL: @ret_ret(
-; CHECK-NEXT:  dummy.idom:
-; CHECK-NEXT:    br label [[ENTRY_GUARD:%.*]]
-; CHECK:       entry.guard:
-; CHECK-NEXT:    br label [[ENTRY:%.*]]
-; CHECK:       entry:
+; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load i32, i32 addrspace(1)* undef
-; CHECK-NEXT:    [[TMP0:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
+; CHECK-NEXT:    [[ENTRY_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
 ; CHECK-NEXT:    br label [[RET1_GUARD:%.*]]
 ; CHECK:       ret0.guard:
-; CHECK-NEXT:    [[LAST:%.*]] = icmp eq i32 [[TMP0]], 1
-; CHECK-NEXT:    br i1 [[LAST]], label [[RET0:%.*]], label [[RET0_SPLIT:%.*]]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 3, [[RET1:%.*]] ], [ [[ENTRY_SUCC_ID]], [[RET1_GUARD]] ]
+; CHECK-NEXT:    [[PREV_GUARD1:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD1]], label [[RET0:%.*]], label [[LINEARIZECFG_UNIFIED_RETURN_GUARD:%.*]]
 ; CHECK:       ret0:
 ; CHECK-NEXT:    store volatile i32 [[ENTRY_LOAD]], i32 addrspace(1)* undef
-; CHECK-NEXT:    br label [[RET0_SPLIT]]
-; CHECK:       ret0.split:
-; CHECK-NEXT:    ret void
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN_GUARD]]
 ; CHECK:       ret1.guard:
-; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[TMP0]], 2
-; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[RET1:%.*]], label [[RET0_GUARD:%.*]]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[ENTRY_SUCC_ID]], 2
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[RET1]], label [[RET0_GUARD:%.*]]
 ; CHECK:       ret1:
 ; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* undef
+; CHECK-NEXT:    br label [[RET0_GUARD]]
+; CHECK:       linearizecfg.unified.return.guard:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN:%.*]]
+; CHECK:       linearizecfg.unified.return:
 ; CHECK-NEXT:    ret void
 ;
 entry:
@@ -133,6 +157,43 @@ ret1:
 }
 
 define void @infloop_infloop(i1 %cond0) {
+; CHECK-LABEL: @infloop_infloop(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load i32, i32 addrspace(1)* undef
+; CHECK-NEXT:    [[ENTRY_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
+; CHECK-NEXT:    br label [[LOOP1_GUARD:%.*]]
+; CHECK:       loop0.guard:
+; CHECK-NEXT:    [[GUARD_VAR2:%.*]] = phi i32 [ [[GUARD_VAR1:%.*]], [[LOOP1_LOOP1_GUARD_CRIT_EDGE:%.*]] ], [ 1, [[LOOP0_LOOP0_GUARD_CRIT_EDGE:%.*]] ]
+; CHECK-NEXT:    [[BE_GUARD3:%.*]] = icmp eq i32 [[GUARD_VAR2]], 1
+; CHECK-NEXT:    br i1 [[BE_GUARD3]], label [[LOOP0:%.*]], label [[LOOP0_LOOP0_GUARD_CRIT_EDGE]]
+; CHECK:       loop0:
+; CHECK-NEXT:    store volatile i32 [[ENTRY_LOAD]], i32 addrspace(1)* undef
+; CHECK-NEXT:    br label [[LOOP0_LOOP0_GUARD_CRIT_EDGE]]
+; CHECK:       loop0.loop0.guard_crit_edge:
+; CHECK-NEXT:    [[GUARD_VAR4:%.*]] = phi i32 [ [[GUARD_VAR2]], [[LOOP0_GUARD:%.*]] ], [ 1, [[LOOP0]] ]
+; CHECK-NEXT:    [[PREV_GUARD5:%.*]] = icmp eq i32 [[GUARD_VAR4]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD5]], label [[LOOP0_GUARD]], label [[LINEARIZECFG_UNREACHABLE_GUARD:%.*]]
+; CHECK:       loop1.guard:
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 2, [[LOOP1_LOOP1_GUARD_CRIT_EDGE]] ], [ [[ENTRY_SUCC_ID]], [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 2
+; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[LOOP1:%.*]], label [[LOOP1_LOOP1_GUARD_CRIT_EDGE]]
+; CHECK:       loop1:
+; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* undef
+; CHECK-NEXT:    br label [[LOOP1_LOOP1_GUARD_CRIT_EDGE]]
+; CHECK:       loop1.loop1.guard_crit_edge:
+; CHECK-NEXT:    [[GUARD_VAR1]] = phi i32 [ [[GUARD_VAR]], [[LOOP1_GUARD]] ], [ 2, [[LOOP1]] ]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR1]], 2
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[LOOP1_GUARD]], label [[LOOP0_GUARD]]
+; CHECK:       linearizecfg.unreachable.guard:
+; CHECK-NEXT:    [[PREV_GUARD6:%.*]] = icmp eq i32 [[GUARD_VAR4]], 3
+; CHECK-NEXT:    br i1 [[PREV_GUARD6]], label [[LINEARIZECFG_UNREACHABLE:%.*]], label [[LINEARIZECFG_UNIFIED_RETURN_GUARD:%.*]]
+; CHECK:       linearizecfg.unreachable:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN_GUARD]]
+; CHECK:       linearizecfg.unified.return.guard:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN:%.*]]
+; CHECK:       linearizecfg.unified.return:
+; CHECK-NEXT:    ret void
+;
 entry:
   %entry.load = load i32, i32 addrspace(1)* undef
   br i1 %cond0, label %loop0, label %loop1
@@ -147,6 +208,48 @@ loop1:
 }
 
 define void @infloop_infloop_condbr(i1 %cond0) {
+; CHECK-LABEL: @infloop_infloop_condbr(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load i32, i32 addrspace(1)* undef
+; CHECK-NEXT:    [[ENTRY_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 3
+; CHECK-NEXT:    br label [[LOOP1_GUARD:%.*]]
+; CHECK:       loop0.guard:
+; CHECK-NEXT:    [[GUARD_VAR2:%.*]] = phi i32 [ [[GUARD_VAR1:%.*]], [[LOOP1_LOOP1_GUARD_CRIT_EDGE:%.*]] ], [ 2, [[LOOP0_LOOP0_GUARD_CRIT_EDGE:%.*]] ], [ 2, [[LOOP0_LOOP0_CRIT_EDGE:%.*]] ]
+; CHECK-NEXT:    [[BE_GUARD3:%.*]] = icmp eq i32 [[GUARD_VAR2]], 1
+; CHECK-NEXT:    br i1 [[BE_GUARD3]], label [[LOOP0:%.*]], label [[LOOP0_LOOP0_GUARD_CRIT_EDGE]]
+; CHECK:       loop0:
+; CHECK-NEXT:    store volatile i32 [[ENTRY_LOAD]], i32 addrspace(1)* undef
+; CHECK-NEXT:    br i1 true, label [[LOOP0_LOOP0_CRIT_EDGE]], label [[LOOP0_LOOP0_GUARD_CRIT_EDGE]]
+; CHECK:       loop0.loop0.guard_crit_edge:
+; CHECK-NEXT:    [[GUARD_VAR4:%.*]] = phi i32 [ [[GUARD_VAR2]], [[LOOP0_GUARD:%.*]] ], [ 2, [[LOOP0]] ]
+; CHECK-NEXT:    [[PREV_GUARD5:%.*]] = icmp eq i32 [[GUARD_VAR4]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD5]], label [[LOOP0_GUARD]], label [[LINEARIZECFG_UNREACHABLE_GUARD:%.*]]
+; CHECK:       loop0.loop0_crit_edge:
+; CHECK-NEXT:    br i1 true, label [[LOOP0_GUARD]], label [[LINEARIZECFG_UNREACHABLE_GUARD]]
+; CHECK:       loop1.guard:
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 4, [[LOOP1_LOOP1_GUARD_CRIT_EDGE]] ], [ [[ENTRY_SUCC_ID]], [[ENTRY:%.*]] ], [ 4, [[LOOP1_LOOP1_CRIT_EDGE:%.*]] ]
+; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 3
+; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[LOOP1:%.*]], label [[LOOP1_LOOP1_GUARD_CRIT_EDGE]]
+; CHECK:       loop1:
+; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* undef
+; CHECK-NEXT:    br i1 true, label [[LOOP1_LOOP1_CRIT_EDGE]], label [[LOOP1_LOOP1_GUARD_CRIT_EDGE]]
+; CHECK:       loop1.loop1.guard_crit_edge:
+; CHECK-NEXT:    [[GUARD_VAR1]] = phi i32 [ [[GUARD_VAR]], [[LOOP1_GUARD]] ], [ 4, [[LOOP1]] ]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR1]], 3
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[LOOP1_GUARD]], label [[LOOP0_GUARD]]
+; CHECK:       loop1.loop1_crit_edge:
+; CHECK-NEXT:    br i1 true, label [[LOOP1_GUARD]], label [[LINEARIZECFG_UNREACHABLE_GUARD]]
+; CHECK:       linearizecfg.unreachable.guard:
+; CHECK-NEXT:    [[GUARD_VAR6:%.*]] = phi i32 [ [[GUARD_VAR4]], [[LOOP0_LOOP0_GUARD_CRIT_EDGE]] ], [ 4, [[LOOP1_LOOP1_CRIT_EDGE]] ], [ 2, [[LOOP0_LOOP0_CRIT_EDGE]] ]
+; CHECK-NEXT:    [[PREV_GUARD7:%.*]] = icmp eq i32 [[GUARD_VAR6]], 5
+; CHECK-NEXT:    br i1 [[PREV_GUARD7]], label [[LINEARIZECFG_UNREACHABLE:%.*]], label [[LINEARIZECFG_UNIFIED_RETURN_GUARD:%.*]]
+; CHECK:       linearizecfg.unreachable:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN_GUARD]]
+; CHECK:       linearizecfg.unified.return.guard:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN:%.*]]
+; CHECK:       linearizecfg.unified.return:
+; CHECK-NEXT:    ret void
+;
 entry:
   %entry.load = load i32, i32 addrspace(1)* undef
   br i1 %cond0, label %loop0, label %loop1
@@ -161,6 +264,56 @@ loop1:
 }
 
 define void @infloop_infloop_varcond(i1 %cond0) {
+; CHECK-LABEL: @infloop_infloop_varcond(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load i32, i32 addrspace(1)* undef
+; CHECK-NEXT:    [[ENTRY_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 3
+; CHECK-NEXT:    br label [[LOOP1_GUARD:%.*]]
+; CHECK:       loop0.guard:
+; CHECK-NEXT:    [[LOOP0_SUCC_ID8:%.*]] = phi i32 [ undef, [[LOOP1_LOOP1_GUARD_CRIT_EDGE:%.*]] ], [ [[LOOP0_SUCC_ID9:%.*]], [[LOOP0_LOOP0_GUARD_CRIT_EDGE:%.*]] ], [ [[LOOP0_SUCC_ID:%.*]], [[LOOP0_LOOP0_CRIT_EDGE:%.*]] ]
+; CHECK-NEXT:    [[GUARD_VAR2:%.*]] = phi i32 [ [[GUARD_VAR1:%.*]], [[LOOP1_LOOP1_GUARD_CRIT_EDGE]] ], [ [[LOOP0_SUCC_ID9]], [[LOOP0_LOOP0_GUARD_CRIT_EDGE]] ], [ [[LOOP0_SUCC_ID]], [[LOOP0_LOOP0_CRIT_EDGE]] ]
+; CHECK-NEXT:    [[BE_GUARD3:%.*]] = icmp eq i32 [[GUARD_VAR2]], 1
+; CHECK-NEXT:    br i1 [[BE_GUARD3]], label [[LOOP0:%.*]], label [[LOOP0_LOOP0_GUARD_CRIT_EDGE]]
+; CHECK:       loop0:
+; CHECK-NEXT:    store volatile i32 [[ENTRY_LOAD]], i32 addrspace(1)* undef
+; CHECK-NEXT:    [[COND1:%.*]] = load volatile i1, i1 addrspace(1)* undef
+; CHECK-NEXT:    [[LOOP0_SUCC_ID]] = select i1 [[COND1]], i32 2, i32 1
+; CHECK-NEXT:    br i1 [[COND1]], label [[LOOP0_LOOP0_CRIT_EDGE]], label [[LOOP0_LOOP0_GUARD_CRIT_EDGE]]
+; CHECK:       loop0.loop0.guard_crit_edge:
+; CHECK-NEXT:    [[LOOP0_SUCC_ID9]] = phi i32 [ [[LOOP0_SUCC_ID8]], [[LOOP0_GUARD:%.*]] ], [ [[LOOP0_SUCC_ID]], [[LOOP0]] ]
+; CHECK-NEXT:    [[GUARD_VAR4:%.*]] = phi i32 [ [[GUARD_VAR2]], [[LOOP0_GUARD]] ], [ [[LOOP0_SUCC_ID]], [[LOOP0]] ]
+; CHECK-NEXT:    [[PREV_GUARD5:%.*]] = icmp eq i32 [[GUARD_VAR4]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD5]], label [[LOOP0_GUARD]], label [[LINEARIZECFG_UNREACHABLE_GUARD:%.*]]
+; CHECK:       loop0.loop0_crit_edge:
+; CHECK-NEXT:    br i1 true, label [[LOOP0_GUARD]], label [[LINEARIZECFG_UNREACHABLE_GUARD]]
+; CHECK:       loop1.guard:
+; CHECK-NEXT:    [[LOOP1_SUCC_ID10:%.*]] = phi i32 [ [[LOOP1_SUCC_ID11:%.*]], [[LOOP1_LOOP1_GUARD_CRIT_EDGE]] ], [ undef, [[ENTRY:%.*]] ], [ [[LOOP1_SUCC_ID:%.*]], [[LOOP1_LOOP1_CRIT_EDGE:%.*]] ]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ [[LOOP1_SUCC_ID11]], [[LOOP1_LOOP1_GUARD_CRIT_EDGE]] ], [ [[ENTRY_SUCC_ID]], [[ENTRY]] ], [ [[LOOP1_SUCC_ID]], [[LOOP1_LOOP1_CRIT_EDGE]] ]
+; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 3
+; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[LOOP1:%.*]], label [[LOOP1_LOOP1_GUARD_CRIT_EDGE]]
+; CHECK:       loop1:
+; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* undef
+; CHECK-NEXT:    [[COND2:%.*]] = load volatile i1, i1 addrspace(1)* undef
+; CHECK-NEXT:    [[LOOP1_SUCC_ID]] = select i1 [[COND2]], i32 4, i32 3
+; CHECK-NEXT:    br i1 [[COND2]], label [[LOOP1_LOOP1_CRIT_EDGE]], label [[LOOP1_LOOP1_GUARD_CRIT_EDGE]]
+; CHECK:       loop1.loop1.guard_crit_edge:
+; CHECK-NEXT:    [[LOOP1_SUCC_ID11]] = phi i32 [ [[LOOP1_SUCC_ID10]], [[LOOP1_GUARD]] ], [ [[LOOP1_SUCC_ID]], [[LOOP1]] ]
+; CHECK-NEXT:    [[GUARD_VAR1]] = phi i32 [ [[GUARD_VAR]], [[LOOP1_GUARD]] ], [ [[LOOP1_SUCC_ID]], [[LOOP1]] ]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR1]], 3
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[LOOP1_GUARD]], label [[LOOP0_GUARD]]
+; CHECK:       loop1.loop1_crit_edge:
+; CHECK-NEXT:    br i1 true, label [[LOOP1_GUARD]], label [[LINEARIZECFG_UNREACHABLE_GUARD]]
+; CHECK:       linearizecfg.unreachable.guard:
+; CHECK-NEXT:    [[GUARD_VAR6:%.*]] = phi i32 [ [[GUARD_VAR4]], [[LOOP0_LOOP0_GUARD_CRIT_EDGE]] ], [ [[LOOP1_SUCC_ID]], [[LOOP1_LOOP1_CRIT_EDGE]] ], [ [[LOOP0_SUCC_ID]], [[LOOP0_LOOP0_CRIT_EDGE]] ]
+; CHECK-NEXT:    [[PREV_GUARD7:%.*]] = icmp eq i32 [[GUARD_VAR6]], 5
+; CHECK-NEXT:    br i1 [[PREV_GUARD7]], label [[LINEARIZECFG_UNREACHABLE:%.*]], label [[LINEARIZECFG_UNIFIED_RETURN_GUARD:%.*]]
+; CHECK:       linearizecfg.unreachable:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN_GUARD]]
+; CHECK:       linearizecfg.unified.return.guard:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN:%.*]]
+; CHECK:       linearizecfg.unified.return:
+; CHECK-NEXT:    ret void
+;
 entry:
   %entry.load = load i32, i32 addrspace(1)* undef
   br i1 %cond0, label %loop0, label %loop1
@@ -177,6 +330,45 @@ loop1:
 }
 
 define void @infloop_infloop_varcond_nonself() {
+; CHECK-LABEL: @infloop_infloop_varcond_nonself(
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load i32, i32 addrspace(1)* undef
+; CHECK-NEXT:    br label [[LOOP_PREHEADER_GUARD:%.*]]
+; CHECK:       loop.preheader.guard:
+; CHECK-NEXT:    [[LOOP_PREHEADER_SUCC_ID7:%.*]] = phi i32 [ [[LOOP_PREHEADER_SUCC_ID8:%.*]], [[LOOP0_LOOP_PREHEADER_GUARD_CRIT_EDGE1:%.*]] ], [ [[LOOP_PREHEADER_SUCC_ID8]], [[LOOP0_LOOP_PREHEADER_GUARD_CRIT_EDGE:%.*]] ], [ undef, [[ENTRY:%.*]] ], [ [[LOOP_PREHEADER_SUCC_ID8]], [[LOOP1_SPLIT:%.*]] ]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ [[LOOP_PREHEADER_SUCC_ID8]], [[LOOP0_LOOP_PREHEADER_GUARD_CRIT_EDGE1]] ], [ [[LOOP_PREHEADER_SUCC_ID8]], [[LOOP0_LOOP_PREHEADER_GUARD_CRIT_EDGE]] ], [ 1, [[ENTRY]] ], [ 3, [[LOOP1_SPLIT]] ]
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[LOOP_PREHEADER:%.*]], label [[LOOP1_GUARD:%.*]]
+; CHECK:       loop.preheader:
+; CHECK-NEXT:    [[COND0:%.*]] = load volatile i1, i1 addrspace(1)* undef
+; CHECK-NEXT:    [[LOOP_PREHEADER_SUCC_ID:%.*]] = select i1 [[COND0]], i32 2, i32 3
+; CHECK-NEXT:    br label [[LOOP1_GUARD]]
+; CHECK:       loop0.guard:
+; CHECK-NEXT:    [[BE_GUARD6:%.*]] = icmp eq i32 [[GUARD_VAR3:%.*]], 2
+; CHECK-NEXT:    br i1 [[BE_GUARD6]], label [[LOOP0:%.*]], label [[LOOP0_LOOP_PREHEADER_GUARD_CRIT_EDGE1]]
+; CHECK:       loop0:
+; CHECK-NEXT:    store volatile i32 [[ENTRY_LOAD]], i32 addrspace(1)* undef
+; CHECK-NEXT:    [[COND1:%.*]] = load volatile i1, i1 addrspace(1)* undef
+; CHECK-NEXT:    [[LOOP0_SUCC_ID:%.*]] = select i1 [[COND1]], i32 2, i32 2
+; CHECK-NEXT:    br i1 [[COND1]], label [[LOOP0_LOOP_PREHEADER_GUARD_CRIT_EDGE]], label [[LOOP0_LOOP_PREHEADER_GUARD_CRIT_EDGE1]]
+; CHECK:       loop0.loop.preheader.guard_crit_edge1:
+; CHECK-NEXT:    [[LAST:%.*]] = icmp eq i32 [[GUARD_VAR3]], 1
+; CHECK-NEXT:    br i1 [[LAST]], label [[LOOP_PREHEADER_GUARD]], label [[LOOP1:%.*]]
+; CHECK:       loop0.loop.preheader.guard_crit_edge:
+; CHECK-NEXT:    br label [[LOOP_PREHEADER_GUARD]]
+; CHECK:       loop1.guard:
+; CHECK-NEXT:    [[LOOP_PREHEADER_SUCC_ID8]] = phi i32 [ [[LOOP_PREHEADER_SUCC_ID7]], [[LOOP_PREHEADER_GUARD]] ], [ [[LOOP_PREHEADER_SUCC_ID]], [[LOOP_PREHEADER]] ]
+; CHECK-NEXT:    [[GUARD_VAR2:%.*]] = phi i32 [ [[GUARD_VAR]], [[LOOP_PREHEADER_GUARD]] ], [ [[LOOP_PREHEADER_SUCC_ID]], [[LOOP_PREHEADER]] ]
+; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR2]], 3
+; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[LOOP1]], label [[LOOP1_SPLIT]]
+; CHECK:       loop1:
+; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* undef
+; CHECK-NEXT:    br label [[LOOP1_SPLIT]]
+; CHECK:       loop1.split:
+; CHECK-NEXT:    [[GUARD_VAR3]] = phi i32 [ [[GUARD_VAR2]], [[LOOP1_GUARD]] ], [ 3, [[LOOP1]] ]
+; CHECK-NEXT:    [[PREV_GUARD4:%.*]] = icmp eq i32 [[GUARD_VAR3]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD4]], label [[LOOP_PREHEADER_GUARD]], label [[LOOP0_GUARD:%.*]]
+;
 entry:
   %entry.load = load i32, i32 addrspace(1)* undef
   br label %loop.preheader
@@ -188,15 +380,55 @@ loop.preheader:
 loop0:
   store volatile i32 %entry.load, i32 addrspace(1)* undef
   %cond1 = load volatile i1, i1 addrspace(1)* undef
-  br label %loop.preheader
+  br i1 %cond1, label %loop.preheader, label %loop.preheader
 
 loop1:
   store volatile i32 1, i32 addrspace(1)* undef
-  %cond2 = load volatile i1, i1 addrspace(1)* undef
+;  %cond2 = load volatile i1, i1 addrspace(1)* undef
   br label %loop.preheader
 }
 
 define void @cipdom_crash_infloop_unreachable(i1 %arg, i1 %arg1) {
+; CHECK-LABEL: @cipdom_crash_infloop_unreachable(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    br label [[BB2_GUARD:%.*]]
+; CHECK:       bb2.guard:
+; CHECK-NEXT:    br label [[BB2:%.*]]
+; CHECK:       bb2:
+; CHECK-NEXT:    [[BB2_SUCC_ID:%.*]] = select i1 [[ARG:%.*]], i32 4, i32 2
+; CHECK-NEXT:    br label [[BB3_GUARD:%.*]]
+; CHECK:       bb3.guard:
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[BB2_SUCC_ID]], 2
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[BB3:%.*]], label [[BB4_GUARD:%.*]]
+; CHECK:       bb3:
+; CHECK-NEXT:    [[BB3_SUCC_ID:%.*]] = select i1 [[ARG1:%.*]], i32 4, i32 3
+; CHECK-NEXT:    br label [[BB4_GUARD]]
+; CHECK:       bb4.guard:
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ [[BB2_SUCC_ID]], [[BB3_GUARD]] ], [ 3, [[BB4_BB4_GUARD_CRIT_EDGE:%.*]] ], [ [[BB3_SUCC_ID]], [[BB3]] ]
+; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 3
+; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[BB4:%.*]], label [[BB4_BB4_GUARD_CRIT_EDGE]]
+; CHECK:       bb4:
+; CHECK-NEXT:    br label [[BB4_BB4_GUARD_CRIT_EDGE]]
+; CHECK:       bb4.bb4.guard_crit_edge:
+; CHECK-NEXT:    [[GUARD_VAR1:%.*]] = phi i32 [ [[GUARD_VAR]], [[BB4_GUARD]] ], [ 3, [[BB4]] ]
+; CHECK-NEXT:    [[PREV_GUARD2:%.*]] = icmp eq i32 [[GUARD_VAR1]], 3
+; CHECK-NEXT:    br i1 [[PREV_GUARD2]], label [[BB4_GUARD]], label [[LINEARIZECFG_UNREACHABLE_GUARD:%.*]]
+; CHECK:       bb5.guard:
+; CHECK-NEXT:    [[GUARD_VAR4:%.*]] = phi i32 [ 6, [[LINEARIZECFG_UNREACHABLE:%.*]] ], [ [[GUARD_VAR1]], [[LINEARIZECFG_UNREACHABLE_GUARD]] ]
+; CHECK-NEXT:    [[PREV_GUARD5:%.*]] = icmp eq i32 [[GUARD_VAR4]], 4
+; CHECK-NEXT:    br i1 [[PREV_GUARD5]], label [[BB5:%.*]], label [[LINEARIZECFG_UNIFIED_RETURN_GUARD:%.*]]
+; CHECK:       bb5:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN_GUARD]]
+; CHECK:       linearizecfg.unreachable.guard:
+; CHECK-NEXT:    [[PREV_GUARD3:%.*]] = icmp eq i32 [[GUARD_VAR1]], 5
+; CHECK-NEXT:    br i1 [[PREV_GUARD3]], label [[LINEARIZECFG_UNREACHABLE]], label [[BB5_GUARD:%.*]]
+; CHECK:       linearizecfg.unreachable:
+; CHECK-NEXT:    br label [[BB5_GUARD]]
+; CHECK:       linearizecfg.unified.return.guard:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN:%.*]]
+; CHECK:       linearizecfg.unified.return:
+; CHECK-NEXT:    ret void
+;
 bb:
   br label %bb2
 
@@ -210,5 +442,81 @@ bb4:
   br label %bb4
 
 bb5:
+  unreachable
+}
+
+define void @would_become_unreachable_assert(i1 %cond0, i1 %cond1, i1 %cond2) {
+; CHECK-LABEL: @would_become_unreachable_assert(
+; CHECK-NEXT:  bb:
+; CHECK-NEXT:    br label [[BB1_GUARD:%.*]]
+; CHECK:       bb1.guard:
+; CHECK-NEXT:    br label [[BB1:%.*]]
+; CHECK:       bb1:
+; CHECK-NEXT:    [[BB1_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 3, i32 2
+; CHECK-NEXT:    br label [[BB2_GUARD:%.*]]
+; CHECK:       bb2.guard:
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[BB1_SUCC_ID]], 2
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[BB2:%.*]], label [[BB6_GUARD:%.*]]
+; CHECK:       bb2:
+; CHECK-NEXT:    [[BB2_SUCC_ID:%.*]] = select i1 [[COND1:%.*]], i32 5, i32 6
+; CHECK-NEXT:    br label [[BB6_GUARD]]
+; CHECK:       bb3.guard:
+; CHECK-NEXT:    [[GUARD_VAR4:%.*]] = phi i32 [ 7, [[BB5:%.*]] ], [ [[GUARD_VAR2:%.*]], [[BB5_GUARD:%.*]] ]
+; CHECK-NEXT:    [[PREV_GUARD5:%.*]] = icmp eq i32 [[GUARD_VAR4]], 3
+; CHECK-NEXT:    br i1 [[PREV_GUARD5]], label [[BB3:%.*]], label [[BB4_GUARD:%.*]]
+; CHECK:       bb3:
+; CHECK-NEXT:    [[BB3_SUCC_ID:%.*]] = select i1 [[COND2:%.*]], i32 7, i32 4
+; CHECK-NEXT:    br label [[BB4_GUARD]]
+; CHECK:       bb4.guard:
+; CHECK-NEXT:    [[GUARD_VAR6:%.*]] = phi i32 [ [[GUARD_VAR4]], [[BB3_GUARD:%.*]] ], [ [[BB3_SUCC_ID]], [[BB3]] ]
+; CHECK-NEXT:    [[PREV_GUARD7:%.*]] = icmp eq i32 [[GUARD_VAR6]], 4
+; CHECK-NEXT:    br i1 [[PREV_GUARD7]], label [[BB4:%.*]], label [[BB7_GUARD:%.*]]
+; CHECK:       bb4:
+; CHECK-NEXT:    br label [[BB7_GUARD]]
+; CHECK:       bb5.guard:
+; CHECK-NEXT:    [[GUARD_VAR2]] = phi i32 [ 8, [[BB6:%.*]] ], [ [[GUARD_VAR:%.*]], [[BB6_GUARD]] ]
+; CHECK-NEXT:    [[PREV_GUARD3:%.*]] = icmp eq i32 [[GUARD_VAR2]], 5
+; CHECK-NEXT:    br i1 [[PREV_GUARD3]], label [[BB5]], label [[BB3_GUARD]]
+; CHECK:       bb5:
+; CHECK-NEXT:    br label [[BB3_GUARD]]
+; CHECK:       bb6.guard:
+; CHECK-NEXT:    [[GUARD_VAR]] = phi i32 [ [[BB1_SUCC_ID]], [[BB2_GUARD]] ], [ [[BB2_SUCC_ID]], [[BB2]] ]
+; CHECK-NEXT:    [[PREV_GUARD1:%.*]] = icmp eq i32 [[GUARD_VAR]], 6
+; CHECK-NEXT:    br i1 [[PREV_GUARD1]], label [[BB6]], label [[BB5_GUARD]]
+; CHECK:       bb6:
+; CHECK-NEXT:    br label [[BB5_GUARD]]
+; CHECK:       bb7.guard:
+; CHECK-NEXT:    [[GUARD_VAR8:%.*]] = phi i32 [ 8, [[BB4]] ], [ [[GUARD_VAR6]], [[BB4_GUARD]] ]
+; CHECK-NEXT:    [[PREV_GUARD9:%.*]] = icmp eq i32 [[GUARD_VAR8]], 7
+; CHECK-NEXT:    br i1 [[PREV_GUARD9]], label [[BB7:%.*]], label [[LINEARIZECFG_UNIFIED_RETURN_GUARD:%.*]]
+; CHECK:       bb7:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN_GUARD]]
+; CHECK:       linearizecfg.unified.return.guard:
+; CHECK-NEXT:    br label [[LINEARIZECFG_UNIFIED_RETURN:%.*]]
+; CHECK:       linearizecfg.unified.return:
+; CHECK-NEXT:    ret void
+;
+bb:
+  br label %bb1
+
+bb1:
+  br i1 %cond0, label %bb3, label %bb2
+
+bb2:
+  br i1 %cond1, label %bb5, label %bb6
+
+bb3:
+  br i1 %cond2, label %bb7, label %bb4
+
+bb4:
+  unreachable
+
+bb5:
+  br label %bb7
+
+bb6:
+  unreachable
+
+bb7:
   unreachable
 }
