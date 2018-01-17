@@ -51,6 +51,11 @@ namespace {
 using StackEntry = std::pair<BasicBlock *, Value *>;
 using StackVector = SmallVector<StackEntry, 16>;
 
+static cl::opt<bool> UniformAnnotate(
+  "amdgpu-uniform-annotate",
+  cl::desc("Do not annotate uniform branches"),
+  cl::init(true));
+
 class SIAnnotateControlFlow : public FunctionPass {
   DivergenceAnalysis *DA;
 
@@ -160,6 +165,9 @@ bool SIAnnotateControlFlow::doInitialization(Module &M) {
 /// \brief Is the branch condition uniform or did the StructurizeCFG pass
 /// consider it as such?
 bool SIAnnotateControlFlow::isUniform(BranchInst *T) {
+  if (!DA)
+    return false;
+
   return DA->isUniform(T->getCondition()) ||
          T->getMetadata("structurizecfg.uniform") != nullptr;
 }
@@ -386,7 +394,10 @@ void SIAnnotateControlFlow::closeControlFlow(BasicBlock *BB) {
 bool SIAnnotateControlFlow::runOnFunction(Function &F) {
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-  DA = &getAnalysis<DivergenceAnalysis>();
+  DA = nullptr;
+
+  if (UniformAnnotate)
+    DA = &getAnalysis<DivergenceAnalysis>();
 
   for (df_iterator<BasicBlock *> I = df_begin(&F.getEntryBlock()),
        E = df_end(&F.getEntryBlock()); I != E; ++I) {
