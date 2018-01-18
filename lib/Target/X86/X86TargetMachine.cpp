@@ -39,6 +39,7 @@
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Function.h"
+#include "llvm/Transforms/Scalar.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Support/CommandLine.h"
@@ -377,6 +378,8 @@ void X86PassConfig::addIRPasses() {
   // thunk. These will be a no-op unless a function subtarget has the retpoline
   // feature enabled.
   addPass(createIndirectBrExpandPass());
+
+  addPass(createLinearizeCFGPass());
 }
 
 bool X86PassConfig::addInstSelector() {
