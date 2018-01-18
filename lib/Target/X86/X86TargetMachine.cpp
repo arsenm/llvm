@@ -81,6 +81,8 @@ extern "C" void LLVMInitializeX86Target() {
   initializeX86CmovConverterPassPass(PR);
   initializeX86ExecutionDomainFixPass(PR);
   initializeX86DomainReassignmentPass(PR);
+
+   initializeLinearizeCFGPass(PR);
 }
 
 static std::unique_ptr<TargetLoweringObjectFile> createTLOF(const Triple &TT) {
