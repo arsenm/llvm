@@ -404,16 +404,7 @@ BasicBlock *BasicBlock::splitBasicBlock(iterator I, const Twine &BBName) {
   // know that incoming branches will be from New, not from Old.
   //
   for (succ_iterator I = succ_begin(New), E = succ_end(New); I != E; ++I) {
-    // Loop over any phi nodes in the basic block, updating the BB field of
-    // incoming values...
-    BasicBlock *Successor = *I;
-    for (auto &PN : Successor->phis()) {
-      int Idx = PN.getBasicBlockIndex(this);
-      while (Idx != -1) {
-        PN.setIncomingBlock((unsigned)Idx, New);
-        Idx = PN.getBasicBlockIndex(this);
-      }
-    }
+    I->updatePHIEdges(this, New);
   }
   return New;
 }
@@ -460,4 +451,55 @@ Optional<uint64_t> BasicBlock::getIrrLoopHeaderWeight() const {
     }
   }
   return Optional<uint64_t>();
+}
+
+
+/// Update all PHI nodes by changing IncomingOld to IncomingNew
+void BasicBlock::updatePHIEdges(BasicBlock* IncomingOld,
+                                BasicBlock* IncomingNew) {
+  for (auto &PN : this->phis()) {
+    // Coping with possibly unfinished PHI Nodes
+    int Idx;
+    while ((Idx = PN.getBasicBlockIndex(IncomingOld)) >= 0)
+      PN.setIncomingBlock((unsigned)Idx, IncomingNew);
+  }
+}
+
+/// Update all PHI nodes by duplicating incoming edges from IncomingOld
+/// into incoming edges from IncomingNew
+void BasicBlock::duplicatePHIEdges(BasicBlock* IncomingOld,
+                                   BasicBlock* IncomingNew) {
+  for (auto &PN : this->phis()) {
+    int Idx = PN.getBasicBlockIndex(IncomingOld);
+    // Old predecessor shall exist in PHI.
+    assert (Idx >= 0 && "Broken PHINode!");
+    PN.addIncoming(PN.getIncomingValue((unsigned)Idx), IncomingNew);
+  }
+}
+
+/// Find all PHI nodes and depending on whether OldIncoming is a valid
+/// predecessor, add NewIncoming with the same value as OldIncoming, or change
+/// the incoming links on them.
+void BasicBlock::fixPHIEdges(BasicBlock* IncomingOld,
+                             BasicBlock* IncomingNew) {
+  // Iterate over predecessors of BB; mark if any of them is IncomingOld or
+  // IncomingNew.
+  bool oldPredecessor = false;
+  bool newPredecessor = false;
+  for (BasicBlock *Pred : predecessors(this)) {
+    if (Pred == IncomingOld)
+      oldPredecessor = true;
+    if (Pred == IncomingNew)
+      newPredecessor = true;
+  }
+
+  assert (newPredecessor && "Attempting to update PHI predecessor for block "
+                            "with no such predecessor!");
+
+  if (oldPredecessor) {
+    // If IncomingOld is still valid, need to duplicate the edge.
+    duplicatePHIEdges(IncomingOld, IncomingNew);
+  } else {
+    updatePHIEdges(IncomingOld, IncomingNew);
+  }
 }

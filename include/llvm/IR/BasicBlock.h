@@ -400,6 +400,20 @@ public:
 
   Optional<uint64_t> getIrrLoopHeaderWeight() const;
 
+  /// \brief Update all PHI nodes by changing IncomingOld to IncomingNew
+  void updatePHIEdges(BasicBlock* IncomingOld,
+                      BasicBlock* IncomingNew);
+
+  /// \brief Update all PHI nodes by duplicating incoming edges from IncomingOld
+  /// into incoming edges from IncomingNew
+  void duplicatePHIEdges(BasicBlock* IncomingOld,
+                         BasicBlock* IncomingNew);
+
+  /// \brief Update or duplicate PHI Edges to include IncomingNew depending on
+  /// whether or not IncomingOld is still a valid predecessor.
+  void fixPHIEdges(BasicBlock* IncomingOld,
+                   BasicBlock* IncomingNew);
+
 private:
   /// \brief Increment the internal refcount of the number of BlockAddresses
   /// referencing this BasicBlock by \p Amt.
