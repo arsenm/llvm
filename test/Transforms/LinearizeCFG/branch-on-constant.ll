@@ -5,6 +5,8 @@ define void @false_br() {
 ; CHECK-LABEL: @false_br(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store volatile i32 0, i32 addrspace(1)* null
+; CHECK-NEXT:    br label [[B1_GUARD:%.*]]
+; CHECK:       b1.guard:
 ; CHECK-NEXT:    br i1 false, label [[B1:%.*]], label [[B2_GUARD:%.*]]
 ; CHECK:       b1:
 ; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* null
@@ -32,10 +34,12 @@ define void @true_br() {
 ; CHECK-LABEL: @true_br(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store volatile i32 0, i32 addrspace(1)* null
-; CHECK-NEXT:    br i1 true, label [[B1:%.*]], label [[B2_GUARD:%.*]]
+; CHECK-NEXT:    br label [[B1_GUARD:%.*]]
+; CHECK:       b1.guard:
+; CHECK-NEXT:    br label [[B1:%.*]]
 ; CHECK:       b1:
 ; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* null
-; CHECK-NEXT:    br label [[B2_GUARD]]
+; CHECK-NEXT:    br label [[B2_GUARD:%.*]]
 ; CHECK:       b2.guard:
 ; CHECK-NEXT:    br label [[B2:%.*]]
 ; CHECK:       b2:
@@ -59,7 +63,9 @@ define void @undef_br() {
 ; CHECK-LABEL: @undef_br(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store volatile i32 0, i32 addrspace(1)* null
-; CHECK-NEXT:    br i1 undef, label [[B1:%.*]], label [[B2_GUARD:%.*]]
+; CHECK-NEXT:    br label [[B1_GUARD:%.*]]
+; CHECK:       b1.guard:
+; CHECK-NEXT:    br i1 false, label [[B1:%.*]], label [[B2_GUARD:%.*]]
 ; CHECK:       b1:
 ; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* null
 ; CHECK-NEXT:    br label [[B2_GUARD]]
@@ -88,7 +94,9 @@ define void @constexpr_br() {
 ; CHECK-LABEL: @constexpr_br(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store volatile i32 0, i32 addrspace(1)* null
-; CHECK-NEXT:    br i1 icmp ne (i32 addrspace(3)* inttoptr (i32 4 to i32 addrspace(3)*), i32 addrspace(3)* @gv), label [[B1:%.*]], label [[B2_GUARD:%.*]]
+; CHECK-NEXT:    br label [[B1_GUARD:%.*]]
+; CHECK:       b1.guard:
+; CHECK-NEXT:    br i1 icmp eq (i32 select (i1 icmp ne (i32 addrspace(3)* inttoptr (i32 4 to i32 addrspace(3)*), i32 addrspace(3)* @gv), i32 1, i32 2), i32 1), label [[B1:%.*]], label [[B2_GUARD:%.*]]
 ; CHECK:       b1:
 ; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* null
 ; CHECK-NEXT:    br label [[B2_GUARD]]

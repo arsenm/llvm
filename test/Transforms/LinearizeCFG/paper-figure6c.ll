@@ -5,16 +5,17 @@ define void @figure6c(i1 %cond0, i1 %cond1, i1 %cond2) {
 ; CHECK-LABEL: @figure6c(
 ; CHECK-NEXT:  b1:
 ; CHECK-NEXT:    store volatile i32 1, i32 addrspace(1)* null
-; CHECK-NEXT:    br i1 [[COND0:%.*]], label [[B2_GUARD:%.*]], label [[B3_GUARD:%.*]]
+; CHECK-NEXT:    [[B1_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
+; CHECK-NEXT:    br label [[B2_GUARD:%.*]]
 ; CHECK:       b2.guard:
-; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 1, [[B1:%.*]] ], [ 2, [[B3_SPLIT:%.*]] ]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ [[B1_SUCC_ID]], [[B1:%.*]] ], [ 2, [[B3_SPLIT:%.*]] ]
 ; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR]], 1
-; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[B2:%.*]], label [[B3_GUARD]]
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[B2:%.*]], label [[B3_GUARD:%.*]]
 ; CHECK:       b2:
 ; CHECK-NEXT:    store volatile i32 2, i32 addrspace(1)* null
 ; CHECK-NEXT:    br label [[B3_GUARD]]
 ; CHECK:       b3.guard:
-; CHECK-NEXT:    [[GUARD_VAR1:%.*]] = phi i32 [ [[GUARD_VAR]], [[B2_GUARD]] ], [ 1, [[B1]] ], [ 2, [[B2]] ]
+; CHECK-NEXT:    [[GUARD_VAR1:%.*]] = phi i32 [ [[GUARD_VAR]], [[B2_GUARD]] ], [ 2, [[B2]] ]
 ; CHECK-NEXT:    [[BE_GUARD:%.*]] = icmp eq i32 [[GUARD_VAR1]], 2
 ; CHECK-NEXT:    br i1 [[BE_GUARD]], label [[B3:%.*]], label [[B3_SPLIT]]
 ; CHECK:       b3:

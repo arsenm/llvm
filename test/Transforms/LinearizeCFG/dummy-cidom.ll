@@ -5,12 +5,16 @@ define void @dummy_cidom_phis(i1 %cond0) {
 ; CHECK-LABEL: @dummy_cidom_phis(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* undef
-; CHECK-NEXT:    br i1 [[COND0:%.*]], label [[B1:%.*]], label [[B2_GUARD:%.*]]
+; CHECK-NEXT:    [[ENTRY_SUCC_ID:%.*]] = select i1 [[COND0:%.*]], i32 1, i32 2
+; CHECK-NEXT:    br label [[B1_GUARD:%.*]]
+; CHECK:       b1.guard:
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[ENTRY_SUCC_ID]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[B1:%.*]], label [[B2_GUARD:%.*]]
 ; CHECK:       b1:
 ; CHECK-NEXT:    [[B1_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* undef
 ; CHECK-NEXT:    br label [[B2_GUARD]]
 ; CHECK:       b2.guard:
-; CHECK-NEXT:    [[PHI_PH:%.*]] = phi i32 [ [[B1_LOAD]], [[B1]] ], [ [[ENTRY_LOAD]], [[ENTRY:%.*]] ]
+; CHECK-NEXT:    [[PHI_PH:%.*]] = phi i32 [ [[B1_LOAD]], [[B1]] ], [ [[ENTRY_LOAD]], [[B1_GUARD]] ]
 ; CHECK-NEXT:    br label [[B2:%.*]]
 ; CHECK:       b2:
 ; CHECK-NEXT:    [[PHI:%.*]] = phi i32 [ [[PHI_PH]], [[B2_GUARD]] ]

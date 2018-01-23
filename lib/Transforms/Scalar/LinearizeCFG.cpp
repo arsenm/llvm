@@ -948,27 +948,13 @@ BasicBlock *LinearizeCFG::getOrInsertGuardBlock(BasicBlock *BB) {
   SmallVector<BasicBlock *, 2> Preds(pred_begin(BB), pred_end(BB));
 
   unsigned OldSize = Func->size();
-
-  assert(!Preds.empty() &&
-         "FIXME: SplitBlockPredecessors does not properly update the dom tree for entry block");
-
   BasicBlock *Guard = SplitBlockPredecessors(BB, Preds, ".guard", DT);
+
+  DT->verifyDomTree();
 
   unsigned NewSize = Func->size();
 
   assert(NewSize == OldSize + 1);
-
-  /*
-  IRBuilder<> Builder(Func->getContext());
-
-  if (BB == &Func->getEntryBlock()) {
-
-    for (BasicBlock *Pred : predecessors(Guard)) {
-      GuardVarInserter.AddAvailableValue(Pred,
-                                         Builder.getInt32(getBlockNumber(BB)));
-    }
-  }
-  */
   assert(Guard && "failed to split block for guard");
   GuardMap[BB] = Guard;
   InvGuardMap[Guard] = BB;
@@ -1054,11 +1040,11 @@ void LinearizeCFG::addBrPrevGuardToGuard(
   if (PrevGuardSucc == Guard)
     return;
 
-
-  //Value *PrevGuardVar = GuardVarInserter.GetValueInMiddleOfBlock(
-  //(BackEdgeCase ? PrevGuard->getSinglePredecessor() : PrevGuard));
-
-  Value *PrevGuardVar = GuardVarInserter.GetValueInMiddleOfBlock(GuardVarBlock);
+  // The entry block is a special case since we couldn't set the initial guard
+  // var val in the predecessors.
+  Value *PrevGuardVar = GuardVarBlock == &Func->getEntryBlock() ?
+    GuardVarInserter.GetValueAtEndOfBlock(GuardVarBlock) :
+    GuardVarInserter.GetValueInMiddleOfBlock(GuardVarBlock);
 
   ConstantInt *SuccID
     = Builder.getInt32(getBlockNumber(PrevGuardSucc));
@@ -1123,6 +1109,7 @@ void LinearizeCFG::removeBranchTo(
 }
 
 void LinearizeCFG::numberBlocks() {
+  assert(BlockNumbers.empty());
   // FIXME: Do something better
 
   // TODO: Do in RPO order only for current region
@@ -1358,9 +1345,6 @@ void LinearizeCFG::pickBlocksToGuard(
 
 
   for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
-    if (BB == &Func->getEntryBlock())
-      continue;
-
     if (UnstructuredBlocks.count(BB))
       OrderedUnstructuredBlocks.push_back(BB);
   }
@@ -1401,6 +1385,8 @@ void LinearizeCFG::pruneExtraEdge(IRBuilder<> &Builder,
 
 void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlocks) {
   assert(!OrderedUnstructuredBlocks.empty());
+  numberBlocks();
+
 
   IRBuilder<> Builder(Func->getContext());
 
@@ -1473,6 +1459,23 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
   */
 
+  // TODO: Make this type target dependent.
+  GuardVarInserter.Initialize(Builder.getInt32Ty(), "guard.var");
+
+  // The incoming guard ID is ID of the first block in the region. The compare
+  // against it will trivially fold away.
+  ConstantInt *InitialBlockNumber =
+    Builder.getInt32(getBlockNumber(OrderedUnstructuredBlocks.front()));
+
+
+  BasicBlock *FirstBlock = OrderedUnstructuredBlocks.front();
+  //for (BasicBlock *Pred : predecessors(FirstBlock)) {
+  for (BasicBlock *Pred : predecessors(CIDom)) {
+    GuardVarInserter.AddAvailableValue(Pred, InitialBlockNumber);
+  }
+
+  GuardVarInserter.AddAvailableValue(CIDom, InitialBlockNumber);
+
 
 
   DenseMap<BasicBlock *, unsigned> RPONumbers;
@@ -1485,18 +1488,13 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     }
   }
 
-
-  // TODO: Make this type target dependent.
-  GuardVarInserter.Initialize(Builder.getInt32Ty(), "guard.var");
-
-  // The incoming guard ID is ID of the first block in the region. The compare
-  // against it will trivially fold away.
-  ConstantInt *InitialBlockNumber =
-    Builder.getInt32(getBlockNumber(OrderedUnstructuredBlocks.front()));
-
-  for (BasicBlock *Pred : predecessors(OrderedUnstructuredBlocks.front()))
-    GuardVarInserter.AddAvailableValue(Pred, InitialBlockNumber);
-
+  // FIXME: Hacky
+  /*
+  if (BasicBlock *Guard = getGuardBlock(CIDom)) {
+    assert(DT->getNode(CIDom)->getIDom()->getBlock() == Guard);
+    CIDom = Guard;
+  }
+  */
 
   //bool First = true;
   bool First = false;
@@ -1537,7 +1535,12 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     }
   }
 
-  rebuildSSA(); // XXX Is this necessary here
+  // Deal with the inconvenience of entry blocks with no predecessors. In some
+  // cases we will end up treating the entry block as a trivially guarded block.
+  GuardVarInserter.AddAvailableValue(getGuardBlock(CIDom), InitialBlockNumber);
+
+
+  //rebuildSSA(); // XXX Is this necessary here
 
   BasicBlock *PrevGuard = nullptr;
   BasicBlock *PrevBlock = nullptr;
@@ -1656,6 +1659,13 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
   DT->verifyDomTree();
 
+#if 0
+  // Keep trying to clean up junk checks at region entry.
+  // FIXME: It might be better to just try this on every block.
+  if (BasicBlock *Succ = FirstGuarded->getSingleSuccessor())
+    MergeBlockIntoPredecessor(Succ, DT);
+#endif
+
   SmallString<16> OldName = FirstGuard->getName();
   FirstGuard->setName("");
   if (!MergeBlockIntoPredecessor(FirstGuarded, DT)) {
@@ -1732,6 +1742,40 @@ bool LinearizeCFG::runOnFunction(Function &F) {
   );
 
 
+  for (BasicBlock &BB : *Func) {
+    if (BB.isEHPad() || BB.hasAddressTaken()) {
+      DEBUG(dbgs() << "Can't handle this function\n");
+      return false;
+    }
+
+
+  }
+
+#if 0
+  if (true) {
+    BasicBlock *CIDom = &Func->getEntryBlock();
+    BasicBlock *DummyIDom
+      = BasicBlock::Create(Func->getContext(),
+                           "dummy.idom",
+                           Func, CIDom);
+
+    // FIXME: Update predecessor phis
+    BranchInst::Create(CIDom, DummyIDom);
+
+    if (DT->getRoot() == CIDom) {
+      DT->setNewRoot(DummyIDom);
+    } else {
+      DT->insertEdge(DummyIDom, CIDom);
+    }
+
+    // Make sure the right vale of the initial guard variable is still valid
+    // after splitting.
+    //GuardVarInserter.AddAvailableValue(DummyIDom, InitialBlockNumber);
+    PDT->insertEdge(DummyIDom, CIDom);
+    CIDom = DummyIDom;
+  }
+#endif
+
   RegionInfo RI;
   RI.recalculate(F, DT, PDT, DF);
 
@@ -1806,8 +1850,6 @@ bool LinearizeCFG::runOnFunction(Function &F) {
 #endif
   }
 
-  numberBlocks();
-
   SmallVector<BasicBlockEdge, 8> UnstructuredEdges;
   identifyUnstructuredEdges(UnstructuredEdges);
 
@@ -1825,15 +1867,12 @@ bool LinearizeCFG::runOnFunction(Function &F) {
 
   SmallVector<BasicBlock *, 8> OrderedUnstructuredBlocks;
 
-
   //DenseSet<BasicBlock *> UnstructuredBlocks;
   //SetVector<BasicBlock *> UnstructuredBlocks;
   if (LinearizeWholeFunction) {
     // Process the entire function.
     for (BasicBlock *BB : ReversePostOrderTraversal<Function *>(Func)) {
-      // FIXME: May need special handling for function exits as well.
-      if (BB != &Func->getEntryBlock())
-        OrderedUnstructuredBlocks.push_back(BB);
+      OrderedUnstructuredBlocks.push_back(BB);
     }
   } else {
     pickBlocksToGuard(OrderedUnstructuredBlocks, UnstructuredEdges);

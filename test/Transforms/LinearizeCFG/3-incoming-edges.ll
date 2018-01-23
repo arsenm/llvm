@@ -5,22 +5,28 @@ define void @incoming_3_edges_no_loop(i32 addrspace(1)* %out, i32 %n, i1 %arg0, 
 ; CHECK-LABEL: @incoming_3_edges_no_loop(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[ENTRY_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
-; CHECK-NEXT:    br i1 [[ARG0:%.*]], label [[MULTI_PRED_GUARD:%.*]], label [[CONTINUE0:%.*]]
+; CHECK-NEXT:    [[ENTRY_SUCC_ID:%.*]] = select i1 [[ARG0:%.*]], i32 3, i32 1
+; CHECK-NEXT:    br label [[CONTINUE0_GUARD:%.*]]
+; CHECK:       continue0.guard:
+; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[ENTRY_SUCC_ID]], 1
+; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[CONTINUE0:%.*]], label [[CONTINUE1_GUARD:%.*]]
 ; CHECK:       continue0:
 ; CHECK-NEXT:    [[CONTINUE0_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
 ; CHECK-NEXT:    [[CONTINUE0_SUCC_ID:%.*]] = select i1 [[ARG1:%.*]], i32 3, i32 2
-; CHECK-NEXT:    br label [[CONTINUE1_GUARD:%.*]]
+; CHECK-NEXT:    br label [[CONTINUE1_GUARD]]
 ; CHECK:       continue1.guard:
-; CHECK-NEXT:    [[PREV_GUARD:%.*]] = icmp eq i32 [[CONTINUE0_SUCC_ID]], 2
-; CHECK-NEXT:    br i1 [[PREV_GUARD]], label [[CONTINUE1:%.*]], label [[MULTI_PRED_GUARD]]
+; CHECK-NEXT:    [[I_PH2:%.*]] = phi i32 [ [[ENTRY_LOAD]], [[CONTINUE0_GUARD]] ], [ [[CONTINUE0_LOAD]], [[CONTINUE0]] ]
+; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ [[ENTRY_SUCC_ID]], [[CONTINUE0_GUARD]] ], [ [[CONTINUE0_SUCC_ID]], [[CONTINUE0]] ]
+; CHECK-NEXT:    [[PREV_GUARD1:%.*]] = icmp eq i32 [[GUARD_VAR]], 2
+; CHECK-NEXT:    br i1 [[PREV_GUARD1]], label [[CONTINUE1:%.*]], label [[MULTI_PRED_GUARD:%.*]]
 ; CHECK:       continue1:
 ; CHECK-NEXT:    [[CONTINUE1_LOAD:%.*]] = load volatile i32, i32 addrspace(1)* null
 ; CHECK-NEXT:    br label [[MULTI_PRED_GUARD]]
 ; CHECK:       multi_pred.guard:
-; CHECK-NEXT:    [[GUARD_VAR:%.*]] = phi i32 [ 3, [[CONTINUE1]] ], [ 1, [[ENTRY:%.*]] ], [ [[CONTINUE0_SUCC_ID]], [[CONTINUE1_GUARD]] ]
-; CHECK-NEXT:    [[I_PH:%.*]] = phi i32 [ [[CONTINUE1_LOAD]], [[CONTINUE1]] ], [ [[ENTRY_LOAD]], [[ENTRY]] ], [ [[CONTINUE0_LOAD]], [[CONTINUE1_GUARD]] ]
-; CHECK-NEXT:    [[PREV_GUARD1:%.*]] = icmp eq i32 [[GUARD_VAR]], 3
-; CHECK-NEXT:    br i1 [[PREV_GUARD1]], label [[MULTI_PRED:%.*]], label [[RETURN_GUARD:%.*]]
+; CHECK-NEXT:    [[GUARD_VAR3:%.*]] = phi i32 [ 3, [[CONTINUE1]] ], [ [[GUARD_VAR]], [[CONTINUE1_GUARD]] ]
+; CHECK-NEXT:    [[I_PH:%.*]] = phi i32 [ [[CONTINUE1_LOAD]], [[CONTINUE1]] ], [ [[I_PH2]], [[CONTINUE1_GUARD]] ]
+; CHECK-NEXT:    [[PREV_GUARD4:%.*]] = icmp eq i32 [[GUARD_VAR3]], 3
+; CHECK-NEXT:    br i1 [[PREV_GUARD4]], label [[MULTI_PRED:%.*]], label [[RETURN_GUARD:%.*]]
 ; CHECK:       multi_pred:
 ; CHECK-NEXT:    [[I:%.*]] = phi i32 [ [[I_PH]], [[MULTI_PRED_GUARD]] ]
 ; CHECK-NEXT:    [[PTR:%.*]] = getelementptr i32, i32 addrspace(1)* [[OUT:%.*]], i32 [[I]]
