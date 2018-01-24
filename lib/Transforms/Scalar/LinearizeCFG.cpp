@@ -352,12 +352,28 @@ public:
 static bool verifyBlockPhis(const BasicBlock *BB) {
   unsigned NumPreds = std::distance(pred_begin(BB), pred_end(BB));
   for (auto &Phi : BB->phis()) {
+
+    for (const BasicBlock *Pred : predecessors(BB)) {
+      if (Phi.getBasicBlockIndex(Pred) == -1) {
+        dbgs() << "Missing predecessor: " << Pred->getName()
+               << " from " << BB->getName() << '\n';
+        return false;
+      }
+    }
+
     if (Phi.getNumIncomingValues() != NumPreds)
       return false;
   }
 
   return true;
 }
+
+static void verifyAllBlockPhis(const Function *F) {
+  for (const BasicBlock &BB : *F) {
+    assert(verifyBlockPhis(&BB));
+  }
+}
+
 
 static bool hasMultipleSuccessors(const BasicBlock *BB) {
   //return !BB->getSingleSuccessor() && !succ_empty(BB);
