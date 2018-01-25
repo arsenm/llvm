@@ -1115,9 +1115,10 @@ void LinearizeCFG::addBrPrevGuardToGuard(
     = Builder.getInt32(getBlockNumber(PrevGuardSucc));
   Value *PrevGuardCond = Builder.CreateICmpEQ(PrevGuardVar,
                                               SuccID, CmpSuffix);
+#if 0
   if (PrevGuardCond == BoolTrue)
     return;
-
+#endif
 #if 0
   // TODO: Should we handle this? It can leave dead blocks around.
   if (PrevGuardCond == BoolFalse) {
@@ -1820,16 +1821,128 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     //assert(Guard && "missing guard block");
 
     DEBUG(dbgs() << "\n\nVisit block: " << BB->getName() << '\n');
-    assert(verifyBlockPhis(Guard));
+    //assert(verifyBlockPhis(Guard));
 
+
+    if (PrevBlock && PrevGuard) {
+
+
+
+    }
+
+
+    if (PrevBlock) {
+      auto *PrevBlockBI = dyn_cast<BranchInst>(PrevBlock->getTerminator());
+      if (PrevBlockBI->isConditional()) {
+        BasicBlock *OtherDest = getOtherDest(PrevBlockBI, Guard);
+
+        Builder.SetInsertPoint(PrevBlock);
+        Builder.CreateBr(Guard);
+        PrevBlockBI->eraseFromParent();
+
+        Value *PrevGuardVar = GuardVarInserter.GetValueInMiddleOfBlock(Guard);
+
+        {
+          BranchInst *GuardBI = cast<BranchInst>(Guard->getTerminator());
+          assert(GuardBI->isUnconditional() && GuardBI->getSuccessor(0) == BB);
+        }
+
+
+        Guard->getTerminator()->eraseFromParent();
+
+        Builder.SetInsertPoint(Guard);
+        ConstantInt *SuccID
+          = Builder.getInt32(getBlockNumber(BB));
+        Value *PrevGuardCond = Builder.CreateICmpEQ(PrevGuardVar,
+                                                    SuccID, "foo");
+
+        Builder.CreateCondBr(PrevGuardCond, BB, OtherDest);
+
+
+        /*
+        DeferredDominance DDT(*DT);
+        RemovePredecessorAndSimplify(BB, Pred, &DDT);
+        DDT.flush();
+        */
+        OtherDest->updatePHIEdges(PrevBlock, Guard);
+
+        DominatorTree::UpdateType Updates[2] = {
+          { DominatorTree::Delete, PrevBlock, OtherDest },
+          { DominatorTree::Insert, Guard, OtherDest }
+        };
+
+        DT->applyUpdates(Updates);
+        DT->verifyDomTree();
+      } else {
+        //llvm_unreachable("prev block uncond");
+        BasicBlock *OldDest = PrevBlockBI->getSuccessor(0);
+        if (OldDest != Guard) {
+
+          PrevBlockBI->setSuccessor(0, Guard);
+          DominatorTree::UpdateType Updates[2] = {
+            { DominatorTree::Delete, PrevBlock, OldDest },
+            { DominatorTree::Insert, PrevBlock, Guard }
+          };
+
+
+          OldDest->updatePHIEdges(PrevBlock, Guard);
+
+          DT->applyUpdates(Updates);
+          DT->verifyDomTree();
+        }
+      }
+
+
+
+    }
 
     // idom->guard already inserted by split
     if (PrevGuard) {
-      addBrPrevGuardToGuard(Builder, PrevGuard, Guard, PrevGuard,
-                            "prev.guard");
+      //addBrPrevGuardToGuard(Builder, PrevGuard, Guard, PrevGuard,
+      //"prev.guard");
+      auto *PrevGuardBI = dyn_cast<BranchInst>(PrevGuard->getTerminator());
+      if (PrevGuardBI->isConditional()) {
+        BasicBlock *OtherDest = getOtherDest(PrevGuardBI, PrevBlock);
+        if (OtherDest != Guard) {
+          PrevGuardBI->replaceUsesOfWith(OtherDest, Guard);
+          //Guard->updatePHIEdges(PrevGuard, Guard);
+          Guard->updatePHIEdges(OtherDest, PrevGuard);
+
+          DominatorTree::UpdateType Updates[2] = {
+            { DominatorTree::Delete, PrevGuard, OtherDest },
+            { DominatorTree::Insert, Guard, OtherDest }
+          };
+
+          DT->applyUpdates(Updates);
+          DT->verifyDomTree();
+        }
+      } else {
+
+        //llvm_unreachable("prev guard unreachable");
+
+        ConstantInt *SuccID
+          = Builder.getInt32(getBlockNumber(PrevBlock));
+
+        Builder.SetInsertPoint(PrevGuard);
+
+
+        Value *PrevGuardVar =
+          GuardVarInserter.GetValueInMiddleOfBlock(PrevGuard);
+        PrevGuardBI->eraseFromParent();
+
+        Value *PrevGuardCond = Builder.CreateICmpEQ(PrevGuardVar,
+                                                    SuccID, "bar");
+        Builder.CreateCondBr(PrevGuardCond, PrevBlock, Guard);
+        DT->insertEdge(PrevGuard, Guard);
+
+
+        // XXXX
+        Guard->updatePHIEdges(PrevBlock, PrevGuard);
+
+      }
     }
 
-    if (PrevBlock) {
+    if (0 && PrevBlock) {
       // prevBlock->guard usually already exists. It won't if an earlier block
       // branched to 2 other instructured blocks (e.g. both sides of a diamond
       // if there was a jump into it).
@@ -1878,15 +1991,16 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     if (Last) {
       // Compared to the pseudo-code in the paper, we pre-created all of the
       // guard blocks, so at this point logically BEGuard is part of the block.
-      addEdge(Builder, BEGuard ? BEGuard : Guard, CIPDom,
-              Guard, "last");
+      //addEdge(Builder, BEGuard ? BEGuard : Guard, CIPDom, Guard, "last");
       DT->verifyDomTree();
     }
 
+#if 0
     //if (PrevBlock) {
       pruneExtraEdge(Builder, OrderedUnstructuredBlocks,
                      Guard, PrevBlock, PrevGuard);
       //}
+#endif
 
     PrevGuard = Guard;
     PrevBlock = BB;
