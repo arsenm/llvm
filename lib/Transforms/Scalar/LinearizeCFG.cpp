@@ -2119,27 +2119,31 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
 
         BranchInst *GuardTerm = cast<BranchInst>(Guard->getTerminator());
-        BasicBlock *OtherGuardDest = getOtherDest(GuardTerm, CurrentBB);
+        if (GuardTerm->isConditional()) {
+          BasicBlock *OtherGuardDest = getOtherDest(GuardTerm, CurrentBB);
+          GuardTerm->replaceUsesOfWith(OtherGuardDest, BEGuard);
 
-        GuardTerm->replaceUsesOfWith(OtherGuardDest, BEGuard);
 
-        BranchInst *BETerm = cast<BranchInst>(BEGuard->getTerminator());
+          BranchInst *BETerm = cast<BranchInst>(BEGuard->getTerminator());
 
-        Builder.SetInsertPoint(BEGuard);
+          Builder.SetInsertPoint(BEGuard);
 
-        ConstantInt *SuccID
-          = Builder.getInt32(getBlockNumber(BackEdgeDest));
+          ConstantInt *SuccID
+            = Builder.getInt32(getBlockNumber(BackEdgeDest));
 
-        Value *PrevGuardVar =
-          GuardVarInserter.GetValueInMiddleOfBlock(CurrentBB);
-        Value *Cond = Builder.CreateICmpEQ(PrevGuardVar,
-                                           SuccID, "jacq");
+          Value *PrevGuardVar =
+            GuardVarInserter.GetValueInMiddleOfBlock(CurrentBB);
+          Value *Cond = Builder.CreateICmpEQ(PrevGuardVar,
+                                             SuccID, "jacq");
 
-        Builder.CreateCondBr(Cond, BackEdgeDest, OtherGuardDest);
-        BETerm->eraseFromParent();
+          Builder.CreateCondBr(Cond, BackEdgeDest, OtherGuardDest);
+          BETerm->eraseFromParent();
 
-        // XXXX PHIS
-        OtherGuardDest->updatePHIEdges(Guard, BEGuard);
+          // XXXX PHIS
+          OtherGuardDest->updatePHIEdges(Guard, BEGuard);
+        } else {
+          llvm_unreachable("todo");
+        }
 
 
         PrevGuard = BEGuard;
