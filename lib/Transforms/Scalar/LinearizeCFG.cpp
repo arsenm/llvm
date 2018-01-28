@@ -1848,7 +1848,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
     if (PrevBlock) {
       auto *PrevBlockBI = dyn_cast<BranchInst>(PrevBlock->getTerminator());
-      if (PrevBlockBI->isConditional()) {
+      if (PrevBlockBI && PrevBlockBI->isConditional()) {
         BasicBlock *OtherDest = getOtherDest(PrevBlockBI, Guard);
 
         Builder.SetInsertPoint(PrevBlock);
@@ -1893,7 +1893,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
         Updates.push_back({ DominatorTree::Insert, Guard, OtherDest });
         */
 
-      } else {
+      } else if (PrevBlockBI) {
         BasicBlock *OldDest = PrevBlockBI->getSuccessor(0);
         if (OldDest != Guard) {
 
@@ -1922,6 +1922,8 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
 
 
+      } else {
+        // XXX - Handle exits?
       }
     }
 
