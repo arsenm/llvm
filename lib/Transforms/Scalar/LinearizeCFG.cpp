@@ -1850,6 +1850,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
       auto *PrevBlockBI = dyn_cast<BranchInst>(PrevBlock->getTerminator());
       if (PrevBlockBI && PrevBlockBI->isConditional()) {
         BasicBlock *OtherDest = getOtherDest(PrevBlockBI, Guard);
+        OtherDest->removePredecessor(PrevBlock);
 
         Builder.SetInsertPoint(PrevBlock);
         Builder.CreateBr(Guard);
@@ -1874,13 +1875,15 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
         Builder.CreateCondBr(PrevGuardCond, CurrentBB, OtherDest);
 
 
+
+
         /*
         DeferredDominance DDT(*DT);
         RemovePredecessorAndSimplify(BB, Pred, &DDT);
         DDT.flush();
         */
-        OtherDest->updatePHIEdges(PrevBlock, Guard);
 
+        OtherDest->updatePHIEdges(PrevBlock, Guard);
 
         DominatorTree::UpdateType Updates[2] = {
           { DominatorTree::Delete, PrevBlock, OtherDest },
@@ -1897,6 +1900,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
         BasicBlock *OldDest = PrevBlockBI->getSuccessor(0);
         if (OldDest != Guard) {
 
+          OldDest->removePredecessor(PrevBlock);
           PrevBlockBI->setSuccessor(0, Guard);
 
           DominatorTree::UpdateType Updates[2] = {
@@ -1991,6 +1995,24 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
         if (PrevBlock) {
 
+          for (PHINode &PN : Guard->phis()) {
+            SSAUpdater SSA;
+
+            SSA.Initialize(PN.getType(), PN.getName());
+
+
+            for (unsigned I = 0, E = PN.getNumIncomingValues(); I != E; ++I) {
+              SSA.AddAvailableValue(PN.getIncomingBlock(I),
+                                    PN.getIncomingValue(I));
+            }
+
+            Value *NewVal = SSA.GetValueInMiddleOfBlock(PrevBlock);
+
+            PN.addIncoming(NewVal, PrevGuard);
+          }
+
+
+
           ConstantInt *SuccID
             = Builder.getInt32(getBlockNumber(PrevBlock));
           Value *PrevGuardVar =
@@ -2007,6 +2029,13 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
           // XXXX
           //Guard->updatePHIEdges(PrevBlock, PrevGuard);
+
+          //Guard->duplicatePHIEdges(PrevBlock, PrevGuard);
+
+
+
+
+
         } else {
 
 
