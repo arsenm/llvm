@@ -1706,14 +1706,22 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
 
     assert(PDT->verify());
+    // TODO: Assert new return block is the cipdom
+    CIPDom = findCIPDOM(NewOrder);
+
+    // FIXME: SplitBlock update PDT
 
 
     OrderedUnstructuredBlocks = NewOrder;
 
-    // TODO: Assert new return block is the cipdom
-    CIPDom = findCIPDOM(NewOrder);
     assert(CIPDom && "still failed to find cipdom");
+  } else {
+    for (BasicBlock *BB : OrderedUnstructuredBlocks)
+      NewOrder.push_back(BB);
+
+    OrderedUnstructuredBlocks = NewOrder;
   }
+
 
   numberBlocks();
 
@@ -1806,14 +1814,14 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     return I->second;
   };
 
-  //rebuildSSA(); // XXX Is this necessary here
 
+  //rebuildSSA(); // XXX Is this necessary here
   BasicBlock *PrevGuard = nullptr;
   BasicBlock *PrevBlock = nullptr;
 
   // FIXME: There's no real reason these need to be separate loops.
-  for (auto I = OrderedUnstructuredBlocks.begin(), E = OrderedUnstructuredBlocks.end();
-       I != E;) {
+  for (auto I = NewOrder.begin(), E = NewOrder.end();
+       I != NewOrder.end();) {
     //DT->verifyDomTree();
     //BasicBlock *BB = *I;
     BasicBlock *CurrentBB = *I;
@@ -1828,12 +1836,15 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
     bool Last = I == E;
     BasicBlock *Guard = getGuardBlock(CurrentBB);
-    unsigned BBRPONum = RPONumbers[CurrentBB];
+    unsigned BBRPONum = GetRPONumber(CurrentBB);
 
-    //assert(Guard && "missing guard block");
+    assert(Guard && "missing guard block");
 
     DEBUG(dbgs() << "\n\nVisit block: " << CurrentBB->getName() << '\n');
     //assert(verifyBlockPhis(Guard));
+
+    BasicBlock *NextPrevBlock = CurrentBB;
+    BasicBlock *NextPrevGuard = Guard;
 
 
     SmallVector<DominatorTree::UpdateType, 4> Updates;
@@ -1853,9 +1864,132 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
     if (PrevBlock) {
       auto *PrevBlockBI = dyn_cast<BranchInst>(PrevBlock->getTerminator());
-      if (PrevBlockBI && PrevBlockBI->isConditional()) {
+
+      // If this guard/block isn't naturally a successor of the previous block,
+      // it's a bit trickier to thread the edges.
+      if (0 && PrevBlockBI && PrevBlockBI->isConditional() &&
+          !isSuccessor(PrevBlock, Guard)) {
+        //dbgs() << "Dumb case happened\n";
+        llvm_unreachable("ugh");
+
+        //BasicBlock *SplitBB = SplitEdge(PrevBlock, PrevBlockBI->getSuccessor(1));
+        //BasicBlock *PrevSucc0 = PrevBlockBI->getSuccessor(0);
+        //BasicBlock *PrevSucc1 = PrevBlockBI->getSuccessor(1);
+        //unsigned SuccRPO = GetRPONumber(PrevSucc0);
+
+        assert(!Last);
+
+        BasicBlock *NextBB = *I;
+        assert(NextBB != CurrentBB);
+        BasicBlock *NextGuard = getGuardBlock(NextBB);
+        assert(NextGuard && "next block is not guarded");
+
+
+        // XXX - Is this guaranteed to happen?
+        assert(isSuccessor(PrevBlock, NextGuard));
+
+        BasicBlock *XXX = getOtherDest(PrevBlockBI, NextGuard);
+
+
+
+        BasicBlock *SplitBB = NextGuard;
+
+
+
+
+        PrevBlockBI->replaceUsesOfWith(SplitBB, Guard);
+
+        //SplitBB->updatePHIEdges();
+
+        // Add edge Guard->Split
+        addBrPrevGuardToGuard(Builder, Guard, SplitBB,
+                              Guard, "arstarst");
+
+        // Add edge CurrentBB->Split
+        addBrPrevGuardToGuard(Builder, CurrentBB, SplitBB,
+                              CurrentBB, "arstarst");
+
+        SplitBB->updatePHIEdges(PrevBlock, Guard);
+
+        //PrevSucc1->updatePHIEdges(PrevBlock, Guard);
+        //PrevSucc1->removePredecessor(PrevBlock);
+
+        Builder.SetInsertPoint(PrevBlock);
+        Builder.CreateBr(Guard);
+        PrevBlockBI->eraseFromParent();
+
+
+
+        //addBrPrevGuardToGuard(Builder, SplitBB, PrevSucc1,
+                              //SplitBB, "splitarst");
+
+        //auto *CurrentBI = cast<BranchInst>(CurrentBI->getTerminator());
+        //assert(CurrentBI->isUnconditional());
+        //CurrentBI->setSuccessor(0, SplitBB);
+
+
+        //NewOrder.insert(I, SplitBB);
+        //assert(*I == SplitBB);
+
+
+        //BasicBlock *SplitBB = SplitBlock(PrevBlock,
+        //PrevBlock->getTerminator(),
+        //nullptr/* TODO */);
+        //BlockNumbers[SplitBB] = getBlockNumber(PrevBlock);
+        //NextPrevBlock = SplitBB;
+        //PrevBlock = SplitBB;
+        //auto *SplitBI = cast<BranchInst>(SplitBB->getTerminator());
+
+        // Link to this guard.
+        //PrevBlockBI->replaceUsesOfWith(SplitBB, Guard);
+
+        // Guard: Add edge to SplitBB
+        // Guard: br CurrentBB, SplitBB
+        //addBrPrevGuardToGuard(Builder, Guard, SplitBB,
+        //PrevBlock, "arstarst");
+
+
+
+        // Change SplitBB condition
+        /*
+        Builder.SetInsertPoint(SplitBI);
+
+        Value *GuardVar = GuardVarInserter.GetValueInMiddleOfBlock(SplitBB);
+
+        ConstantInt *SuccID
+          = Builder.getInt32(getBlockNumber(SplitBI->getSuccessor(0)));
+        Value *NewSplitCond = Builder.CreateICmpEQ(GuardVar,
+                                                   SuccID, "split.cond");
+        SplitBI->setCondition(NewSplitCond);
+        */
+
+        // Redirect current block to split
+        //BranchInst *CurrentBI = cast<BranchInst>(CurrentBB->getTerminator());
+        //assert(CurrentBI->isUnconditional());
+        //CurrentBI->getSuccessor(0)->removePredecessor(CurrentBB);
+        //CurrentBI->setSuccessor(0, SplitBB);
+
+
+        //NextPrevGuard = SplitBB;
+        ///PrevGuard = SplitBB;
+        //PrevBlock = SplitBB;
+        //--I;
+        //continue;
+      } else if (PrevBlockBI && PrevBlockBI->isConditional()) {
+
+#if 0
+        BasicBlock *SplitBB = SplitBlock(PrevBlock,
+                                         PrevBlock->getTerminator(),
+                                         nullptr/* TODO */);
+        BlockNumbers[SplitBB] = getBlockNumber(PrevBlock);
+        NextPrevBlock = SplitBB;
+#endif
+
+
+
         BasicBlock *OtherDest = getOtherDest(PrevBlockBI, Guard);
         OtherDest->removePredecessor(PrevBlock);
+        //OtherDest->removePredecessor(SplitBB);
 
         Builder.SetInsertPoint(PrevBlock);
         Builder.CreateBr(Guard);
@@ -1894,7 +2028,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
           { DominatorTree::Delete, PrevBlock, OtherDest },
           { DominatorTree::Insert, Guard, OtherDest }
         };
-        DT->applyUpdates(Updates);
+        //DT->applyUpdates(Updates);
 
         /*
         Updates.push_back({ DominatorTree::Delete, PrevBlock, OtherDest });
@@ -1903,6 +2037,8 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
       } else if (PrevBlockBI) {
         BasicBlock *OldDest = PrevBlockBI->getSuccessor(0);
+
+
         if (OldDest != Guard) {
 
           OldDest->removePredecessor(PrevBlock);
@@ -1949,6 +2085,10 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
           // XXX - assert X is backedge
           BasicBlock *X = PrevGuardBI->getSuccessor(0);
           OtherDest = getOtherDest(PrevGuardBI, X);
+          if (OtherDest == X) {
+
+          }
+
         }
 
 
@@ -2094,9 +2234,10 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
     }
 #endif
 
-    PrevGuard = Guard;
+    PrevGuard = NextPrevGuard;
     //PrevBlock = BB;
-    PrevBlock = CurrentBB;
+    //PrevBlock = CurrentBB;
+    PrevBlock = NextPrevBlock;
 
     /*
     if (BEGuard) {
@@ -2497,7 +2638,6 @@ bool LinearizeCFG::runOnFunction(Function &F) {
       }
       );
   }
-
 
 
   // TODO: Identify structured subregions
