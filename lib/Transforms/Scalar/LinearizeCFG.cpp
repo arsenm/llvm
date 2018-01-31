@@ -2146,7 +2146,42 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
           // XXXX PHIS
           OtherGuardDest->updatePHIEdges(Guard, BEGuard);
         } else {
-          llvm_unreachable("todo");
+          //llvm_unreachable("todo");
+
+          addBrPrevGuardToGuard(Builder, Guard, BEGuard, Guard, "be.guard");
+
+          BranchInst *CurrBlockBI = cast<BranchInst>(CurrentBB->getTerminator());
+          if (CurrBlockBI->isConditional()) {
+            BasicBlock *OtherBlockDest = getOtherDest(CurrBlockBI, BEGuard);
+
+            BranchInst *BEBI = cast<BranchInst>(BEGuard->getTerminator());
+            assert(BEBI->isUnconditional());
+            Builder.SetInsertPoint(BEGuard);
+
+            ConstantInt *SuccID
+              = Builder.getInt32(getBlockNumber(BackEdgeDest));
+
+            Value *PrevGuardVar =
+              GuardVarInserter.GetValueInMiddleOfBlock(BEGuard);
+            Value *Cond = Builder.CreateICmpEQ(PrevGuardVar,
+                                               SuccID, "wowwoo");
+
+            Builder.CreateCondBr(Cond, BackEdgeDest, OtherBlockDest);
+
+            Builder.SetInsertPoint(CurrBlockBI);
+            Builder.CreateBr(BEGuard);
+
+            BEBI->eraseFromParent();
+            CurrBlockBI->eraseFromParent();
+
+
+
+            // XXXX PHIS
+            OtherBlockDest->updatePHIEdges(CurrentBB, BEGuard);
+          }
+
+
+
         }
 
 
