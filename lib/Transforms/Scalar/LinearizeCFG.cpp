@@ -2045,8 +2045,12 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
           ConstantInt *SuccID
             = Builder.getInt32(getBlockNumber(Succ));
 
+          BasicBlock *SinglePrevGuardPred = PrevGuard->getSinglePredecessor();
+
+          assert(SinglePrevGuardPred);
+
           Value *PrevGuardVar =
-            GuardVarInserter.GetValueInMiddleOfBlock(PrevGuard->getSinglePredecessor());
+            GuardVarInserter.GetValueInMiddleOfBlock(SinglePrevGuardPred);
           PrevGuardBI->eraseFromParent();
 
           Value *PrevGuardCond = Builder.CreateICmpEQ(PrevGuardVar,
