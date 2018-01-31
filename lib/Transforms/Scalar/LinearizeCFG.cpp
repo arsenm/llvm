@@ -2463,6 +2463,10 @@ bool LinearizeCFG::runOnFunction(Function &F) {
 
   SmallVector<BasicBlock *, 8> OrderedUnstructuredBlocks;
 
+  // FIXME: PDT update
+  CriticalEdgeSplittingOptions CESO(DT);
+  SplitAllCriticalEdges(*Func, CESO);
+
   //DenseSet<BasicBlock *> UnstructuredBlocks;
   //SetVector<BasicBlock *> UnstructuredBlocks;
   if (LinearizeWholeFunction) {
