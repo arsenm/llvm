@@ -1800,6 +1800,11 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
   // cases we will end up treating the entry block as a trivially guarded block.
   GuardVarInserter.AddAvailableValue(getGuardBlock(CIDom), InitialBlockNumber);
 
+  auto GetRPONumber = [&RPONumbers](const BasicBlock *BB) {
+    auto I = RPONumbers.find(BB);
+    assert(I != RPONumbers.end());
+    return I->second;
+  };
 
   //rebuildSSA(); // XXX Is this necessary here
 
@@ -2107,7 +2112,7 @@ void LinearizeCFG::linearizeBlocks(ArrayRef<BasicBlock *> OrderedUnstructuredBlo
 
     //unsigned BBRPONum = RPONumbers[BB];
     for (BasicBlock *Succ : successors(BB)) {
-      unsigned SuccRPO = RPONumbers[Succ];
+      unsigned SuccRPO = GetRPONumber(Succ);
       if (SuccRPO <= BBRPONum) {
         BasicBlock *BackEdgeDest = Succ;
 
