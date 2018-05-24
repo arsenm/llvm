@@ -39,19 +39,9 @@ define amdgpu_kernel void @s_fabs_f16(half addrspace(1)* %out, half %in) {
   ret void
 }
 
-; FIXME: Should be able to use single and
 ; GCN-LABEL: {{^}}s_fabs_v2f16:
-; CI-DAG: flat_load_ushort [[VAL_HI:v[0-9]+]]
-; CI-DAG: s_load_dword [[VAL_LO:s[0-9]+]]
-; CI-DAG: s_movk_i32 [[MASK:s[0-9]+]], 0x7fff
-
-; CI-DAG: v_and_b32_e32 [[AND_HI:v[0-9]+]], [[MASK]], [[VAL_HI]]
-; CI-DAG: s_and_b32 [[AND_LO:s[0-9]+]], [[VAL_LO]], [[MASK]]
-; CI-DAG: v_lshlrev_b32_e32 [[SHIFT:v[0-9]+]], 16, [[AND_HI]]
-; CI: v_or_b32_e32 v{{[0-9]+}}, [[AND_LO]], [[SHIFT]]
-
-; GFX89: s_load_dword [[VAL:s[0-9]+]]
-; GFX89: s_and_b32 s{{[0-9]+}}, [[VAL]], 0x7fff7fff
+; GCN: s_load_dword [[VAL:s[0-9]+]]
+; GCN: s_and_b32 s{{[0-9]+}}, [[VAL]], 0x7fff7fff
 define amdgpu_kernel void @s_fabs_v2f16(<2 x half> addrspace(1)* %out, <2 x half> %in) {
   %fabs = call <2 x half> @llvm.fabs.v2f16(<2 x half> %in)
   store <2 x half> %fabs, <2 x half> addrspace(1)* %out
@@ -59,18 +49,11 @@ define amdgpu_kernel void @s_fabs_v2f16(<2 x half> addrspace(1)* %out, <2 x half
 }
 
 ; GCN-LABEL: {{^}}s_fabs_v4f16:
-; CI: s_movk_i32 [[MASK:s[0-9]+]], 0x7fff
-; CI: s_and_b32 s{{[0-9]+}}, s{{[0-9]+}}, [[MASK]]
-; CI: s_and_b32 s{{[0-9]+}}, s{{[0-9]+}}, [[MASK]]
-; CI: v_and_b32_e32 v{{[0-9]+}}, [[MASK]]
-; CI: v_and_b32_e32 v{{[0-9]+}}, [[MASK]]
-
-
-; GFX89: s_load_dword s
-; GFX89: s_load_dword s
-; GFX89: s_mov_b32 [[MASK:s[0-9]+]], 0x7fff7fff
-; GFX89: s_and_b32 s{{[0-9]+}}, s{{[0-9]+}}, [[MASK]]
-; GFX89: s_and_b32 s{{[0-9]+}}, s{{[0-9]+}}, [[MASK]]
+; GCN: s_load_dwordx2 s
+; GCN: s_load_dwordx2 s
+; GCN: s_mov_b32 [[MASK:s[0-9]+]], 0x7fff7fff
+; GCN: s_and_b32 s{{[0-9]+}}, s{{[0-9]+}}, [[MASK]]
+; GCN: s_and_b32 s{{[0-9]+}}, s{{[0-9]+}}, [[MASK]]
 
 ; GCN: {{flat|global}}_store_dwordx2
 define amdgpu_kernel void @s_fabs_v4f16(<4 x half> addrspace(1)* %out, <4 x half> %in) {
@@ -80,8 +63,8 @@ define amdgpu_kernel void @s_fabs_v4f16(<4 x half> addrspace(1)* %out, <4 x half
 }
 
 ; GCN-LABEL: {{^}}fabs_fold_f16:
-; GCN-DAG: s_load_dword [[IN0:s[0-9]+]]
-; GCN-DAG: {{flat|global}}_load_ushort [[IN1:v[0-9]+]]
+; GCN: s_load_dword [[IN0:s[0-9]+]]
+; GCN: s_lshr_b32 [[IN1:s[0-9]+]], [[IN0]], 16
 
 ; CI-DAG: v_cvt_f32_f16_e64 [[CVT0:v[0-9]+]], |[[IN0]]|
 ; CI-DAG: v_cvt_f32_f16_e32 [[ABS_CVT1:v[0-9]+]], [[IN1]]
@@ -90,7 +73,8 @@ define amdgpu_kernel void @s_fabs_v4f16(<4 x half> addrspace(1)* %out, <4 x half
 ; CI: flat_store_short v{{\[[0-9]+:[0-9]+\]}}, [[CVTRESULT]]
 
 ; GFX89-NOT: and
-; GFX89: v_mul_f16_e64 [[RESULT:v[0-9]+]], |[[IN0]]|, [[IN1]]
+; GFX89: v_mov_b32_e32 [[V_IN1:v[0-9]+]], [[IN1]]
+; GFX89: v_mul_f16_e64 [[RESULT:v[0-9]+]], |[[IN0]]|, [[V_IN1]]
 ; GFX89: {{flat|global}}_store_short v{{\[[0-9]+:[0-9]+\]}}, [[RESULT]]
 define amdgpu_kernel void @fabs_fold_f16(half addrspace(1)* %out, half %in0, half %in1) {
   %fabs = call half @llvm.fabs.f16(half %in0)

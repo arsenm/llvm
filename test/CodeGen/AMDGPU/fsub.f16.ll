@@ -17,8 +17,8 @@ define amdgpu_kernel void @fsub_f16(
     half addrspace(1)* %a,
     half addrspace(1)* %b) {
 entry:
-  %a.val = load half, half addrspace(1)* %a
-  %b.val = load half, half addrspace(1)* %b
+  %a.val = load volatile half, half addrspace(1)* %a
+  %b.val = load volatile half, half addrspace(1)* %b
   %r.val = fsub half %a.val, %b.val
   store half %r.val, half addrspace(1)* %r
   ret void
@@ -36,7 +36,7 @@ define amdgpu_kernel void @fsub_f16_imm_a(
     half addrspace(1)* %r,
     half addrspace(1)* %b) {
 entry:
-  %b.val = load half, half addrspace(1)* %b
+  %b.val = load volatile half, half addrspace(1)* %b
   %r.val = fsub half 1.0, %b.val
   store half %r.val, half addrspace(1)* %r
   ret void
@@ -54,7 +54,7 @@ define amdgpu_kernel void @fsub_f16_imm_b(
     half addrspace(1)* %r,
     half addrspace(1)* %a) {
 entry:
-  %a.val = load half, half addrspace(1)* %a
+  %a.val = load volatile half, half addrspace(1)* %a
   %r.val = fsub half %a.val, 2.0
   store half %r.val, half addrspace(1)* %r
   ret void

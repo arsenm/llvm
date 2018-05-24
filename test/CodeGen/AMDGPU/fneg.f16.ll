@@ -64,17 +64,10 @@ define amdgpu_kernel void @v_fneg_fold_f16(half addrspace(1)* %out, half addrspa
   ret void
 }
 
-; FIXME: Terrible code with SI/CI.
 ; FIXME: scalar for VI, vector for gfx9
 ; GCN-LABEL: {{^}}s_fneg_v2f16:
-; CI: s_mov_b32 [[MASK:s[0-9]+]], 0x8000{{$}}
-; CI-DAG: v_xor_b32_e32 v{{[0-9]+}}, [[MASK]], v{{[0-9]+}}
-; CI-DAG: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
-; CI-DAG: v_xor_b32_e32 v{{[0-9]+}}, [[MASK]], v{{[0-9]+}}
-; CI: v_or_b32_e32
-
+; CI: s_xor_b32 s{{[0-9]+}}, s{{[0-9]+}}, 0x80008000
 ; VI: s_xor_b32 s{{[0-9]+}}, s{{[0-9]+}}, 0x80008000
-
 ; GFX9: v_xor_b32_e32 v{{[0-9]+}}, 0x80008000, v{{[0-9]+}}
 define amdgpu_kernel void @s_fneg_v2f16(<2 x half> addrspace(1)* %out, <2 x half> %in) #0 {
   %fneg = fsub <2 x half> <half -0.0, half -0.0>, %in
