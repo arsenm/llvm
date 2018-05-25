@@ -202,8 +202,8 @@ define amdgpu_kernel void @dynamic_insertelement_v3i16(<3 x i16> addrspace(1)* %
 }
 
 ; GCN-LABEL: {{^}}dynamic_insertelement_v2i8:
-; GCN: buffer_load_ubyte v{{[0-9]+}}, off
-; GCN: buffer_load_ubyte v{{[0-9]+}}, off
+; GCN: s_load_dword s
+; GCN: s_load_dword s
 
 ; GCN-DAG: buffer_store_byte v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:5
 ; GCN-DAG: buffer_store_byte v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:4
@@ -224,7 +224,8 @@ define amdgpu_kernel void @dynamic_insertelement_v2i8(<2 x i8> addrspace(1)* %ou
 ; GCN-LABEL: {{^}}dynamic_insertelement_v3i8:
 ; GCN: buffer_load_ubyte v{{[0-9]+}}, off
 ; GCN: buffer_load_ubyte v{{[0-9]+}}, off
-; GCN: buffer_load_ubyte v{{[0-9]+}}, off
+; GCN: s_load_dword s
+; GCN: s_load_dword s
 
 ; GCN-DAG: buffer_store_byte v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:4
 ; GCN-DAG: buffer_store_byte v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:5
@@ -248,7 +249,8 @@ define amdgpu_kernel void @dynamic_insertelement_v3i8(<3 x i8> addrspace(1)* %ou
 ; GCN: buffer_load_ubyte v{{[0-9]+}}, off
 ; GCN: buffer_load_ubyte v{{[0-9]+}}, off
 ; GCN: buffer_load_ubyte v{{[0-9]+}}, off
-; GCN: buffer_load_ubyte v{{[0-9]+}}, off
+; GCN: s_load_dword s
+; GCN: s_load_dword s
 
 ; GCN-DAG: buffer_store_byte v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:7
 ; GCN-DAG: buffer_store_byte v{{[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:6

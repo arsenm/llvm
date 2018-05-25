@@ -17,8 +17,16 @@
 ; SI: s_and_B32
 ; SI: s_or_b32
 
-; CI-DAG: v_lshlrev_b32_e32
-; CI-DAG: v_and_b32_e32 v{{[0-9]+}}, 0xffff, v{{[0-9]+}}
+; CI: buffer_load_ushort
+; CI: buffer_load_ushort
+; CI: s_load_dword s
+; CI: s_load_dword s
+
+; CI-DAG: s_mov_b32 [[MASK:s[0-9]+]], 0xffff{{$}}
+; CI-DAG: s_lshl_b32
+; CI-DAG: s_and_b32 s{{[0-9]+}}, s{{[0-9]+}}, [[MASK]]
+; CI: s_and_b32 s{{[0-9]+}}, s{{[0-9]+}}, [[MASK]]
+
 ; CI-DAG: v_lshlrev_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
 ; CI-DAG: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
 ; CI: v_or_b32_e32

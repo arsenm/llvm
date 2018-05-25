@@ -1,5 +1,5 @@
-; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -check-prefix=SI -check-prefix=FUNC %s
-; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -check-prefix=SI -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefix=SI -check-prefix=FUNC %s
+; RUN: llc -march=amdgcn -mcpu=tonga -mattr=-flat-for-global -verify-machineinstrs < %s | FileCheck -enable-var-scope -check-prefix=SI -check-prefix=FUNC %s
 
 ; FIXME: This should go in existing select.ll test, except the current testcase there is broken on SI
 
@@ -14,10 +14,11 @@ define amdgpu_kernel void @select_i1(i1 addrspace(1)* %out, i32 %cond, i1 %a, i1
 }
 
 ; FUNC-LABEL: {{^}}s_minmax_i1:
-; SI-DAG: buffer_load_ubyte [[COND:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, 0 offset:44
+; SI-DAG: s_load_dword [[COND:s[0-9]+]],
+; SI-DAG: s_and_b32 [[COND_TRUNC:s[0-9]+]], 1, [[COND]]
 ; SI-DAG: buffer_load_ubyte [[A:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, 0 offset:45
 ; SI-DAG: buffer_load_ubyte [[B:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, 0 offset:46
-; SI: v_cmp_eq_u32_e32 vcc, 1, [[COND]]
+; SI: v_cmp_eq_u32_e64 vcc, [[COND_TRUNC]], 1
 ; SI: v_cndmask_b32_e32 v{{[0-9]+}}, [[B]], [[A]]
 define amdgpu_kernel void @s_minmax_i1(i1 addrspace(1)* %out, i1 zeroext %cond, i1 zeroext %a, i1 zeroext %b) nounwind {
   %cmp = icmp slt i1 %cond, false

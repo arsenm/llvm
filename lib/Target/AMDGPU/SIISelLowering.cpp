@@ -5245,6 +5245,95 @@ SDValue SITargetLowering::LowerINTRINSIC_VOID(SDValue Op,
   }
 }
 
+static SDValue getLoadExtOrTrunc(SelectionDAG &DAG,
+                                 ISD::LoadExtType ExtType, SDValue Op,
+                                 const SDLoc &SL, EVT VT) {
+  if (VT.bitsLT(Op.getValueType()))
+    return DAG.getNode(ISD::TRUNCATE, SL, VT, Op);
+
+  switch (ExtType) {
+  case ISD::SEXTLOAD:
+    return DAG.getNode(ISD::SIGN_EXTEND, SL, VT, Op);
+  case ISD::ZEXTLOAD:
+    return DAG.getNode(ISD::ZERO_EXTEND, SL, VT, Op);
+  case ISD::EXTLOAD:
+    return DAG.getNode(ISD::ANY_EXTEND, SL, VT, Op);
+  case ISD::NON_EXTLOAD:
+    return Op;
+  }
+
+  llvm_unreachable("invalid ext type");
+}
+
+SDValue SITargetLowering::widenLoad(LoadSDNode *Ld, DAGCombinerInfo &DCI) const {
+  SelectionDAG &DAG = DCI.DAG;
+  if (Ld->getAlignment() < 4 || Ld->isDivergent())
+    return SDValue();
+
+  // FIXME: Constant loads should all be marked invariant.
+  unsigned AS = Ld->getAddressSpace();
+  if (AS != AMDGPUASI.CONSTANT_ADDRESS &&
+      AS != AMDGPUASI.CONSTANT_ADDRESS_32BIT &&
+      (AS != AMDGPUAS::GLOBAL_ADDRESS || !Ld->isInvariant()))
+    return SDValue();
+
+  // Don't do this early, since it may interfere with adjacent load merging for
+  // illegal types. We can avoid losing alignment information for exotic types
+  // pre-legalize.
+  EVT MemVT = Ld->getMemoryVT();
+  if ((MemVT.isSimple() && !DCI.isAfterLegalizeDAG()) ||
+      MemVT.getSizeInBits() >= 32)
+    return SDValue();
+
+  SDLoc SL(Ld);
+
+  assert((!MemVT.isVector() || Ld->getExtensionType() == ISD::NON_EXTLOAD) &&
+         "unexpected vector extload");
+
+  SDValue Ptr = Ld->getBasePtr();
+  SDValue NewLoad = DAG.getLoad(ISD::UNINDEXED, ISD::NON_EXTLOAD,
+                                MVT::i32, SL, Ld->getChain(), Ptr,
+                                DAG.getUNDEF(Ptr.getValueType()),
+                                Ld->getPointerInfo(), MVT::i32,
+                                Ld->getAlignment(),
+                                Ld->getMemOperand()->getFlags(),
+                                Ld->getAAInfo(),
+                                Ld->getRanges());
+
+  EVT TruncVT = EVT::getIntegerVT(*DAG.getContext(), MemVT.getSizeInBits());
+  if (MemVT.isFloatingPoint()) {
+    assert(Ld->getExtensionType() == ISD::NON_EXTLOAD &&
+           "unexpected fp extload");
+    TruncVT = MemVT.changeTypeToInteger();
+  }
+
+  SDValue Cvt = NewLoad;
+  if (Ld->getExtensionType() == ISD::SEXTLOAD) {
+    Cvt = DAG.getNode(ISD::SIGN_EXTEND_INREG, SL, MVT::i32, NewLoad,
+                      DAG.getValueType(TruncVT));
+  } else if (Ld->getExtensionType() == ISD::ZEXTLOAD ||
+             Ld->getExtensionType() == ISD::NON_EXTLOAD) {
+    Cvt = DAG.getZeroExtendInReg(NewLoad, SL, TruncVT);
+  } else {
+    assert(Ld->getExtensionType() == ISD::EXTLOAD);
+  }
+
+  EVT VT = Ld->getValueType(0);
+  EVT IntVT = EVT::getIntegerVT(*DAG.getContext(), VT.getSizeInBits());
+
+  DCI.AddToWorklist(Cvt.getNode());
+
+  // We may need to handle exotic cases, such as i16->i64 extloads, so insert
+  // the appropriate extension from the 32-bit load.
+  Cvt = getLoadExtOrTrunc(DAG, Ld->getExtensionType(), Cvt, SL, IntVT);
+  DCI.AddToWorklist(Cvt.getNode());
+
+  // Handle conversion back to floating point if necessary.
+  Cvt = DAG.getNode(ISD::BITCAST, SL, VT, Cvt);
+
+  return DAG.getMergeValues({ Cvt, NewLoad.getValue(1) }, SL);
+}
+
 SDValue SITargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   LoadSDNode *Load = cast<LoadSDNode>(Op);
@@ -7145,7 +7234,11 @@ SDValue SITargetLowering::PerformDAGCombine(SDNode *N,
       return performMinMaxCombine(N, DCI);
     break;
   }
-  case ISD::LOAD:
+  case ISD::LOAD: {
+    if (SDValue Widended = widenLoad(cast<LoadSDNode>(N), DCI))
+      return Widended;
+    LLVM_FALLTHROUGH;
+  }
   case ISD::STORE:
   case ISD::ATOMIC_LOAD:
   case ISD::ATOMIC_STORE:

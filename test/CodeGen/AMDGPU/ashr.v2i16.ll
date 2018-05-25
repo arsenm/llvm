@@ -20,8 +20,14 @@
 ; VI: s_and_b32
 ; VI: s_or_b32
 
-; CI-DAG: v_ashrrev_i32_e32
-; CI-DAG: v_and_b32_e32 v{{[0-9]+}}, 0xffff, v{{[0-9]+}}
+; CI: buffer_load_sshort
+; CI: buffer_load_ushort
+; CI: s_load_dword s
+; CI: s_load_dword s
+; CI: s_sext_i32_i16
+; CI: s_and_b32
+; CI: s_ashr_i32
+; CI: s_and_b32
 ; CI-DAG: v_ashrrev_i32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
 ; CI-DAG: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
 ; CI: v_or_b32_e32

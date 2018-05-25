@@ -28,13 +28,17 @@ define amdgpu_kernel void @v_fneg_f16(half addrspace(1)* %out, half addrspace(1)
   ret void
 }
 
-; GCN-LABEL: {{^}}fneg_free_f16:
-; GCN: {{flat|global}}_load_ushort [[NEG_VALUE:v[0-9]+]],
+; GCN-LABEL: {{^}}s_fneg_free_f16:
+; GCN: s_load_dword [[NEG_VALUE:s[0-9]+]],
 
-; XCI: s_xor_b32 [[XOR:s[0-9]+]], [[NEG_VALUE]], 0x8000{{$}}
-; CI: v_xor_b32_e32 [[XOR:v[0-9]+]], 0x8000, [[NEG_VALUE]]
-; CI: flat_store_short v{{\[[0-9]+:[0-9]+\]}}, [[XOR]]
-define amdgpu_kernel void @fneg_free_f16(half addrspace(1)* %out, i16 %in) #0 {
+; CI: s_xor_b32 [[XOR:s[0-9]+]], [[NEG_VALUE]], 0x8000{{$}}
+; CI: v_mov_b32_e32 [[V_XOR:v[0-9]+]], [[XOR]]
+; CI: flat_store_short v{{\[[0-9]+:[0-9]+\]}}, [[V_XOR]]
+
+; GFX89: v_mov_b32_e32 [[MASK:v[0-9]+]], 0x8000
+; GFX89: v_xor_b32_e32 [[XOR:v[0-9]+]], [[NEG_VALUE]], [[MASK]]
+; GFX89: {{flat|global}}_store_short v{{\[[0-9]+:[0-9]+\]}}, [[XOR]]
+define amdgpu_kernel void @s_fneg_free_f16(half addrspace(1)* %out, i16 %in) #0 {
   %bc = bitcast i16 %in to half
   %fsub = fsub half -0.0, %bc
   store half %fsub, half addrspace(1)* %out
@@ -64,9 +68,9 @@ define amdgpu_kernel void @v_fneg_fold_f16(half addrspace(1)* %out, half addrspa
 ; FIXME: scalar for VI, vector for gfx9
 ; GCN-LABEL: {{^}}s_fneg_v2f16:
 ; CI: s_mov_b32 [[MASK:s[0-9]+]], 0x8000{{$}}
-; CI: v_xor_b32_e32 v{{[0-9]+}}, [[MASK]], v{{[0-9]+}}
-; CI: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
-; CI: v_xor_b32_e32 v{{[0-9]+}}, [[MASK]], v{{[0-9]+}}
+; CI-DAG: v_xor_b32_e32 v{{[0-9]+}}, [[MASK]], v{{[0-9]+}}
+; CI-DAG: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
+; CI-DAG: v_xor_b32_e32 v{{[0-9]+}}, [[MASK]], v{{[0-9]+}}
 ; CI: v_or_b32_e32
 
 ; VI: s_xor_b32 s{{[0-9]+}}, s{{[0-9]+}}, 0x80008000

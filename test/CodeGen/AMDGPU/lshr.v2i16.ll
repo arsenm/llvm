@@ -20,7 +20,7 @@
 
 ; CI: v_lshrrev_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
 ; CI-DAG: v_lshlrev_b32_e32 v{{[0-9]+}}, 16, v{{[0-9]+}}
-; CI-DAG: v_bfe_u32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}, 16
+; CI-DAG: v_bfe_u32 v{{[0-9]+}}, s{{[0-9]+}}, v{{[0-9]+}}, 16
 ; CI:     v_or_b32_e32 v{{[0-9]+}}, v{{[0-9]+}}, v{{[0-9]+}}
 define amdgpu_kernel void @s_lshr_v2i16(<2 x i16> addrspace(1)* %out, <2 x i16> %lhs, <2 x i16> %rhs) #0 {
   %result = lshr <2 x i16> %lhs, %rhs

@@ -76,21 +76,31 @@ define amdgpu_kernel void @s_test_imin_sle_i8(i8 addrspace(1)* %out, i8 %a, i8 %
 ; extloads with mubuf instructions.
 
 ; FUNC-LABEL: {{^}}s_test_imin_sle_v4i8:
-; GCN: buffer_load_sbyte
-; GCN: buffer_load_sbyte
-; GCN: buffer_load_sbyte
-; GCN: buffer_load_sbyte
-; GCN: buffer_load_sbyte
-; GCN: buffer_load_sbyte
-; GCN: buffer_load_sbyte
-; GCN: buffer_load_sbyte
+; SI: s_load_dword s
+; SI: s_load_dword s
+; SI: buffer_load_sbyte
+; SI: buffer_load_sbyte
+; SI: buffer_load_sbyte
+; SI: buffer_load_sbyte
+; SI: buffer_load_sbyte
+; SI: buffer_load_sbyte
+
+
+; GFX89: buffer_load_sbyte
+; GFX89: buffer_load_sbyte
+; GFX89: buffer_load_sbyte
+; GFX89: buffer_load_sbyte
+; GFX89: buffer_load_sbyte
+; GFX89: buffer_load_sbyte
+; GFX89: s_load_dword s
+; GFX89: s_load_dword s
 
 ; SI: v_min_i32
 ; SI: v_min_i32
 ; SI: v_min_i32
-; SI: v_min_i32
+; SI: s_min_i32
 
-; VI: v_min_i32
+; VI: s_min_i32
 ; VI: v_min_i32
 ; VI: v_min_i32
 ; VI: v_min_i32
@@ -115,7 +125,7 @@ define amdgpu_kernel void @s_test_imin_sle_v4i8(<4 x i8> addrspace(1)* %out, <4 
 
 ; FUNC-LABEL: {{^}}s_test_imin_sle_v2i16:
 ; SI: v_min_i32
-; SI: v_min_i32
+; SI: s_min_i32
 
 ; VI: s_sext_i32_i16
 ; VI: s_sext_i32_i16
@@ -135,9 +145,9 @@ define amdgpu_kernel void @s_test_imin_sle_v2i16(<2 x i16> addrspace(1)* %out, <
 
 ; FUNC-LABEL: {{^}}s_test_imin_sle_v4i16:
 ; SI: v_min_i32
+; SI: s_min_i32
 ; SI: v_min_i32
-; SI: v_min_i32
-; SI: v_min_i32
+; SI: s_min_i32
 
 ; VI: s_min_i32
 ; VI: s_min_i32
@@ -454,13 +464,13 @@ define amdgpu_kernel void @s_test_umin_ult_v8i32(<8 x i32> addrspace(1)* %out, <
 
 ; FUNC-LABEL: {{^}}s_test_umin_ult_v8i16:
 ; SI: v_min_u32
+; SI: s_min_u32
 ; SI: v_min_u32
+; SI: s_min_u32
 ; SI: v_min_u32
+; SI: s_min_u32
 ; SI: v_min_u32
-; SI: v_min_u32
-; SI: v_min_u32
-; SI: v_min_u32
-; SI: v_min_u32
+; SI: s_min_u32
 
 ; VI: s_min_u32
 ; VI: s_min_u32

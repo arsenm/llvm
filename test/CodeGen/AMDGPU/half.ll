@@ -23,7 +23,7 @@ define amdgpu_kernel void @load_v2f16_arg(<2 x half> addrspace(1)* %out, <2 x ha
 }
 
 ; GCN-LABEL: {{^}}load_v3f16_arg:
-; GCN: buffer_load_ushort
+; GCN: s_load_dword s
 ; GCN: s_load_dword s
 
 ; GCN-NOT: buffer_load
@@ -77,9 +77,8 @@ define amdgpu_kernel void @extload_v2f16_to_v2f32_arg(<2 x float> addrspace(1)* 
 }
 
 ; GCN-LABEL: {{^}}extload_v3f16_to_v3f32_arg:
-; GCN: buffer_load_ushort
-; GCN: buffer_load_ushort
-; GCN: buffer_load_ushort
+; GCN: s_load_dword s
+; GCN: s_load_dword s
 ; GCN-NOT: buffer_load
 ; GCN: v_cvt_f32_f16_e32
 ; GCN: v_cvt_f32_f16_e32
@@ -102,20 +101,10 @@ define amdgpu_kernel void @extload_v4f16_to_v4f32_arg(<4 x float> addrspace(1)* 
 }
 
 ; GCN-LABEL: {{^}}extload_v8f16_to_v8f32_arg:
-; SI: buffer_load_ushort
-; SI: buffer_load_ushort
-; SI: buffer_load_ushort
-; SI: buffer_load_ushort
-; SI: buffer_load_ushort
-; SI: buffer_load_ushort
-; SI: buffer_load_ushort
-; SI: buffer_load_ushort
-
-
-; VI: s_load_dword s
-; VI: s_load_dword s
-; VI: s_load_dword s
-; VI: s_load_dword s
+; GCN: s_load_dword s
+; GCN: s_load_dword s
+; GCN: s_load_dword s
+; GCN: s_load_dword s
 
 ; GCN: v_cvt_f32_f16_e32
 ; GCN: v_cvt_f32_f16_e32
@@ -184,13 +173,8 @@ define amdgpu_kernel void @extload_v3f16_to_v3f64_arg(<3 x double> addrspace(1)*
 }
 
 ; GCN-LABEL: {{^}}extload_v4f16_to_v4f64_arg:
-; SI: buffer_load_ushort v
-; SI: buffer_load_ushort v
-; SI: buffer_load_ushort v
-; SI: buffer_load_ushort v
-
-; VI: s_load_dword s
-; VI: s_load_dword s
+; GCN: s_load_dword s
+; GCN: s_load_dword s
 
 ; GCN-DAG: v_cvt_f32_f16_e32
 ; GCN-DAG: v_cvt_f32_f16_e32
@@ -208,21 +192,10 @@ define amdgpu_kernel void @extload_v4f16_to_v4f64_arg(<4 x double> addrspace(1)*
 }
 
 ; GCN-LABEL: {{^}}extload_v8f16_to_v8f64_arg:
-; SI: buffer_load_ushort v
-; SI: buffer_load_ushort v
-; SI: buffer_load_ushort v
-; SI: buffer_load_ushort v
-
-; SI: buffer_load_ushort v
-; SI: buffer_load_ushort v
-; SI: buffer_load_ushort v
-; SI: buffer_load_ushort v
-
-
-; VI: s_load_dword s
-; VI: s_load_dword s
-; VI: s_load_dword s
-; VI: s_load_dword s
+; GCN: s_load_dword s
+; GCN: s_load_dword s
+; GCN: s_load_dword s
+; GCN: s_load_dword s
 
 
 
