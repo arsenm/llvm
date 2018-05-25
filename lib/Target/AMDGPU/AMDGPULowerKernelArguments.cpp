@@ -107,23 +107,50 @@ bool AMDGPULowerKernelArguments::runOnFunction(Function &F) {
     KernArgBaseAlign = MinAlign(KernArgBaseAlign, BaseOffset);
   }
 
-  unsigned AS = KernArgSegment->getType()->getPointerAddressSpace();
+  unsigned ConstAS = KernArgSegment->getType()->getPointerAddressSpace();
+  unsigned PtrSize = DL.getPointerSizeInBits(ConstAS);
+
   Value *CastStruct = Builder.CreateBitCast(KernArgBase,
-                                            ArgStructTy->getPointerTo(AS));
+                                            ArgStructTy->getPointerTo(ConstAS));
   for (Argument &Arg : F.args()) {
     if (Arg.use_empty())
       continue;
 
-    Value *GEP = Builder.CreateStructGEP(CastStruct, Arg.getArgNo());
-    uint64_t EltOffset = Layout->getElementOffset(Arg.getArgNo());
+    bool WidenShortLoad = false;
 
+    Value *GEP = Builder.CreateStructGEP(CastStruct, Arg.getArgNo());
+
+    Type *OrigArgType = Arg.getType();
+    unsigned RealArgSize = DL.getTypeSizeInBits(OrigArgType);
+    if (RealArgSize < 32) {
+#if 0
+      bool IsDRP = isDereferenceableAndAlignedPointer(GEP, 4, APInt(PtrSize, 4), DL);
+      if (IsDRP) {
+        WidenShortLoad = true;
+        // Since there are no SMRD extending loads, widen the load to 32-bits and
+        // convert back to the original size.
+        GEP = Builder.CreateBitCast(GEP,
+                                    Builder.getInt32Ty()->getPointerTo(ConstAS));
+      }
+#endif
+    }
+
+    uint64_t EltOffset = Layout->getElementOffset(Arg.getArgNo());
     unsigned EltAlign = MinAlign(EltOffset, KernArgBaseAlign);
+
+
     LoadInst *Load = Builder.CreateAlignedLoad(GEP, EltAlign);
     Load->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(Ctx, {}));
     // TODO: Convert noalias arg to !noalias load
 
-    Load->takeName(&Arg);
-    Arg.replaceAllUsesWith(Load);
+    Value *NewValue = Load;
+    if (WidenShortLoad) {
+      NewValue = Builder.CreateTrunc(NewValue, Builder.getIntNTy(RealArgSize));
+      NewValue = Builder.CreateBitCast(NewValue, OrigArgType);
+    }
+
+    NewValue->takeName(&Arg);
+    Arg.replaceAllUsesWith(NewValue);
 
 #if 0
     if (PointerType *PT = dyn_cast<PointerType>(Arg.getType())) {
