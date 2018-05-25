@@ -124,6 +124,23 @@ bool AMDGPULowerKernelArguments::runOnFunction(Function &F) {
 
     Load->takeName(&Arg);
     Arg.replaceAllUsesWith(Load);
+
+#if 0
+    if (PointerType *PT = dyn_cast<PointerType>(Arg.getType())) {
+      // FIXME: I think this applies to all targets, it just matters more for SI.
+      if (PT->getAddressSpace() == AMDGPUAS::LOCAL_ADDRESS
+
+        ) {
+        Metadata *LowAndHigh[] = {
+          ConstantAsMetadata::get(ConstantInt::get(IT, 0)),
+          ConstantAsMetadata::get(ConstantInt::get(IT, 0xffff))
+        };
+
+        II.setMetadata(LLVMContext::MD_range,
+                       MDNode::get(II.getContext(), LowAndHigh));
+      }
+    }
+#endif
   }
 
   return true;
