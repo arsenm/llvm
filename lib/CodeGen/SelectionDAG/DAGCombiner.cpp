@@ -420,6 +420,9 @@ namespace {
 
     SDValue SimplifyNodeWithTwoResults(SDNode *N, unsigned LoOp,
                                          unsigned HiOp);
+
+    SDValue CombineConsecutiveLoadsImpl(SDNode *N, LoadSDNode *Ld0,
+                                        LoadSDNode *Ld1, EVT VT);
     SDValue CombineConsecutiveLoads(SDNode *N, EVT VT);
     SDValue CombineExtLoad(SDNode *N);
     SDValue CombineZExtLogicopShiftLoad(SDNode *N);
@@ -9093,11 +9096,10 @@ static SDNode *getBuildPairElt(SDNode *N, unsigned i) {
 
 /// build_pair (load, load) -> load
 /// if load locations are consecutive.
-SDValue DAGCombiner::CombineConsecutiveLoads(SDNode *N, EVT VT) {
-  assert(N->getOpcode() == ISD::BUILD_PAIR);
-
-  LoadSDNode *LD1 = dyn_cast<LoadSDNode>(getBuildPairElt(N, 0));
-  LoadSDNode *LD2 = dyn_cast<LoadSDNode>(getBuildPairElt(N, 1));
+SDValue DAGCombiner::CombineConsecutiveLoadsImpl(SDNode *N,
+                                                 LoadSDNode *LD1,
+                                                 LoadSDNode *LD2,
+                                                 EVT VT) {
 
   // A BUILD_PAIR is always having the least significant part in elt 0 and the
   // most significant part in elt 1. So when combining into one large load, we
@@ -9120,6 +9122,25 @@ SDValue DAGCombiner::CombineConsecutiveLoads(SDNode *N, EVT VT) {
         (!LegalOperations || TLI.isOperationLegal(ISD::LOAD, VT)))
       return DAG.getLoad(VT, SDLoc(N), LD1->getChain(), LD1->getBasePtr(),
                          LD1->getPointerInfo(), Align);
+  }
+
+  return SDValue();
+}
+
+SDValue DAGCombiner::CombineConsecutiveLoads(SDNode *N, EVT VT) {
+  if (N->getOpcode() == ISD::BUILD_PAIR) {
+    LoadSDNode *LD1 = dyn_cast<LoadSDNode>(getBuildPairElt(N, 0));
+    LoadSDNode *LD2 = dyn_cast<LoadSDNode>(getBuildPairElt(N, 1));
+    if (LD1 && LD2)
+      return CombineConsecutiveLoadsImpl(N, LD1, LD2, VT);
+  }
+
+  if (N->getOpcode() == ISD::BUILD_VECTOR &&
+      N->getValueType(0).getVectorNumElements() == 2) {
+    LoadSDNode *LD1 = dyn_cast<LoadSDNode>(N->getOperand(0));
+    LoadSDNode *LD2 = dyn_cast<LoadSDNode>(N->getOperand(1));
+    if (LD1 && LD2)
+      return CombineConsecutiveLoadsImpl(N, LD1, LD2, VT);
   }
 
   return SDValue();
@@ -15317,6 +15338,10 @@ SDValue DAGCombiner::visitBUILD_VECTOR(SDNode *N) {
   // A vector built entirely of undefs is undef.
   if (ISD::allOperandsUndef(N))
     return DAG.getUNDEF(VT);
+
+
+  if (SDValue Combined = CombineConsecutiveLoads(N, VT))
+    return Combined;
 
   // If this is a splat of a bitcast from another vector, change to a
   // concat_vector.
