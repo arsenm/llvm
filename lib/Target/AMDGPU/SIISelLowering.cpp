@@ -382,8 +382,21 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   if (Subtarget->hasBFE())
     setHasExtractBitsInsn(true);
 
-  setOperationAction(ISD::FMINNUM, MVT::f64, Legal);
-  setOperationAction(ISD::FMAXNUM, MVT::f64, Legal);
+  if (Subtarget->supportsMinMaxDenormModes() || Subtarget->hasFP32Denormals()) {
+    setOperationAction(ISD::FMINNUM, MVT::f32, Legal);
+    setOperationAction(ISD::FMAXNUM, MVT::f32, Legal);
+  } else {
+    setOperationAction(ISD::FMINNUM, MVT::f32, Custom);
+    setOperationAction(ISD::FMAXNUM, MVT::f32, Custom);
+  }
+
+  if (Subtarget->supportsMinMaxDenormModes() || Subtarget->hasFP64Denormals()) {
+    setOperationAction(ISD::FMINNUM, MVT::f64, Legal);
+    setOperationAction(ISD::FMAXNUM, MVT::f64, Legal);
+  } else {
+    setOperationAction(ISD::FMINNUM, MVT::f64, Custom);
+    setOperationAction(ISD::FMAXNUM, MVT::f64, Custom);
+  }
 
   if (Subtarget->getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS) {
     setOperationAction(ISD::FTRUNC, MVT::f64, Legal);
@@ -472,8 +485,16 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
     // F16 - VOP2 Actions.
     setOperationAction(ISD::BR_CC, MVT::f16, Expand);
     setOperationAction(ISD::SELECT_CC, MVT::f16, Expand);
-    setOperationAction(ISD::FMAXNUM, MVT::f16, Legal);
-    setOperationAction(ISD::FMINNUM, MVT::f16, Legal);
+
+    if (Subtarget->supportsMinMaxDenormModes() ||
+        Subtarget->hasFP16Denormals()) {
+      setOperationAction(ISD::FMAXNUM, MVT::f16, Legal);
+      setOperationAction(ISD::FMINNUM, MVT::f16, Legal);
+    } else {
+      setOperationAction(ISD::FMAXNUM, MVT::f16, Custom);
+      setOperationAction(ISD::FMINNUM, MVT::f16, Custom);
+    }
+
     setOperationAction(ISD::FDIV, MVT::f16, Custom);
 
     // F16 - VOP3 Actions.
@@ -573,6 +594,8 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::FADD, MVT::v2f16, Legal);
     setOperationAction(ISD::FMUL, MVT::v2f16, Legal);
     setOperationAction(ISD::FMA, MVT::v2f16, Legal);
+
+    assert(Subtarget->supportsMinMaxDenormModes());
     setOperationAction(ISD::FMINNUM, MVT::v2f16, Legal);
     setOperationAction(ISD::FMAXNUM, MVT::v2f16, Legal);
     setOperationAction(ISD::FCANONICALIZE, MVT::v2f16, Legal);
@@ -3589,6 +3612,9 @@ SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::FNEG:
   case ISD::FCANONICALIZE:
     return splitUnaryVectorOp(Op, DAG);
+  case ISD::FMINNUM:
+  case ISD::FMAXNUM:
+    return lowerFMINNUM_FMAXNUM(Op, DAG);
   case ISD::SHL:
   case ISD::SRA:
   case ISD::SRL:
@@ -3599,8 +3625,6 @@ SDValue SITargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
   case ISD::SMAX:
   case ISD::UMIN:
   case ISD::UMAX:
-  case ISD::FMINNUM:
-  case ISD::FMAXNUM:
   case ISD::FADD:
   case ISD::FMUL:
     return splitBinaryVectorOp(Op, DAG);
@@ -4055,6 +4079,24 @@ SDValue SITargetLowering::lowerFP_ROUND(SDValue Op, SelectionDAG &DAG) const {
   SDValue FpToFp16 = DAG.getNode(ISD::FP_TO_FP16, DL, MVT::i32, Src);
   SDValue Trunc = DAG.getNode(ISD::TRUNCATE, DL, MVT::i16, FpToFp16);
   return DAG.getNode(ISD::BITCAST, DL, MVT::f16, Trunc);
+}
+
+SDValue SITargetLowering::lowerFMINNUM_FMAXNUM(SDValue Op,
+                                               SelectionDAG &DAG) const {
+  EVT VT = Op.getValueType();
+  if (VT == MVT::v4f16)
+    return splitBinaryVectorOp(Op, DAG);
+
+  assert(!Subtarget->supportsMinMaxDenormModes() || denormalsEnabledForType(VT));
+
+  unsigned NewOp = Op.getOpcode() == ISD::FMINNUM ?
+    AMDGPUISD::FMINNUM_NOFLUSH : AMDGPUISD::FMAXNUM_NOFLUSH;
+
+  SDLoc SL(Op);
+  SDValue BaseOp = DAG.getNode(NewOp, SL, VT, Op.getOperand(0), Op.getOperand(1),
+                               Op->getFlags());
+  // Flush denorms.
+  return DAG.getNode(ISD::FCANONICALIZE, SL, VT, BaseOp, Op->getFlags());
 }
 
 SDValue SITargetLowering::lowerTRAP(SDValue Op, SelectionDAG &DAG) const {
@@ -6898,31 +6940,12 @@ bool SITargetLowering::isCanonicalized(SelectionDAG &DAG, SDValue Op,
   case AMDGPUISD::FMIN3: {
     // FIXME: Shouldn't treat the generic operations different based these.
     bool IsIEEEMode = Subtarget->enableIEEEBit(DAG.getMachineFunction());
-    if (IsIEEEMode) {
-      // snans will be quieted, so we only need to worry about denormals.
-      if (Subtarget->supportsMinMaxDenormModes() ||
-          denormalsEnabledForType(Op.getValueType()))
-        return true;
+    if (IsIEEEMode)
+      return true;
 
-      // Flushing may be required.
-      // In pre-GFX9 targets V_MIN_F32 and others do not flush denorms. For such
-      // targets need to check their input recursively.
-      return isCanonicalized(DAG, Op.getOperand(0), MaxDepth - 1) &&
-             isCanonicalized(DAG, Op.getOperand(1), MaxDepth - 1);
-    }
-
-    if (Subtarget->supportsMinMaxDenormModes() ||
-        denormalsEnabledForType(Op.getValueType())) {
-      // Only quieting may be necessary.
-      return DAG.isKnownNeverSNaN(Op.getOperand(0)) &&
-             DAG.isKnownNeverSNaN(Op.getOperand(1));
-    }
-
-    // Flushing and quieting may be necessary
-    // With ieee_mode off, the nan is returned as-is, so if it is an sNaN it
-    // needs to be quieted.
-    return isCanonicalized(DAG, Op.getOperand(0), MaxDepth - 1) &&
-           isCanonicalized(DAG, Op.getOperand(1), MaxDepth - 1);
+    // May need quieting.
+    return DAG.isKnownNeverSNaN(Op.getOperand(0)) &&
+           DAG.isKnownNeverSNaN(Op.getOperand(1));
   }
   case ISD::SELECT: {
     return isCanonicalized(DAG, Op.getOperand(1), MaxDepth - 1) &&
@@ -6964,6 +6987,13 @@ bool SITargetLowering::isCanonicalized(SelectionDAG &DAG, SDValue Op,
     }
 
     LLVM_FALLTHROUGH;
+  }
+  case AMDGPUISD::FMINNUM_NOFLUSH:
+  case AMDGPUISD::FMAXNUM_NOFLUSH: {
+    assert(!denormalsEnabledForType(Op.getValueType()) &&
+           "should not be used");
+    return isCanonicalized(DAG, Op.getOperand(0), MaxDepth - 1) &&
+           isCanonicalized(DAG, Op.getOperand(1), MaxDepth - 1);
   }
   default:
     return denormalsEnabledForType(Op.getValueType()) &&
@@ -7018,7 +7048,52 @@ SDValue SITargetLowering::performFCanonicalizeCombine(
     return DAG.getConstantFP(QNaN, SDLoc(N), VT);
   }
 
-  if (ConstantFPSDNode *CFP = isConstOrConstSplatFP(N0)) {
+  ConstantFPSDNode *CFP = isConstOrConstSplatFP(N0);
+  if (!CFP) {
+    SDValue N0 = N->getOperand(0);
+
+    if (isCanonicalized(DAG, N0))
+      return N0;
+
+#if 0
+    EVT VT = N->getValueType(0);
+
+    // Try to move canonicalizes out of the way when it will interfere with med3
+    // combining.
+    if ((N0.getOpcode() == AMDGPUISD::FMINNUM_NOFLUSH ||
+         N0.getOpcode() == AMDGPUISD::FMAXNUM_NOFLUSH) &&
+        isa<ConstantFPSDNode>(N0.getOperand(1)) &&
+
+        DAG.isKnownNeverSNaN(N0.getOperand(0)) &&
+        DAG.isKnownNeverSNaN(N0.getOperand(1))) {
+
+      SDLoc SL(N);
+      SDValue Canon0 = DAG.getNode(ISD::FCANONICALIZE, SL, VT,
+                                    N0.getOperand(0));
+      SDValue Canon1 = DAG.getNode(ISD::FCANONICALIZE, SL, VT,
+                                    N0.getOperand(1));
+
+      DCI.AddToWorklist(Canon0.getNode());
+      DCI.AddToWorklist(Canon1.getNode());
+      // ieee_mode:
+      // mul (minnum_noflush snan, x), 1.0 -> mul qnan, 1.0 -> qnan
+      // minnum_noflush (mul snan, 1.0), x -> x
+
+      // !ieee_mode:
+      // mul (minnum_noflush snan, x), 1.0 -> mul x, 1.0
+      // minnum_noflush (mul snan, 1.0), x) -> mul x, 1.0
+
+      return DAG.getNode(N0.getOpcode(), SL, VT, Canon0, Canon1);
+    }
+#endif
+
+    return SDValue();
+  }
+
+  const APFloat &C = CFP->getValueAPF();
+
+  // Flush denormals to 0 if not enabled.
+  if (C.isDenormal()) {
     EVT VT = N->getValueType(0);
     return getCanonicalConstantFP(DAG, SDLoc(N), VT, CFP->getValueAPF());
   }
@@ -7964,8 +8039,7 @@ SDValue SITargetLowering::PerformDAGCombine(SDNode *N,
   case ISD::UMIN:
   case AMDGPUISD::FMIN_LEGACY:
   case AMDGPUISD::FMAX_LEGACY: {
-    if (DCI.getDAGCombineLevel() >= AfterLegalizeDAG &&
-        getTargetMachine().getOptLevel() > CodeGenOpt::None)
+    if (getTargetMachine().getOptLevel() > CodeGenOpt::None)
       return performMinMaxCombine(N, DCI);
     break;
   }

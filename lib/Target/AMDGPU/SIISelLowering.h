@@ -99,6 +99,7 @@ private:
 
   /// Custom lowering for ISD::FP_ROUND for MVT::f16.
   SDValue lowerFP_ROUND(SDValue Op, SelectionDAG &DAG) const;
+  SDValue lowerFMINNUM_FMAXNUM(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue getSegmentAperture(unsigned AS, const SDLoc &DL,
                              SelectionDAG &DAG) const;

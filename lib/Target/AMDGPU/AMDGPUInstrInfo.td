@@ -175,6 +175,14 @@ def AMDGPUfmin_legacy : SDNode<"AMDGPUISD::FMIN_LEGACY", SDTFPBinOp,
   []
 >;
 
+def AMDGPUfminnum_noflush : SDNode<"AMDGPUISD::FMINNUM_NOFLUSH", SDTFPBinOp,
+  [SDNPCommutative, SDNPAssociative]
+>;
+
+def AMDGPUfmaxnum_noflush : SDNode<"AMDGPUISD::FMAXNUM_NOFLUSH", SDTFPBinOp,
+  [SDNPCommutative, SDNPAssociative]
+>;
+
 // FIXME: TableGen doesn't like commutative instructions with more
 // than 2 operands.
 // out = max(a, b, c) a, b and c are floats
