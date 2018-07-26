@@ -99,12 +99,43 @@ define float @v_test_known_not_snan_minnum_input_fmed3_r_i_i_f32(float %a, float
 ; GCN-NEXT:    v_rcp_f32_e32 v0, v0
 ; GCN-NEXT:    v_add_f32_e32 v1, 1.0, v1
 ; GCN-NEXT:    v_min_f32_e32 v0, v0, v1
-; GCN-NEXT:    v_max_f32_e32 v0, 2.0, v0
-; GCN-NEXT:    v_min_f32_e32 v0, 4.0, v0
+; GCN-NEXT:    v_med3_f32 v0, v0, 2.0, 4.0
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %a.nnan.add = fdiv nnan float 1.0, %a
   %b.nnan.add = fadd nnan float %b, 1.0
   %known.not.snan = call float @llvm.minnum.f32(float %a.nnan.add, float %b.nnan.add)
+  %max = call float @llvm.maxnum.f32(float %known.not.snan, float 2.0)
+  %med = call float @llvm.minnum.f32(float %max, float 4.0)
+  ret float %med
+}
+
+define float @v_test_known_not_minnum_maybe_nan_src0_input_fmed3_r_i_i_f32(float %a, float %b) #0 {
+; GCN-LABEL: v_test_known_not_minnum_maybe_nan_src0_input_fmed3_r_i_i_f32:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GCN-NEXT:    v_add_f32_e32 v1, 1.0, v1
+; GCN-NEXT:    v_min_f32_e32 v0, v0, v1
+; GCN-NEXT:    v_max_f32_e32 v0, 2.0, v0
+; GCN-NEXT:    v_min_f32_e32 v0, 4.0, v0
+; GCN-NEXT:    s_setpc_b64 s[30:31]
+  %b.nsnan = fadd float %b, 1.0
+  %known.not.snan = call float @llvm.minnum.f32(float %a, float %b.nsnan)
+  %max = call float @llvm.maxnum.f32(float %known.not.snan, float 2.0)
+  %med = call float @llvm.minnum.f32(float %max, float 4.0)
+  ret float %med
+}
+
+define float @v_test_known_not_minnum_maybe_nan_src1_input_fmed3_r_i_i_f32(float %a, float %b) #0 {
+; GCN-LABEL: v_test_known_not_minnum_maybe_nan_src1_input_fmed3_r_i_i_f32:
+; GCN:       ; %bb.0:
+; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
+; GCN-NEXT:    v_add_f32_e32 v0, 1.0, v0
+; GCN-NEXT:    v_min_f32_e32 v0, v0, v1
+; GCN-NEXT:    v_max_f32_e32 v0, 2.0, v0
+; GCN-NEXT:    v_min_f32_e32 v0, 4.0, v0
+; GCN-NEXT:    s_setpc_b64 s[30:31]
+  %a.nsnan = fadd float %a, 1.0
+  %known.not.snan = call float @llvm.minnum.f32(float %a.nsnan, float %b)
   %max = call float @llvm.maxnum.f32(float %known.not.snan, float 2.0)
   %med = call float @llvm.minnum.f32(float %max, float 4.0)
   ret float %med
@@ -148,8 +179,8 @@ define float @v_test_known_not_snan_maxnum_input_fmed3_r_i_i_f32(float %a, float
 ; GCN-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
 ; GCN-NEXT:    v_rcp_f32_e32 v0, v0
 ; GCN-NEXT:    v_add_f32_e32 v1, 1.0, v1
-; GCN-NEXT:    v_max3_f32 v0, v0, v1, 2.0
-; GCN-NEXT:    v_min_f32_e32 v0, 4.0, v0
+; GCN-NEXT:    v_max_f32_e32 v0, v0, v1
+; GCN-NEXT:    v_med3_f32 v0, v0, 2.0, 4.0
 ; GCN-NEXT:    s_setpc_b64 s[30:31]
   %a.nnan.add = fdiv nnan float 1.0, %a
   %b.nnan.add = fadd nnan float %b, 1.0

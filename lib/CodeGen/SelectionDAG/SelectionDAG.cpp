@@ -3700,9 +3700,14 @@ bool SelectionDAG::isKnownNeverNaN(SDValue Op, bool SNaN, unsigned Depth) const 
     // TODO: Refine on operand
     return false;
   }
-
-  // TODO: Handle FMINNUM/FMAXNUM/FMINNAN/FMAXNAN when there is an agreement on
-  // what they should do.
+  case ISD::FMINNUM:
+  case ISD::FMAXNUM:
+  case ISD::FMINNAN:
+  case ISD::FMAXNAN: {
+    // TODO: This could be better if there was an agreement on snan behavior.
+    return isKnownNeverNaN(Op.getOperand(0), SNaN, Depth + 1) &&
+           isKnownNeverNaN(Op.getOperand(1), SNaN, Depth + 1);
+  }
   default:
     if (Opcode >= ISD::BUILTIN_OP_END ||
         Opcode == ISD::INTRINSIC_WO_CHAIN ||
