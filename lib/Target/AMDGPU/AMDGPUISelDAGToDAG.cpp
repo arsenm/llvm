@@ -507,6 +507,13 @@ void AMDGPUDAGToDAGISel::Select(SDNode *N) {
     SelectUADDO_USUBO(N);
     return;
   }
+#if 0
+  case ISD::FMINNUM_IEEE:
+  case ISD::FMAXNUM_IEEE:
+    assert(Subtarget->enableIEEEBit(CurDAG->getMachineFunction()) &&
+           "should only have been emitted for ieee_mode function");
+    break;
+#endif
   case AMDGPUISD::FMUL_W_CHAIN: {
     SelectFMUL_W_CHAIN(N);
     return;

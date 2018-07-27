@@ -1611,10 +1611,11 @@ def : IntMed3Pat<V_MED3_U32, umax, umax_oneuse, umin_oneuse>;
 // This matches 16 permutations of
 // max(min(x, y), min(max(x, y), z))
 class FPMed3Pat<ValueType vt,
+                //SDPatternOperator max, SDPatternOperator min,
                 Instruction med3Inst> : GCNPat<
-  (fmaxnum (fminnum_oneuse (VOP3Mods_nnan vt:$src0, i32:$src0_mods),
+  (fmaxnum_like (fminnum_like_oneuse (VOP3Mods_nnan vt:$src0, i32:$src0_mods),
                            (VOP3Mods_nnan vt:$src1, i32:$src1_mods)),
-           (fminnum_oneuse (fmaxnum_oneuse (VOP3Mods_nnan vt:$src0, i32:$src0_mods),
+           (fminnum_like_oneuse (fmaxnum_like_oneuse (VOP3Mods_nnan vt:$src0, i32:$src0_mods),
                                            (VOP3Mods_nnan vt:$src1, i32:$src1_mods)),
                            (vt (VOP3Mods_nnan vt:$src2, i32:$src2_mods)))),
   (med3Inst $src0_mods, $src0, $src1_mods, $src1, $src2_mods, $src2, DSTCLAMP.NONE, DSTOMOD.NONE)
@@ -1622,10 +1623,10 @@ class FPMed3Pat<ValueType vt,
 
 class FP16Med3Pat<ValueType vt,
                 Instruction med3Inst> : GCNPat<
-  (fmaxnum (fminnum_oneuse (VOP3Mods_nnan vt:$src0, i32:$src0_mods),
-                           (VOP3Mods_nnan vt:$src1, i32:$src1_mods)),
-           (fminnum_oneuse (fmaxnum_oneuse (VOP3Mods_nnan vt:$src0, i32:$src0_mods),
-                                           (VOP3Mods_nnan vt:$src1, i32:$src1_mods)),
+  (fmaxnum_like (fminnum_like_oneuse (VOP3Mods_nnan vt:$src0, i32:$src0_mods),
+                                     (VOP3Mods_nnan vt:$src1, i32:$src1_mods)),
+           (fminnum_like_oneuse (fmaxnum_like_oneuse (VOP3Mods_nnan vt:$src0, i32:$src0_mods),
+                                                     (VOP3Mods_nnan vt:$src1, i32:$src1_mods)),
                            (vt (VOP3Mods_nnan vt:$src2, i32:$src2_mods)))),
   (med3Inst $src0_mods, $src0, $src1_mods, $src1, $src2_mods, $src2, DSTCLAMP.NONE)
 >;
@@ -1647,3 +1648,27 @@ def : FP16Med3Pat<f16, V_MED3_F16>;
 def : Int16Med3Pat<V_MED3_I16, smax, smax_oneuse, smin_oneuse, i16>;
 def : Int16Med3Pat<V_MED3_U16, umax, umax_oneuse, umin_oneuse, i16>;
 } // End Predicates = [isGFX9]
+
+
+
+// class MinMaxModsPat<Instruction inst, SDPatternOperator op, ValueType Ty, bit packed = 0>
+//   : GCNPat<
+//   (Ty (op (VOP3Mods Ty:$src0, i32:$src0_mod),
+//           (VOP3Mods Ty:$src1, i32:$src1_mod))),
+//   (inst $src0_mod, $src0, $src1_mod, $src1,
+//    DSTCLAMP.NONE, DSTOMOD.NONE)
+// >;
+
+
+
+// def : MinMaxModsPat<V_MIN_F32_e64, AMDGPUfminnum_ieee, f32>;
+// def : MinMaxModsPat<V_MAX_F32_e64, AMDGPUfmaxnum_ieee, f32>;
+
+// def : MinMaxModsPat<V_MIN_F64, AMDGPUfminnum_ieee, f64>;
+// def : MinMaxModsPat<V_MAX_F64, AMDGPUfmaxnum_ieee, f64>;
+
+// def : MinMaxModsPat<V_MIN_F16_e64, AMDGPUfminnum_ieee, f16>;
+// def : MinMaxModsPat<V_MAX_F16_e64, AMDGPUfmaxnum_ieee, f16>;
+
+// //def : MinMaxModsPat<V_PK_MIN_F16, AMDGPUfminnum_ieee, v2f16>;
+// //def : MinMaxModsPat<V_PK_MAX_F16, AMDGPUfmaxnum_ieee, v2f16>;
