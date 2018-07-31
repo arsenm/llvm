@@ -1227,6 +1227,8 @@ SDValue AMDGPUTargetLowering::LowerCONCAT_VECTORS(SDValue Op,
   SmallVector<SDValue, 8> Args;
 
   EVT VT = Op.getValueType();
+  assert(VT != MVT::v4i16 && VT != MVT::v4f16);
+#if 0
   if (VT == MVT::v4i16 || VT == MVT::v4f16) {
     SDLoc SL(Op);
     SDValue Lo = DAG.getNode(ISD::BITCAST, SL, MVT::i32, Op.getOperand(0));
@@ -1235,6 +1237,7 @@ SDValue AMDGPUTargetLowering::LowerCONCAT_VECTORS(SDValue Op,
     SDValue BV = DAG.getBuildVector(MVT::v2i32, SL, { Lo, Hi });
     return DAG.getNode(ISD::BITCAST, SL, VT, BV);
   }
+#endif
 
   for (const SDUse &U : Op->ops())
     DAG.ExtractVectorElements(U.get(), Args);

@@ -3829,6 +3829,8 @@ static SDValue FoldCONCAT_VECTORS(const SDLoc &DL, EVT VT,
       return SDValue();
   }
 
+  return SDValue();
+
   // BUILD_VECTOR requires all inputs to be of the same type, find the
   // maximum type and extend them all.
   for (SDValue Op : Elts)
@@ -4360,7 +4362,7 @@ SDValue SelectionDAG::FoldConstantArithmetic(unsigned Opcode, const SDLoc &DL,
   // fold them individually.
   BuildVectorSDNode *BV1 = dyn_cast<BuildVectorSDNode>(Cst1);
   BuildVectorSDNode *BV2 = dyn_cast<BuildVectorSDNode>(Cst2);
-  if (!BV1 || !BV2)
+  if (!BV1 || !BV2 || Opcode == ISD::CONCAT_VECTORS)
     return SDValue();
 
   assert(BV1->getNumOperands() == BV2->getNumOperands() && "Out of sync!");

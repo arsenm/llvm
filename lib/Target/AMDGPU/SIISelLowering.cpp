@@ -246,7 +246,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   // We only support LOAD/STORE and vector manipulation ops for vectors
   // with > 4 elements.
   for (MVT VT : {MVT::v8i32, MVT::v8f32, MVT::v16i32, MVT::v16f32,
-        MVT::v2i64, MVT::v2f64, MVT::v4i16, MVT::v4f16 }) {
+        MVT::v2i64, MVT::v2f64 }) {
     for (unsigned Op = 0; Op < ISD::BUILTIN_OP_END; ++Op) {
       switch (Op) {
       case ISD::LOAD:
@@ -503,10 +503,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
         case ISD::INSERT_VECTOR_ELT:
         case ISD::INSERT_SUBVECTOR:
         case ISD::EXTRACT_SUBVECTOR:
-        case ISD::SCALAR_TO_VECTOR:
-          break;
         case ISD::CONCAT_VECTORS:
-          setOperationAction(Op, VT, Custom);
           break;
         default:
           setOperationAction(Op, VT, Expand);
@@ -652,6 +649,13 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::SELECT, VT, Custom);
   }
 
+
+  setOperationAction(ISD::FCANONICALIZE, MVT::v4f16, Custom);
+  setOperationAction(ISD::FCANONICALIZE, MVT::v4i16, Custom);
+
+  setOperationAction(ISD::CONCAT_VECTORS, MVT::v4f16, Legal);
+  setOperationAction(ISD::CONCAT_VECTORS, MVT::v4i16, Legal);
+
   setTargetDAGCombine(ISD::ADD);
   setTargetDAGCombine(ISD::ADDCARRY);
   setTargetDAGCombine(ISD::SUB);
@@ -705,6 +709,11 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   // of using or handling them is implemented. They are also optional in OpenCL
   // (Section 7.3)
   setHasFloatingPointExceptions(Subtarget->hasFPExceptions());
+
+  //assert(isOperationCustom(ISD::CONCAT_VECTORS, MVT::v4f16));
+  //assert(isOperationExpand(ISD::CONCAT_VECTORS, MVT::v4f16));
+  //assert(isOperationLegal(ISD::CONCAT_VECTORS, MVT::v4f16));
+
 }
 
 const GCNSubtarget *SITargetLowering::getSubtarget() const {
@@ -4389,11 +4398,15 @@ SDValue SITargetLowering::lowerBUILD_VECTOR(SDValue Op,
     SDValue Hi = DAG.getBuildVector(HalfVT, SL,
                                     { Op.getOperand(2), Op.getOperand(3) });
 
+#if 0
     SDValue CastLo = DAG.getNode(ISD::BITCAST, SL, MVT::i32, Lo);
     SDValue CastHi = DAG.getNode(ISD::BITCAST, SL, MVT::i32, Hi);
 
     SDValue Blend = DAG.getBuildVector(MVT::v2i32, SL, { CastLo, CastHi });
     return DAG.getNode(ISD::BITCAST, SL, VT, Blend);
+#endif
+
+    return DAG.getNode(ISD::CONCAT_VECTORS, SL, VT, Lo, Hi);
   }
 
   assert(VT == MVT::v2f16 || VT == MVT::v2i16);

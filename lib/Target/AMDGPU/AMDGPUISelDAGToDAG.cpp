@@ -539,6 +539,33 @@ void AMDGPUDAGToDAGISel::Select(SDNode *N) {
         }
       }
 
+
+      if (Opc == ISD::BUILD_VECTOR && NumVectorElts == 4) {
+        SDLoc DL(N);
+        uint32_t Elt0Val, Elt1Val, Elt2Val, Elt3Val;
+        if (getConstantValue(N->getOperand(0), Elt0Val) &&
+            getConstantValue(N->getOperand(1), Elt1Val) &&
+            getConstantValue(N->getOperand(2), Elt2Val) &&
+            getConstantValue(N->getOperand(3), Elt3Val)) {
+          uint32_t K0 = Elt0Val | (Elt1Val << 16);
+          uint32_t K1 = Elt2Val | (Elt3Val << 16);
+          SDNode *Lo = CurDAG->getMachineNode(AMDGPU::S_MOV_B32, DL, MVT::i32,
+                                              CurDAG->getConstant(K0, DL,
+                                                                  MVT::i32));
+          SDNode *Hi = CurDAG->getMachineNode(AMDGPU::S_MOV_B32, DL, MVT::i32,
+                                              CurDAG->getConstant(K1, DL, MVT::i32));
+          const SDValue Ops[] = {
+            CurDAG->getTargetConstant(AMDGPU::SReg_64RegClassID, DL, MVT::i32),
+            SDValue(Lo, 0), CurDAG->getTargetConstant(AMDGPU::sub0, DL, MVT::i32),
+            SDValue(Hi, 0), CurDAG->getTargetConstant(AMDGPU::sub1, DL, MVT::i32)
+          };
+
+          ReplaceNode(N, CurDAG->getMachineNode(TargetOpcode::REG_SEQUENCE, DL,
+                                                N->getValueType(0), Ops));
+          return;
+        }
+      }
+
       break;
     }
 
@@ -547,14 +574,16 @@ void AMDGPUDAGToDAGISel::Select(SDNode *N) {
     SelectBuildVector(N, RegClassID);
     return;
   }
-  case ISD::BUILD_PAIR: {
+  case ISD::BUILD_PAIR:
+  case ISD::CONCAT_VECTORS: {
     SDValue RC, SubReg0, SubReg1;
     SDLoc DL(N);
-    if (N->getValueType(0) == MVT::i128) {
+    MVT VT = N->getValueType(0).getSimpleVT();
+    if (VT == MVT::i128) {
       RC = CurDAG->getTargetConstant(AMDGPU::SReg_128RegClassID, DL, MVT::i32);
       SubReg0 = CurDAG->getTargetConstant(AMDGPU::sub0_sub1, DL, MVT::i32);
       SubReg1 = CurDAG->getTargetConstant(AMDGPU::sub2_sub3, DL, MVT::i32);
-    } else if (N->getValueType(0) == MVT::i64) {
+    } else if (VT == MVT::i64 || VT == MVT::v4f16 || VT == MVT::v4i16) {
       RC = CurDAG->getTargetConstant(AMDGPU::SReg_64RegClassID, DL, MVT::i32);
       SubReg0 = CurDAG->getTargetConstant(AMDGPU::sub0, DL, MVT::i32);
       SubReg1 = CurDAG->getTargetConstant(AMDGPU::sub1, DL, MVT::i32);

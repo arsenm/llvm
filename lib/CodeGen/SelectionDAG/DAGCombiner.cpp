@@ -16303,9 +16303,12 @@ SDValue DAGCombiner::visitCONCAT_VECTORS(SDNode *N) {
       }
     }
 
-    assert(VT.getVectorNumElements() == Opnds.size() &&
-           "Concat vector type mismatch");
-    return DAG.getBuildVector(VT, SDLoc(N), Opnds);
+    if (!LegalOperations || TLI.isOperationLegal(ISD::BUILD_VECTOR, VT)) {
+
+      assert(VT.getVectorNumElements() == Opnds.size() &&
+             "Concat vector type mismatch");
+      return DAG.getBuildVector(VT, SDLoc(N), Opnds);
+    }
   }
 
   // Fold CONCAT_VECTORS of only bitcast scalars (or undef) to BUILD_VECTOR.
