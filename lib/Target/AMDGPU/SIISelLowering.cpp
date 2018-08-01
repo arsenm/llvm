@@ -7219,7 +7219,8 @@ static ConstantFPSDNode *getSplatConstantFP(SDValue Op) {
 SDValue SITargetLowering::performFPMed3ImmCombine(SelectionDAG &DAG,
                                                   const SDLoc &SL,
                                                   SDValue Op0,
-                                                  SDValue Op1) const {
+                                                  SDValue Op1,
+                                                  bool UnsafeSNaN) const {
   ConstantFPSDNode *K1 = getSplatConstantFP(Op1);
   if (!K1)
     return SDValue();
@@ -7245,12 +7246,15 @@ SDValue SITargetLowering::performFPMed3ImmCombine(SelectionDAG &DAG,
 
   // med3 for f16 is only available on gfx9+, and not available for v2f16.
   if (VT == MVT::f32 || (VT == MVT::f16 && Subtarget->hasMed3_16())) {
-    // This isn't safe with signaling NaNs because in IEEE mode, min/max on a
-    // signaling NaN gives a quiet NaN. The quiet NaN input to the min would
-    // then give the other result, which is different from med3 with a NaN
-    // input.
+    // This isn't safe with signaling NaNs with the raw instruction semantics
+    // because in IEEE mode, min/max on a signaling NaN gives a quiet NaN. The
+    // quiet NaN input to the min would then give the other result, which is
+    // different from med3 with a NaN input.
+    //
+    // However ISD::FMINNUM/FMAXNUM do not have the same semantics as the
+    // hardware instructions in IEEE mode, and return the other operand on sNaN.
     SDValue Var = Op0.getOperand(0);
-    if (!DAG.isKnownNeverSNaN(Var))
+    if (UnsafeSNaN && !DAG.isKnownNeverSNaN(Var))
       return SDValue();
 
     return DAG.getNode(AMDGPUISD::FMED3, SL, K0->getValueType(0),
@@ -7334,6 +7338,19 @@ SDValue SITargetLowering::performMinMaxCombine(SDNode *N,
       return Med3;
   }
 
+#if 0
+  if (Opc == AMDGPUISD::FMINNUM_IEEE || Opc == AMDGPUISD::FMAXNUM_IEEE) {
+
+
+
+  }
+#endif
+
+
+  // fminnum(fmaxnum(snan, K0), K1) -> fminnum(K0, K1) -> K0
+  // med3(snan, k0, k1) -> qnan
+
+
   // fminnum(fmaxnum(x, K0), K1), K0 < K1 && !is_snan(x) -> fmed3(x, K0, K1)
   if (((Opc == ISD::FMINNUM && Op0.getOpcode() == ISD::FMAXNUM) ||
        (Opc == ISD::FMINNUM_IEEE && Op0.getOpcode() == ISD::FMAXNUM_IEEE) ||
@@ -7343,7 +7360,10 @@ SDValue SITargetLowering::performMinMaxCombine(SDNode *N,
        (VT == MVT::f16 && Subtarget->has16BitInsts()) ||
        (VT == MVT::v2f16 && Subtarget->hasVOP3PInsts())) &&
       Op0.hasOneUse()) {
-    if (SDValue Res = performFPMed3ImmCombine(DAG, SDLoc(N), Op0, Op1))
+    bool UnsafeSNaN = Opc == ISD::FMINNUM_IEEE ||
+                      Op0.getOpcode() == ISD::FMAXNUM_IEEE;
+    if (SDValue Res = performFPMed3ImmCombine(DAG, SDLoc(N), Op0, Op1,
+                                              UnsafeSNaN))
       return Res;
   }
 
