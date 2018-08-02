@@ -3701,12 +3701,29 @@ bool SelectionDAG::isKnownNeverNaN(SDValue Op, bool SNaN, unsigned Depth) const 
     return false;
   }
   case ISD::FMINNUM:
-  case ISD::FMAXNUM:
+  case ISD::FMAXNUM: {
+    // Only one needs to be known not-nan, since it will be returned if the
+    // other ends up being one.
+    return isKnownNeverNaN(Op.getOperand(0), SNaN, Depth + 1) ||
+      isKnownNeverNaN(Op.getOperand(1), SNaN, Depth + 1);
+  }
+  case ISD::FMINNUM_IEEE:
+  case ISD::FMAXNUM_IEEE: {
+    if (SNaN)
+      return true;
+
+    // This can return a NaN if either operand is an sNaN, or if both operands
+    // are NaN.
+    return (isKnownNeverNaN(Op.getOperand(0), false, Depth + 1) &&
+            isKnownNeverSNaN(Op.getOperand(1), Depth + 1)) ||
+           (isKnownNeverNaN(Op.getOperand(1), false, Depth + 1) &&
+            isKnownNeverSNaN(Op.getOperand(0), Depth + 1));
+  }
   case ISD::FMINNAN:
   case ISD::FMAXNAN: {
-    // TODO: This could be better if there was an agreement on snan behavior.
+    // TODO: Does this quiet or return the origina NaN as-is?
     return isKnownNeverNaN(Op.getOperand(0), SNaN, Depth + 1) &&
-           isKnownNeverNaN(Op.getOperand(1), SNaN, Depth + 1);
+            isKnownNeverNaN(Op.getOperand(1), SNaN, Depth + 1);
   }
   default:
     if (Opcode >= ISD::BUILTIN_OP_END ||

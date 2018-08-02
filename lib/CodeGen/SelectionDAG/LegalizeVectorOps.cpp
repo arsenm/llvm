@@ -130,6 +130,7 @@ class VectorLegalizer {
   SDValue ExpandBITREVERSE(SDValue Op);
   SDValue ExpandCTLZ(SDValue Op);
   SDValue ExpandCTTZ_ZERO_UNDEF(SDValue Op);
+  SDValue ExpandFMINNUM_FMAXNUM(SDValue Op);
   SDValue ExpandStrictFPOp(SDValue Op);
 
   /// Implements vector promotion.
@@ -361,6 +362,8 @@ SDValue VectorLegalizer::LegalizeOp(SDValue Op) {
   case ISD::FABS:
   case ISD::FMINNUM:
   case ISD::FMAXNUM:
+  case ISD::FMINNUM_IEEE:
+  case ISD::FMAXNUM_IEEE:
   case ISD::FMINNAN:
   case ISD::FMAXNAN:
   case ISD::FCOPYSIGN:
@@ -735,6 +738,9 @@ SDValue VectorLegalizer::Expand(SDValue Op) {
     return ExpandCTLZ(Op);
   case ISD::CTTZ_ZERO_UNDEF:
     return ExpandCTTZ_ZERO_UNDEF(Op);
+  case ISD::FMINNUM:
+  case ISD::FMAXNUM:
+    return ExpandFMINNUM_FMAXNUM(Op);
   case ISD::STRICT_FADD:
   case ISD::STRICT_FSUB:
   case ISD::STRICT_FMUL:
@@ -1136,6 +1142,12 @@ SDValue VectorLegalizer::ExpandCTTZ_ZERO_UNDEF(SDValue Op) {
   }
 
   // Otherwise go ahead and unroll.
+  return DAG.UnrollVectorOp(Op.getNode());
+}
+
+SDValue VectorLegalizer::ExpandFMINNUM_FMAXNUM(SDValue Op) {
+  if (SDValue Expanded = TLI.expandFMINNUM_FMAXNUM(Op.getNode(), DAG))
+    return Expanded;
   return DAG.UnrollVectorOp(Op.getNode());
 }
 

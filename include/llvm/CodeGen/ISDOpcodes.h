@@ -559,10 +559,19 @@ namespace ISD {
     FCEIL, FTRUNC, FRINT, FNEARBYINT, FROUND, FFLOOR,
     /// FMINNUM/FMAXNUM - Perform floating-point minimum or maximum on two
     /// values.
-    /// In the case where a single input is NaN, the non-NaN input is returned.
+    //
+    /// In the case where a single input is a NaN (either signaling or quiet),
+    /// the non-NaN input is returned.
     ///
     /// The return value of (FMINNUM 0.0, -0.0) could be either 0.0 or -0.0.
     FMINNUM, FMAXNUM,
+
+    /// FMINNUM_IEEE/FMAXNUM_IEEE - Perform floating-point minimum or maximum on
+    /// two values, following the IEEE-754 2008 definition. This differs from
+    /// FMINNUM/FMAXNUM in the handling of signaling NaNs. If one input is a
+    /// signaling NaN, returns a quiet NaN.
+    FMINNUM_IEEE, FMAXNUM_IEEE,
+
     /// FMINNAN/FMAXNAN - Behave identically to FMINNUM/FMAXNUM, except that
     /// when a single input is NaN, NaN is returned.
     FMINNAN, FMAXNAN,
