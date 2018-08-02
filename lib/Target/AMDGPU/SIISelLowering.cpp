@@ -7260,6 +7260,27 @@ SDValue SITargetLowering::performFPMed3ImmCombine(SelectionDAG &DAG,
   return SDValue();
 }
 
+//  Results of v_min3_* instructions:
+//                           ieee_mode  !ieee_mode
+// min3 snan,   1.0, 2.0   =    1.0         1.0
+// min3  1.0,  snan, 2.0   =    2.0         2.0
+// min3  1.0,   2.0, snan  =   qnan         1.0
+// min3 snan,  snan,  1.0  =    1.0         1.0
+// min3 snan,   1.0, snan ->    qnan       qnan
+// min3  1.0,  snan, snan ->    qnan       qnan
+
+
+// min3 qnan,  1.0,  2.0   =    1.0         1.0
+// min3  1.0, qnan,  2.0   =    1.0         1.0
+// min3  1.0,  2.0, qnan   =    1.0         1.0
+
+// fminnum(fminnum(a, b), c) = 1.0 always
+//
+// fminnum_ieee(fminnum_ieee(a, b), c)
+//
+//  snan,  1.0, 2.0 = 2.0
+//  1.0,  snan, 2.0 = 2.0
+//  1.0,  k2.0, 2.0 = qnan
 SDValue SITargetLowering::performMinMaxCombine(SDNode *N,
                                                DAGCombinerInfo &DCI) const {
   SelectionDAG &DAG = DCI.DAG;
