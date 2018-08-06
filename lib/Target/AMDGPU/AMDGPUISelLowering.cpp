@@ -1289,13 +1289,11 @@ SDValue AMDGPUTargetLowering::combineFMinMaxLegacy(const SDLoc &DL, EVT VT,
   case ISD::SETLT: {
     // Ordered. Assume ordered for undefined.
 
-#if 0
     // Only do this after legalization to avoid interfering with other combines
     // which might occur.
     if (DCI.getDAGCombineLevel() < AfterLegalizeDAG &&
         !DCI.isCalledByLegalizer())
       return SDValue();
-#endif
 
     // We need to permute the operands to get the correct NaN behavior. The
     // selected operand is the second one based on the failing compare with NaN,
@@ -1314,11 +1312,9 @@ SDValue AMDGPUTargetLowering::combineFMinMaxLegacy(const SDLoc &DL, EVT VT,
   case ISD::SETGE:
   case ISD::SETOGE:
   case ISD::SETOGT: {
-#if 0
     if (DCI.getDAGCombineLevel() < AfterLegalizeDAG &&
         !DCI.isCalledByLegalizer())
       return SDValue();
-#endif
 
     if (LHS == True)
       return DAG.getNode(AMDGPUISD::FMAX_LEGACY, DL, VT, LHS, RHS);
@@ -3621,8 +3617,6 @@ SDValue AMDGPUTargetLowering::performFNegCombine(SDNode *N,
   }
   case ISD::FMAXNUM:
   case ISD::FMINNUM:
-  case AMDGPUISD::FMAXNUM_NOFLUSH:
-  case AMDGPUISD::FMINNUM_NOFLUSH:
   case AMDGPUISD::FMAX_LEGACY:
   case AMDGPUISD::FMIN_LEGACY: {
     // fneg (fmaxnum x, y) -> fminnum (fneg x), (fneg y)
@@ -4080,8 +4074,6 @@ const char* AMDGPUTargetLowering::getTargetNodeName(unsigned Opcode) const {
   NODE_NAME_CASE(SIN_HW)
   NODE_NAME_CASE(FMAX_LEGACY)
   NODE_NAME_CASE(FMIN_LEGACY)
-  NODE_NAME_CASE(FMINNUM_NOFLUSH)
-  NODE_NAME_CASE(FMAXNUM_NOFLUSH)
   NODE_NAME_CASE(FMAX3)
   NODE_NAME_CASE(SMAX3)
   NODE_NAME_CASE(UMAX3)
@@ -4405,10 +4397,7 @@ bool AMDGPUTargetLowering::isKnownNeverNaNForTargetNode(SDValue Op,
     return false;
   }
   case AMDGPUISD::FMUL_LEGACY:
-  case AMDGPUISD::CVT_PKRTZ_F16_F32:
-  case AMDGPUISD::FMINNUM_NOFLUSH:
-  case AMDGPUISD::FMAXNUM_NOFLUSH:
-  case AMDGPUISD::FMUL_LEGACY: {
+  case AMDGPUISD::CVT_PKRTZ_F16_F32: {
     if (SNaN)
       return true;
     return DAG.isKnownNeverNaN(Op.getOperand(0), SNaN, Depth + 1) &&

@@ -365,13 +365,6 @@ enum NodeType : unsigned {
   SIN_HW,
   FMAX_LEGACY,
   FMIN_LEGACY,
-
-  /// On pre-gfx9 targets, v_min/max_f* instructions do not flush denormals,
-  /// despite the denormal mode. These behave the same as FMINNUM/FMAXNUM,
-  /// except for not flushing their outputs.
-  FMINNUM_NOFLUSH,
-  FMAXNUM_NOFLUSH,
-
   FMAX3,
   SMAX3,
   UMAX3,

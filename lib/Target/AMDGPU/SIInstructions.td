@@ -1647,23 +1647,3 @@ def : FP16Med3Pat<f16, V_MED3_F16>;
 def : Int16Med3Pat<V_MED3_I16, smax, smax_oneuse, smin_oneuse, i16>;
 def : Int16Med3Pat<V_MED3_U16, umax, umax_oneuse, umin_oneuse, i16>;
 } // End Predicates = [isGFX9]
-
-
-
-class MinMaxModsPat<Instruction inst, SDPatternOperator op, ValueType Ty>
-  : GCNPat<
-  (Ty (op (VOP3Mods Ty:$src0, i32:$src0_mod),
-          (VOP3Mods Ty:$src1, i32:$src1_mod))),
-  (inst $src0_mod, $src0, $src1_mod, $src1,
-   DSTCLAMP.NONE, DSTOMOD.NONE)
->;
-
-
-def : MinMaxModsPat<V_MIN_F32_e64, AMDGPUfminnum_noflush, f32>;
-def : MinMaxModsPat<V_MAX_F32_e64, AMDGPUfmaxnum_noflush, f32>;
-
-def : MinMaxModsPat<V_MIN_F64, AMDGPUfminnum_noflush, f64>;
-def : MinMaxModsPat<V_MAX_F64, AMDGPUfmaxnum_noflush, f64>;
-
-def : MinMaxModsPat<V_MIN_F16_e64, AMDGPUfminnum_noflush, f16>;
-def : MinMaxModsPat<V_MAX_F16_e64, AMDGPUfmaxnum_noflush, f16>;
