@@ -15220,14 +15220,28 @@ SDValue DAGCombiner::visitEXTRACT_VECTOR_ELT(SDNode *N) {
     // converts.
   }
 
-  // extract_vector_elt (v2i32 (bitcast i64:x)), EltTrunc -> i32 (trunc i64:x)
   bool isLE = DAG.getDataLayout().isLittleEndian();
   unsigned EltTrunc = isLE ? 0 : VT.getVectorNumElements() - 1;
-  if (ConstEltNo && InVec.getOpcode() == ISD::BITCAST && InVec.hasOneUse() &&
-      ConstEltNo->getZExtValue() == EltTrunc && VT.isInteger()) {
+  if (ConstEltNo && InVec.getOpcode() == ISD::BITCAST) {
     SDValue BCSrc = InVec.getOperand(0);
-    if (BCSrc.getValueType().isScalarInteger())
-      return DAG.getNode(ISD::TRUNCATE, SDLoc(N), NVT, BCSrc);
+    EVT BCVT = BCSrc.getValueType();
+
+    // extract_vector_elt (v2i32 (bitcast i64:x)), EltTrunc -> i32 (trunc i64:x)
+    if (InVec.hasOneUse() &&
+        ConstEltNo->getZExtValue() == EltTrunc && VT.isInteger()) {
+      if (BCVT.isScalarInteger())
+        return DAG.getNode(ISD::TRUNCATE, SDLoc(N), NVT, BCSrc);
+    }
+
+    // X extract_vector_elt (v2X (v4Y concat_vectors x, y)), 0 -> bitcast x
+    if (BCVT.isVector() && BCSrc.getOpcode() == ISD::CONCAT_VECTORS) {
+      SDValue ConcatSrc = BCSrc.getOperand(0);
+      if (ConcatSrc.getValueType().getSizeInBits() == NVT.getSizeInBits() &&
+          ConstEltNo->getZExtValue() < BCSrc.getNumOperands()) {
+        SDValue ConcatSrc = BCSrc.getOperand(ConstEltNo->getZExtValue());
+        return DAG.getNode(ISD::BITCAST, SDLoc(N), NVT, ConcatSrc);
+      }
+    }
   }
 
   // extract_vector_elt (insert_vector_elt vec, val, idx), idx) -> val
