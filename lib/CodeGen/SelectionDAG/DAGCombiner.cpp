@@ -15165,7 +15165,13 @@ SDValue DAGCombiner::visitEXTRACT_VECTOR_ELT(SDNode *N) {
   if (InVec.isUndef())
     return DAG.getUNDEF(NVT);
 
+  SDValue EltNo = N->getOperand(1);
+  ConstantSDNode *ConstEltNo = dyn_cast<ConstantSDNode>(EltNo);
+
   if (InVec.getOpcode() == ISD::SCALAR_TO_VECTOR) {
+    if (ConstEltNo && !ConstEltNo->getAPIntValue().isNullValue())
+      return DAG.getUNDEF(NVT);
+
     // Check if the result type doesn't match the inserted element type. A
     // SCALAR_TO_VECTOR may truncate the inserted element and the
     // EXTRACT_VECTOR_ELT may widen the extracted vector.
@@ -15176,9 +15182,6 @@ SDValue DAGCombiner::visitEXTRACT_VECTOR_ELT(SDNode *N) {
     }
     return InOp;
   }
-
-  SDValue EltNo = N->getOperand(1);
-  ConstantSDNode *ConstEltNo = dyn_cast<ConstantSDNode>(EltNo);
 
   // extract_vector_elt of out-of-bounds element -> UNDEF
   if (ConstEltNo && ConstEltNo->getAPIntValue().uge(VT.getVectorNumElements()))
