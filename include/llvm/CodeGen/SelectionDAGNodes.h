@@ -378,15 +378,20 @@ public:
         AllowContract(false), ApproximateFuncs(false),
         AllowReassociation(false) {}
 
+  /// Propagate the fast-math-flags from IR FastMathFlags
+  void copyFMF(FastMathFlags FMF) {
+    setNoNaNs(FMF.noNaNs());
+    setNoInfs(FMF.noInfs());
+    setNoSignedZeros(FMF.noSignedZeros());
+    setAllowReciprocal(FMF.allowReciprocal());
+    setAllowContract(FMF.allowContract());
+    setApproximateFuncs(FMF.approxFunc());
+    setAllowReassociation(FMF.allowReassoc());
+  }
+
   /// Propagate the fast-math-flags from an IR FPMathOperator.
   void copyFMF(const FPMathOperator &FPMO) {
-    setNoNaNs(FPMO.hasNoNaNs());
-    setNoInfs(FPMO.hasNoInfs());
-    setNoSignedZeros(FPMO.hasNoSignedZeros());
-    setAllowReciprocal(FPMO.hasAllowReciprocal());
-    setAllowContract(FPMO.hasAllowContract());
-    setApproximateFuncs(FPMO.hasApproxFunc());
-    setAllowReassociation(FPMO.hasAllowReassoc());
+    copyFMF(FPMO.getFastMathFlags());
   }
 
   /// Sets the state of the flags to the defined state.

@@ -21,6 +21,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/Operator.h"
 #include <cassert>
 #include <cstdint>
 
@@ -527,6 +528,7 @@ class Value;
     SelectPatternFlavor Flavor;
     SelectPatternNaNBehavior NaNBehavior; /// Only applicable if Flavor is
                                           /// SPF_FMINNUM or SPF_FMAXNUM.
+    FastMathFlags FMF; /// Any inferred flags from the pattern.
     bool Ordered;               /// When implementing this min/max pattern as
                                 /// fcmp; select, does the fcmp have to be
                                 /// ordered?

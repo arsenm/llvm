@@ -1088,8 +1088,10 @@ void SelectionDAGBuilder::visit(const Instruction &I) {
       IncomingFlags.copyFMF(*FPMO);
       if (!Node->getFlags().isDefined())
         Node->setFlags(IncomingFlags);
+#if 0
       else
         Node->intersectFlagsWith(IncomingFlags);
+#endif
     }
   }
 
@@ -2940,6 +2942,7 @@ void SelectionDAGBuilder::visitSelect(const User &I) {
   auto BaseOps = {Cond};
   ISD::NodeType OpCode = Cond.getValueType().isVector() ?
     ISD::VSELECT : ISD::SELECT;
+  SDNodeFlags Flags;
 
   // Min/max matching is only viable if all output VTs are the same.
   if (is_splat(ValueVTs)) {
@@ -2961,6 +2964,8 @@ void SelectionDAGBuilder::visitSelect(const User &I) {
 
     Value *LHS, *RHS;
     auto SPR = matchSelectPattern(const_cast<User*>(&I), LHS, RHS);
+    Flags.copyFMF(SPR.FMF);
+
     ISD::NodeType Opc = ISD::DELETED_NODE;
     switch (SPR.Flavor) {
     case SPF_UMAX:    Opc = ISD::UMAX; break;
@@ -3025,7 +3030,7 @@ void SelectionDAGBuilder::visitSelect(const User &I) {
     Ops.push_back(SDValue(RHSVal.getNode(), RHSVal.getResNo() + i));
     Values[i] = DAG.getNode(OpCode, getCurSDLoc(),
                             LHSVal.getNode()->getValueType(LHSVal.getResNo()+i),
-                            Ops);
+                            Ops, Flags);
   }
 
   setValue(&I, DAG.getNode(ISD::MERGE_VALUES, getCurSDLoc(),

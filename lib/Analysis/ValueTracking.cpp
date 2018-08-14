@@ -4335,7 +4335,8 @@ static bool isKnownNonZero(const Value *V) {
 static SelectPatternResult matchFastFloatClamp(CmpInst::Predicate Pred,
                                                Value *CmpLHS, Value *CmpRHS,
                                                Value *TrueVal, Value *FalseVal,
-                                               Value *&LHS, Value *&RHS) {
+                                               Value *&LHS, Value *&RHS,
+                                               FastMathFlags FMF) {
   // Try to match
   //   X < C1 ? C1 : Min(X, C2) --> Max(C1, Min(X, C2))
   //   X > C1 ? C1 : Max(X, C2) --> Min(C1, Max(X, C2))
@@ -4353,7 +4354,7 @@ static SelectPatternResult matchFastFloatClamp(CmpInst::Predicate Pred,
 
   const APFloat *FC1;
   if (CmpRHS != TrueVal || !match(CmpRHS, m_APFloat(FC1)) || !FC1->isFinite())
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FMF, false};
 
   const APFloat *FC2;
   switch (Pred) {
@@ -4365,7 +4366,7 @@ static SelectPatternResult matchFastFloatClamp(CmpInst::Predicate Pred,
               m_CombineOr(m_OrdFMin(m_Specific(CmpLHS), m_APFloat(FC2)),
                           m_UnordFMin(m_Specific(CmpLHS), m_APFloat(FC2)))) &&
         FC1->compare(*FC2) == APFloat::cmpResult::cmpLessThan)
-      return {SPF_FMAXNUM, SPNB_RETURNS_ANY, false};
+      return {SPF_FMAXNUM, SPNB_RETURNS_ANY, FMF, false};
     break;
   case CmpInst::FCMP_OGT:
   case CmpInst::FCMP_OGE:
@@ -4375,13 +4376,13 @@ static SelectPatternResult matchFastFloatClamp(CmpInst::Predicate Pred,
               m_CombineOr(m_OrdFMax(m_Specific(CmpLHS), m_APFloat(FC2)),
                           m_UnordFMax(m_Specific(CmpLHS), m_APFloat(FC2)))) &&
         FC1->compare(*FC2) == APFloat::cmpResult::cmpGreaterThan)
-      return {SPF_FMINNUM, SPNB_RETURNS_ANY, false};
+      return {SPF_FMINNUM, SPNB_RETURNS_ANY, FMF, false};
     break;
   default:
     break;
   }
 
-  return {SPF_UNKNOWN, SPNB_NA, false};
+  return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 }
 
 /// Recognize variations of:
@@ -4400,24 +4401,24 @@ static SelectPatternResult matchClamp(CmpInst::Predicate Pred,
     // (X <s C1) ? C1 : SMIN(X, C2) ==> SMAX(SMIN(X, C2), C1)
     if (match(FalseVal, m_SMin(m_Specific(CmpLHS), m_APInt(C2))) &&
         C1->slt(*C2) && Pred == CmpInst::ICMP_SLT)
-      return {SPF_SMAX, SPNB_NA, false};
+      return {SPF_SMAX, SPNB_NA, FastMathFlags(), false};
 
     // (X >s C1) ? C1 : SMAX(X, C2) ==> SMIN(SMAX(X, C2), C1)
     if (match(FalseVal, m_SMax(m_Specific(CmpLHS), m_APInt(C2))) &&
         C1->sgt(*C2) && Pred == CmpInst::ICMP_SGT)
-      return {SPF_SMIN, SPNB_NA, false};
+      return {SPF_SMIN, SPNB_NA, FastMathFlags(), false};
 
     // (X <u C1) ? C1 : UMIN(X, C2) ==> UMAX(UMIN(X, C2), C1)
     if (match(FalseVal, m_UMin(m_Specific(CmpLHS), m_APInt(C2))) &&
         C1->ult(*C2) && Pred == CmpInst::ICMP_ULT)
-      return {SPF_UMAX, SPNB_NA, false};
+      return {SPF_UMAX, SPNB_NA, FastMathFlags(), false};
 
     // (X >u C1) ? C1 : UMAX(X, C2) ==> UMIN(UMAX(X, C2), C1)
     if (match(FalseVal, m_UMax(m_Specific(CmpLHS), m_APInt(C2))) &&
         C1->ugt(*C2) && Pred == CmpInst::ICMP_UGT)
-      return {SPF_UMIN, SPNB_NA, false};
+      return {SPF_UMIN, SPNB_NA, FastMathFlags(), false};
   }
-  return {SPF_UNKNOWN, SPNB_NA, false};
+  return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 }
 
 /// Recognize variations of:
@@ -4432,12 +4433,12 @@ static SelectPatternResult matchMinMaxOfMinMax(CmpInst::Predicate Pred,
   Value *A, *B;
   SelectPatternResult L = matchSelectPattern(TVal, A, B, nullptr, Depth + 1);
   if (!SelectPatternResult::isMinOrMax(L.Flavor))
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 
   Value *C, *D;
   SelectPatternResult R = matchSelectPattern(FVal, C, D, nullptr, Depth + 1);
   if (L.Flavor != R.Flavor)
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 
   // We have something like: x Pred y ? min(a, b) : min(c, d).
   // Try to match the compare to the min/max operations of the select operands.
@@ -4450,7 +4451,7 @@ static SelectPatternResult matchMinMaxOfMinMax(CmpInst::Predicate Pred,
     }
     if (Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SLE)
       break;
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
   case SPF_SMAX:
     if (Pred == ICmpInst::ICMP_SLT || Pred == ICmpInst::ICMP_SLE) {
       Pred = ICmpInst::getSwappedPredicate(Pred);
@@ -4458,7 +4459,7 @@ static SelectPatternResult matchMinMaxOfMinMax(CmpInst::Predicate Pred,
     }
     if (Pred == ICmpInst::ICMP_SGT || Pred == ICmpInst::ICMP_SGE)
       break;
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
   case SPF_UMIN:
     if (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_UGE) {
       Pred = ICmpInst::getSwappedPredicate(Pred);
@@ -4466,7 +4467,7 @@ static SelectPatternResult matchMinMaxOfMinMax(CmpInst::Predicate Pred,
     }
     if (Pred == ICmpInst::ICMP_ULT || Pred == ICmpInst::ICMP_ULE)
       break;
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
   case SPF_UMAX:
     if (Pred == ICmpInst::ICMP_ULT || Pred == ICmpInst::ICMP_ULE) {
       Pred = ICmpInst::getSwappedPredicate(Pred);
@@ -4474,9 +4475,9 @@ static SelectPatternResult matchMinMaxOfMinMax(CmpInst::Predicate Pred,
     }
     if (Pred == ICmpInst::ICMP_UGT || Pred == ICmpInst::ICMP_UGE)
       break;
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
   default:
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
   }
 
   // If there is a common operand in the already matched min/max and the other
@@ -4488,31 +4489,31 @@ static SelectPatternResult matchMinMaxOfMinMax(CmpInst::Predicate Pred,
   if (D == B) {
     if ((CmpLHS == A && CmpRHS == C) || (match(C, m_Not(m_Specific(CmpLHS))) &&
                                          match(A, m_Not(m_Specific(CmpRHS)))))
-      return {L.Flavor, SPNB_NA, false};
+      return {L.Flavor, SPNB_NA, FastMathFlags(), false};
   }
   // a pred d ? m(a, b) : m(b, d) --> m(m(a, b), m(b, d))
   // ~d pred ~a ? m(a, b) : m(b, d) --> m(m(a, b), m(b, d))
   if (C == B) {
     if ((CmpLHS == A && CmpRHS == D) || (match(D, m_Not(m_Specific(CmpLHS))) &&
                                          match(A, m_Not(m_Specific(CmpRHS)))))
-      return {L.Flavor, SPNB_NA, false};
+      return {L.Flavor, SPNB_NA, FastMathFlags(), false};
   }
   // b pred c ? m(a, b) : m(c, a) --> m(m(a, b), m(c, a))
   // ~c pred ~b ? m(a, b) : m(c, a) --> m(m(a, b), m(c, a))
   if (D == A) {
     if ((CmpLHS == B && CmpRHS == C) || (match(C, m_Not(m_Specific(CmpLHS))) &&
                                          match(B, m_Not(m_Specific(CmpRHS)))))
-      return {L.Flavor, SPNB_NA, false};
+      return {L.Flavor, SPNB_NA, FastMathFlags(), false};
   }
   // b pred d ? m(a, b) : m(a, d) --> m(m(a, b), m(a, d))
   // ~d pred ~b ? m(a, b) : m(a, d) --> m(m(a, b), m(a, d))
   if (C == A) {
     if ((CmpLHS == B && CmpRHS == D) || (match(D, m_Not(m_Specific(CmpLHS))) &&
                                          match(B, m_Not(m_Specific(CmpRHS)))))
-      return {L.Flavor, SPNB_NA, false};
+      return {L.Flavor, SPNB_NA, FastMathFlags(), false};
   }
 
-  return {SPF_UNKNOWN, SPNB_NA, false};
+  return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 }
 
 /// Match non-obvious integer minimum and maximum sequences.
@@ -4534,25 +4535,27 @@ static SelectPatternResult matchMinMax(CmpInst::Predicate Pred,
     return SPR;
 
   if (Pred != CmpInst::ICMP_SGT && Pred != CmpInst::ICMP_SLT)
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 
   // Z = X -nsw Y
   // (X >s Y) ? 0 : Z ==> (Z >s 0) ? 0 : Z ==> SMIN(Z, 0)
   // (X <s Y) ? 0 : Z ==> (Z <s 0) ? 0 : Z ==> SMAX(Z, 0)
   if (match(TrueVal, m_Zero()) &&
       match(FalseVal, m_NSWSub(m_Specific(CmpLHS), m_Specific(CmpRHS))))
-    return {Pred == CmpInst::ICMP_SGT ? SPF_SMIN : SPF_SMAX, SPNB_NA, false};
+    return {Pred == CmpInst::ICMP_SGT ? SPF_SMIN : SPF_SMAX, SPNB_NA,
+            FastMathFlags(), false};
 
   // Z = X -nsw Y
   // (X >s Y) ? Z : 0 ==> (Z >s 0) ? Z : 0 ==> SMAX(Z, 0)
   // (X <s Y) ? Z : 0 ==> (Z <s 0) ? Z : 0 ==> SMIN(Z, 0)
   if (match(FalseVal, m_Zero()) &&
       match(TrueVal, m_NSWSub(m_Specific(CmpLHS), m_Specific(CmpRHS))))
-    return {Pred == CmpInst::ICMP_SGT ? SPF_SMAX : SPF_SMIN, SPNB_NA, false};
+    return {Pred == CmpInst::ICMP_SGT ? SPF_SMAX : SPF_SMIN, SPNB_NA,
+            FastMathFlags(), false};
 
   const APInt *C1;
   if (!match(CmpRHS, m_APInt(C1)))
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 
   // An unsigned min/max can be written with a signed compare.
   const APInt *C2;
@@ -4563,14 +4566,16 @@ static SelectPatternResult matchMinMax(CmpInst::Predicate Pred,
     // (X <s 0) ? MAXVAL : X ==> (X >u MAXVAL) ? MAXVAL : X ==> UMIN
     if (Pred == CmpInst::ICMP_SLT && C1->isNullValue() &&
         C2->isMaxSignedValue())
-      return {CmpLHS == TrueVal ? SPF_UMAX : SPF_UMIN, SPNB_NA, false};
+      return {CmpLHS == TrueVal ? SPF_UMAX : SPF_UMIN, SPNB_NA,
+              FastMathFlags(), false};
 
     // Is the sign bit clear?
     // (X >s -1) ? MINVAL : X ==> (X <u MINVAL) ? MINVAL : X ==> UMAX
     // (X >s -1) ? X : MINVAL ==> (X <u MINVAL) ? X : MINVAL ==> UMIN
     if (Pred == CmpInst::ICMP_SGT && C1->isAllOnesValue() &&
         C2->isMinSignedValue())
-      return {CmpLHS == FalseVal ? SPF_UMAX : SPF_UMIN, SPNB_NA, false};
+      return {CmpLHS == FalseVal ? SPF_UMAX : SPF_UMIN, SPNB_NA,
+              FastMathFlags(), false};
   }
 
   // Look through 'not' ops to find disguised signed min/max.
@@ -4578,15 +4583,17 @@ static SelectPatternResult matchMinMax(CmpInst::Predicate Pred,
   // (X <s C) ? ~X : ~C ==> (~X >s ~C) ? ~X : ~C ==> SMAX(~X, ~C)
   if (match(TrueVal, m_Not(m_Specific(CmpLHS))) &&
       match(FalseVal, m_APInt(C2)) && ~(*C1) == *C2)
-    return {Pred == CmpInst::ICMP_SGT ? SPF_SMIN : SPF_SMAX, SPNB_NA, false};
+    return {Pred == CmpInst::ICMP_SGT ? SPF_SMIN : SPF_SMAX, SPNB_NA,
+            FastMathFlags(), false};
 
   // (X >s C) ? ~C : ~X ==> (~X <s ~C) ? ~C : ~X ==> SMAX(~C, ~X)
   // (X <s C) ? ~C : ~X ==> (~X >s ~C) ? ~C : ~X ==> SMIN(~C, ~X)
   if (match(FalseVal, m_Not(m_Specific(CmpLHS))) &&
       match(TrueVal, m_APInt(C2)) && ~(*C1) == *C2)
-    return {Pred == CmpInst::ICMP_SGT ? SPF_SMAX : SPF_SMIN, SPNB_NA, false};
+    return {Pred == CmpInst::ICMP_SGT ? SPF_SMAX : SPF_SMIN, SPNB_NA,
+            FastMathFlags(), false};
 
-  return {SPF_UNKNOWN, SPNB_NA, false};
+  return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 }
 
 bool llvm::isKnownNegation(const Value *X, const Value *Y, bool NeedNSW) {
@@ -4631,7 +4638,7 @@ static SelectPatternResult matchSelectPattern(CmpInst::Predicate Pred,
   case CmpInst::FCMP_UGE: case CmpInst::FCMP_ULE:
     if (!FMF.noSignedZeros() && !isKnownNonZero(CmpLHS) &&
         !isKnownNonZero(CmpRHS))
-      return {SPF_UNKNOWN, SPNB_NA, false};
+      return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
   }
 
   SelectPatternNaNBehavior NaNBehavior = SPNB_NA;
@@ -4660,7 +4667,7 @@ static SelectPatternResult matchSelectPattern(CmpInst::Predicate Pred,
         NaNBehavior = SPNB_RETURNS_OTHER;
       else
         // Completely unsafe.
-        return {SPF_UNKNOWN, SPNB_NA, false};
+        return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
     } else {
       Ordered = false;
       // An unordered comparison will return true when given a NaN, so it
@@ -4672,7 +4679,7 @@ static SelectPatternResult matchSelectPattern(CmpInst::Predicate Pred,
         NaNBehavior = SPNB_RETURNS_NAN;
       else
         // Completely unsafe.
-        return {SPF_UNKNOWN, SPNB_NA, false};
+        return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
     }
   }
 
@@ -4689,23 +4696,23 @@ static SelectPatternResult matchSelectPattern(CmpInst::Predicate Pred,
   // ([if]cmp X, Y) ? X : Y
   if (TrueVal == CmpLHS && FalseVal == CmpRHS) {
     switch (Pred) {
-    default: return {SPF_UNKNOWN, SPNB_NA, false}; // Equality.
+    default: return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false}; // Equality.
     case ICmpInst::ICMP_UGT:
-    case ICmpInst::ICMP_UGE: return {SPF_UMAX, SPNB_NA, false};
+    case ICmpInst::ICMP_UGE: return {SPF_UMAX, SPNB_NA, FastMathFlags(), false};
     case ICmpInst::ICMP_SGT:
-    case ICmpInst::ICMP_SGE: return {SPF_SMAX, SPNB_NA, false};
+    case ICmpInst::ICMP_SGE: return {SPF_SMAX, SPNB_NA, FastMathFlags(), false};
     case ICmpInst::ICMP_ULT:
-    case ICmpInst::ICMP_ULE: return {SPF_UMIN, SPNB_NA, false};
+    case ICmpInst::ICMP_ULE: return {SPF_UMIN, SPNB_NA, FastMathFlags(), false};
     case ICmpInst::ICMP_SLT:
-    case ICmpInst::ICMP_SLE: return {SPF_SMIN, SPNB_NA, false};
+    case ICmpInst::ICMP_SLE: return {SPF_SMIN, SPNB_NA, FastMathFlags(), false};
     case FCmpInst::FCMP_UGT:
     case FCmpInst::FCMP_UGE:
     case FCmpInst::FCMP_OGT:
-    case FCmpInst::FCMP_OGE: return {SPF_FMAXNUM, NaNBehavior, Ordered};
+    case FCmpInst::FCMP_OGE: return {SPF_FMAXNUM, NaNBehavior, FMF, Ordered};
     case FCmpInst::FCMP_ULT:
     case FCmpInst::FCMP_ULE:
     case FCmpInst::FCMP_OLT:
-    case FCmpInst::FCMP_OLE: return {SPF_FMINNUM, NaNBehavior, Ordered};
+    case FCmpInst::FCMP_OLE: return {SPF_FMINNUM, NaNBehavior, FMF, Ordered};
     }
   }
 
@@ -4727,12 +4734,12 @@ static SelectPatternResult matchSelectPattern(CmpInst::Predicate Pred,
       // (X >s 0) ? X : -X or (X >s -1) ? X : -X --> ABS(X)
       // (-X >s 0) ? -X : X or (-X >s -1) ? -X : X --> ABS(X)
       if (Pred == ICmpInst::ICMP_SGT && match(CmpRHS, ZeroOrAllOnes))
-        return {SPF_ABS, SPNB_NA, false};
+        return {SPF_ABS, SPNB_NA, FastMathFlags(), false};
 
       // (X <s 0) ? X : -X or (X <s 1) ? X : -X --> NABS(X)
       // (-X <s 0) ? -X : X or (-X <s 1) ? -X : X --> NABS(X)
       if (Pred == ICmpInst::ICMP_SLT && match(CmpRHS, ZeroOrOne))
-        return {SPF_NABS, SPNB_NA, false};
+        return {SPF_NABS, SPNB_NA, FastMathFlags(), false};
     }
     else if (match(FalseVal, MaybeSExtCmpLHS)) {
       // Set the return values. If the compare uses the negated value (-X >s 0),
@@ -4745,12 +4752,12 @@ static SelectPatternResult matchSelectPattern(CmpInst::Predicate Pred,
       // (X >s 0) ? -X : X or (X >s -1) ? -X : X --> NABS(X)
       // (-X >s 0) ? X : -X or (-X >s -1) ? X : -X --> NABS(X)
       if (Pred == ICmpInst::ICMP_SGT && match(CmpRHS, ZeroOrAllOnes))
-        return {SPF_NABS, SPNB_NA, false};
+        return {SPF_NABS, SPNB_NA, FastMathFlags(), false};
 
       // (X <s 0) ? -X : X or (X <s 1) ? -X : X --> ABS(X)
       // (-X <s 0) ? X : -X or (-X <s 1) ? X : -X --> ABS(X)
       if (Pred == ICmpInst::ICMP_SLT && match(CmpRHS, ZeroOrOne))
-        return {SPF_ABS, SPNB_NA, false};
+        return {SPF_ABS, SPNB_NA, FastMathFlags(), false};
     }
   }
 
@@ -4763,9 +4770,10 @@ static SelectPatternResult matchSelectPattern(CmpInst::Predicate Pred,
   if (NaNBehavior != SPNB_RETURNS_ANY ||
       (!FMF.noSignedZeros() && !isKnownNonZero(CmpLHS) &&
        !isKnownNonZero(CmpRHS)))
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 
-  return matchFastFloatClamp(Pred, CmpLHS, CmpRHS, TrueVal, FalseVal, LHS, RHS);
+  return matchFastFloatClamp(Pred, CmpLHS, CmpRHS, TrueVal, FalseVal,
+                             LHS, RHS, FMF);
 }
 
 /// Helps to match a select pattern in case of a type mismatch.
@@ -4879,13 +4887,13 @@ SelectPatternResult llvm::matchSelectPattern(Value *V, Value *&LHS, Value *&RHS,
                                              Instruction::CastOps *CastOp,
                                              unsigned Depth) {
   if (Depth >= MaxDepth)
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 
   SelectInst *SI = dyn_cast<SelectInst>(V);
-  if (!SI) return {SPF_UNKNOWN, SPNB_NA, false};
+  if (!SI) return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 
   CmpInst *CmpI = dyn_cast<CmpInst>(SI->getCondition());
-  if (!CmpI) return {SPF_UNKNOWN, SPNB_NA, false};
+  if (!CmpI) return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 
   CmpInst::Predicate Pred = CmpI->getPredicate();
   Value *CmpLHS = CmpI->getOperand(0);
@@ -4898,7 +4906,7 @@ SelectPatternResult llvm::matchSelectPattern(Value *V, Value *&LHS, Value *&RHS,
 
   // Bail out early.
   if (CmpI->isEquality())
-    return {SPF_UNKNOWN, SPNB_NA, false};
+    return {SPF_UNKNOWN, SPNB_NA, FastMathFlags(), false};
 
   // Deal with type mismatches.
   if (CastOp && CmpLHS->getType() != TrueVal->getType()) {
