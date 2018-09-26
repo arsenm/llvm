@@ -20,7 +20,6 @@
 #include "MCTargetDesc/AMDGPUMCTargetDesc.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/PseudoSourceValue.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -33,6 +32,7 @@
 
 namespace llvm {
 
+class LiveIntervals;
 class MachineFrameInfo;
 class MachineFunction;
 class TargetRegisterClass;
@@ -201,16 +201,7 @@ public:
     bool hasReg() { return VGPR != 0;}
   };
 
-  struct SGPRSpillVGPRCSR {
-    // VGPR used for SGPR spills
-    unsigned VGPR;
-
-    // If the VGPR is a CSR, the stack slot used to save/restore it in the
-    // prolog/epilog.
-    Optional<int> FI;
-
-    SGPRSpillVGPRCSR(unsigned V, Optional<int> F) : VGPR(V), FI(F) {}
-  };
+  using SGPRSpillMap = DenseMap<int, std::vector<SpilledReg>>;
 
 private:
   // SGPR->VGPR spilling support.
@@ -218,9 +209,9 @@ private:
 
   // Track VGPR + wave index for each subregister of the SGPR spilled to
   // frameindex key.
-  DenseMap<int, std::vector<SpilledReg>> SGPRToVGPRSpills;
+  SGPRSpillMap SGPRToVGPRSpills;
   unsigned NumVGPRSpillLanes = 0;
-  SmallVector<SGPRSpillVGPRCSR, 2> SpillVGPRs;
+  SmallVector<unsigned, 2> SpillVGPRs;
 
 public:
   SIMachineFunctionInfo(const MachineFunction &MF);
@@ -231,11 +222,16 @@ public:
       ArrayRef<SpilledReg>() : makeArrayRef(I->second);
   }
 
-  ArrayRef<SGPRSpillVGPRCSR> getSGPRSpillVGPRs() const {
+  iterator_range<SGPRSpillMap::const_iterator> sgpr_spill_vgprs() const {
+    return SGPRToVGPRSpills;
+  }
+
+  ArrayRef<unsigned> getSGPRSpillVGPRs() const {
     return SpillVGPRs;
   }
 
-  bool allocateSGPRSpillToVGPR(MachineFunction &MF, int FI);
+  bool allocateSGPRSpillToVGPR(MachineFunction &MF, int FI,
+                               LiveIntervals *LIS = nullptr);
   void removeSGPRToVGPRFrameIndices(MachineFrameInfo &MFI);
 
   bool hasCalculatedTID() const { return TIDReg != 0; };

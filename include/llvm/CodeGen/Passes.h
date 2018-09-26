@@ -14,6 +14,8 @@
 #ifndef LLVM_CODEGEN_PASSES_H
 #define LLVM_CODEGEN_PASSES_H
 
+#include "llvm/CodeGen/RegAllocCommon.h"
+
 #include <functional>
 #include <string>
 
@@ -161,16 +163,20 @@ namespace llvm {
   /// possible. It is best suited for debug code where live ranges are short.
   ///
   FunctionPass *createFastRegisterAllocator();
+  FunctionPass *createFastRegisterAllocator(RegClassFilterFunc F,
+                                            bool ClearVirtRegs);
 
   /// BasicRegisterAllocation Pass - This pass implements a degenerate global
   /// register allocator using the basic regalloc framework.
   ///
   FunctionPass *createBasicRegisterAllocator();
+  FunctionPass *createBasicRegisterAllocator(RegClassFilterFunc F);
 
   /// Greedy register allocation pass - This pass implements a global register
   /// allocator for optimized builds.
   ///
   FunctionPass *createGreedyRegisterAllocator();
+  FunctionPass *createGreedyRegisterAllocator(RegClassFilterFunc F);
 
   /// PBQPRegisterAllocation Pass - This pass implements the Partitioned Boolean
   /// Quadratic Prograaming (PBQP) based register allocator.

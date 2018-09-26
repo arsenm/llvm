@@ -102,12 +102,23 @@ public:
     const MachineFunction &MF, unsigned Kind = 0) const override;
 
   /// If \p OnlyToVGPR is true, this will only succeed if this
+  bool spillSGPRImpl(MachineBasicBlock::iterator MI,
+                     const DebugLoc &DL,
+                     unsigned Reg,
+                     bool IsKill,
+                     int Index,
+                     RegScavenger *RS,
+                     LiveIntervals *LIS = nullptr,
+                     bool OnlyToVGPR = false) const;
+
   bool spillSGPR(MachineBasicBlock::iterator MI,
                  int FI, RegScavenger *RS,
+                 LiveIntervals *LIS = nullptr,
                  bool OnlyToVGPR = false) const;
 
   bool restoreSGPR(MachineBasicBlock::iterator MI,
                    int FI, RegScavenger *RS,
+                   LiveIntervals *LIS = nullptr,
                    bool OnlyToVGPR = false) const;
 
   void eliminateFrameIndex(MachineBasicBlock::iterator MI, int SPAdj,
@@ -115,7 +126,8 @@ public:
                            RegScavenger *RS) const override;
 
   bool eliminateSGPRToVGPRSpillFrameIndex(MachineBasicBlock::iterator MI,
-                                          int FI, RegScavenger *RS) const;
+                                          int FI, RegScavenger *RS,
+                                          LiveIntervals *LIS = nullptr) const;
 
   StringRef getRegAsmName(unsigned Reg) const override;
 
@@ -187,7 +199,6 @@ public:
   unsigned findUnusedRegister(const MachineRegisterInfo &MRI,
                               const TargetRegisterClass *RC,
                               const MachineFunction &MF) const;
-
   unsigned getSGPRPressureSet() const { return SGPRSetID; };
   unsigned getVGPRPressureSet() const { return VGPRSetID; };
 
@@ -232,6 +243,8 @@ public:
                                 MachineInstr &Use,
                                 MachineRegisterInfo &MRI,
                                 LiveIntervals *LIS) const;
+
+  const uint32_t *getAllVGPRRegMask() const;
 
 private:
   void buildSpillLoadStore(MachineBasicBlock::iterator MI,

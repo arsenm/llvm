@@ -37,6 +37,9 @@ public:
   void determineCalleeSaves(MachineFunction &MF, BitVector &SavedRegs,
                             RegScavenger *RS = nullptr) const override;
 
+  void determineCalleeSavesSGPR(MachineFunction &MF, BitVector &SavedRegs,
+                                RegScavenger *RS = nullptr) const;
+
   void processFunctionBeforeFrameFinalized(
     MachineFunction &MF,
     RegScavenger *RS = nullptr) const override;

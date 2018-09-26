@@ -1,18 +1,39 @@
-; RUN: llc -march=amdgcn -mcpu=fiji -mattr=-flat-for-global -amdgpu-spill-sgpr-to-smem=0 -verify-machineinstrs < %s | FileCheck -check-prefix=ALL -check-prefix=SGPR %s
+; RUN: not llc -march=amdgcn -mcpu=fiji -mattr=-flat-for-global -amdgpu-spill-sgpr-to-smem=0 -verify-machineinstrs < %s 2>&1 | FileCheck -check-prefix=ERROR %s
 ; RUN: llc -march=amdgcn -mcpu=fiji -mattr=-flat-for-global -amdgpu-spill-sgpr-to-smem=1 -verify-machineinstrs < %s | FileCheck -check-prefix=ALL -check-prefix=SMEM %s
+
+; Previously, SGPR spilling to VGPRs was handled in a single register
+; allocation run. It was possible to not have any free VGPRs for SGPR
+; spilling, requiring writing out to memory which didn't work
+; well. Test situations where this used to be necessary.
+
+; ERROR: error: VGPRs for SGPR spilling limit exceeded (0) in test
 
 ; Make sure this doesn't crash.
 ; ALL-LABEL: {{^}}test:
-; ALL: s_mov_b32 s[[LO:[0-9]+]], SCRATCH_RSRC_DWORD0
-; ALL: s_mov_b32 s[[OFF:[0-9]+]], s3
-; ALL: s_mov_b32 s[[HI:[0-9]+]], 0xe80000
 
-; Make sure we are handling hazards correctly.
-; SGPR: buffer_load_dword [[VHI:v[0-9]+]], off, s[{{[0-9]+:[0-9]+}}], s{{[0-9]+}} offset:16
-; SGPR-NEXT: s_waitcnt vmcnt(0)
-; SGPR-NEXT: v_readfirstlane_b32 s[[HI:[0-9]+]], [[VHI]]
-; SGPR-NEXT: s_nop 4
-; SGPR-NEXT: buffer_store_dword v0, off, s[0:[[HI]]{{\]}}, 0
+; Initialize VGPR for spilling
+; SGPR: ; implicit-def: $vgpr[[SPILL_VGPR:[0-9]+]]
+
+; ALL-DAG: s_mov_b32 s[[LO:[0-9]+]], SCRATCH_RSRC_DWORD0
+; ALL-DAG: s_mov_b32 s[[OFF:[0-9]+]], s3
+; ALL-DAG: s_mov_b32 s[[HI:[0-9]+]], 0xe80000
+
+; SGPR-DAG: v_writelane_b32 v[[SPILL_VGPR]], s{{[0-9]+}}, 0
+; SGPR-DAG: v_writelane_b32 v[[SPILL_VGPR]], s{{[0-9]+}}, 1
+; SGPR-DAG: v_writelane_b32 v[[SPILL_VGPR]], s{{[0-9]+}}, 2
+; SGPR-DAG: v_writelane_b32 v[[SPILL_VGPR]], s{{[0-9]+}}, 3
+
+; Treating the VGPR as a normal value has the disadvantage of
+; increasing the amount of spill code with fast regalloc
+; SGPR: buffer_store_dword v[[SPILL_VGPR]], off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:4 ; 4-byte Folded Spill
+
+; SGPR: ;;#ASMSTART
+; SGPR: buffer_load_dword v[[VGPR_RESTORE:[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:4 ; 4-byte Folded Reload
+; SGPR: v_readlane_b32 s{{[0-9]+}}, v[[VGPR_RESTORE]], 0
+; SGPR: v_readlane_b32 s{{[0-9]+}}, v[[VGPR_RESTORE]], 1
+; SGPR: v_readlane_b32 s{{[0-9]+}}, v[[VGPR_RESTORE]], 2
+; SGPR: v_readlane_b32 s{{[0-9]+}}, v[[VGPR_RESTORE]], 3
+
 
 ; Make sure scratch wave offset register is correctly incremented and
 ; then restored.

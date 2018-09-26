@@ -27,6 +27,7 @@
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/RegAllocCommon.h"
 #include "llvm/CodeGen/RegAllocRegistry.h"
 #include "llvm/CodeGen/RegisterClassInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -68,7 +69,13 @@ namespace {
   public:
     static char ID;
 
-    RegAllocFast() : MachineFunctionPass(ID), StackSlotForVirtReg(-1) {}
+    RegAllocFast(const RegClassFilterFunc F = allocateAllRegClasses,
+                 bool ClearVirtRegs_ = true) :
+      MachineFunctionPass(ID),
+      ShouldAllocateClass(F),
+      StackSlotForVirtReg(-1),
+      ClearVirtRegs(ClearVirtRegs_) {
+    }
 
   private:
     MachineFrameInfo *MFI;
@@ -76,12 +83,15 @@ namespace {
     const TargetRegisterInfo *TRI;
     const TargetInstrInfo *TII;
     RegisterClassInfo RegClassInfo;
+    const RegClassFilterFunc ShouldAllocateClass;
 
     /// Basic block currently being allocated.
     MachineBasicBlock *MBB;
 
     /// Maps virtual regs to the frame index where these values are spilled.
     IndexedMap<int, VirtReg2IndexFunctor> StackSlotForVirtReg;
+
+    bool ClearVirtRegs;
 
     /// Everything we know about a live virtual register.
     struct LiveReg {
@@ -198,8 +208,12 @@ namespace {
     }
 
     MachineFunctionProperties getSetProperties() const override {
-      return MachineFunctionProperties().set(
+      if (ClearVirtRegs) {
+        return MachineFunctionProperties().set(
           MachineFunctionProperties::Property::NoVRegs);
+      }
+
+      return MachineFunctionProperties();
     }
 
   private:
@@ -1315,9 +1329,11 @@ bool RegAllocFast::runOnMachineFunction(MachineFunction &MF) {
   for (MachineBasicBlock &MBB : MF)
     allocateBasicBlock(MBB);
 
-  // All machine operands and other references to virtual registers have been
-  // replaced. Remove the virtual registers.
-  MRI->clearVirtRegs();
+  if (ClearVirtRegs) {
+    // All machine operands and other references to virtual registers have been
+    // replaced. Remove the virtual registers.
+    MRI->clearVirtRegs();
+  }
 
   StackSlotForVirtReg.clear();
   LiveDbgValueMap.clear();
@@ -1326,4 +1342,10 @@ bool RegAllocFast::runOnMachineFunction(MachineFunction &MF) {
 
 FunctionPass *llvm::createFastRegisterAllocator() {
   return new RegAllocFast();
+}
+
+FunctionPass *llvm::createFastRegisterAllocator(
+  std::function<bool(const TargetRegisterInfo &TRI,
+                     const TargetRegisterClass &RC)> Ftor, bool ClearVirtRegs) {
+  return new RegAllocFast(Ftor, ClearVirtRegs);
 }

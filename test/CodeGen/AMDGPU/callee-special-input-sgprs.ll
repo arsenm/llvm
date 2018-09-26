@@ -577,7 +577,7 @@ define void @func_use_every_sgpr_input_call_use_workgroup_id_xyz() #1 {
 
 ; GCN: s_swappc_b64
 
-; GCN-DAG: buffer_store_dword v{{[0-9]+}}, off, s[0:3], s5 offset:4
+; GCN-DAG: buffer_store_dword v{{[0-9]+}}, off, s[0:3], s5 offset:8
 ; GCN-DAG: v_mov_b32_e32 v[[LO1:[0-9]+]], s[[LO_X]]
 ; GCN-DAG: v_mov_b32_e32 v[[HI1:[0-9]+]], s[[HI_X]]
 ; GCN-DAG: {{flat|global}}_load_dword v{{[0-9]+}}, v{{\[}}[[LO1]]:[[HI1]]{{\]}}

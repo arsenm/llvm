@@ -86,3 +86,7 @@ unsigned SIRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
   const SIMachineFunctionInfo *FuncInfo = MF.getInfo<SIMachineFunctionInfo>();
   return FuncInfo->getFrameOffsetReg();
 }
+
+const uint32_t *SIRegisterInfo::getAllVGPRRegMask() const {
+  return CSR_AMDGPU_AllVGPRs_RegMask;
+}

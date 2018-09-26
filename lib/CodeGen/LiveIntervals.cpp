@@ -695,10 +695,15 @@ void LiveIntervals::addKillFlags(const VirtRegMap *VRM) {
     if (LI.empty())
       continue;
 
+    // Target may have not allocated this yet.
+    unsigned PhysReg = VRM->getPhys(Reg);
+    if (PhysReg == 0)
+      continue;
+
     // Find the regunit intervals for the assigned register. They may overlap
     // the virtual register live range, cancelling any kills.
     RU.clear();
-    for (MCRegUnitIterator Unit(VRM->getPhys(Reg), TRI); Unit.isValid();
+    for (MCRegUnitIterator Unit(PhysReg, TRI); Unit.isValid();
          ++Unit) {
       const LiveRange &RURange = getRegUnit(*Unit);
       if (RURange.empty())

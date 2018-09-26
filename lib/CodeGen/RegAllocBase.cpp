@@ -166,3 +166,22 @@ void RegAllocBase::postOptimization() {
   }
   DeadRemats.clear();
 }
+
+void RegAllocBase::enqueue(LiveInterval *LI) {
+  const unsigned Reg = LI->reg;
+
+  assert(TargetRegisterInfo::isVirtualRegister(Reg) &&
+         "Can only enqueue virtual registers");
+
+  if (VRM->hasPhys(Reg))
+    return;
+
+  const TargetRegisterClass &RC = *MRI->getRegClass(Reg);
+  if (ShouldAllocateClass(*TRI, RC)) {
+    LLVM_DEBUG(dbgs() << "Enqueuing " << printReg(Reg, TRI) << '\n');
+    enqueueImpl(LI);
+  } else {
+    LLVM_DEBUG(dbgs() << "Not enqueueing " << printReg(Reg, TRI)
+                      << " in skipped register class\n");
+  }
+}

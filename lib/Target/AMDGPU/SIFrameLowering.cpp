@@ -591,15 +591,6 @@ void SIFrameLowering::emitPrologue(MachineFunction &MF,
       .addImm(RoundedSize * ST.getWavefrontSize())
       .setMIFlag(MachineInstr::FrameSetup);
   }
-
-  for (const SIMachineFunctionInfo::SGPRSpillVGPRCSR &Reg
-         : FuncInfo->getSGPRSpillVGPRs()) {
-    if (!Reg.FI.hasValue())
-      continue;
-    TII->storeRegToStackSlot(MBB, MBBI, Reg.VGPR, true,
-                             Reg.FI.getValue(), &AMDGPU::VGPR_32RegClass,
-                             &TII->getRegisterInfo());
-  }
 }
 
 void SIFrameLowering::emitEpilogue(MachineFunction &MF,
@@ -611,15 +602,6 @@ void SIFrameLowering::emitEpilogue(MachineFunction &MF,
   const GCNSubtarget &ST = MF.getSubtarget<GCNSubtarget>();
   const SIInstrInfo *TII = ST.getInstrInfo();
   MachineBasicBlock::iterator MBBI = MBB.getFirstTerminator();
-
-  for (const SIMachineFunctionInfo::SGPRSpillVGPRCSR &Reg
-         : FuncInfo->getSGPRSpillVGPRs()) {
-    if (!Reg.FI.hasValue())
-      continue;
-    TII->loadRegFromStackSlot(MBB, MBBI, Reg.VGPR,
-                              Reg.FI.getValue(), &AMDGPU::VGPR_32RegClass,
-                              &TII->getRegisterInfo());
-  }
 
   unsigned StackPtrReg = FuncInfo->getStackPtrOffsetReg();
   if (StackPtrReg == AMDGPU::NoRegister)
@@ -672,47 +654,11 @@ void SIFrameLowering::processFunctionBeforeFrameFinalized(
   const GCNSubtarget &ST = MF.getSubtarget<GCNSubtarget>();
   const SIInstrInfo *TII = ST.getInstrInfo();
   const SIRegisterInfo &TRI = TII->getRegisterInfo();
-  SIMachineFunctionInfo *FuncInfo = MF.getInfo<SIMachineFunctionInfo>();
-  bool AllSGPRSpilledToVGPRs = false;
-
-  if (TRI.spillSGPRToVGPR() && FuncInfo->hasSpilledSGPRs()) {
-    AllSGPRSpilledToVGPRs = true;
-
-    // Process all SGPR spills before frame offsets are finalized. Ideally SGPRs
-    // are spilled to VGPRs, in which case we can eliminate the stack usage.
-    //
-    // XXX - This operates under the assumption that only other SGPR spills are
-    // users of the frame index. I'm not 100% sure this is correct. The
-    // StackColoring pass has a comment saying a future improvement would be to
-    // merging of allocas with spill slots, but for now according to
-    // MachineFrameInfo isSpillSlot can't alias any other object.
-    for (MachineBasicBlock &MBB : MF) {
-      MachineBasicBlock::iterator Next;
-      for (auto I = MBB.begin(), E = MBB.end(); I != E; I = Next) {
-        MachineInstr &MI = *I;
-        Next = std::next(I);
-
-        if (TII->isSGPRSpill(MI)) {
-          int FI = TII->getNamedOperand(MI, AMDGPU::OpName::addr)->getIndex();
-          assert(MFI.getStackID(FI) == SIStackID::SGPR_SPILL);
-          if (FuncInfo->allocateSGPRSpillToVGPR(MF, FI)) {
-            bool Spilled = TRI.eliminateSGPRToVGPRSpillFrameIndex(MI, FI, RS);
-            (void)Spilled;
-            assert(Spilled && "failed to spill SGPR to VGPR when allocated");
-          } else
-            AllSGPRSpilledToVGPRs = false;
-        }
-      }
-    }
-
-    FuncInfo->removeSGPRToVGPRFrameIndices(MFI);
-  }
 
   // FIXME: The other checks should be redundant with allStackObjectsAreDead,
   // but currently hasNonSpillStackObjects is set only from source
   // allocas. Stack temps produced from legalization are not counted currently.
-  if (FuncInfo->hasNonSpillStackObjects() || FuncInfo->hasSpilledVGPRs() ||
-      !AllSGPRSpilledToVGPRs || !allStackObjectsAreDead(MFI)) {
+  if (!allStackObjectsAreDead(MFI)) {
     assert(RS && "RegScavenger required if spilling");
 
     // We force this to be at offset 0 so no user object ever has 0 as an
@@ -734,13 +680,27 @@ void SIFrameLowering::processFunctionBeforeFrameFinalized(
   }
 }
 
+// Only report VGPRs to generic code.
 void SIFrameLowering::determineCalleeSaves(MachineFunction &MF, BitVector &SavedRegs,
                                            RegScavenger *RS) const {
   TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
+  const GCNSubtarget &ST = MF.getSubtarget<GCNSubtarget>();
+  const SIRegisterInfo *TRI = ST.getRegisterInfo();
+
+  SavedRegs.clearBitsNotInMask(TRI->getAllVGPRRegMask());
+}
+
+void SIFrameLowering::determineCalleeSavesSGPR(MachineFunction &MF, BitVector &SavedRegs,
+                                               RegScavenger *RS) const {
+  TargetFrameLowering::determineCalleeSaves(MF, SavedRegs, RS);
   const SIMachineFunctionInfo *MFI = MF.getInfo<SIMachineFunctionInfo>();
+
+  const GCNSubtarget &ST = MF.getSubtarget<GCNSubtarget>();
+  const SIRegisterInfo *TRI = ST.getRegisterInfo();
 
   // The SP is specifically managed and we don't want extra spills of it.
   SavedRegs.reset(MFI->getStackPtrOffsetReg());
+  SavedRegs.clearBitsInMask(TRI->getAllVGPRRegMask());
 }
 
 MachineBasicBlock::iterator SIFrameLowering::eliminateCallFramePseudoInstr(

@@ -13,11 +13,13 @@
 #include "MCTargetDesc/AMDGPUMCTargetDesc.h"
 #include "Utils/AMDGPUBaseInfo.h"
 #include "llvm/ADT/Optional.h"
+#include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/CallingConv.h"
+#include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/Function.h"
 #include <cassert>
 #include <vector>
@@ -229,18 +231,10 @@ unsigned SIMachineFunctionInfo::addImplicitBufferPtr(const SIRegisterInfo &TRI) 
   return ArgInfo.ImplicitBufferPtr.getRegister();
 }
 
-static bool isCalleeSavedReg(const MCPhysReg *CSRegs, MCPhysReg Reg) {
-  for (unsigned I = 0; CSRegs[I]; ++I) {
-    if (CSRegs[I] == Reg)
-      return true;
-  }
-
-  return false;
-}
-
 /// Reserve a slice of a VGPR to support spilling for FrameIndex \p FI.
 bool SIMachineFunctionInfo::allocateSGPRSpillToVGPR(MachineFunction &MF,
-                                                    int FI) {
+                                                    int FI,
+                                                    LiveIntervals *LIS) {
   std::vector<SpilledReg> &SpillLanes = SGPRToVGPRSpills[FI];
 
   // This has already been allocated.
@@ -248,6 +242,7 @@ bool SIMachineFunctionInfo::allocateSGPRSpillToVGPR(MachineFunction &MF,
     return true;
 
   const GCNSubtarget &ST = MF.getSubtarget<GCNSubtarget>();
+  const SIInstrInfo *TII = ST.getInstrInfo();
   const SIRegisterInfo *TRI = ST.getRegisterInfo();
   MachineFrameInfo &FrameInfo = MF.getFrameInfo();
   MachineRegisterInfo &MRI = MF.getRegInfo();
@@ -258,8 +253,6 @@ bool SIMachineFunctionInfo::allocateSGPRSpillToVGPR(MachineFunction &MF,
   assert(TRI->spillSGPRToVGPR() && "not spilling SGPRs to VGPRs");
 
   int NumLanes = Size / 4;
-
-  const MCPhysReg *CSRegs = TRI->getCalleeSavedRegs(&MF);
 
   // Make sure to handle the case where a wide SGPR spill may span between two
   // VGPRs.
@@ -274,23 +267,25 @@ bool SIMachineFunctionInfo::allocateSGPRSpillToVGPR(MachineFunction &MF,
         // partially spill the SGPR to VGPRs.
         SGPRToVGPRSpills.erase(FI);
         NumVGPRSpillLanes -= I;
+
+        DiagnosticInfoResourceLimit DiagOutOfRegs(MF.getFunction(),
+                                                  "VGPRs for SGPR spilling",
+                                                  0, DS_Error);
+        MF.getFunction().getContext().diagnose(DiagOutOfRegs);
         return false;
       }
 
-      Optional<int> CSRSpillFI;
-      if ((FrameInfo.hasCalls() || !isEntryFunction()) && CSRegs &&
-          isCalleeSavedReg(CSRegs, LaneVGPR)) {
-        CSRSpillFI = FrameInfo.CreateSpillStackObject(4, 4);
-      }
+      MachineBasicBlock &EntryBB = MF.front();
 
-      SpillVGPRs.push_back(SGPRSpillVGPRCSR(LaneVGPR, CSRSpillFI));
+      MachineInstr *ImpDef
+        = BuildMI(EntryBB, EntryBB.front(),
+                  DebugLoc(), TII->get(TargetOpcode::IMPLICIT_DEF), LaneVGPR);
+      if (LIS)
+        LIS->InsertMachineInstrInMaps(*ImpDef);
 
-      // Add this register as live-in to all blocks to avoid machine verifer
-      // complaining about use of an undefined physical register.
-      for (MachineBasicBlock &BB : MF)
-        BB.addLiveIn(LaneVGPR);
+      SpillVGPRs.push_back(LaneVGPR);
     } else {
-      LaneVGPR = SpillVGPRs.back().VGPR;
+      LaneVGPR = SpillVGPRs.back();
     }
 
     SpillLanes.push_back(SpilledReg(LaneVGPR, VGPRIndex));
@@ -303,7 +298,6 @@ void SIMachineFunctionInfo::removeSGPRToVGPRFrameIndices(MachineFrameInfo &MFI) 
   for (auto &R : SGPRToVGPRSpills)
     MFI.RemoveStackObject(R.first);
 }
-
 
 /// \returns VGPR used for \p Dim' work item ID.
 unsigned SIMachineFunctionInfo::getWorkItemIDVGPR(unsigned Dim) const {

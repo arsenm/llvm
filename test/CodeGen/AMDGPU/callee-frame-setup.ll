@@ -37,14 +37,14 @@ define void @callee_with_stack() #0 {
 ; GCN: ; %bb.0:
 ; GCN-NEXT: s_waitcnt
 ; GCN: s_mov_b32 s5, s32
-; GCN: buffer_store_dword v32, off, s[0:3], s5 offset:8
+; GCN: buffer_store_dword v32, off, s[0:3], s5 offset:4
 
 ; GCN-DAG: v_writelane_b32 v32, s33,
 ; GCN-DAG: v_writelane_b32 v32, s34,
 ; GCN-DAG: v_writelane_b32 v32, s35,
 ; GCN-DAG: s_add_u32 s32, s32, 0x400{{$}}
 ; GCN-DAG: v_mov_b32_e32 v0, 0{{$}}
-; GCN-DAG: buffer_store_dword v0, off, s[0:3], s5 offset:4{{$}}
+; GCN-DAG: buffer_store_dword v0, off, s[0:3], s5 offset:8{{$}}
 ; GCN-DAG: s_mov_b32 s33, s5
 
 
@@ -53,7 +53,7 @@ define void @callee_with_stack() #0 {
 ; GCN-DAG: v_readlane_b32 s35,
 ; GCN-DAG: v_readlane_b32 s34,
 ; GCN-DAG: v_readlane_b32 s33,
-; GCN: buffer_load_dword v32, off, s[0:3], s5 offset:8
+; GCN: buffer_load_dword v32, off, s[0:3], s5 offset:4
 ; GCN: s_waitcnt
 ; GCN-NEXT: s_setpc_b64
 define void @callee_with_stack_and_call() #0 {
@@ -113,6 +113,58 @@ define void @callee_func_sgpr_spill_no_calls(i32 %in) #0 {
   %wide.sgpr5 = call <16 x i32> asm sideeffect "; def $0", "=s" () #0
   %wide.sgpr3 = call <8 x i32> asm sideeffect "; def $0", "=s" () #0
   %wide.sgpr4 = call <2 x i32> asm sideeffect "; def $0", "=s" () #0
+
+  call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr0) #0
+  call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr1) #0
+  call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr2) #0
+  call void asm sideeffect "; use $0", "s"(<8 x i32> %wide.sgpr3) #0
+  call void asm sideeffect "; use $0", "s"(<2 x i32> %wide.sgpr4) #0
+  call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr5) #0
+  ret void
+}
+
+; We can use a non-csr in a leaf function.
+
+; GCN-LABEL: {{^}}callee_func_sgpr_spill_no_calls_low_regs:
+; GCN-NOT: buffer_store_dword
+; GCN: v_writelane_b32 v8,
+; GCN: v_readlane_b32 s{{[0-9]+}}, v8
+; GCN-NOT: buffer_load_dword
+define void @callee_func_sgpr_spill_no_calls_low_regs(i32 %in) #0 {
+  call void asm sideeffect "", "~{v0},~{v1},~{v2},~{v3},~{v4},~{v5},~{v6},~{v7}"() #0
+
+  %wide.sgpr0 = call <16 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr1 = call <16 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr2 = call <16 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr5 = call <16 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr3 = call <8 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr4 = call <2 x i32> asm sideeffect "; def $0", "=s" () #0
+
+  call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr0) #0
+  call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr1) #0
+  call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr2) #0
+  call void asm sideeffect "; use $0", "s"(<8 x i32> %wide.sgpr3) #0
+  call void asm sideeffect "; use $0", "s"(<2 x i32> %wide.sgpr4) #0
+  call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr5) #0
+  ret void
+}
+
+; GCN-LABEL: {{^}}callee_func_sgpr_spill_calls_low_regs:
+; GCN: buffer_store_dword v32
+; GCN: v_writelane_b32 v32,
+; GCN: v_readlane_b32 s{{[0-9]+}}, v32
+; GCN: buffer_load_dword v32
+define void @callee_func_sgpr_spill_calls_low_regs(i32 %in) #0 {
+  call void asm sideeffect "", "~{v0},~{v1},~{v2},~{v3},~{v4},~{v5},~{v6},~{v7}"() #0
+
+  %wide.sgpr0 = call <16 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr1 = call <16 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr2 = call <16 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr5 = call <16 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr3 = call <8 x i32> asm sideeffect "; def $0", "=s" () #0
+  %wide.sgpr4 = call <2 x i32> asm sideeffect "; def $0", "=s" () #0
+
+  call void @external_void_func_void()
 
   call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr0) #0
   call void asm sideeffect "; use $0", "s"(<16 x i32> %wide.sgpr1) #0
