@@ -18,7 +18,6 @@
 ; DEFAULT: Greedy Register Allocator
 ; DEFAULT-NEXT: Virtual Register Rewriter
 ; DEFAULT-NEXT: SI lower SGPR spill instructions
-; DEFAULT-NEXT: Debug Variable Analysis
 ; DEFAULT-NEXT: Virtual Register Map
 ; DEFAULT-NEXT: Live Register Matrix
 ; DEFAULT-NEXT: Machine Optimization Remark Emitter
@@ -42,7 +41,6 @@
 ; BASIC-DEFAULT-NEXT: Basic Register Allocator
 ; BASIC-DEFAULT-NEXT: Virtual Register Rewriter
 ; BASIC-DEFAULT-NEXT: SI lower SGPR spill instructions
-; BASIC-DEFAULT-NEXT: Debug Variable Analysis
 ; BASIC-DEFAULT-NEXT: Virtual Register Map
 ; BASIC-DEFAULT-NEXT: Live Register Matrix
 ; BASIC-DEFAULT-NEXT: Bundle Machine CFG Edges
@@ -58,7 +56,6 @@
 ; DEFAULT-BASIC: Greedy Register Allocator
 ; DEFAULT-BASIC-NEXT: Virtual Register Rewriter
 ; DEFAULT-BASIC-NEXT: SI lower SGPR spill instructions
-; DEFAULT-BASIC-NEXT: Debug Variable Analysis
 ; DEFAULT-BASIC-NEXT: Virtual Register Map
 ; DEFAULT-BASIC-NEXT: Live Register Matrix
 ; DEFAULT-BASIC-NEXT: Basic Register Allocator
@@ -75,7 +72,6 @@
 ; BASIC-BASIC-NEXT: Basic Register Allocator
 ; BASIC-BASIC-NEXT: Virtual Register Rewriter
 ; BASIC-BASIC-NEXT: SI lower SGPR spill instructions
-; BASIC-BASIC-NEXT: Debug Variable Analysis
 ; BASIC-BASIC-NEXT: Virtual Register Map
 ; BASIC-BASIC-NEXT: Live Register Matrix
 ; BASIC-BASIC-NEXT: Basic Register Allocator
