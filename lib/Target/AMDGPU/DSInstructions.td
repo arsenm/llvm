@@ -813,6 +813,8 @@ defm : DSAtomicRetPat_mc<DS_MIN_RTN_I64, i64, "atomic_load_min_local">;
 defm : DSAtomicRetPat_mc<DS_MAX_RTN_I64, i64, "atomic_load_max_local">;
 defm : DSAtomicRetPat_mc<DS_MIN_RTN_U64, i64, "atomic_load_umin_local">;
 defm : DSAtomicRetPat_mc<DS_MAX_RTN_U64, i64, "atomic_load_umax_local">;
+defm : DSAtomicRetPat_mc<DS_MIN_RTN_F64, f64, "atomic_load_fmin_local">;
+defm : DSAtomicRetPat_mc<DS_MAX_RTN_F64, f64, "atomic_load_fmax_local">;
 
 defm : DSAtomicCmpXChg_mc<DS_CMPST_RTN_B64, i64, "atomic_cmp_swap_local">;
 

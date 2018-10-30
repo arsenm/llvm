@@ -18,6 +18,39 @@ define float @lds_atomic_fadd_ret_f32(float addrspace(3)* %ptr) nounwind {
   ret float %result
 }
 
+; GCN-LABEL: {{^}}lds_atomic_fmin_ret_f32:
+; GFX678-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+
+; HAS-ATOMICS-DAG: v_mov_b32_e32 [[K:v[0-9]+]], 4.0
+; HAS-ATOMICS: ds_min_rtn_f32 v0, v0, [[K]]
+
+
+; NO-ATOMICS: ds_read_b32
+; NO-ATOMICS: v_min_f32
+; NO-ATOMICS: ds_cmpst_rtn_b32
+; NO-ATOMICS: s_cbranch_execnz
+define float @lds_atomic_fmin_ret_f32(float addrspace(3)* %ptr) nounwind {
+  %result = atomicrmw fmin float addrspace(3)* %ptr, float 4.0 seq_cst
+  ret float %result
+}
+
+; GCN-LABEL: {{^}}lds_atomic_fmax_ret_f32:
+; GFX678-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+
+; HAS-ATOMICS-DAG: v_mov_b32_e32 [[K:v[0-9]+]], 4.0
+; HAS-ATOMICS: ds_max_rtn_f32 v0, v0, [[K]]
+
+; NO-ATOMICS: ds_read_b32
+; NO-ATOMICS: v_max_f32
+; NO-ATOMICS: ds_cmpst_rtn_b32
+; NO-ATOMICS: s_cbranch_execnz
+define float @lds_atomic_fmax_ret_f32(float addrspace(3)* %ptr) nounwind {
+  %result = atomicrmw fmax float addrspace(3)* %ptr, float 4.0 seq_cst
+  ret float %result
+}
+
 ; GCN-LABEL: {{^}}lds_atomic_fadd_noret_f32:
 ; GFX678-DAG: s_mov_b32 m0
 ; GFX9-NOT: m0
@@ -25,6 +58,26 @@ define float @lds_atomic_fadd_ret_f32(float addrspace(3)* %ptr) nounwind {
 ; HAS-ATOMICS: ds_add_f32 v0, [[K]]
 define void @lds_atomic_fadd_noret_f32(float addrspace(3)* %ptr) nounwind {
   %result = atomicrmw fadd float addrspace(3)* %ptr, float 4.0 seq_cst
+  ret void
+}
+
+; GCN-LABEL: {{^}}lds_atomic_fmin_noret_f32:
+; GFX678-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+; HAS-ATOMICS-DAG: v_mov_b32_e32 [[K:v[0-9]+]], 4.0
+; HAS-ATOMICS: ds_min_f32 v0, [[K]]
+define void @lds_atomic_fmin_noret_f32(float addrspace(3)* %ptr) nounwind {
+  %result = atomicrmw fmin float addrspace(3)* %ptr, float 4.0 seq_cst
+  ret void
+}
+
+; GCN-LABEL: {{^}}lds_atomic_fmax_noret_f32:
+; GFX678-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+; HAS-ATOMICS-DAG: v_mov_b32_e32 [[K:v[0-9]+]], 4.0
+; HAS-ATOMICS: ds_max_f32 v0, [[K]]
+define void @lds_atomic_fmax_noret_f32(float addrspace(3)* %ptr) nounwind {
+  %result = atomicrmw fmax float addrspace(3)* %ptr, float 4.0 seq_cst
   ret void
 }
 
@@ -46,6 +99,95 @@ define amdgpu_kernel void @lds_ds_fadd(float addrspace(1)* %out, float addrspace
   %a2 = atomicrmw fadd float addrspace(3)* %ptr1, float 4.2e+1 seq_cst
   %a3 = atomicrmw fadd float addrspace(3)* %ptrf, float %a1 seq_cst
   store float %a3, float addrspace(1)* %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}lds_ds_fmin:
+; VI-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+; HAS-ATOMICS-DAG: v_mov_b32_e32 [[V0:v[0-9]+]], 0x42280000
+; HAS-ATOMICS: ds_min_rtn_f32 [[V2:v[0-9]+]], [[V1:v[0-9]+]], [[V0]] offset:32
+; HAS-ATOMICS: ds_min_f32 [[V3:v[0-9]+]], [[V0]] offset:64
+; HAS-ATOMICS: s_waitcnt lgkmcnt(1)
+; HAS-ATOMICS: ds_min_rtn_f32 {{v[0-9]+}}, {{v[0-9]+}}, [[V2]]
+define amdgpu_kernel void @lds_ds_fmin(float addrspace(1)* %out, float addrspace(3)* %ptrf, i32 %idx) {
+  %idx.add = add nuw i32 %idx, 4
+  %shl0 = shl i32 %idx.add, 3
+  %shl1 = shl i32 %idx.add, 4
+  %ptr0 = inttoptr i32 %shl0 to float addrspace(3)*
+  %ptr1 = inttoptr i32 %shl1 to float addrspace(3)*
+  %a1 = atomicrmw fmin float addrspace(3)* %ptr0, float 4.2e+1 seq_cst
+  %a2 = atomicrmw fmin float addrspace(3)* %ptr1, float 4.2e+1 seq_cst
+  %a3 = atomicrmw fmin float addrspace(3)* %ptrf, float %a1 seq_cst
+  store float %a3, float addrspace(1)* %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}lds_ds_fmax:
+; VI-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+; HAS-ATOMICS-DAG: v_mov_b32_e32 [[V0:v[0-9]+]], 0x42280000
+; HAS-ATOMICS: ds_max_rtn_f32 [[V2:v[0-9]+]], [[V1:v[0-9]+]], [[V0]] offset:32
+; HAS-ATOMICS: ds_max_f32 [[V3:v[0-9]+]], [[V0]] offset:64
+; HAS-ATOMICS: s_waitcnt lgkmcnt(1)
+; HAS-ATOMICS: ds_max_rtn_f32 {{v[0-9]+}}, {{v[0-9]+}}, [[V2]]
+define amdgpu_kernel void @lds_ds_fmax(float addrspace(1)* %out, float addrspace(3)* %ptrf, i32 %idx) {
+  %idx.add = add nuw i32 %idx, 4
+  %shl0 = shl i32 %idx.add, 3
+  %shl1 = shl i32 %idx.add, 4
+  %ptr0 = inttoptr i32 %shl0 to float addrspace(3)*
+  %ptr1 = inttoptr i32 %shl1 to float addrspace(3)*
+  %a1 = atomicrmw fmax float addrspace(3)* %ptr0, float 4.2e+1 seq_cst
+  %a2 = atomicrmw fmax float addrspace(3)* %ptr1, float 4.2e+1 seq_cst
+  %a3 = atomicrmw fmax float addrspace(3)* %ptrf, float %a1 seq_cst
+  store float %a3, float addrspace(1)* %out
+  ret void
+}
+
+; GCN-LABEL: {{^}}lds_atomic_fmin_ret_f64:
+; GFX678-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+; HAS-ATOMICS: ds_min_rtn_f64 v[0:1], v0, v{{\[}}
+
+; NO-ATOMICS: ds_read_b64
+; NO-ATOMICS: v_min_f64
+; NO-ATOMICS: ds_cmpst_rtn_b64
+; NO-ATOMICS: s_cbranch_execnz
+define double @lds_atomic_fmin_ret_f64(double addrspace(3)* %ptr) nounwind {
+  %result = atomicrmw fmin double addrspace(3)* %ptr, double 4.0 seq_cst
+  ret double %result
+}
+
+; GCN-LABEL: {{^}}lds_atomic_fmin_noret_f64:
+; GFX678-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+
+; HAS-ATOMICS: ds_min_f64 v0, v{{\[}}
+define void @lds_atomic_fmin_noret_f64(double addrspace(3)* %ptr) nounwind {
+  %result = atomicrmw fmin double addrspace(3)* %ptr, double 4.0 seq_cst
+  ret void
+}
+
+; GCN-LABEL: {{^}}lds_atomic_fmax_ret_f64:
+; GFX678-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+; HAS-ATOMICS: ds_max_rtn_f64 v[0:1], v0, v{{\[}}
+
+; NO-ATOMICS: ds_read_b64
+; NO-ATOMICS: v_max_f64
+; NO-ATOMICS: ds_cmpst_rtn_b64
+; NO-ATOMICS: s_cbranch_execnz
+define double @lds_atomic_fmax_ret_f64(double addrspace(3)* %ptr) nounwind {
+  %result = atomicrmw fmax double addrspace(3)* %ptr, double 4.0 seq_cst
+  ret double %result
+}
+
+; GCN-LABEL: {{^}}lds_atomic_fmax_noret_f64:
+; GFX678-DAG: s_mov_b32 m0
+; GFX9-NOT: m0
+; HAS-ATOMICS: ds_max_f64 v0, v{{\[}}
+define void @lds_atomic_fmax_noret_f64(double addrspace(3)* %ptr) nounwind {
+  %result = atomicrmw fmax double addrspace(3)* %ptr, double 4.0 seq_cst
   ret void
 }
 

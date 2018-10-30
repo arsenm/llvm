@@ -4206,6 +4206,8 @@ void SelectionDAGBuilder::visitAtomicRMW(const AtomicRMWInst &I) {
   case AtomicRMWInst::UMin: NT = ISD::ATOMIC_LOAD_UMIN; break;
   case AtomicRMWInst::FAdd: NT = ISD::ATOMIC_LOAD_FADD; break;
   case AtomicRMWInst::FSub: NT = ISD::ATOMIC_LOAD_FSUB; break;
+  case AtomicRMWInst::FMin: NT = ISD::ATOMIC_LOAD_FMIN; break;
+  case AtomicRMWInst::FMax: NT = ISD::ATOMIC_LOAD_FMAX; break;
   }
   AtomicOrdering Order = I.getOrdering();
   SyncScope::ID SSID = I.getSyncScopeID();

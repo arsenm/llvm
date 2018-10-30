@@ -553,6 +553,10 @@ static Value *performAtomicOp(AtomicRMWInst::BinOp Op, IRBuilder<> &Builder,
     return Builder.CreateFAdd(Loaded, Inc, "new");
   case AtomicRMWInst::FSub:
     return Builder.CreateFSub(Loaded, Inc, "new");
+  case AtomicRMWInst::FMin:
+    return Builder.CreateMinNum(Loaded, Inc, "new");
+  case AtomicRMWInst::FMax:
+    return Builder.CreateMaxNum(Loaded, Inc, "new");
   default:
     llvm_unreachable("Unknown atomic op");
   }
@@ -1553,6 +1557,8 @@ static ArrayRef<RTLIB::Libcall> GetRMWLibcall(AtomicRMWInst::BinOp Op) {
   case AtomicRMWInst::UMin:
   case AtomicRMWInst::FAdd:
   case AtomicRMWInst::FSub:
+  case AtomicRMWInst::FMin:
+  case AtomicRMWInst::FMax:
     // No atomic libcalls are available for max/min/umax/umin.
     return {};
   }
