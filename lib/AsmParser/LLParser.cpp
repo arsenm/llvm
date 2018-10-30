@@ -3294,7 +3294,7 @@ bool LLParser::ParseValID(ValID &ID, PerFunctionState *PFS) {
     ID.Kind = ValID::t_Constant;
     return false;
   }
- 
+
   // Unary Operators.
   case lltok::kw_fneg: {
     unsigned Opc = Lex.getUIntVal();
@@ -3304,7 +3304,7 @@ bool LLParser::ParseValID(ValID &ID, PerFunctionState *PFS) {
         ParseGlobalTypeAndValue(Val) ||
         ParseToken(lltok::rparen, "expected ')' in unary constantexpr"))
       return true;
-    
+
     // Check that the type is valid for the operator.
     switch (Opc) {
     case Instruction::FNeg:
@@ -6169,11 +6169,11 @@ bool LLParser::ParseUnaryOp(Instruction *&Inst, PerFunctionState &PFS,
     Valid = LHS->getType()->isIntOrIntVectorTy() ||
             LHS->getType()->isFPOrFPVectorTy();
     break;
-  case 1: 
-    Valid = LHS->getType()->isIntOrIntVectorTy(); 
+  case 1:
+    Valid = LHS->getType()->isIntOrIntVectorTy();
     break;
-  case 2: 
-    Valid = LHS->getType()->isFPOrFPVectorTy(); 
+  case 2:
+    Valid = LHS->getType()->isFPOrFPVectorTy();
     break;
   }
 
@@ -6840,6 +6840,14 @@ int LLParser::ParseAtomicRMW(Instruction *&Inst, PerFunctionState &PFS) {
     break;
   case lltok::kw_fsub:
     Operation = AtomicRMWInst::FSub;
+    IsFP = true;
+    break;
+  case lltok::kw_fmin:
+    Operation = AtomicRMWInst::FMin;
+    IsFP = true;
+    break;
+  case lltok::kw_fmax:
+    Operation = AtomicRMWInst::FMax;
     IsFP = true;
     break;
   }

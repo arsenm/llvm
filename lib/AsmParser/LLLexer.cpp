@@ -703,7 +703,7 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(oge); KEYWORD(ord); KEYWORD(uno); KEYWORD(ueq); KEYWORD(une);
 
   KEYWORD(xchg); KEYWORD(nand); KEYWORD(max); KEYWORD(min); KEYWORD(umax);
-  KEYWORD(umin);
+  KEYWORD(umin); KEYWORD(fmin); KEYWORD(fmax);
 
   KEYWORD(x);
   KEYWORD(blockaddress);

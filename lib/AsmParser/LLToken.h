@@ -290,6 +290,8 @@ enum Kind {
   kw_xor,
   kw_icmp,
   kw_fcmp,
+  kw_fmin,
+  kw_fmax,
 
   kw_phi,
   kw_call,

@@ -730,8 +730,16 @@ public:
     /// *p = old - v
     FSub,
 
+    /// *p = fminnum(old, v) ? old : v;
+    /// XXX - snans?
+    FMin,
+
+    /// *p = fmaxnum(old, v) ? old : v;
+    /// XXX - snans?
+    FMax,
+
     FIRST_BINOP = Xchg,
-    LAST_BINOP = FSub,
+    LAST_BINOP = FMax,
     BAD_BINOP
   };
 
@@ -757,6 +765,8 @@ public:
     switch (Op) {
     case AtomicRMWInst::FAdd:
     case AtomicRMWInst::FSub:
+    case AtomicRMWInst::FMin:
+    case AtomicRMWInst::FMax:
       return true;
     default:
       return false;
@@ -1137,7 +1147,7 @@ DEFINE_TRANSPARENT_OPERAND_ACCESSORS(GetElementPtrInst, Value)
 //                                UnaryOperator Class
 //===----------------------------------------------------------------------===//
 
-/// a unary instruction 
+/// a unary instruction
 class UnaryOperator : public UnaryInstruction {
   void AssertOK();
 
