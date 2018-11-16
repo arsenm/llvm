@@ -476,9 +476,6 @@ void RegAllocFast::freePhysReg(MCPhysReg PhysReg) {
     }
     return;
   }
-
-  markRegUsedInInstr(PhysReg);
-  setPhysRegState(PhysReg, NewState);
 }
 
 /// Return the cost of spilling clearing out PhysReg and aliases so it is free
