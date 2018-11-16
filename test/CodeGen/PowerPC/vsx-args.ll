@@ -23,10 +23,9 @@ entry:
 ; CHECK: blr
 
 ; CHECK-FISL-LABEL: @main
-; CHECK-FISL: stxvd2x 34
-; CHECK-FISL: vmr 2, 3
-; CHECK-FISL: vmr 3, 4
-; CHECK-FISL: lxvd2x 36
+; CHECK-FISL: stxvd2x 36
+; CHECK-FISL: vmr 4, 3
+; CHECK-FISL: lxvd2x 35
 ; CHECK-FISL: bl sv
 ; CHECK-FISL: lxvd2x [[VC:[0-9]+]],
 ; CHECK-FISL: xvadddp 34, 34, [[VC]]

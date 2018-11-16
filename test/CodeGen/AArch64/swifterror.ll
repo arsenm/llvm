@@ -19,11 +19,10 @@ define float @foo(%swift_error** swifterror %error_ptr_ref) {
 ; CHECK-O0-LABEL: foo:
 ; CHECK-O0: orr w{{.*}}, wzr, #0x10
 ; CHECK-O0: malloc
-; CHECK-O0: mov x21, x0
-; CHECK-O0-NOT: x21
-; CHECK-O0: orr [[ID:w[0-9]+]], wzr, #0x1
-; CHECK-O0-NOT: x21
-; CHECK-O0: strb [[ID]], [x0, #8]
+; CHECK-O0: mov [[MALLOCRES:x[0-9]+]], x0
+; CHECK-O0-DAG: orr [[ONE:w[0-9]+]], wzr, #0x1
+; CHECK-O0-DAG: strb [[ONE]], {{\[}}[[MALLOCRES]], #8]
+; CHECK-O0-DAG: mov x21, x0
 ; CHECK-O0-NOT: x21
 entry:
   %call = call i8* @malloc(i64 16)
@@ -133,14 +132,13 @@ define float @foo_if(%swift_error** swifterror %error_ptr_ref, i32 %cc) {
 ; CHECK-O0: cbz w0
 ; CHECK-O0: orr w{{.*}}, wzr, #0x10
 ; CHECK-O0: malloc
-; CHECK-O0: mov [[ID:x[0-9]+]], x0
+; CHECK-O0: mov [[MALLOCRES:x[0-9]+]], x0
 ; CHECK-O0: orr [[ID2:w[0-9]+]], wzr, #0x1
-; CHECK-O0: strb [[ID2]], [x0, #8]
-; CHECK-O0: mov x21, [[ID]]
+; CHECK-O0: strb [[ID2]], {{\[}}[[MALLOCRES]], #8]
+; CHECK-O0: mov x21, x0
 ; CHECK-O0: ret
 ; reload from stack
-; CHECK-O0: ldr [[ID3:x[0-9]+]], [sp, [[SLOT]]]
-; CHECK-O0: mov x21, [[ID3]]
+; CHECK-O0: ldr x21, [sp, [[SLOT]]]
 ; CHECK-O0: ret
 entry:
   %cond = icmp ne i32 %cc, 0
@@ -174,11 +172,11 @@ define float @foo_loop(%swift_error** swifterror %error_ptr_ref, i32 %cc, float 
 
 ; CHECK-O0-LABEL: foo_loop:
 ; spill x21
-; CHECK-O0: str x21, [sp, [[SLOT:#[0-9]+]]]
+; CHECK-O0: stur x21, [x29, [[SLOT:#-?[0-9]+]]]
 ; CHECK-O0: b [[BB1:[A-Za-z0-9_]*]]
 ; CHECK-O0: [[BB1]]:
-; CHECK-O0: ldr     x0, [sp, [[SLOT]]]
-; CHECK-O0: str     x0, [sp, [[SLOT2:#[0-9]+]]]
+; CHECK-O0: ldur    [[REG:x[0-9]+]], [x29, [[SLOT]]]
+; CHECK-O0: str     [[REG]], [sp, [[SLOT2:#[0-9]+]]]
 ; CHECK-O0: cbz {{.*}}, [[BB2:[A-Za-z0-9_]*]]
 ; CHECK-O0: orr w{{.*}}, wzr, #0x10
 ; CHECK-O0: malloc
@@ -188,12 +186,11 @@ define float @foo_loop(%swift_error** swifterror %error_ptr_ref, i32 %cc, float 
 ; CHECK-O0: str x0, [sp, [[SLOT2]]]
 ; CHECK-O0:[[BB2]]:
 ; CHECK-O0: ldr     x0, [sp, [[SLOT2]]]
+; CHECK-O0: str     x0, [sp]
 ; CHECK-O0: fcmp
-; CHECK-O0: str     x0, [sp, [[SLOT3:#[0-9]+]]
 ; CHECK-O0: b.le [[BB1]]
 ; reload from stack
-; CHECK-O0: ldr [[ID3:x[0-9]+]], [sp, [[SLOT3]]]
-; CHECK-O0: mov x21, [[ID3]]
+; CHECK-O0: ldr x21, [sp]
 ; CHECK-O0: ret
 entry:
   br label %bb_loop
@@ -233,18 +230,17 @@ define void @foo_sret(%struct.S* sret %agg.result, i32 %val1, %swift_error** swi
 ; CHECK-APPLE-NOT: x21
 
 ; CHECK-O0-LABEL: foo_sret:
-; CHECK-O0: orr w{{.*}}, wzr, #0x10
 ; spill x8
-; CHECK-O0-DAG: str x8
-; spill x21
-; CHECK-O0-DAG: str x21
+; CHECK-O0-DAG: str x8, [sp]
+; CHECK-O0: orr w{{.*}}, wzr, #0x10
 ; CHECK-O0: malloc
+; CHECK-O0: ldr [[SRET:x[0-9]+]], [sp]
+; CHECK-O0: mov [[MALLOCRES:x[0-9]+]], x0
 ; CHECK-O0: orr [[ID:w[0-9]+]], wzr, #0x1
-; CHECK-O0: strb [[ID]], [x0, #8]
+; CHECK-O0: strb [[ID]], {{\[}}[[MALLOCRES]], #8]
 ; reload from stack
-; CHECK-O0: ldr [[SRET:x[0-9]+]]
 ; CHECK-O0: str w{{.*}}, [{{.*}}[[SRET]], #4]
-; CHECK-O0: mov x21
+; CHECK-O0: mov x21, x0
 ; CHECK-O0-NOT: x21
 entry:
   %call = call i8* @malloc(i64 16)
@@ -272,15 +268,15 @@ define float @caller3(i8* %error_ref) {
 
 ; CHECK-O0-LABEL: caller3:
 ; spill x0
-; CHECK-O0: str x0
+; CHECK-O0: str x0, [sp, [[OFFSET:#[0-9]+]]]
 ; CHECK-O0: mov x21
 ; CHECK-O0: bl {{.*}}foo_sret
 ; CHECK-O0: mov [[ID2:x[0-9]+]], x21
 ; CHECK-O0: cbnz x21
 ; Access part of the error object and save it to error_ref
 ; reload from stack
+; CHECK-O0: ldr [[ID:x[0-9]+]], [sp, [[OFFSET]]]
 ; CHECK-O0: ldrb [[CODE:w[0-9]+]]
-; CHECK-O0: ldr [[ID:x[0-9]+]]
 ; CHECK-O0: strb [[CODE]], [{{.*}}[[ID]]]
 ; CHECK-O0: bl {{.*}}free
 entry:
@@ -600,8 +596,7 @@ declare swiftcc void @foo2(%swift_error** swifterror)
 
 ; Make sure we properly assign registers during fast-isel.
 ; CHECK-O0-LABEL: testAssign
-; CHECK-O0: mov     [[TMP:x.*]], xzr
-; CHECK-O0: mov     x21, [[TMP]]
+; CHECK-O0: mov     x21, xzr
 ; CHECK-O0: bl      _foo2
 ; CHECK-O0: str     x21, [s[[STK:.*]]]
 ; CHECK-O0: ldr     x0, [s[[STK]]]

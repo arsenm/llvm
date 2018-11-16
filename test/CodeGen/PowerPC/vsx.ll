@@ -247,10 +247,6 @@ entry:
 ; CHECK-FISL: xxlnor v2, v2, v3
 ; CHECK-FISL-NOT: lis
 ; CHECK-FISL-NOT: ori
-; CHECK-FISL: li r3, -16
-; CHECK-FISL-NOT: lis
-; CHECK-FISL-NOT: ori
-; CHECK-FISL: stxvd2x vs0, r1, r3
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test14
@@ -269,16 +265,10 @@ entry:
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test15
-; CHECK-FISL: xxlor vs0, v2, v3
-; CHECK-FISL: xxlor v4, vs0, vs0
-; CHECK-FISL: xxlnor vs0, v2, v3
-; CHECK-FISL: xxlor v2, vs0, vs0
+; CHECK-FISL: xxlor {{.*}}, v2, v3
+; CHECK-FISL: xxlnor {{.*}}, v2, v3
 ; CHECK-FISL-NOT: lis
 ; CHECK-FISL-NOT: ori
-; CHECK-FISL: li r3, -16
-; CHECK-FISL-NOT: lis
-; CHECK-FISL-NOT: ori
-; CHECK-FISL: stxvd2x v4, r1, r3
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test15
@@ -297,16 +287,10 @@ entry:
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test16
-; CHECK-FISL: xxlor vs0, v2, v3
-; CHECK-FISL: xxlor v4, vs0, vs0
-; CHECK-FISL: xxlnor vs0, v2, v3
-; CHECK-FISL: xxlor v2, vs0, vs0
+; CHECK-FISL: xxlor {{.*}}, v2, v3
+; CHECK-FISL: xxlnor {{.*}}, v2, v3
 ; CHECK-FISL-NOT: lis
 ; CHECK-FISL-NOT: ori
-; CHECK-FISL: li r3, -16
-; CHECK-FISL-NOT: lis
-; CHECK-FISL-NOT: ori
-; CHECK-FISL: stxvd2x v4, r1, r3
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test16
@@ -325,8 +309,8 @@ entry:
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test17
-; CHECK-FISL: xxlnor v3, v3, v3
-; CHECK-FISL: xxland v2, v2, v3
+; CHECK-FISL: xxlnor [[REG0:[vs0-9]+]], v3, v3
+; CHECK-FISL: xxland v2, v2, [[REG0]]
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test17
@@ -345,16 +329,10 @@ entry:
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test18
-; CHECK-FISL: xxlnor vs0, v3, v3
-; CHECK-FISL: xxlor v4, vs0, vs0
-; CHECK-FISL: xxlandc vs0, v2, v3
-; CHECK-FISL: xxlor v2, vs0, vs0
+; CHECK-FISL: xxlnor {{.*}}, v3, v3
+; CHECK-FISL: xxlandc {{.*}}, v2, v3
 ; CHECK-FISL-NOT: lis
 ; CHECK-FISL-NOT: ori
-; CHECK-FISL: li r3, -16
-; CHECK-FISL-NOT: lis
-; CHECK-FISL-NOT: ori
-; CHECK-FISL: stxvd2x v4, r1, r3
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test18
@@ -373,16 +351,10 @@ entry:
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test19
-; CHECK-FISL: xxlnor vs0, v3, v3
-; CHECK-FISL: xxlor v4, vs0, vs0
-; CHECK-FISL: xxlandc vs0, v2, v3
-; CHECK-FISL: xxlor v2, vs0, vs0
+; CHECK-FISL: xxlnor {{.*}}, v3, v3
+; CHECK-FISL: xxlandc {{.*}}, v2, v3
 ; CHECK-FISL-NOT: lis
 ; CHECK-FISL-NOT: ori
-; CHECK-FISL: li r3, -16
-; CHECK-FISL-NOT: lis
-; CHECK-FISL-NOT: ori
-; CHECK-FISL: stxvd2x v4, r1, r3
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test19
@@ -424,8 +396,8 @@ entry:
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test21
-; CHECK-FISL: xvcmpeqsp v4, v4, v5
-; CHECK-FISL: xxsel v2, v3, v2, v4
+; CHECK-FISL: xvcmpeqsp [[REG0:[vs0-9]+]], v4, v5
+; CHECK-FISL: xxsel v2, v3, v2, [[REG0]]
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test21
@@ -452,14 +424,14 @@ entry:
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test22
-; CHECK-FISL-DAG: xvcmpeqsp vs0, v4, v5
-; CHECK-FISL-DAG: xvcmpeqsp v5, v5, v5
-; CHECK-FISL-DAG: xvcmpeqsp v4, v4, v4
-; CHECK-FISL-DAG: xxlnor v5, v5, v5
-; CHECK-FISL-DAG: xxlnor v4, v4, v4
-; CHECK-FISL-DAG: xxlor v4, v4, v5
-; CHECK-FISL-DAG: xxlor vs0, vs0, v4
-; CHECK-FISL: xxsel v2, v3, v2, vs0
+; CHECK-FISL-DAG: xvcmpeqsp [[REG0:[vs0-9]+]], v4, v5
+; CHECK-FISL-DAG: xvcmpeqsp [[REG1:[vs0-9]+]], v5, v5
+; CHECK-FISL-DAG: xvcmpeqsp [[REG2:[vs0-9]+]], v4, v4
+; CHECK-FISL-DAG: xxlnor [[REG3:[vs0-9]+]], [[REG1]], [[REG1]]
+; CHECK-FISL-DAG: xxlnor [[REG4:[vs0-9]+]], [[REG2]], [[REG2]]
+; CHECK-FISL-DAG: xxlor [[REG5:[vs0-9]+]], [[REG4]], [[REG3]]
+; CHECK-FISL: xxlor [[REG6:[vs0-9]+]], [[REG0]], [[REG5]]
+; CHECK-FISL: xxsel v2, v3, v2, [[REG6]]
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test22
@@ -633,8 +605,7 @@ define <2 x i64> @test30(<2 x i64>* %a) {
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test30
-; CHECK-FISL: lxvd2x vs0, 0, r3
-; CHECK-FISL: xxlor v2, vs0, vs0
+; CHECK-FISL: lxvd2x v2, 0, r3
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test30
@@ -996,8 +967,7 @@ define double @test63(<2 x double> %a) {
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test63
-; CHECK-FISL: xxlor f0, v2, v2
-; CHECK-FISL: fmr f1, f0
+; CHECK-FISL: xxlor f1, v2, v2
 ; CHECK-FISL: blr
 
 ; CHECK-LE-LABEL: @test63
@@ -1014,8 +984,7 @@ define double @test64(<2 x double> %a) {
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test64
-; CHECK-FISL: xxswapd  v2, v2
-; CHECK-FISL: xxlor f0, v2, v2
+; CHECK-FISL: xxswapd vs0, v2
 ; CHECK-FISL: fmr f1, f0
 ; CHECK-FISL: blr
 
@@ -1149,8 +1118,7 @@ define <2 x i32> @test80(i32 %v) {
 ; CHECK-REG: blr
 
 ; CHECK-FISL-LABEL: @test80
-; CHECK-FISL: mr r4, r3
-; CHECK-FISL: stw r4, -16(r1)
+; CHECK-FISL: stw r3, -16(r1)
 ; CHECK-FISL: addi r3, r1, -16
 ; CHECK-FISL-DAG: lxvw4x vs0, 0, r3
 ; CHECK-FISL-DAG: xxspltw v2, vs0, 0

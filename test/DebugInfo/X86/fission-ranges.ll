@@ -28,14 +28,14 @@
 ; if they've changed due to a bugfix, change in register allocation, etc.
 
 ; CHECK:      [[A]]:
-; CHECK-NEXT:   Addr idx 2 (w/ length 169): DW_OP_consts +0, DW_OP_stack_value
-; CHECK-NEXT:   Addr idx 3 (w/ length 25): DW_OP_reg0 RAX
+; CHECK-NEXT:   Addr idx 2 (w/ length 171): DW_OP_consts +0, DW_OP_stack_value
+; CHECK-NEXT:   Addr idx 3 (w/ length 21): DW_OP_reg0 RAX
 ; CHECK:      [[E]]:
-; CHECK-NEXT:   Addr idx 4 (w/ length 19): DW_OP_reg0 RAX
+; CHECK-NEXT:   Addr idx 4 (w/ length 13): DW_OP_reg0 RAX
 ; CHECK:      [[B]]:
-; CHECK-NEXT:   Addr idx 5 (w/ length 17): DW_OP_reg0 RAX
+; CHECK-NEXT:   Addr idx 5 (w/ length 13): DW_OP_reg0 RAX
 ; CHECK:      [[D]]:
-; CHECK-NEXT:   Addr idx 6 (w/ length 17): DW_OP_reg0 RAX
+; CHECK-NEXT:   Addr idx 6 (w/ length 13): DW_OP_reg0 RAX
 
 ; Make sure we don't produce any relocations in any .dwo section (though in particular, debug_info.dwo)
 ; HDR-NOT: .rela.{{.*}}.dwo
@@ -56,7 +56,7 @@
 ; V5RNGLISTS-NOT:  DW_TAG
 ; V5RNGLISTS:      DW_AT_rnglists_base [DW_FORM_sec_offset]  (0x0000000c)
 ; V5RNGLISTS:      .debug_rnglists contents:
-; V5RNGLISTS-NEXT: 0x00000000: range list header: length = 0x00000019, version = 0x0005,
+; V5RNGLISTS-NEXT: 0x00000000: range list header: length = 0x00000015, version = 0x0005,
 ; V5RNGLISTS-SAME: addr_size = 0x08, seg_size = 0x00, offset_entry_count = 0x00000001
 ; V5RNGLISTS-NEXT: offsets: [
 ; V5RNGLISTS-NEXT: => 0x00000010

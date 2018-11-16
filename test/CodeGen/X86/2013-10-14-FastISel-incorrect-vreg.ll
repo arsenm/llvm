@@ -14,21 +14,21 @@
 ; <rdar://problem/15192473>
 
 ; CHECK-LABEL: @test_bitcast
-; Load the value of the function pointer: %loaded_ptr
-; CHECK: movq (%rdi), [[LOADED_PTR:%[a-z]+]]
 ; Spill %arg2.
 ; CHECK: movq %rdx, [[ARG2_SLOT:[0-9]*\(%[a-z]+\)]]
+; Load the value of the function pointer: %loaded_ptr
+; CHECK: movq (%rdi), [[LOADED_PTR:%[a-z]+]]
 ; Spill %loaded_ptr.
 ; CHECK: movq [[LOADED_PTR]], [[LOADED_PTR_SLOT:[0-9]*\(%[a-z]+\)]]
 ; Perform the indirect call.
-; Load the first argument
-; CHECK: movq [[ARG2_SLOT]], %rdi
-; Load the second argument
-; CHECK: movq [[ARG2_SLOT]], %rsi
 ; Load the third argument
-; CHECK: movq [[ARG2_SLOT]], %rdx
+; CHECK-DAG: movq [[ARG2_SLOT]], %rdx
+; Load the first argument
+; CHECK-DAG: movq %rdx, %rdi
+; Load the 2nd argument
+; CHECK-DAG: movq %rdx, %rsi
 ; Load the function pointer.
-; CHECK: movq [[LOADED_PTR_SLOT]], [[FCT_PTR:%[a-z]+]]
+; CHECK-DAG: movq [[LOADED_PTR_SLOT]], [[FCT_PTR:%[a-z]+]]
 ; Call.
 ; CHECK: callq *[[FCT_PTR]]
 ; CHECK: ret
@@ -53,21 +53,21 @@ label_end:
 }
 
 ; CHECK-LABEL: @test_inttoptr
-; Load the value of the function pointer: %loaded_ptr
-; CHECK: movq (%rdi), [[LOADED_PTR:%[a-z]+]]
 ; Spill %arg2.
 ; CHECK: movq %rdx, [[ARG2_SLOT:[0-9]*\(%[a-z]+\)]]
+; Load the value of the function pointer: %loaded_ptr
+; CHECK: movq (%rdi), [[LOADED_PTR:%[a-z]+]]
 ; Spill %loaded_ptr.
 ; CHECK: movq [[LOADED_PTR]], [[LOADED_PTR_SLOT:[0-9]*\(%[a-z]+\)]]
 ; Perform the indirect call.
-; Load the first argument
-; CHECK: movq [[ARG2_SLOT]], %rdi
-; Load the second argument
-; CHECK: movq [[ARG2_SLOT]], %rsi
 ; Load the third argument
-; CHECK: movq [[ARG2_SLOT]], %rdx
+; CHECK-DAG: movq [[ARG2_SLOT]], %rdx
+; Load the second argument
+; CHECK-DAG: movq %rdx, %rdi
+; Load the first argument
+; CHECK-DAG: movq %rdx, %rsi
 ; Load the function pointer.
-; CHECK: movq [[LOADED_PTR_SLOT]], [[FCT_PTR:%[a-z]+]]
+; CHECK-DAG: movq [[LOADED_PTR_SLOT]], [[FCT_PTR:%[a-z]+]]
 ; Call.
 ; CHECK: callq *[[FCT_PTR]]
 ; CHECK: ret
@@ -92,21 +92,21 @@ label_end:
 }
 
 ; CHECK-LABEL: @test_ptrtoint
-; Load the value of the function pointer: %loaded_ptr
-; CHECK: movq (%rdi), [[LOADED_PTR:%[a-z]+]]
 ; Spill %arg2.
 ; CHECK: movq %rdx, [[ARG2_SLOT:[0-9]*\(%[a-z]+\)]]
+; Load the value of the function pointer: %loaded_ptr
+; CHECK: movq (%rdi), [[LOADED_PTR:%[a-z]+]]
 ; Spill %loaded_ptr.
 ; CHECK: movq [[LOADED_PTR]], [[LOADED_PTR_SLOT:[0-9]*\(%[a-z]+\)]]
 ; Perform the indirect call.
-; Load the first argument
-; CHECK: movq [[ARG2_SLOT]], %rdi
-; Load the second argument
-; CHECK: movq [[ARG2_SLOT]], %rsi
 ; Load the third argument
-; CHECK: movq [[ARG2_SLOT]], %rdx
+; CHECK-DAG: movq [[ARG2_SLOT]], %rdx
+; Load the first argument
+; CHECK-DAG: movq %rdx, %rdi
+; Load the second argument
+; CHECK-DAG: movq %rdx, %rsi
 ; Load the function pointer.
-; CHECK: movq [[LOADED_PTR_SLOT]], [[FCT_PTR:%[a-z]+]]
+; CHECK-DAG: movq [[LOADED_PTR_SLOT]], [[FCT_PTR:%[a-z]+]]
 ; Call.
 ; CHECK: callq *[[FCT_PTR]]
 ; CHECK: ret

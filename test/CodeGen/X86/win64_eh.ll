@@ -82,11 +82,11 @@ entry:
 }
 ; WIN64-LABEL: foo3:
 ; WIN64: .seh_proc foo3
-; NORM:  subq $24, %rsp
-; ATOM:  leaq -24(%rsp), %rsp
-; WIN64: .seh_stackalloc 24
+; NORM:  subq $16, %rsp
+; ATOM:  leaq -16(%rsp), %rsp
+; WIN64: .seh_stackalloc 16
 ; WIN64: .seh_endprologue
-; WIN64: addq $24, %rsp
+; WIN64: addq $16, %rsp
 ; WIN64: ret
 ; WIN64: .seh_endproc
 
@@ -125,11 +125,11 @@ endtryfinally:
 ; WIN64-LABEL: foo4:
 ; WIN64: .seh_proc foo4
 ; WIN64: .seh_handler _d_eh_personality, @unwind, @except
-; NORM:  subq $56, %rsp
-; ATOM:  leaq -56(%rsp), %rsp
-; WIN64: .seh_stackalloc 56
+; NORM:  subq $40, %rsp
+; ATOM:  leaq -40(%rsp), %rsp
+; WIN64: .seh_stackalloc 40
 ; WIN64: .seh_endprologue
-; WIN64: addq $56, %rsp
+; WIN64: addq $40, %rsp
 ; WIN64: ret
 ; WIN64: .seh_handlerdata
 ; WIN64: .seh_endproc

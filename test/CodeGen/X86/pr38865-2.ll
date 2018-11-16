@@ -13,7 +13,8 @@ define void @_Z1bv(%struct.a* noalias sret %agg.result) {
 ; CHECK-NEXT:    movl %edi, %eax
 ; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
 ; CHECK-NEXT:    callq _Z1bv
-; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %eax # 4-byte Reload
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %edi # 4-byte Reload
+; CHECK-NEXT:    movl %edi, %eax
 ; CHECK-NEXT:    popq %rcx
 ; CHECK-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-NEXT:    retq

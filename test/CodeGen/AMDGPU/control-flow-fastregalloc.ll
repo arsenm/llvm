@@ -17,30 +17,32 @@
 ; GCN: s_mov_b32 m0, -1
 ; GCN: ds_read_b32 [[LOAD0:v[0-9]+]]
 
-; GCN: v_cmp_eq_u32_e64 [[CMP0:s\[[0-9]+:[0-9]\]]], s{{[0-9]+}}, v0
-; GCN: s_mov_b64 s{{\[}}[[SAVEEXEC_LO:[0-9]+]]:[[SAVEEXEC_HI:[0-9]+]]{{\]}}, exec
-; GCN: s_and_b64 s{{\[}}[[ANDEXEC_LO:[0-9]+]]:[[ANDEXEC_HI:[0-9]+]]{{\]}}, s{{\[}}[[SAVEEXEC_LO]]:[[SAVEEXEC_HI]]{{\]}}, [[CMP0]]
-
 ; Spill load
 ; GCN: buffer_store_dword [[LOAD0]], off, s[0:3], s7 offset:[[LOAD0_OFFSET:[0-9]+]] ; 4-byte Folded Spill
+
+; GCN: v_cmp_eq_u32_e64 [[CMP0:s\[[0-9]+:[0-9]\]]], s{{[0-9]+}}, v0
+; GCN: s_mov_b64 s{{\[}}[[SAVEEXEC_LO:[0-9]+]]:[[SAVEEXEC_HI:[0-9]+]]{{\]}}, exec
+
+; VMEM: v_mov_b32_e32 v[[V_SAVEEXEC_LO:[0-9]+]], s[[SAVEEXEC_LO]]
+; VMEM: buffer_store_dword v[[V_SAVEEXEC_LO]], off, s[0:3], s7 offset:4 ; 4-byte Folded Spill
+; VMEM: v_mov_b32_e32 v[[V_SAVEEXEC_HI:[0-9]+]], s[[SAVEEXEC_HI]]
+; VMEM: buffer_store_dword v[[V_SAVEEXEC_HI]], off, s[0:3], s7 offset:8 ; 4-byte Folded Spill
 
 ; Spill saved exec
 ; VGPR: v_writelane_b32 [[SPILL_VGPR:v[0-9]+]], s[[SAVEEXEC_LO]], [[SAVEEXEC_LO_LANE:[0-9]+]]
 ; VGPR: v_writelane_b32 [[SPILL_VGPR]], s[[SAVEEXEC_HI]], [[SAVEEXEC_HI_LANE:[0-9]+]]
 
-; VMEM: v_mov_b32_e32 v[[V_SAVEEXEC_LO:[0-9]+]], s[[SAVEEXEC_LO]]
-; VMEM: buffer_store_dword v[[V_SAVEEXEC_LO]], off, s[0:3], s7 offset:20 ; 4-byte Folded Spill
-; VMEM: v_mov_b32_e32 v[[V_SAVEEXEC_HI:[0-9]+]], s[[SAVEEXEC_HI]]
-; VMEM: buffer_store_dword v[[V_SAVEEXEC_HI]], off, s[0:3], s7 offset:24 ; 4-byte Folded Spill
+; GCN: s_and_b64 s{{\[}}[[ANDEXEC_LO:[0-9]+]]:[[ANDEXEC_HI:[0-9]+]]{{\]}}, s{{\[}}[[SAVEEXEC_LO]]:[[SAVEEXEC_HI]]{{\]}}, [[CMP0]]
+
 
 ; GCN: s_mov_b64 exec, s{{\[}}[[ANDEXEC_LO]]:[[ANDEXEC_HI]]{{\]}}
 
 ; GCN: mask branch [[ENDIF:BB[0-9]+_[0-9]+]]
 
 ; GCN: {{^}}BB{{[0-9]+}}_1: ; %if
+; GCN: buffer_load_dword [[RELOAD_LOAD0:v[0-9]+]], off, s[0:3], s7 offset:[[LOAD0_OFFSET]] ; 4-byte Folded Reload
 ; GCN: s_mov_b32 m0, -1
 ; GCN: ds_read_b32 [[LOAD1:v[0-9]+]]
-; GCN: buffer_load_dword [[RELOAD_LOAD0:v[0-9]+]], off, s[0:3], s7 offset:[[LOAD0_OFFSET]] ; 4-byte Folded Reload
 ; GCN: s_waitcnt vmcnt(0) lgkmcnt(0)
 
 
@@ -50,24 +52,22 @@
 
 ; VMEM: [[ENDIF]]:
 
+; Restore val
+; GCN: buffer_load_dword [[RELOAD_VAL:v[0-9]+]], off, s[0:3], s7 offset:[[VAL_OFFSET]] ; 4-byte Folded Reload
+
 ; Reload and restore exec mask
 ; VGPR: v_readlane_b32 s[[S_RELOAD_SAVEEXEC_LO:[0-9]+]], [[SPILL_VGPR]], [[SAVEEXEC_LO_LANE]]
 ; VGPR: v_readlane_b32 s[[S_RELOAD_SAVEEXEC_HI:[0-9]+]], [[SPILL_VGPR]], [[SAVEEXEC_HI_LANE]]
 
-
-
-; VMEM: buffer_load_dword v[[V_RELOAD_SAVEEXEC_LO:[0-9]+]], off, s[0:3], s7 offset:20 ; 4-byte Folded Reload
+; VMEM: buffer_load_dword v[[V_RELOAD_SAVEEXEC_LO:[0-9]+]], off, s[0:3], s7 offset:4 ; 4-byte Folded Reload
 ; VMEM: s_waitcnt vmcnt(0)
 ; VMEM: v_readfirstlane_b32 s[[S_RELOAD_SAVEEXEC_LO:[0-9]+]], v[[V_RELOAD_SAVEEXEC_LO]]
 
-; VMEM: buffer_load_dword v[[V_RELOAD_SAVEEXEC_HI:[0-9]+]], off, s[0:3], s7 offset:24 ; 4-byte Folded Reload
+; VMEM: buffer_load_dword v[[V_RELOAD_SAVEEXEC_HI:[0-9]+]], off, s[0:3], s7 offset:8 ; 4-byte Folded Reload
 ; VMEM: s_waitcnt vmcnt(0)
 ; VMEM: v_readfirstlane_b32 s[[S_RELOAD_SAVEEXEC_HI:[0-9]+]], v[[V_RELOAD_SAVEEXEC_HI]]
 
 ; GCN: s_or_b64 exec, exec, s{{\[}}[[S_RELOAD_SAVEEXEC_LO]]:[[S_RELOAD_SAVEEXEC_HI]]{{\]}}
-
-; Restore val
-; GCN: buffer_load_dword [[RELOAD_VAL:v[0-9]+]], off, s[0:3], s7 offset:[[VAL_OFFSET]] ; 4-byte Folded Reload
 
 ; GCN: flat_store_dword v{{\[[0-9]+:[0-9]+\]}}, [[RELOAD_VAL]]
 define amdgpu_kernel void @divergent_if_endif(i32 addrspace(1)* %out) #0 {
@@ -98,22 +98,21 @@ endif:
 
 ; GCN: v_cmp_eq_u32_e64 [[CMP0:s\[[0-9]+:[0-9]\]]], s{{[0-9]+}}, v0
 
-; GCN: s_mov_b64 s{{\[}}[[SAVEEXEC_LO:[0-9]+]]:[[SAVEEXEC_HI:[0-9]+]]{{\]}}, exec
-; GCN: s_and_b64 s{{\[}}[[ANDEXEC_LO:[0-9]+]]:[[ANDEXEC_HI:[0-9]+]]{{\]}}, s{{\[}}[[SAVEEXEC_LO:[0-9]+]]:[[SAVEEXEC_HI:[0-9]+]]{{\]}}, [[CMP0]]
-
 ; Spill load
-; GCN: buffer_store_dword [[LOAD0]], off, s[0:3], s7 offset:[[LOAD0_OFFSET:[0-9]+]] ; 4-byte Folded Spill
+; GCN: buffer_store_dword [[LOAD0]], off, s[0:3], s7 offset:[[LOAD_OFFSET:[0-9]+]] ; 4-byte Folded Spill
+
+; GCN: s_mov_b64 s{{\[}}[[SAVEEXEC_LO:[0-9]+]]:[[SAVEEXEC_HI:[0-9]+]]{{\]}}, exec
+
+; VMEM: v_mov_b32_e32 v[[V_SAVEEXEC_LO:[0-9]+]], s[[SAVEEXEC_LO]]
+; VMEM: buffer_store_dword v[[V_SAVEEXEC_LO]], off, s[0:3], s7 offset:[[SAVEEXEC_LO_OFFSET:[0-9]+]] ; 4-byte Folded Spill
+; VMEM: v_mov_b32_e32 v[[V_SAVEEXEC_HI:[0-9]+]], s[[SAVEEXEC_HI]]
+; VMEM: buffer_store_dword v[[V_SAVEEXEC_HI]], off, s[0:3], s7 offset:[[SAVEEXEC_HI_OFFSET:[0-9]+]] ; 4-byte Folded Spill
 
 ; Spill saved exec
 ; VGPR: v_writelane_b32 [[SPILL_VGPR:v[0-9]+]], s[[SAVEEXEC_LO]], [[SAVEEXEC_LO_LANE:[0-9]+]]
 ; VGPR: v_writelane_b32 [[SPILL_VGPR]], s[[SAVEEXEC_HI]], [[SAVEEXEC_HI_LANE:[0-9]+]]
 
-
-; VMEM: v_mov_b32_e32 v[[V_SAVEEXEC_LO:[0-9]+]], s[[SAVEEXEC_LO]]
-; VMEM: buffer_store_dword v[[V_SAVEEXEC_LO]], off, s[0:3], s7 offset:24 ; 4-byte Folded Spill
-; VMEM: v_mov_b32_e32 v[[V_SAVEEXEC_HI:[0-9]+]], s[[SAVEEXEC_HI]]
-; VMEM: buffer_store_dword v[[V_SAVEEXEC_HI]], off, s[0:3], s7 offset:28 ; 4-byte Folded Spill
-
+; GCN: s_and_b64 s{{\[}}[[ANDEXEC_LO:[0-9]+]]:[[ANDEXEC_HI:[0-9]+]]{{\]}}, s{{\[}}[[SAVEEXEC_LO:[0-9]+]]:[[SAVEEXEC_HI:[0-9]+]]{{\]}}, [[CMP0]]
 ; GCN: s_mov_b64 exec, s{{\[}}[[ANDEXEC_LO]]:[[ANDEXEC_HI]]{{\]}}
 
 ; GCN-NEXT: ; mask branch [[END:BB[0-9]+_[0-9]+]]
@@ -121,7 +120,7 @@ endif:
 
 
 ; GCN: [[LOOP:BB[0-9]+_[0-9]+]]:
-; GCN: buffer_load_dword v[[VAL_LOOP_RELOAD:[0-9]+]], off, s[0:3], s7 offset:[[LOAD0_OFFSET]] ; 4-byte Folded Reload
+; GCN: buffer_load_dword v[[VAL_LOOP_RELOAD:[0-9]+]], off, s[0:3], s7 offset:{{[0-9]+}} ; 4-byte Folded Reload
 ; GCN: v_subrev_i32_e32 [[VAL_LOOP:v[0-9]+]], vcc, v{{[0-9]+}}, v[[VAL_LOOP_RELOAD]]
 ; GCN: v_cmp_ne_u32_e32 vcc,
 ; GCN: s_and_b64 vcc, exec, vcc
@@ -130,19 +129,20 @@ endif:
 
 
 ; GCN: [[END]]:
+; GCN: buffer_load_dword v[[VAL_END:[0-9]+]], off, s[0:3], s7 offset:[[VAL_SUB_OFFSET]] ; 4-byte Folded Reload
+
 ; VGPR: v_readlane_b32 s[[S_RELOAD_SAVEEXEC_LO:[0-9]+]], [[SPILL_VGPR]], [[SAVEEXEC_LO_LANE]]
 ; VGPR: v_readlane_b32 s[[S_RELOAD_SAVEEXEC_HI:[0-9]+]], [[SPILL_VGPR]], [[SAVEEXEC_HI_LANE]]
 
-; VMEM: buffer_load_dword v[[V_RELOAD_SAVEEXEC_LO:[0-9]+]], off, s[0:3], s7 offset:24 ; 4-byte Folded Reload
+; VMEM: buffer_load_dword v[[V_RELOAD_SAVEEXEC_LO:[0-9]+]], off, s[0:3], s7 offset:[[SAVEEXEC_LO_OFFSET]] ; 4-byte Folded Reload
 ; VMEM: s_waitcnt vmcnt(0)
 ; VMEM: v_readfirstlane_b32 s[[S_RELOAD_SAVEEXEC_LO:[0-9]+]], v[[V_RELOAD_SAVEEXEC_LO]]
 
-; VMEM: buffer_load_dword v[[V_RELOAD_SAVEEXEC_HI:[0-9]+]], off, s[0:3], s7 offset:28 ; 4-byte Folded Reload
+; VMEM: buffer_load_dword v[[V_RELOAD_SAVEEXEC_HI:[0-9]+]], off, s[0:3], s7 offset:[[SAVEEXEC_HI_OFFSET]] ; 4-byte Folded Reload
 ; VMEM: s_waitcnt vmcnt(0)
 ; VMEM: v_readfirstlane_b32 s[[S_RELOAD_SAVEEXEC_HI:[0-9]+]], v[[V_RELOAD_SAVEEXEC_HI]]
 
 ; GCN: s_or_b64 exec, exec, s{{\[}}[[S_RELOAD_SAVEEXEC_LO]]:[[S_RELOAD_SAVEEXEC_HI]]{{\]}}
-; GCN: buffer_load_dword v[[VAL_END:[0-9]+]], off, s[0:3], s7 offset:[[VAL_SUB_OFFSET]] ; 4-byte Folded Reload
 
 ; GCN: flat_store_dword v{{\[[0-9]+:[0-9]+\]}}, v[[VAL_END]]
 define amdgpu_kernel void @divergent_loop(i32 addrspace(1)* %out) #0 {
@@ -173,15 +173,15 @@ end:
 ; GCN: s_mov_b32 m0, -1
 ; GCN: ds_read_b32 [[LOAD0:v[0-9]+]]
 
+; Spill load
+; GCN: buffer_store_dword [[LOAD0]], off, s[0:3], s7 offset:[[LOAD0_OFFSET:[0-9]+]] ; 4-byte Folded Spill
+
 ; GCN: s_mov_b32 [[ZERO:s[0-9]+]], 0
 ; GCN: v_cmp_ne_u32_e64 [[CMP0:s\[[0-9]+:[0-9]\]]], [[ZERO]], v0
 
 ; GCN: s_mov_b64 s{{\[}}[[SAVEEXEC_LO:[0-9]+]]:[[SAVEEXEC_HI:[0-9]+]]{{\]}}, exec
 ; GCN: s_and_b64 s{{\[}}[[ANDEXEC_LO:[0-9]+]]:[[ANDEXEC_HI:[0-9]+]]{{\]}}, s{{\[}}[[SAVEEXEC_LO:[0-9]+]]:[[SAVEEXEC_HI:[0-9]+]]{{\]}}, [[CMP0]]
 ; GCN: s_xor_b64 s{{\[}}[[SAVEEXEC_LO]]:[[SAVEEXEC_HI]]{{\]}}, s{{\[}}[[ANDEXEC_LO]]:[[ANDEXEC_HI]]{{\]}}, s{{\[}}[[SAVEEXEC_LO]]:[[SAVEEXEC_HI]]{{\]}}
-
-; Spill load
-; GCN: buffer_store_dword [[LOAD0]], off, s[0:3], s7 offset:[[LOAD0_OFFSET:[0-9]+]] ; 4-byte Folded Spill
 
 ; Spill saved exec
 ; VGPR: v_writelane_b32 [[SPILL_VGPR:v[0-9]+]], s[[SAVEEXEC_LO]], [[SAVEEXEC_LO_LANE:[0-9]+]]
@@ -214,10 +214,6 @@ end:
 
 ; GCN: s_or_saveexec_b64 s{{\[}}[[FLOW_S_RELOAD_SAVEEXEC_LO]]:[[FLOW_S_RELOAD_SAVEEXEC_HI]]{{\]}}, s{{\[}}[[FLOW_S_RELOAD_SAVEEXEC_LO]]:[[FLOW_S_RELOAD_SAVEEXEC_HI]]{{\]}}
 
-; Regular spill value restored after exec modification
-; GCN: buffer_load_dword [[FLOW_VAL:v[0-9]+]], off, s[0:3], s7 offset:[[FLOW_VAL_OFFSET:[0-9]+]] ; 4-byte Folded Reload
-
-
 ; Spill saved exec
 ; VGPR: v_writelane_b32 [[SPILL_VGPR]], s[[FLOW_S_RELOAD_SAVEEXEC_LO]], [[FLOW_SAVEEXEC_LO_LANE:[0-9]+]]
 ; VGPR: v_writelane_b32 [[SPILL_VGPR]], s[[FLOW_S_RELOAD_SAVEEXEC_HI]], [[FLOW_SAVEEXEC_HI_LANE:[0-9]+]]
@@ -228,7 +224,7 @@ end:
 ; VMEM: v_mov_b32_e32 v[[FLOW_V_SAVEEXEC_HI:[0-9]+]], s[[FLOW_S_RELOAD_SAVEEXEC_HI]]
 ; VMEM: buffer_store_dword v[[FLOW_V_SAVEEXEC_HI]], off, s[0:3], s7 offset:[[FLOW_SAVEEXEC_HI_OFFSET:[0-9]+]] ; 4-byte Folded Spill
 
-; GCN: buffer_store_dword [[FLOW_VAL]], off, s[0:3], s7 offset:[[RESULT_OFFSET:[0-9]+]] ; 4-byte Folded Spill
+; GCN: buffer_store_dword {{v[0-9]+}}, off, s[0:3], s7 offset:[[RESULT_OFFSET:[0-9]+]] ; 4-byte Folded Spill
 ; GCN: s_xor_b64 exec, exec, s{{\[}}[[FLOW_S_RELOAD_SAVEEXEC_LO]]:[[FLOW_S_RELOAD_SAVEEXEC_HI]]{{\]}}
 ; GCN-NEXT: ; mask branch [[ENDIF:BB[0-9]+_[0-9]+]]
 ; GCN-NEXT: s_cbranch_execz [[ENDIF]]
@@ -236,8 +232,7 @@ end:
 
 ; GCN: BB{{[0-9]+}}_2: ; %if
 ; GCN: ds_read_b32
-; GCN: buffer_load_dword v[[LOAD0_RELOAD:[0-9]+]], off, s[0:3], s7 offset:[[LOAD0_OFFSET]] ; 4-byte Folded Reload
-; GCN: v_add_i32_e32 [[ADD:v[0-9]+]], vcc, v{{[0-9]+}}, v[[LOAD0_RELOAD]]
+; GCN: v_add_i32_e32 [[ADD:v[0-9]+]], vcc, v{{[0-9]+}}, [[LOAD0]]
 ; GCN: buffer_store_dword [[ADD]], off, s[0:3], s7 offset:[[RESULT_OFFSET]] ; 4-byte Folded Spill
 ; GCN-NEXT: s_branch [[ENDIF:BB[0-9]+_[0-9]+]]
 
@@ -248,9 +243,11 @@ end:
 ; GCN-NEXT: s_branch [[FLOW]]
 
 ; GCN: [[ENDIF]]:
+
+; GCN: buffer_load_dword v[[RESULT:[0-9]+]], off, s[0:3], s7 offset:[[RESULT_OFFSET]] ; 4-byte Folded Reload
+
 ; VGPR: v_readlane_b32 s[[S_RELOAD_SAVEEXEC_LO:[0-9]+]], [[SPILL_VGPR]], [[FLOW_SAVEEXEC_LO_LANE]]
 ; VGPR: v_readlane_b32 s[[S_RELOAD_SAVEEXEC_HI:[0-9]+]], [[SPILL_VGPR]], [[FLOW_SAVEEXEC_HI_LANE]]
-
 
 ; VMEM: buffer_load_dword v[[V_RELOAD_SAVEEXEC_LO:[0-9]+]], off, s[0:3], s7 offset:[[FLOW_SAVEEXEC_LO_OFFSET]] ; 4-byte Folded Reload
 ; VMEM: s_waitcnt vmcnt(0)
@@ -262,7 +259,6 @@ end:
 
 ; GCN: s_or_b64 exec, exec, s{{\[}}[[S_RELOAD_SAVEEXEC_LO]]:[[S_RELOAD_SAVEEXEC_HI]]{{\]}}
 
-; GCN: buffer_load_dword v[[RESULT:[0-9]+]], off, s[0:3], s7 offset:[[RESULT_OFFSET]] ; 4-byte Folded Reload
 ; GCN: flat_store_dword v{{\[[0-9]+:[0-9]+\]}}, v[[RESULT]]
 define amdgpu_kernel void @divergent_if_else_endif(i32 addrspace(1)* %out) #0 {
 entry:

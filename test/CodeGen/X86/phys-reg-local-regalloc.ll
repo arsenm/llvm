@@ -22,7 +22,6 @@ entry:
 ; ATOM: movl 24(%esp), %eax
 ; ATOM-NOT: movl
 ; ATOM: movl   %eax, 36(%esp)
-; ATOM: movl
 ; ATOM: movl 28(%esp), %ebx
 ; ATOM-NOT: movl
 ; ATOM: movl   %ebx, 40(%esp)
