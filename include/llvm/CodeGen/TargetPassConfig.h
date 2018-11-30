@@ -360,11 +360,11 @@ protected:
 
   /// addFastRegAlloc - Add the minimum set of target-independent passes that
   /// are required for fast register allocation.
-  virtual void addFastRegAlloc(FunctionPass *RegAllocPass);
+  virtual void addFastRegAlloc();
 
   /// addOptimizedRegAlloc - Add passes related to register allocation.
   /// LLVMTargetMachine provides standard regalloc passes for most targets.
-  virtual void addOptimizedRegAlloc(FunctionPass *RegAllocPass);
+  virtual void addOptimizedRegAlloc();
 
   /// addPreRewrite - Add passes to the optimized register allocation pipeline
   /// after register allocation is complete, but before virtual registers are
@@ -431,7 +431,12 @@ protected:
 
   /// addMachinePasses helper to create the target-selected or overriden
   /// regalloc pass.
-  FunctionPass *createRegAllocPass(bool Optimized);
+  virtual FunctionPass *createRegAllocPass(bool Optimized);
+
+  /// Add core register alloator passes which do the actual register assignment
+  /// and rewriting. \returns true if any passes were added.
+  virtual bool addRegAssignmentFast();
+  virtual bool addRegAssignmentOptimized();
 };
 
 } // end namespace llvm
