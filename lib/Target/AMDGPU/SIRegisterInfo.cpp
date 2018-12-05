@@ -700,7 +700,7 @@ bool SIRegisterInfo::spillSGPRImpl(MachineBasicBlock::iterator MI,
 
   unsigned ScalarStoreOp;
   unsigned EltSize = 4;
-  const TargetRegisterClass *RC = getPhysRegClass(SuperReg);
+  const TargetRegisterClass *RC = getRegClassForReg(MRI, SuperReg);
   if (SpillToSMEM && isSGPRClass(RC)) {
     // XXX - if private_element_size is larger than 4 it might be useful to be
     // able to spill wider vmem spills.
@@ -711,10 +711,12 @@ bool SIRegisterInfo::spillSGPRImpl(MachineBasicBlock::iterator MI,
   ArrayRef<int16_t> SplitParts = getRegSplitParts(RC, EltSize);
   unsigned NumSubRegs = SplitParts.empty() ? 1 : SplitParts.size();
 
+  bool IsVReg = TargetRegisterInfo::isVirtualRegister(SuperReg);
+
   // SubReg carries the "Kill" flag when SubReg == SuperReg.
   unsigned SubKillState = getKillRegState((NumSubRegs == 1) && IsKill);
   for (unsigned i = 0, e = NumSubRegs; i < e; ++i) {
-    unsigned SubReg = NumSubRegs == 1 ?
+    unsigned SubReg = (NumSubRegs == 1 || IsVReg) ?
       SuperReg : getSubReg(SuperReg, SplitParts[i]);
 
     if (SpillToSMEM) {
@@ -748,7 +750,8 @@ bool SIRegisterInfo::spillSGPRImpl(MachineBasicBlock::iterator MI,
       }
 
       BuildMI(*MBB, MI, DL, TII->get(ScalarStoreOp))
-        .addReg(SubReg, getKillRegState(IsKill)) // sdata
+        .addReg(SubReg, getKillRegState(IsKill),
+                (IsVReg && NumSubRegs != 1) ? SplitParts[i] : 0) // sdata
         .addReg(MFI->getScratchRSrcReg())        // sbase
         .addReg(OffsetReg, RegState::Kill)       // soff
         .addImm(0)                               // glc
@@ -765,7 +768,8 @@ bool SIRegisterInfo::spillSGPRImpl(MachineBasicBlock::iterator MI,
       MachineInstr *Writelane = BuildMI(*MBB, MI, DL,
               TII->getMCOpcodeFromPseudo(AMDGPU::V_WRITELANE_B32),
               Spill.VGPR)
-        .addReg(SubReg, getKillRegState(IsKill))
+        .addReg(SubReg, getKillRegState(IsKill),
+                (IsVReg && NumSubRegs != 1) ? SplitParts[i] : 0)
         .addImm(Spill.Lane)
         .addReg(Spill.VGPR);
 
@@ -898,12 +902,13 @@ bool SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI,
 
   ArrayRef<int16_t> SplitParts = getRegSplitParts(RC, EltSize);
   unsigned NumSubRegs = SplitParts.empty() ? 1 : SplitParts.size();
+  bool IsVReg = TargetRegisterInfo::isVirtualRegister(SuperReg);
 
   // SubReg carries the "Kill" flag when SubReg == SuperReg.
   int64_t FrOffset = FrameInfo.getObjectOffset(Index);
 
   for (unsigned i = 0, e = NumSubRegs; i < e; ++i) {
-    unsigned SubReg = NumSubRegs == 1 ?
+    unsigned SubReg = (IsVReg || NumSubRegs == 1) ?
       SuperReg : getSubReg(SuperReg, SplitParts[i]);
 
     if (SpillToSMEM) {
@@ -927,10 +932,12 @@ bool SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI,
       }
 
       auto MIB =
-        BuildMI(*MBB, MI, DL, TII->get(ScalarLoadOp), SubReg)
-        .addReg(MFI->getScratchRSrcReg()) // sbase
-        .addReg(OffsetReg, RegState::Kill)                // soff
-        .addImm(0)                        // glc
+        BuildMI(*MBB, MI, DL, TII->get(ScalarLoadOp))
+        .addReg(SubReg,
+                RegState::Define, (IsVReg && NumSubRegs != 1) ? SplitParts[i] : 0)
+        .addReg(MFI->getScratchRSrcReg())  // sbase
+        .addReg(OffsetReg, RegState::Kill) // soff
+        .addImm(0)                         // glc
         .addMemOperand(MMO);
 
       if (NumSubRegs > 1 && i == 0)
@@ -942,12 +949,15 @@ bool SIRegisterInfo::restoreSGPR(MachineBasicBlock::iterator MI,
     if (SpillToVGPR) {
       SIMachineFunctionInfo::SpilledReg Spill = VGPRSpills[i];
       auto MIB =
-        BuildMI(*MBB, MI, DL, TII->getMCOpcodeFromPseudo(AMDGPU::V_READLANE_B32),
-                SubReg)
+        BuildMI(*MBB, MI, DL, TII->getMCOpcodeFromPseudo(AMDGPU::V_READLANE_B32))
+        .addReg(SubReg, RegState::Define
+
+                | ((IsVReg && NumSubRegs != 1 && i == 0) ? RegState::Undef : 0),
+                (IsVReg && NumSubRegs != 1) ? SplitParts[i] : 0)
         .addReg(Spill.VGPR)
         .addImm(Spill.Lane);
 
-      if (NumSubRegs > 1 && i == 0)
+      if (!IsVReg && NumSubRegs > 1 && i == 0)
         MIB.addReg(SuperReg, RegState::ImplicitDefine);
 
       if (LIS) {
