@@ -42,23 +42,7 @@ cl::opt<bool> llvm::DisableGISelLegalityCheck(
     cl::desc("Don't verify that MIR is fully legal between GlobalISel passes"),
     cl::Hidden);
 
-static void printOpcode(raw_ostream &OS, unsigned Opcode) {
-  using namespace TargetOpcode;
-  switch (Opcode) {
-  case G_LOAD:
-    OS << "G_LOAD";
-    break;
-  case G_STORE:
-    OS << "G_STORE";
-    break;
-  default:
-    OS << Opcode;
-  }
-}
-
-
 raw_ostream &LegalityQuery::print(raw_ostream &OS) const {
-  printOpcode(OS, Opcode);
   OS << Opcode << ", Tys={";
   for (const auto &Type : Types) {
     OS << Type << ", ";
