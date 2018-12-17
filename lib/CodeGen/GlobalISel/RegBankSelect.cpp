@@ -532,8 +532,8 @@ RegBankSelect::MappingCost RegBankSelect::computeMapping(
     // an assignment. In other words, the computation should not
     // overflow because the repairing cost is free of basic block
     // frequency.
-    assert(((RepairCost < RepairCost * PercentageForBias) &&
-            (RepairCost * PercentageForBias <
+    assert(((RepairCost <= RepairCost * PercentageForBias) &&
+            (RepairCost * PercentageForBias <=
              RepairCost * PercentageForBias + 99)) &&
            "Repairing involves more than a billion of instructions?!");
     for (const std::unique_ptr<InsertPoint> &InsertPt : RepairPt) {
