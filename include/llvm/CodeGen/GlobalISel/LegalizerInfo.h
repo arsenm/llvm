@@ -593,6 +593,16 @@ public:
   LegalizeRuleSet &unsupportedIf(LegalityPredicate Predicate) {
     return actionIf(LegalizeAction::Unsupported, Predicate);
   }
+
+  LegalizeRuleSet &unsupportedFor(std::initializer_list<LLT> Types) {
+    return actionFor(LegalizeAction::Unsupported, Types);
+  }
+
+  LegalizeRuleSet &unsupportedFor(
+    std::initializer_list<std::pair<LLT, LLT>> Types) {
+    return actionFor(LegalizeAction::Unsupported, Types);
+  }
+
   LegalizeRuleSet &unsupportedIfMemSizeNotPow2() {
     return actionIf(LegalizeAction::Unsupported,
                     LegalityPredicates::memSizeInBytesNotPow2(0));
