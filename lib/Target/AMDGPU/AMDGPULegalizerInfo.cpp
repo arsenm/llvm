@@ -287,8 +287,7 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     .legalForCartesianProduct(AllS64Vectors, {S64})
     .clampNumElements(0, V16S32, V16S32)
     .clampNumElements(0, V2S64, V8S64)
-    .minScalarSameAs(1, 0)
-    .clampScalar(1, S32, S32);
+    .minScalarSameAs(1, 0);
 
   // TODO: Support any combination of v2s32
   getActionDefinitionsBuilder(G_CONCAT_VECTORS)

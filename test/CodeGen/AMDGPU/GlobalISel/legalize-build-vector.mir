@@ -583,30 +583,3 @@ body: |
     %8:_(<8 x s64>) = G_BUILD_VECTOR %0, %1, %2, %3, %4, %5, %6, %7
     S_NOP 0, implicit %8
 ...
----
-name: legal_v2s8
-body: |
-  bb.0:
-    liveins: $vgpr0, $vgpr1
-    %0:_(s32) = COPY $vgpr0
-    %1:_(s32) = COPY $vgpr1
-    %2:_(s8) = G_TRUNC %0
-    %3:_(s8) = G_TRUNC %1
-    %4:_(<2 x s8>) = G_BUILD_VECTOR %2, %3
-    S_NOP 0, implicit %4
-...
-
-
-
----
-name: legal_v2s16
-body: |
-  bb.0:
-    liveins: $vgpr0, $vgpr1
-    %0:_(s32) = COPY $vgpr0
-    %1:_(s32) = COPY $vgpr1
-    %2:_(s16) = G_TRUNC %0
-    %3:_(s16) = G_TRUNC %1
-    %4:_(<2 x s16>) = G_BUILD_VECTOR %2, %3
-    S_NOP 0, implicit %4
-...
