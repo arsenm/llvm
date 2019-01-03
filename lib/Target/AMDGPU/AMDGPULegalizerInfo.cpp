@@ -165,10 +165,6 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     .lowerFor({S64, S16})
     .clampScalar(0, S32, S64);
 
-  setAction({G_FCMP, S1}, Legal);
-  setAction({G_FCMP, 1, S32}, Legal);
-  setAction({G_FCMP, 1, S64}, Legal);
-
   getActionDefinitionsBuilder({G_SEXT, G_ZEXT, G_ANYEXT})
     .legalFor({{S64, S32}, {S32, S16}, {S64, S16},
                {S32, S1}, {S64, S1}, {S16, S1},
@@ -210,8 +206,14 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
 
   setAction({G_BLOCK_ADDR, CodePtr}, Legal);
 
-  setAction({G_ICMP, S1}, Legal);
-  setAction({G_ICMP, 1, S32}, Legal);
+  getActionDefinitionsBuilder({G_ICMP, G_FCMP})
+    .legalFor({{S1, S32}, {S1, S64}})
+    .widenScalarToNextPow2(1)
+    .clampScalar(1, S32, S64)
+    .clampMaxNumElements(0, S1, 1)
+    .clampMaxNumElements(1, S32, 1);
+
+
 
   setAction({G_CTLZ, S32}, Legal);
   setAction({G_CTLZ_ZERO_UNDEF, S32}, Legal);
@@ -351,7 +353,12 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     .legalForCartesianProduct(AllS64Vectors, {S64})
     .clampNumElements(0, V16S32, V16S32)
     .clampNumElements(0, V2S64, V8S64)
-    .minScalarSameAs(1, 0);
+    .minScalarSameAs(1, 0)
+    // FIXME: Sort of a hack to make progress on other legalizations. Shouldn't
+    // really be valid for i1, but I guess RegBank constraints can make it work?
+    .legalIf([=](const LegalityQuery &Query) {
+        return Query.Types[0].getScalarSizeInBits() < 32;
+      });
 
   // TODO: Support any combination of v2s32
   getActionDefinitionsBuilder(G_CONCAT_VECTORS)
