@@ -1242,6 +1242,7 @@ const TargetRegisterClass *SIRegisterInfo::getPhysRegClass(unsigned Reg) const {
     &AMDGPU::SCC_CLASSRegClass,
     &AMDGPU::Pseudo_SReg_32RegClass,
     &AMDGPU::Pseudo_SReg_128RegClass,
+    &AMDGPU::VReg_192RegClass,
   };
 
   for (const TargetRegisterClass *BaseClass : BaseClasses) {
@@ -1267,6 +1268,8 @@ bool SIRegisterInfo::hasVGPRs(const TargetRegisterClass *RC) const {
     return getCommonSubClass(&AMDGPU::VReg_96RegClass, RC) != nullptr;
   case 128:
     return getCommonSubClass(&AMDGPU::VReg_128RegClass, RC) != nullptr;
+  case 192:
+    return getCommonSubClass(&AMDGPU::VReg_192RegClass, RC) != nullptr;
   case 256:
     return getCommonSubClass(&AMDGPU::VReg_256RegClass, RC) != nullptr;
   case 512:
@@ -1287,6 +1290,8 @@ const TargetRegisterClass *SIRegisterInfo::getEquivalentVGPRClass(
     return &AMDGPU::VReg_96RegClass;
   case 128:
     return &AMDGPU::VReg_128RegClass;
+  case 192:
+    return &AMDGPU::VReg_192RegClass;
   case 256:
     return &AMDGPU::VReg_256RegClass;
   case 512:
@@ -1305,6 +1310,8 @@ const TargetRegisterClass *SIRegisterInfo::getEquivalentSGPRClass(
     return &AMDGPU::SReg_64RegClass;
   case 128:
     return &AMDGPU::SReg_128RegClass;
+  case 192:
+    llvm_unreachable("192-bit not implemented for SGPRs");
   case 256:
     return &AMDGPU::SReg_256RegClass;
   case 512:
@@ -1345,6 +1352,8 @@ const TargetRegisterClass *SIRegisterInfo::getSubRegClass(
       return &AMDGPU::VReg_96RegClass;
     case 4:
       return &AMDGPU::VReg_128RegClass;
+    case 6:
+      return &AMDGPU::VReg_192RegClass;
     case 8:
       return &AMDGPU::VReg_256RegClass;
     case 16: /* fall-through */
