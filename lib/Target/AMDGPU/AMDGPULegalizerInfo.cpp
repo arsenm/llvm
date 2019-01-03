@@ -28,6 +28,12 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
                                          const GCNTargetMachine &TM) {
   using namespace TargetOpcode;
 
+  auto scalarize =
+    [=](const LegalityQuery &Query, unsigned TypeIdx) {
+    const LLT &Ty = Query.Types[TypeIdx];
+    return std::make_pair(TypeIdx, Ty.getElementType());
+  };
+
   auto GetAddrSpacePtr = [&TM](unsigned AS) {
     return LLT::pointer(AS, TM.getPointerSizeInBits(AS));
   };
@@ -134,6 +140,18 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
   getActionDefinitionsBuilder(G_CONSTANT)
     .legalFor({S1, S32, S64, V2S32, V2S16})
     .clampScalar(0, S32, S64)
+    // FIXME: Hack until odd splits handled
+    .fewerElementsIf(
+      [=](const LegalityQuery &Query) {
+        return Query.Types[0].isVector() &&
+               Query.Types[0].getNumElements() % 2 != 0;},
+      [=](const LegalityQuery &Query) { return scalarize(Query, 0); })
+    .fewerElementsIf(
+      [=](const LegalityQuery &Query) {
+        return Query.Types[0].isVector() &&
+          Query.Types[0].getElementType().getSizeInBits() < 32;
+      },
+      [=](const LegalityQuery &Query) { return scalarize(Query, 0); })
     .widenScalarToNextPow2(0);
 
   setAction({G_FRAME_INDEX, PrivatePtr}, Legal);
@@ -212,8 +230,6 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     .clampScalar(1, S32, S64)
     .clampMaxNumElements(0, S1, 1)
     .clampMaxNumElements(1, S32, 1);
-
-
 
   setAction({G_CTLZ, S32}, Legal);
   setAction({G_CTLZ_ZERO_UNDEF, S32}, Legal);
@@ -308,7 +324,28 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
   // TODO: Pointer types, any 32-bit or 64-bit vector
   getActionDefinitionsBuilder(G_SELECT)
     .legalFor({{S32, S1}, {S64, S1}, {V2S32, S1}, {V2S16, S1}})
-    .clampScalar(0, S32, S64);
+    .clampScalar(0, S32, S64)
+    .fewerElementsIf(
+      [=](const LegalityQuery &Query) {
+        if (Query.Types[1].isVector())
+          return true;
+
+        LLT Ty = Query.Types[0];
+
+        // FIXME: Hack until odd splits handled
+        return Ty.isVector() &&
+          (Ty.getScalarSizeInBits() > 32 || Ty.getNumElements() % 2 != 0);
+      },
+      [=](const LegalityQuery &Query) { return scalarize(Query, 0); })
+    // FIXME: Handle 16-bit vectors better
+    .fewerElementsIf(
+      [=](const LegalityQuery &Query) {
+        return Query.Types[0].isVector() &&
+               Query.Types[0].getElementType().getSizeInBits() < 32;},
+      [=](const LegalityQuery &Query) { return scalarize(Query, 0); })
+    .clampMaxNumElements(0, S32, 2)
+    .clampMaxNumElements(1, S1, 1);
+
 
   // TODO: Only the low 4/5/6 bits of the shift amount are observed, so we can
   // be more flexible with the shift amount type.
@@ -385,12 +422,6 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
           return true;
       }
       return false;
-    };
-
-    auto scalarize =
-      [=](const LegalityQuery &Query, unsigned TypeIdx) {
-      const LLT &Ty = Query.Types[TypeIdx];
-      return std::make_pair(TypeIdx, Ty.getElementType());
     };
 
     getActionDefinitionsBuilder(Op)
