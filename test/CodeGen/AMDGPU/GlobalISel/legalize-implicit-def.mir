@@ -5,15 +5,55 @@
 # to legalize IMPLICIT_DEF are leagl.
 
 ---
-name:            test_implicit_def
+name: test_implicit_def_s32
 body: |
   bb.0:
     liveins: $vgpr0, $vgpr1
 
-    ; CHECK-LABEL: name: test_implicit_def
-    ; CHECK: [[DEF:%[0-9]+]]:_(s448) = G_IMPLICIT_DEF
-    ; CHECK: [[EXTRACT:%[0-9]+]]:_(s32) = G_EXTRACT [[DEF]](s448), 0
-    ; CHECK: $vgpr0 = COPY [[EXTRACT]](s32)
+    %0:_(s32) = G_IMPLICIT_DEF
+    %1:_(s32) = G_EXTRACT %0, 0
+    $vgpr0 = COPY %1
+...
+
+---
+name: test_implicit_def_v2s32
+body: |
+  bb.0:
+    liveins: $vgpr0, $vgpr1
+
+    %0:_(<2 x s32>) = G_IMPLICIT_DEF
+    %1:_(s32) = G_EXTRACT %0, 0
+    $vgpr0 = COPY %1
+...
+
+---
+name: test_implicit_def_s1
+body: |
+  bb.0:
+    liveins: $vgpr0, $vgpr1
+
+    %0:_(s1) = G_IMPLICIT_DEF
+    S_NOP 0, implicit %0
+...
+
+---
+name: test_implicit_def_v2s1
+body: |
+  bb.0:
+    liveins: $vgpr0, $vgpr1
+
+    %0:_(<2 x s1>) = G_IMPLICIT_DEF
+    S_NOP 0, implicit %0
+...
+
+
+
+---
+name: test_implicit_def_s448
+body: |
+  bb.0:
+    liveins: $vgpr0, $vgpr1
+
     %0:_(s448) = G_IMPLICIT_DEF
     %1:_(s32) = G_EXTRACT %0, 0
     $vgpr0 = COPY %1
