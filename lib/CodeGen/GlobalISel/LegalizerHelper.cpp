@@ -1775,6 +1775,24 @@ LegalizerHelper::fewerElementsVector(MachineInstr &MI, unsigned TypeIdx,
     MI.eraseFromParent();
     return Legalized;
   }
+#if 0
+  case TargetOpcode::G_UNMERGE_VALUES: {
+    if (TypeIdx != 1 || !NarrowTy.isScalar())
+      return UnableToLegalize;
+
+    unsigned NumOperands = MI.getNumOperands();
+    unsigned ExtractValReg = MI.getOperand(NumOperands - 1).getReg();
+
+    for (unsigned I = 0, NumElts = NumOperands - 1; I != NumElts; ++I) {
+      MIRBuilder.buildExtractVectorElement(MI.getOperand(I).getReg(),
+                                           ExtractValReg,
+                                           static_cast<int64_t>(I));
+    }
+
+    MI.eraseFromParent();
+    return Legalized;
+  }
+#endif
   }
 }
 
