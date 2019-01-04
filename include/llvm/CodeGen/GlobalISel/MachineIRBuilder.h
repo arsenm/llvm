@@ -851,6 +851,14 @@ public:
                                                 const SrcOp &Val,
                                                 const SrcOp &Idx);
 
+  MachineInstrBuilder buildExtractVectorElement(const DstOp &Res,
+                                                const SrcOp &Val,
+                                                int64_t Idx) {
+    unsigned IdxReg = getMRI()->createGenericVirtualRegister(LLT::scalar(32));
+    buildConstant(IdxReg, Idx);
+    return buildExtractVectorElement(Res, Val, SrcOp(IdxReg));
+  }
+
   /// Build and insert `OldValRes<def>, SuccessRes<def> =
   /// G_ATOMIC_CMPXCHG_WITH_SUCCESS Addr, CmpVal, NewVal, MMO`.
   ///
