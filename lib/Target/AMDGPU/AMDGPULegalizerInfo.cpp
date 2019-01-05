@@ -610,13 +610,15 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
       .widenScalarToNextPow2(LitTyIdx, /*Min*/ 32)
 
       // Break up vectors with weird elements into scalars
+#if 1
       .fewerElementsIf(
         [=](const LegalityQuery &Query) { return notValidElt(Query, 0); },
         scalarize(0))
       .fewerElementsIf(
         [=](const LegalityQuery &Query) { return notValidElt(Query, 1); },
         scalarize(1))
-      .clampScalar(BigTyIdx, S8, S512)
+#endif
+      .clampScalar(BigTyIdx, S32, S512)
       .widenScalarIf(
         [=](const LegalityQuery &Query) {
           const LLT &Ty = Query.Types[BigTyIdx];

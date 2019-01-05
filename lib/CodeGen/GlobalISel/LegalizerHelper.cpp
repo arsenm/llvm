@@ -50,6 +50,36 @@ LegalizerHelper::legalizeInstrStep(MachineInstr &MI) {
   LLVM_DEBUG(dbgs() << "Legalizing: "; MI.print(dbgs()));
 
   auto Step = LI.getAction(MI, MRI);
+
+  if (MI.getOpcode() == TargetOpcode::G_UNMERGE_VALUES) {
+    unsigned NumOps = MI.getNumOperands();
+    MachineInstr *Def = MRI.getVRegDef(MI.getOperand(NumOps - 1).getReg());
+
+    switch (Step.Action) {
+    case Legal:
+      return AlreadyLegal;
+    case WidenScalar:
+      llvm_unreachable("nooo");
+      // FIXME: It seems Step.NewType is not a vector when applicable
+
+
+      LLVM_DEBUG(dbgs() << ".. Widen scalar\n");
+      return widenScalar(*Def, Step.TypeIdx, Step.NewType);
+
+    case FewerElements:{
+      LLVM_DEBUG(dbgs() << ".. UNMERGE Reduce number of elements\n");
+      auto Result =  fewerElementsVector(*Def, Step.TypeIdx, Step.NewType);
+
+      if (Result == Legalized)
+        MI.eraseFromParent();
+
+      return Result;
+    }
+    default:
+      llvm_unreachable("arstarst");
+    }
+  }
+
   switch (Step.Action) {
   case Legal:
     LLVM_DEBUG(dbgs() << ".. Already legal\n");
@@ -1151,7 +1181,6 @@ LegalizerHelper::widenScalar(MachineInstr &MI, unsigned TypeIdx, LLT WideTy) {
     widenScalarDst(MI, WideTy, 0, TargetOpcode::G_FPTRUNC);
     Observer.changedInstr(MI);
     return Legalized;
-
   case TargetOpcode::G_BUILD_VECTOR: {
     Observer.changingInstr(MI);
 
@@ -1182,6 +1211,26 @@ LegalizerHelper::widenScalar(MachineInstr &MI, unsigned TypeIdx, LLT WideTy) {
       auto &TII = *MI.getMF()->getSubtarget().getInstrInfo();
       MI.setDesc(TII.get(TargetOpcode::G_BUILD_VECTOR_TRUNC));
     }
+    Observer.changedInstr(MI);
+    return Legalized;
+  }
+  case TargetOpcode::G_UNMERGE_VALUES: {
+    if (TypeIdx != 0 || !WideTy.isScalar())
+      return UnableToLegalize;
+
+    unsigned NumDst = MI.getNumOperands() - 1;
+    LLT SrcTy = MRI.getType(MI.getOperand(NumDst).getReg());
+    if (!SrcTy.isVector())
+      return UnableToLegalize;
+
+    Observer.changingInstr(MI);
+
+    for (unsigned I = 0; I != NumDst; ++I)
+      widenScalarDst(MI, WideTy, I);
+
+
+    LLT WideTy1 = LLT::vector(NumDst, WideTy);
+    widenScalarSrc(MI, WideTy1, NumDst, TargetOpcode::G_SEXT);
 
     Observer.changedInstr(MI);
     return Legalized;
