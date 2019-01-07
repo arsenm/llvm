@@ -68,6 +68,7 @@ LegalizerHelper::legalizeInstrStep(MachineInstr &MI) {
 
     case FewerElements:{
       LLVM_DEBUG(dbgs() << ".. UNMERGE Reduce number of elements\n");
+      assert(Def);
       auto Result =  fewerElementsVector(*Def, Step.TypeIdx, Step.NewType);
 
       if (Result == Legalized)
