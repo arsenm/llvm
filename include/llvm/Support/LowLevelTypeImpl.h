@@ -138,6 +138,8 @@ public:
 
   void print(raw_ostream &OS) const;
 
+  void dump() const;
+
   bool operator==(const LLT &RHS) const {
     return IsPointer == RHS.IsPointer && IsVector == RHS.IsVector &&
            RHS.RawData == RawData;

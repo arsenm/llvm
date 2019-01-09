@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Support/LowLevelTypeImpl.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 using namespace llvm;
 
@@ -43,6 +44,10 @@ void LLT::print(raw_ostream &OS) const {
     OS << "s" << getScalarSizeInBits();
   } else
     OS << "LLT_invalid";
+}
+
+void LLT::dump() const {
+  dbgs() << *this;
 }
 
 const constexpr LLT::BitFieldInfo LLT::ScalarSizeFieldInfo;
