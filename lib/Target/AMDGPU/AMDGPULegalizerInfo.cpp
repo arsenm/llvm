@@ -182,6 +182,19 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
   getActionDefinitionsBuilder(G_FPTRUNC)
     .legalFor({{S32, S64}, {S16, S32}});
 
+
+  getActionDefinitionsBuilder(G_TRUNC)
+    .legalIf(
+      [](const LegalityQuery &Q) {
+        return !Q.Types[0].isVector() &&
+               Q.Types[0].getScalarSizeInBits() <= 32;
+      })
+    .fewerElementsIf([](const LegalityQuery &Q) {
+        return Q.Types[0].isVector();
+      },
+      [=](const LegalityQuery &Query) { return scalarize(Query, 0); });
+
+
   getActionDefinitionsBuilder(G_FPEXT)
     .legalFor({{S64, S32}, {S32, S16}})
     .lowerFor({{S64, S16}}) // FIXME: Implement
@@ -543,11 +556,22 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     .clampNumElements(0, V16S32, V16S32)
     .clampNumElements(0, V2S64, V8S64)
     .minScalarSameAs(1, 0)
+    .widenScalarIf([](const LegalityQuery &Query) {
+        return Query.Types[0].getScalarSizeInBits() < 32;
+      },
+      [=](const LegalityQuery &Query) {
+        return std::make_pair(0,
+                              LLT::vector(Query.Types[0].getNumElements(),
+                                          32));
+      });
+
+#if 0
     // FIXME: Sort of a hack to make progress on other legalizations. Shouldn't
     // really be valid for i1, but I guess RegBank constraints can make it work?
     .legalIf([=](const LegalityQuery &Query) {
         return Query.Types[0].getScalarSizeInBits() < 32;
       });
+#endif
 
   // TODO: Support any combination of v2s32
   getActionDefinitionsBuilder(G_CONCAT_VECTORS)

@@ -1682,6 +1682,36 @@ LegalizerHelper::fewerElementsVector(MachineInstr &MI, unsigned TypeIdx,
       NarrowTy1 = LLT::vector(NumParts, SrcTy.getElementType().getSizeInBits());
     }
 
+
+    assert(NarrowTy0.isValid());
+    assert(NarrowTy1.isValid());
+
+    /*
+    if (!NarrowTy.isVector()) {
+      dbgs() << "arstarstarst " << DstTy << " arstarstarst " << NarrowTy0 << '\n';
+      auto Q = LI.getAction({TargetOpcode::G_BUILD_VECTOR,
+            {DstTy, NarrowTy0}});
+
+      dbgs() << "Typo: " << Q.NewType << " at " << Q.TypeIdx << " do " << (int)Q.Action << '\n';
+      if (Q.NewType == SrcTy) {
+        return UnableToLegalize;
+
+
+      }
+
+
+
+
+#if 0
+      if (Q.Action == FewerElements &&
+          Q.TypeIdx == 0 &&
+          Q.NewType == NarrowTy1) {
+
+      }
+#endif
+    }
+    */
+
     SmallVector<unsigned, 4> SrcRegs, DstRegs;
     extractParts(SrcReg, NarrowTy1, NumParts, SrcRegs);
 
@@ -1775,7 +1805,7 @@ LegalizerHelper::fewerElementsVector(MachineInstr &MI, unsigned TypeIdx,
     MI.eraseFromParent();
     return Legalized;
   }
-#if 0
+#if 1
   case TargetOpcode::G_UNMERGE_VALUES: {
     if (TypeIdx != 1 || !NarrowTy.isScalar())
       return UnableToLegalize;
@@ -1783,11 +1813,16 @@ LegalizerHelper::fewerElementsVector(MachineInstr &MI, unsigned TypeIdx,
     unsigned NumOperands = MI.getNumOperands();
     unsigned ExtractValReg = MI.getOperand(NumOperands - 1).getReg();
 
+
+#if 1
+
     for (unsigned I = 0, NumElts = NumOperands - 1; I != NumElts; ++I) {
       MIRBuilder.buildExtractVectorElement(MI.getOperand(I).getReg(),
                                            ExtractValReg,
                                            static_cast<int64_t>(I));
     }
+
+#endif
 
     MI.eraseFromParent();
     return Legalized;
