@@ -197,6 +197,17 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
           0, Query.Types[0].getElementType());
       });
 
+  getActionDefinitionsBuilder(G_TRUNC)
+    .legalFor({{S32, S64}, {S16, S32}, {S16, S64}})
+    .fewerElementsIf(
+      [](const LegalityQuery &Query) {
+        return Query.Types[0].isVector();
+      },
+      [](const LegalityQuery &Query) {
+        return std::make_pair(
+          0, Query.Types[0].getElementType());
+      });
+
   setAction({G_FPTOSI, S32}, Legal);
   setAction({G_FPTOSI, 1, S32}, Legal);
 

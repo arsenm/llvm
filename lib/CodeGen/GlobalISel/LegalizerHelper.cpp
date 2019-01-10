@@ -1449,7 +1449,8 @@ LegalizerHelper::fewerElementsVector(MachineInstr &MI, unsigned TypeIdx,
   case TargetOpcode::G_ZEXT:
   case TargetOpcode::G_SEXT:
   case TargetOpcode::G_ANYEXT:
-  case TargetOpcode::G_FPEXT: {
+  case TargetOpcode::G_FPEXT:
+  case TargetOpcode::G_TRUNC: {
     if (TypeIdx != 0)
       return UnableToLegalize;
 
