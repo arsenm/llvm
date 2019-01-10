@@ -1083,6 +1083,41 @@ LegalizerHelper::widenScalar(MachineInstr &MI, unsigned TypeIdx, LLT WideTy) {
     widenScalarDst(MI, WideTy, 0, TargetOpcode::G_FPTRUNC);
     Observer.changedInstr(MI);
     return Legalized;
+
+  case TargetOpcode::G_BUILD_VECTOR: {
+    Observer.changingInstr(MI);
+
+    LLT WideEltTy = TypeIdx == 0 ?
+      WideTy.getElementType() : WideTy;
+
+    for (unsigned I = 1, E = MI.getNumOperands(); I != E; ++I)
+      widenScalarSrc(MI, WideEltTy, I, TargetOpcode::G_SEXT);
+
+    if (TypeIdx == 0) {
+      unsigned DstReg = MI.getOperand(0).getReg();
+      LLT DstTy = MRI.getType(DstReg);
+
+      auto Q = LI.getAction({TargetOpcode::G_TRUNC,
+            {DstTy, WideTy}});
+
+      if (Q.Action == FewerElements &&
+          Q.NewType == DstTy.getElementType()) {
+      } else {
+      }
+
+      widenScalarDst(MI, WideTy, 0);
+    }
+
+
+
+    if (TypeIdx == 1) {
+      auto &TII = *MI.getMF()->getSubtarget().getInstrInfo();
+      MI.setDesc(TII.get(TargetOpcode::G_BUILD_VECTOR_TRUNC));
+    }
+
+    Observer.changedInstr(MI);
+    return Legalized;
+  }
   }
 }
 
