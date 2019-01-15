@@ -17,8 +17,7 @@ define i64 @test_ashr_i64_imm(i64 %arg1) {
 ; X64-LABEL: test_ashr_i64_imm:
 ; X64:       # %bb.0:
 ; X64-NEXT:    movq %rdi, %rax
-; X64-NEXT:    movq $5, %rcx
-; X64-NEXT:    sarq %cl, %rax
+; X64-NEXT:    sarq $5, %rax
 ; X64-NEXT:    retq
   %res = ashr i64 %arg1, 5
   ret i64 %res
@@ -28,8 +27,7 @@ define i64 @test_ashr_i64_imm1(i64 %arg1) {
 ; X64-LABEL: test_ashr_i64_imm1:
 ; X64:       # %bb.0:
 ; X64-NEXT:    movq %rdi, %rax
-; X64-NEXT:    movq $1, %rcx
-; X64-NEXT:    sarq %cl, %rax
+; X64-NEXT:    sarq %rax
 ; X64-NEXT:    retq
   %res = ashr i64 %arg1, 1
   ret i64 %res
@@ -51,8 +49,7 @@ define i32 @test_ashr_i32_imm(i32 %arg1) {
 ; X64-LABEL: test_ashr_i32_imm:
 ; X64:       # %bb.0:
 ; X64-NEXT:    movl %edi, %eax
-; X64-NEXT:    movl $5, %ecx
-; X64-NEXT:    sarl %cl, %eax
+; X64-NEXT:    sarl $5, %eax
 ; X64-NEXT:    retq
   %res = ashr i32 %arg1, 5
   ret i32 %res
@@ -62,8 +59,7 @@ define i32 @test_ashr_i32_imm1(i32 %arg1) {
 ; X64-LABEL: test_ashr_i32_imm1:
 ; X64:       # %bb.0:
 ; X64-NEXT:    movl %edi, %eax
-; X64-NEXT:    movl $1, %ecx
-; X64-NEXT:    sarl %cl, %eax
+; X64-NEXT:    sarl %eax
 ; X64-NEXT:    retq
   %res = ashr i32 %arg1, 1
   ret i32 %res
@@ -88,8 +84,7 @@ define i16 @test_ashr_i16_imm(i32 %arg1) {
 ; X64-LABEL: test_ashr_i16_imm:
 ; X64:       # %bb.0:
 ; X64-NEXT:    movl %edi, %eax
-; X64-NEXT:    movw $5, %cx
-; X64-NEXT:    sarw %cl, %ax
+; X64-NEXT:    sarw $5, %ax
 ; X64-NEXT:    # kill: def $ax killed $ax killed $eax
 ; X64-NEXT:    retq
   %a = trunc i32 %arg1 to i16
@@ -101,8 +96,7 @@ define i16 @test_ashr_i16_imm1(i32 %arg1) {
 ; X64-LABEL: test_ashr_i16_imm1:
 ; X64:       # %bb.0:
 ; X64-NEXT:    movl %edi, %eax
-; X64-NEXT:    movw $1, %cx
-; X64-NEXT:    sarw %cl, %ax
+; X64-NEXT:    sarw %ax
 ; X64-NEXT:    # kill: def $ax killed $ax killed $eax
 ; X64-NEXT:    retq
   %a = trunc i32 %arg1 to i16

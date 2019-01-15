@@ -128,6 +128,30 @@ public:
     return tryFoldImplicitDef(MI, DeadInsts);
   }
 
+  bool tryCombineTrunc(MachineInstr &MI,
+                       SmallVectorImpl<MachineInstr *> &DeadInsts) {
+    if (MI.getOpcode() != TargetOpcode::G_TRUNC)
+      return false;
+
+    Builder.setInstr(MI);
+
+    // t1 = trunc (g_constant t0) -> g_constant t1
+    int64_t Cst;
+    unsigned SrcReg = lookThroughCopyInstrs(MI.getOperand(1).getReg());
+
+    if (mi_match(SrcReg, MRI, m_ICst(Cst))) {
+      unsigned DstReg = MI.getOperand(0).getReg();
+      if (isInstUnsupported({TargetOpcode::G_CONSTANT, {MRI.getType(DstReg)}}))
+        return false;
+
+      Builder.buildConstant(DstReg, Cst);
+      markInstAndDefDead(MI, *MRI.getVRegDef(SrcReg), DeadInsts);
+      return true;
+    }
+
+    return false;
+  }
+
   /// Try to fold G_[ASZ]EXT (G_IMPLICIT_DEF).
   bool tryFoldImplicitDef(MachineInstr &MI,
                           SmallVectorImpl<MachineInstr *> &DeadInsts) {
@@ -270,7 +294,10 @@ public:
       bool Changed = false;
       for (auto &Use : MRI.use_instructions(MI.getOperand(0).getReg()))
         Changed |= tryCombineInstruction(Use, DeadInsts);
-      return Changed;
+
+      if (Changed)
+        return true;
+      return tryCombineTrunc(MI, DeadInsts);
     }
     }
   }
