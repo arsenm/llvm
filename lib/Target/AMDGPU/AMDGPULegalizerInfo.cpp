@@ -503,8 +503,11 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     getActionDefinitionsBuilder(Op)
       .legalIf([=](const LegalityQuery &Query) {
           const LLT &VecTy = Query.Types[VecTypeIdx];
+          const LLT &EltTy = Query.Types[EltTypeIdx];
           const LLT &IdxTy = Query.Types[IdxTypeIdx];
+
           return VecTy.getSizeInBits() % 32 == 0 &&
+            EltTy.getSizeInBits() % 32 == 0 &&
             VecTy.getSizeInBits() <= 512 &&
             IdxTy.getSizeInBits() == 32;
         })
