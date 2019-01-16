@@ -23,6 +23,7 @@
 
 using namespace llvm;
 using namespace LegalizeActions;
+using namespace LegalizeMutations;
 using namespace LegalityPredicates;
 
 AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST) {
@@ -349,11 +350,6 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST) {
       }
       return false;
     };
-    auto scalarize =
-        [](const LegalityQuery &Query, unsigned TypeIdx) {
-          const LLT &Ty = Query.Types[TypeIdx];
-          return std::make_pair(TypeIdx, Ty.getElementType());
-        };
 
     // FIXME: This rule is horrible, but specifies the same as what we had
     // before with the particularly strange definitions removed (e.g.
@@ -367,10 +363,10 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST) {
         // Break up vectors with weird elements into scalars
         .fewerElementsIf(
             [=](const LegalityQuery &Query) { return notValidElt(Query, 0); },
-            [=](const LegalityQuery &Query) { return scalarize(Query, 0); })
+            scalarize(0))
         .fewerElementsIf(
             [=](const LegalityQuery &Query) { return notValidElt(Query, 1); },
-            [=](const LegalityQuery &Query) { return scalarize(Query, 1); })
+            scalarize(1))
         // Clamp the big scalar to s8-s512 and make it either a power of 2, 192,
         // or 384.
         .clampScalar(BigTyIdx, s8, s512)
@@ -411,16 +407,8 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST) {
           return BigTy.getSizeInBits() % LitTy.getSizeInBits() == 0;
         })
         // Any vectors left are the wrong size. Scalarize them.
-        .fewerElementsIf([](const LegalityQuery &Query) { return true; },
-                         [](const LegalityQuery &Query) {
-                           return std::make_pair(
-                               0, Query.Types[0].getElementType());
-                         })
-        .fewerElementsIf([](const LegalityQuery &Query) { return true; },
-                         [](const LegalityQuery &Query) {
-                           return std::make_pair(
-                               1, Query.Types[1].getElementType());
-                         });
+      .scalarize(0)
+      .scalarize(1);
   }
 
   getActionDefinitionsBuilder(G_EXTRACT_VECTOR_ELT)
