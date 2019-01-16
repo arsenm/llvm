@@ -218,6 +218,11 @@ public:
   bool canMergeStoresTo(unsigned AS, EVT MemVT,
                         const SelectionDAG &DAG) const override;
 
+  bool allowsMisalignedMemoryAccessesImpl(unsigned Size,
+                                          unsigned AS,
+                                          unsigned Align,
+                                          bool *IsFast = nullptr) const;
+
   bool allowsMisalignedMemoryAccesses(EVT VT, unsigned AS,
                                       unsigned Align,
                                       bool *IsFast) const override;

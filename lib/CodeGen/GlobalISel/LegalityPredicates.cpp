@@ -44,9 +44,13 @@ LegalityPredicate LegalityPredicates::typePairAndMemSizeInSet(
   SmallVector<TypePairAndMemSize, 4> TypesAndMemSize = TypesAndMemSizeInit;
   return [=](const LegalityQuery &Query) {
     TypePairAndMemSize Match = {Query.Types[TypeIdx0], Query.Types[TypeIdx1],
-                                Query.MMODescrs[MMOIdx].SizeInBits};
-    return std::find(TypesAndMemSize.begin(), TypesAndMemSize.end(), Match) !=
-           TypesAndMemSize.end();
+                                Query.MMODescrs[MMOIdx].SizeInBits,
+                                Query.MMODescrs[MMOIdx].AlignInBits};
+    return std::find_if(
+      TypesAndMemSize.begin(), TypesAndMemSize.end(),
+      [=](const TypePairAndMemSize &Entry) ->bool {
+        return Match.isCompatible(Entry);
+      }) != TypesAndMemSize.end();
   };
 }
 

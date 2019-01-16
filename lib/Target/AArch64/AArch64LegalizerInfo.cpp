@@ -173,12 +173,12 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST) {
       .widenScalarToNextPow2(0);
 
   getActionDefinitionsBuilder({G_SEXTLOAD, G_ZEXTLOAD})
-      .legalForTypesWithMemSize({{s32, p0, 8},
-                                 {s32, p0, 16},
-                                 {s32, p0, 32},
-                                 {s64, p0, 64},
-                                 {p0, p0, 64},
-                                 {v2s32, p0, 64}})
+      .legalForTypesWithMemSize({{s32, p0, 8, 0},
+                                 {s32, p0, 16, 0},
+                                 {s32, p0, 32, 0},
+                                 {s64, p0, 64, 0},
+                                 {p0, p0, 64, 0},
+                                 {v2s32, p0, 64, 0}})
       .clampScalar(0, s32, s64)
       .widenScalarToNextPow2(0)
       // TODO: We could support sum-of-pow2's but the lowering code doesn't know
@@ -188,15 +188,15 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST) {
       .lower();
 
   getActionDefinitionsBuilder(G_LOAD)
-      .legalForTypesWithMemSize({{s8, p0, 8},
-                                 {s16, p0, 16},
-                                 {s32, p0, 32},
-                                 {s64, p0, 64},
-                                 {p0, p0, 64},
-                                 {v2s32, p0, 64}})
+      .legalForTypesWithMemSize({{s8, p0, 8, 0},
+                                 {s16, p0, 16, 0},
+                                 {s32, p0, 32, 0},
+                                 {s64, p0, 64, 0},
+                                 {p0, p0, 64, 0},
+                                 {v2s32, p0, 64, 0}})
       // These extends are also legal
-      .legalForTypesWithMemSize({{s32, p0, 8},
-                                 {s32, p0, 16}})
+      .legalForTypesWithMemSize({{s32, p0, 8, 0},
+                                 {s32, p0, 16, 0}})
       .clampScalar(0, s8, s64)
       .widenScalarToNextPow2(0)
       // TODO: We could support sum-of-pow2's but the lowering code doesn't know
@@ -210,12 +210,12 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST) {
       .clampMaxNumElements(0, s64, 1);
 
   getActionDefinitionsBuilder(G_STORE)
-      .legalForTypesWithMemSize({{s8, p0, 8},
-                                 {s16, p0, 16},
-                                 {s32, p0, 32},
-                                 {s64, p0, 64},
-                                 {p0, p0, 64},
-                                 {v2s32, p0, 64}})
+      .legalForTypesWithMemSize({{s8, p0, 8, 0},
+                                 {s16, p0, 16, 0},
+                                 {s32, p0, 32, 0},
+                                 {s64, p0, 64, 0},
+                                 {p0, p0, 64, 0},
+                                 {v2s32, p0, 64, 0}})
       .clampScalar(0, s8, s64)
       .widenScalarToNextPow2(0)
       // TODO: We could support sum-of-pow2's but the lowering code doesn't know

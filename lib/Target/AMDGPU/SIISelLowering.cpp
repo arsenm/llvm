@@ -1114,21 +1114,12 @@ bool SITargetLowering::canMergeStoresTo(unsigned AS, EVT MemVT,
   return true;
 }
 
-bool SITargetLowering::allowsMisalignedMemoryAccesses(EVT VT,
-                                                      unsigned AddrSpace,
-                                                      unsigned Align,
-                                                      bool *IsFast) const {
+bool SITargetLowering::allowsMisalignedMemoryAccessesImpl(unsigned Size,
+                                                          unsigned AddrSpace,
+                                                          unsigned Align,
+                                                          bool *IsFast) const {
   if (IsFast)
     *IsFast = false;
-
-  // TODO: I think v3i32 should allow unaligned accesses on CI with DS_READ_B96,
-  // which isn't a simple VT.
-  // Until MVT is extended to handle this, simply check for the size and
-  // rely on the condition below: allow accesses if the size is a multiple of 4.
-  if (VT == MVT::Other || (VT != MVT::Other && VT.getSizeInBits() > 1024 &&
-                           VT.getStoreSize() > 16)) {
-    return false;
-  }
 
   if (AddrSpace == AMDGPUAS::LOCAL_ADDRESS ||
       AddrSpace == AMDGPUAS::REGION_ADDRESS) {
@@ -1168,7 +1159,7 @@ bool SITargetLowering::allowsMisalignedMemoryAccesses(EVT VT,
   }
 
   // Smaller than dword value must be aligned.
-  if (VT.bitsLT(MVT::i32))
+  if (Size < 32)
     return false;
 
   // 8.1.6 - For Dword or larger reads or writes, the two LSBs of the
@@ -1177,7 +1168,27 @@ bool SITargetLowering::allowsMisalignedMemoryAccesses(EVT VT,
   if (IsFast)
     *IsFast = true;
 
-  return VT.bitsGT(MVT::i32) && Align % 4 == 0;
+  return Size >= 32 && Align % 4 == 0;
+}
+
+bool SITargetLowering::allowsMisalignedMemoryAccesses(EVT VT,
+                                                      unsigned AddrSpace,
+                                                      unsigned Align,
+                                                      bool *IsFast) const {
+  if (IsFast)
+    *IsFast = false;
+
+  // TODO: I think v3i32 should allow unaligned accesses on CI with DS_READ_B96,
+  // which isn't a simple VT.
+  // Until MVT is extended to handle this, simply check for the size and
+  // rely on the condition below: allow accesses if the size is a multiple of 4.
+  if (VT == MVT::Other || (VT != MVT::Other && VT.getSizeInBits() > 1024 &&
+                           VT.getStoreSize() > 16)) {
+    return false;
+  }
+
+  return allowsMisalignedMemoryAccessesImpl(VT.getSizeInBits(), AddrSpace,
+                                            Align, IsFast);
 }
 
 EVT SITargetLowering::getOptimalMemOpType(uint64_t Size, unsigned DstAlign,

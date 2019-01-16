@@ -123,6 +123,7 @@ struct LegalityQuery {
   struct MemDesc {
     uint64_t SizeInBits;
     AtomicOrdering Ordering;
+    uint32_t AlignInBits;
   };
 
   /// Operations which require memory can use this to place requirements on the
@@ -168,9 +169,17 @@ struct TypePairAndMemSize {
   LLT Type0;
   LLT Type1;
   uint64_t MemSize;
+  uint32_t Align;
 
   bool operator==(const TypePairAndMemSize &Other) const {
     return Type0 == Other.Type0 && Type1 == Other.Type1 &&
+           Align == Other.Align &&
+           MemSize == Other.MemSize;
+  }
+
+  bool isCompatible(const TypePairAndMemSize &Other) const {
+    return Type0 == Other.Type0 && Type1 == Other.Type1 &&
+           Align >= Other.Align &&
            MemSize == Other.MemSize;
   }
 };

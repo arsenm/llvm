@@ -38,6 +38,7 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
   const LLT S16 = LLT::scalar(16);
   const LLT S32 = LLT::scalar(32);
   const LLT S64 = LLT::scalar(64);
+  const LLT S96 = LLT::scalar(96);
   const LLT S128 = LLT::scalar(128);
   const LLT S256 = LLT::scalar(256);
   const LLT S512 = LLT::scalar(512);
@@ -120,7 +121,9 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     .legalForCartesianProduct({S64, V2S32, V4S16})
     .legalForCartesianProduct({V2S64, V4S32})
     // Don't worry about the size constraint.
-    .legalIf(all(isPointer(0), isPointer(1)));
+    .legalIf(all(isPointer(0), isPointer(1)))
+    // FIXME: Testing hack
+    .legalForCartesianProduct({S16, LLT::vector(2, 8), });
 
   getActionDefinitionsBuilder(G_FCONSTANT)
     .legalFor({S32, S64, S16});
@@ -196,7 +199,7 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     .legalFor({{S64, S32}, {S32, S16}, {S64, S16},
                {S32, S1}, {S64, S1}, {S16, S1},
                // FIXME: Hack
-               {S128, S32}, {S32, LLT::scalar(24)}})
+               {S128, S32}, {S32, LLT::scalar(24)}, {S32, S8}, {S16, S8}})
     .scalarize(0);
 
   getActionDefinitionsBuilder(G_TRUNC)
@@ -249,27 +252,154 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
       return true;
     });
 
+  auto maxSizeForAddrSpace = [](unsigned AS) -> unsigned {
+    switch (AS) {
+      // FIXME: Private element size.
+    case AMDGPUAS::PRIVATE_ADDRESS:
+      return 32;
+    // FIXME: Check subtarget
+    case AMDGPUAS::LOCAL_ADDRESS:
+      return 64;
+    default:
+      return 128;
+    }
+  };
+
+
+  const auto needToSplitLoad = [=, &ST](const LegalityQuery &Query) -> bool {
+    const LLT &PtrTy = Query.Types[1];
+    unsigned MemSize = Query.MMODescrs[0].SizeInBits;
+    unsigned Align = Query.MMODescrs[0].AlignInBits;
+    unsigned AS = PtrTy.getAddressSpace();
+
+    const LLT &DstTy = Query.Types[0];
+
+    // Split extloads.
+    if (DstTy.getSizeInBits() > MemSize)
+      return true;
+
+    if (MemSize > maxSizeForAddrSpace(AS))
+      return true;
+
+    if (Align < MemSize) {
+      const SITargetLowering *TLI = ST.getTargetLowering();
+      return !TLI->allowsMisalignedMemoryAccessesImpl(
+        MemSize, AS, Align / 8);
+    }
+
+    return false;
+  };
+
+  unsigned GlobalAlign32 = ST.hasUnalignedBufferAccess() ? 0 : 32;
+  unsigned GlobalAlign16 = ST.hasUnalignedBufferAccess() ? 0 : 16;
+  unsigned GlobalAlign8 = ST.hasUnalignedBufferAccess() ? 0 : 8;
+
+  // TODO: Refine based on subtargets which support unaligned access or 128-bit
+  // LDS
   getActionDefinitionsBuilder({G_LOAD, G_STORE})
-    .narrowScalarIf([](const LegalityQuery &Query) {
-        unsigned Size = Query.Types[0].getSizeInBits();
-        unsigned MemSize = Query.MMODescrs[0].SizeInBits;
-        return (Size > 32 && MemSize < Size);
+    // Whitelist the common cases.
+    // TODO: Pointer loads
+    // TODO: Wide constant loads
+    // TODO: Only CI+ has 3x loads
+    // TODO: Loads to s16 on gfx9
+    .legalForTypesWithMemSize({
+        {S32, GlobalPtr, 32, GlobalAlign32},
+        {V2S32, GlobalPtr, 64, GlobalAlign32},
+        {V3S32, GlobalPtr, 96, GlobalAlign32},
+        {S96, GlobalPtr, 96, GlobalAlign32},
+        {V4S32, GlobalPtr, 128, GlobalAlign32},
+        {S128, GlobalPtr, 128, GlobalAlign32},
+        {S64, GlobalPtr, 64, GlobalAlign32},
+        {V2S64, GlobalPtr, 128, GlobalAlign32},
+        {V2S16, GlobalPtr, 32, GlobalAlign32},
+        {S32, GlobalPtr, 8, GlobalAlign8},
+        {S32, GlobalPtr, 16, GlobalAlign16},
+
+        {S32, LocalPtr, 32, 32},
+        {S64, LocalPtr, 64, 32},
+        {V2S32, LocalPtr, 64, 32},
+        {S32, LocalPtr, 8, 8},
+        {S32, LocalPtr, 16, 16},
+        {V2S16, LocalPtr, 32, 32},
+
+        {S32, PrivatePtr, 32, 32},
+        {S32, PrivatePtr, 8, 8},
+        {S32, PrivatePtr, 16, 16},
+        {V2S16, PrivatePtr, 32, 32},
+
+        {S32, FlatPtr, 32, GlobalAlign32},
+        {S32, FlatPtr, 16, GlobalAlign16},
+        {S32, FlatPtr, 8, GlobalAlign8},
+        {V2S16, FlatPtr, 32, GlobalAlign32},
+
+        {S32, ConstantPtr, 32, 32},
+        {V2S32, ConstantPtr, 64, 32},
+        {V3S32, ConstantPtr, 96, 32},
+        {V4S32, ConstantPtr, 128, 32},
+        {S64, ConstantPtr, 64, 32},
+        {S128, ConstantPtr, 128, 32},
+        {V2S32, ConstantPtr, 32, 32}})
+
+    .narrowScalarIf([=](const LegalityQuery &Query) -> bool {
+        return !Query.Types[0].isVector() && needToSplitLoad(Query);
       },
-      [](const LegalityQuery &Query) {
-        return std::make_pair(0, LLT::scalar(32));
+      [=](const LegalityQuery &Query) -> std::pair<unsigned, LLT> {
+        const LLT &DstTy = Query.Types[0];
+        const LLT &PtrTy = Query.Types[1];
+
+        unsigned MemSize = Query.MMODescrs[0].SizeInBits;
+
+        // Split extloads.
+        if (DstTy.getSizeInBits() > MemSize)
+          return std::make_pair(0, LLT::scalar(MemSize));
+
+        unsigned MaxSize = maxSizeForAddrSpace(PtrTy.getAddressSpace());
+        if (MemSize > MaxSize)
+          return std::make_pair(0, LLT::scalar(MaxSize));
+
+        unsigned Align = Query.MMODescrs[0].AlignInBits;
+        return std::make_pair(0, LLT::scalar(Align));
       })
+    .fewerElementsIf([=](const LegalityQuery &Query) -> bool {
+        return Query.Types[0].isVector() &&
+          // TODO: Skip vector extloads.
+          //Query.MMODescrs[0].SizeInBits == Query.Types[0].getSizeInBits() &&
+          needToSplitLoad(Query);
+      },
+      [=](const LegalityQuery &Query) -> std::pair<unsigned, LLT> {
+        const LLT &DstTy = Query.Types[0];
+        const LLT &PtrTy = Query.Types[1];
+        unsigned Align = Query.MMODescrs[0].AlignInBits;
+
+        unsigned EltSize = DstTy.getScalarSizeInBits();
+        unsigned MaxSize = maxSizeForAddrSpace(PtrTy.getAddressSpace());
+        if (Query.MMODescrs[0].SizeInBits > MaxSize) {
+          unsigned NumElts = DstTy.getNumElements();
+          unsigned NumPieces = Query.MMODescrs[0].SizeInBits / MaxSize;
+          assert(NumPieces >= 2);
+
+          // FIXME: Refine when odd breakdowns handled
+          // The scalars will need to be re-legalized.
+          if (NumPieces >= NumElts || NumElts % NumPieces != 0)
+            return std::make_pair(0, LLT::scalar(EltSize));
+
+          return std::make_pair(0, LLT::vector(NumElts / NumPieces, EltSize));
+        }
+
+        assert(Align <= EltSize);
+
+        // May need relegalization for the scalars.
+        return std::make_pair(0, LLT::scalar(EltSize));
+      })
+    .clampScalar(0, S32, S64)
+     // TODO: Need a bitcast lower option?
     .legalIf([=, &ST](const LegalityQuery &Query) {
         const LLT &Ty0 = Query.Types[0];
-
-        unsigned Size = Ty0.getSizeInBits();
         unsigned MemSize = Query.MMODescrs[0].SizeInBits;
-        if (Size > 32 && MemSize < Size)
+
+        if (Ty0.getSizeInBits() != MemSize)
           return false;
 
-        if (Ty0.isVector() && Size != MemSize)
-          return false;
-
-        // TODO: Decompose private loads into 4-byte components.
         // TODO: Illegal flat loads on SI
         switch (MemSize) {
         case 8:
@@ -289,21 +419,19 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
         default:
           return false;
         }
-      })
-    .clampScalar(0, S32, S64);
-
+      });
 
   auto &ExtLoads = getActionDefinitionsBuilder({G_SEXTLOAD, G_ZEXTLOAD})
     .legalForTypesWithMemSize({
-        {S32, GlobalPtr, 8},
-        {S32, GlobalPtr, 16},
-        {S32, LocalPtr, 8},
-        {S32, LocalPtr, 16},
-        {S32, PrivatePtr, 8},
-        {S32, PrivatePtr, 16}});
+        {S32, GlobalPtr, 8, 0},
+        {S32, GlobalPtr, 16, 2 * 8},
+        {S32, LocalPtr, 8, 0},
+        {S32, LocalPtr, 16, 2},
+        {S32, PrivatePtr, 8, 0},
+        {S32, PrivatePtr, 16, 2 * 8}});
   if (ST.hasFlatAddressSpace()) {
-    ExtLoads.legalForTypesWithMemSize({{S32, FlatPtr, 8},
-                                       {S32, FlatPtr, 16}});
+    ExtLoads.legalForTypesWithMemSize({{S32, FlatPtr, 8, 1},
+                                       {S32, FlatPtr, 16, 2}});
   }
 
   ExtLoads.clampScalar(0, S32, S32)
@@ -401,7 +529,6 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
       })
     .widenScalarIf(
       [=](const LegalityQuery &Query) {
-        const LLT &Ty0 = Query.Types[0];
         const LLT &Ty1 = Query.Types[1];
         return (Ty1.getScalarSizeInBits() < 16);
       },
@@ -451,7 +578,8 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
       // Clamp the little scalar to s8-s256 and make it a power of 2. It's not
       // worth considering the multiples of 64 since 2*192 and 2*384 are not
       // valid.
-      .clampScalar(LitTyIdx, S16, S256)
+      // FIXME: Testing hack
+      .clampScalar(LitTyIdx, S8, S256)
       .widenScalarToNextPow2(LitTyIdx, /*Min*/ 32)
 
       // Break up vectors with weird elements into scalars
@@ -461,12 +589,12 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
       .fewerElementsIf(
         [=](const LegalityQuery &Query) { return notValidElt(Query, 1); },
         scalarize(1))
-      .clampScalar(BigTyIdx, S32, S512)
+      .clampScalar(BigTyIdx, S8, S512)
       .widenScalarIf(
         [=](const LegalityQuery &Query) {
           const LLT &Ty = Query.Types[BigTyIdx];
           return !isPowerOf2_32(Ty.getSizeInBits()) &&
-                 Ty.getSizeInBits() % 16 != 0;
+                 Ty.getSizeInBits() % 8 != 0;
         },
         [=](const LegalityQuery &Query) {
           // Pick the next power of 2, or a multiple of 64 over 128.
@@ -489,8 +617,9 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
           if (LitTy.isVector() && LitTy.getSizeInBits() < 32)
             return false;
 
-          return BigTy.getSizeInBits() % 16 == 0 &&
-                 LitTy.getSizeInBits() % 16 == 0 &&
+          // FIXME: Testing hack
+          return BigTy.getSizeInBits() % 8 == 0 &&
+                 LitTy.getSizeInBits() % 8 == 0 &&
                  BigTy.getSizeInBits() <= 512;
         })
       // Any vectors left are the wrong size. Scalarize them.

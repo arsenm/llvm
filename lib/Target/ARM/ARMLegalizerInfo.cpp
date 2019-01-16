@@ -100,11 +100,11 @@ ARMLegalizerInfo::ARMLegalizerInfo(const ARMSubtarget &ST) {
   auto &LoadStoreBuilder =
       getActionDefinitionsBuilder({G_LOAD, G_STORE})
           .legalForTypesWithMemSize({
-              {s1, p0, 8},
-              {s8, p0, 8},
-              {s16, p0, 16},
-              {s32, p0, 32},
-              {p0, p0, 32}});
+              {s1, p0, 8, 0},
+              {s8, p0, 8, 0},
+              {s16, p0, 16, 0},
+              {s32, p0, 32, 0},
+              {p0, p0, 32, 0}});
 
   if (ST.isThumb()) {
     // FIXME: merge with the code for non-Thumb.
