@@ -155,6 +155,7 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
   getActionDefinitionsBuilder(
     { G_FADD, G_FMUL, G_FNEG, G_FABS, G_FMA})
     .legalFor({S32, S64})
+    .scalarize(0)
     .clampScalar(0, S32, S64);
 
   getActionDefinitionsBuilder(G_FPTRUNC)
@@ -169,7 +170,8 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     // Use actual fsub instruction
     .legalFor({S32})
     // Must use fadd + fneg
-    .lowerFor({S64, S16})
+    .lowerFor({S64, S16, V2S16})
+    .scalarize(0)
     .clampScalar(0, S32, S64);
 
   getActionDefinitionsBuilder({G_SEXT, G_ZEXT, G_ANYEXT})
