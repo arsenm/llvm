@@ -141,8 +141,6 @@ bool RegBankSelect::repairReg(
   // An empty range of new register means no repairing.
   assert(!empty(NewVRegs) && "We should not have to repair");
 
-  SmallVector<MachineInstr *, 4> InstsToInsert;
-
   MachineInstr *MI;
   if (ValMapping.NumBreakDowns == 1) {
     // Assume we are repairing a use and thus, the original reg will be
@@ -167,7 +165,6 @@ bool RegBankSelect::repairReg(
       .addUse(Src);
     LLVM_DEBUG(dbgs() << "Copy: " << printReg(Src) << " to: " << printReg(Dst)
                << '\n');
-    InstsToInsert.push_back(MI);
   } else {
     // TODO: Support with G_IMPLICIT_DEF + G_INSERT sequence or G_EXTRACT
     // sequence.
@@ -192,51 +189,18 @@ bool RegBankSelect::repairReg(
         MIRBuilder.buildInstrNoInsert(MergeOp)
         .addDef(MO.getReg());
 
+      for (unsigned SrcReg : NewVRegs)
+        MergeBuilder.addUse(SrcReg);
 
-        MI = MergeBuilder;
-      } else {
-        // FIMXE: Assumes breakdowns equally sized
-        MachineInstrBuilder UnMergeBuilder =
-          MIRBuilder.buildInstrNoInsert(TargetOpcode::G_UNMERGE_VALUES);
-        for (unsigned DefReg : NewVRegs)
-          UnMergeBuilder.addDef(DefReg);
-
-        UnMergeBuilder.addUse(MO.getReg());
-        MI = UnMergeBuilder;
-      }
-      InstsToInsert.push_back(MI);
+      MI = MergeBuilder;
     } else {
-      if (MO.isDef()) {
-        LLT RegType = MRI->getType(MO.getReg());
-        unsigned Accum =
-          MRI->createGenericVirtualRegister(RegType);
+      MachineInstrBuilder UnMergeBuilder =
+        MIRBuilder.buildInstrNoInsert(TargetOpcode::G_UNMERGE_VALUES);
+      for (unsigned DefReg : NewVRegs)
+        UnMergeBuilder.addDef(DefReg);
 
-        MI = MIRBuilder.buildInstrNoInsert(TargetOpcode::G_IMPLICIT_DEF)
-          .addDef(Accum);
-
-        InstsToInsert.push_back(MI);
-
-        for (auto Tup : zip(ValMapping, NewVRegs)) {
-          RegisterBankInfo::PartialMapping Part = std::get<0>(Tup);
-          unsigned Reg = std::get<1>(Tup);
-
-          unsigned NewAccum =
-            MRI->createGenericVirtualRegister(RegType);
-          MI = MIRBuilder.buildInstrNoInsert(TargetOpcode::G_INSERT)
-            .addDef(NewAccum)
-            .addUse(Accum)
-            .addUse(Reg)
-            .addImm(Part.StartIdx);
-          InstsToInsert.push_back(MI);
-
-          Accum = NewAccum;
-        }
-
-
-      } else {
-        llvm_unreachable("todo");
-      }
-
+      UnMergeBuilder.addUse(MO.getReg());
+      MI = UnMergeBuilder;
     }
   }
 
@@ -247,22 +211,18 @@ bool RegBankSelect::repairReg(
   // Check if MI is legal. if not, we need to legalize all the
   // instructions we are going to insert.
   std::unique_ptr<MachineInstr *[]> NewInstrs(
-    new MachineInstr *[RepairPt.getNumInsertPoints() * InstsToInsert.size()]);
+      new MachineInstr *[RepairPt.getNumInsertPoints()]);
+  bool IsFirst = true;
   unsigned Idx = 0;
   for (const std::unique_ptr<InsertPoint> &InsertPt : RepairPt) {
     MachineInstr *CurMI;
-    bool IsFirst = true;
-
-    for (MachineInstr *MI : reverse(InstsToInsert)) {
-
-      if (IsFirst)
-        CurMI = MI;
-      else
-        CurMI = MIRBuilder.getMF().CloneMachineInstr(MI);
-      InsertPt->insert(*CurMI);
-      NewInstrs[Idx++] = CurMI;
-      IsFirst = false;
-    }
+    if (IsFirst)
+      CurMI = MI;
+    else
+      CurMI = MIRBuilder.getMF().CloneMachineInstr(MI);
+    InsertPt->insert(*CurMI);
+    NewInstrs[Idx++] = CurMI;
+    IsFirst = false;
   }
   // TODO:
   // Legalize NewInstrs if need be.
