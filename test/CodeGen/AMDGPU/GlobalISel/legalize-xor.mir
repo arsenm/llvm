@@ -71,3 +71,47 @@ body: |
     %2:_(<2 x s32>) = G_XOR %0, %1
     $vgpr0_vgpr1 = COPY %2
 ...
+
+---
+name: test_xor_i8
+body: |
+  bb.0:
+    liveins: $vgpr0, $vgpr1
+
+    ; CHECK-LABEL: name: test_xor_i8
+    ; CHECK: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
+    ; CHECK: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr1
+    ; CHECK: [[COPY2:%[0-9]+]]:_(s32) = COPY [[COPY]](s32)
+    ; CHECK: [[COPY3:%[0-9]+]]:_(s32) = COPY [[COPY1]](s32)
+    ; CHECK: [[XOR:%[0-9]+]]:_(s32) = G_XOR [[COPY2]], [[COPY3]]
+    ; CHECK: [[COPY4:%[0-9]+]]:_(s32) = COPY [[XOR]](s32)
+    ; CHECK: $vgpr0 = COPY [[COPY4]](s32)
+    %0:_(s32) = COPY $vgpr0
+    %1:_(s32) = COPY $vgpr1
+    %2:_(s8) = G_TRUNC %0
+    %3:_(s8) = G_TRUNC %1
+    %4:_(s8) = G_XOR %2, %3
+    %5:_(s32) = G_ANYEXT %4
+    $vgpr0 = COPY %5
+...
+
+---
+name: test_xor_i128
+body: |
+  bb.0:
+    liveins: $vgpr0_vgpr1_vgpr2_vgpr3, $vgpr4_vgpr5_vgpr6_vgpr7
+
+    ; CHECK-LABEL: name: test_xor_i128
+    ; CHECK: [[COPY:%[0-9]+]]:_(s128) = COPY $vgpr0_vgpr1_vgpr2_vgpr3
+    ; CHECK: [[COPY1:%[0-9]+]]:_(s128) = COPY $vgpr4_vgpr5_vgpr6_vgpr7
+    ; CHECK: [[UV:%[0-9]+]]:_(s64), [[UV1:%[0-9]+]]:_(s64) = G_UNMERGE_VALUES [[COPY]](s128)
+    ; CHECK: [[UV2:%[0-9]+]]:_(s64), [[UV3:%[0-9]+]]:_(s64) = G_UNMERGE_VALUES [[COPY1]](s128)
+    ; CHECK: [[XOR:%[0-9]+]]:_(s64) = G_XOR [[UV]], [[UV2]]
+    ; CHECK: [[XOR1:%[0-9]+]]:_(s64) = G_XOR [[UV1]], [[UV3]]
+    ; CHECK: [[MV:%[0-9]+]]:_(s128) = G_MERGE_VALUES [[XOR]](s64), [[XOR1]](s64)
+    ; CHECK: $vgpr0_vgpr1_vgpr2_vgpr3 = COPY [[MV]](s128)
+    %0:_(s128) = COPY $vgpr0_vgpr1_vgpr2_vgpr3
+    %1:_(s128) = COPY $vgpr4_vgpr5_vgpr6_vgpr7
+    %2:_(s128) = G_XOR %0, %1
+    $vgpr0_vgpr1_vgpr2_vgpr3 = COPY %2
+...
