@@ -123,6 +123,15 @@ private:
   LegalizeResult
   fewerElementsVectorCmp(MachineInstr &MI, unsigned TypeIdx, LLT NarrowTy);
 
+  /// Legalize a simple vector instruction where all operands are the same type
+  /// by splitting into multiple components.
+  LegalizeResult fewerElementsVectorBasic(MachineInstr &MI, unsigned TypeIdx,
+                                          LLT NarrowTy);
+
+  LegalizeResult fewerElementsVectorImplicitDef(MachineInstr &MI,
+                                                unsigned TypeIdx,
+                                                LLT NarrowTy);
+
   LegalizeResult narrowScalarMul(MachineInstr &MI, unsigned TypeIdx, LLT Ty);
 
   LegalizeResult lowerBitCount(MachineInstr &MI, unsigned TypeIdx, LLT Ty);
