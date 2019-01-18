@@ -69,6 +69,9 @@ LegalizerHelper::legalizeInstrStep(MachineInstr &MI) {
   case FewerElements:
     LLVM_DEBUG(dbgs() << ".. Reduce number of elements\n");
     return fewerElementsVector(MI, Step.TypeIdx, Step.NewType);
+  case MoreElements:
+    LLVM_DEBUG(dbgs() << ".. Increase number of elements\n");
+    return moreElementsVector(MI, Step.TypeIdx, Step.NewType);
   case Custom:
     LLVM_DEBUG(dbgs() << ".. Custom legalization\n");
     return LI.legalizeCustom(MI, MRI, MIRBuilder, Observer) ? Legalized
@@ -1612,6 +1615,17 @@ LegalizerHelper::fewerElementsVector(MachineInstr &MI, unsigned TypeIdx,
     MI.eraseFromParent();
     return Legalized;
   }
+  }
+}
+
+LegalizerHelper::LegalizeResult
+LegalizerHelper::moreElementsVector(MachineInstr &MI, unsigned TypeIdx,
+                                    LLT NarrowTy) {
+  MIRBuilder.setInstr(MI);
+  unsigned Opc = MI.getOpcode();
+  switch (Opc) {
+  default:
+    return UnableToLegalize;
   }
 }
 
