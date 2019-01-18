@@ -337,13 +337,16 @@ body: |
     ; GFX9-LABEL: name: test_fmul_v3s16
     ; GFX9: [[DEF:%[0-9]+]]:_(<3 x s16>) = G_IMPLICIT_DEF
     ; GFX9: [[DEF1:%[0-9]+]]:_(<3 x s16>) = G_IMPLICIT_DEF
-    ; GFX9: [[UV:%[0-9]+]]:_(s16), [[UV1:%[0-9]+]]:_(s16), [[UV2:%[0-9]+]]:_(s16) = G_UNMERGE_VALUES [[DEF]](<3 x s16>)
-    ; GFX9: [[UV3:%[0-9]+]]:_(s16), [[UV4:%[0-9]+]]:_(s16), [[UV5:%[0-9]+]]:_(s16) = G_UNMERGE_VALUES [[DEF1]](<3 x s16>)
-    ; GFX9: [[FMUL:%[0-9]+]]:_(s16) = G_FMUL [[UV]], [[UV3]]
-    ; GFX9: [[FMUL1:%[0-9]+]]:_(s16) = G_FMUL [[UV1]], [[UV4]]
-    ; GFX9: [[FMUL2:%[0-9]+]]:_(s16) = G_FMUL [[UV2]], [[UV5]]
-    ; GFX9: [[BUILD_VECTOR:%[0-9]+]]:_(<3 x s16>) = G_BUILD_VECTOR [[FMUL]](s16), [[FMUL1]](s16), [[FMUL2]](s16)
-    ; GFX9: S_NOP 0, implicit [[BUILD_VECTOR]](<3 x s16>)
+    ; GFX9: [[DEF2:%[0-9]+]]:_(<3 x s16>) = G_IMPLICIT_DEF
+    ; GFX9: [[EXTRACT:%[0-9]+]]:_(<2 x s16>) = G_EXTRACT [[DEF]](<3 x s16>), 0
+    ; GFX9: [[EXTRACT1:%[0-9]+]]:_(<2 x s16>) = G_EXTRACT [[DEF1]](<3 x s16>), 0
+    ; GFX9: [[FMUL:%[0-9]+]]:_(<2 x s16>) = G_FMUL [[EXTRACT]], [[EXTRACT1]]
+    ; GFX9: [[INSERT:%[0-9]+]]:_(<3 x s16>) = G_INSERT [[DEF2]], [[FMUL]](<2 x s16>), 0
+    ; GFX9: [[EXTRACT2:%[0-9]+]]:_(s16) = G_EXTRACT [[DEF]](<3 x s16>), 32
+    ; GFX9: [[EXTRACT3:%[0-9]+]]:_(s16) = G_EXTRACT [[DEF1]](<3 x s16>), 32
+    ; GFX9: [[FMUL1:%[0-9]+]]:_(s16) = G_FMUL [[EXTRACT2]], [[EXTRACT3]]
+    ; GFX9: [[INSERT1:%[0-9]+]]:_(<3 x s16>) = G_INSERT [[INSERT]], [[FMUL1]](s16), 32
+    ; GFX9: S_NOP 0, implicit [[INSERT1]](<3 x s16>)
     %0:_(<3 x s16>) = G_IMPLICIT_DEF
     %1:_(<3 x s16>) = G_IMPLICIT_DEF
     %2:_(<3 x s16>) = G_FMUL %0, %1

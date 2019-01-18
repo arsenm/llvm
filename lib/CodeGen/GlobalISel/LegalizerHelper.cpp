@@ -1382,18 +1382,62 @@ LegalizerHelper::fewerElementsVectorImplicitDef(MachineInstr &MI,
 LegalizerHelper::LegalizeResult
 LegalizerHelper::fewerElementsVectorBasic(MachineInstr &MI, unsigned TypeIdx,
                                           LLT NarrowTy) {
-  unsigned Opc = MI.getOpcode();
-  unsigned NarrowSize = NarrowTy.getSizeInBits();
-  unsigned DstReg = MI.getOperand(0).getReg();
-  unsigned Flags = MI.getFlags();
-  unsigned Size = MRI.getType(DstReg).getSizeInBits();
-  int NumParts = Size / NarrowSize;
-  // FIXME: Don't know how to handle the situation where the small vectors
-  // aren't all the same size yet.
-  if (Size % NarrowSize != 0)
-    return UnableToLegalize;
+  const unsigned Opc = MI.getOpcode();
+  const unsigned NarrowSize = NarrowTy.getSizeInBits();
+  const unsigned DstReg = MI.getOperand(0).getReg();
+  const unsigned Flags = MI.getFlags();
+  const LLT DstTy = MRI.getType(DstReg);
+  const unsigned Size = DstTy.getSizeInBits();
+  const int NumParts = Size / NarrowSize;
+  const LLT EltTy = DstTy.getElementType();
+  const unsigned EltSize = EltTy.getSizeInBits();
+  const unsigned NumOps = MI.getNumOperands() - 1;
 
-  unsigned NumOps = MI.getNumOperands() - 1;
+  if (NarrowSize * NumParts != Size) {
+    // Only handle the case where the leftover is one element.
+    if (NarrowSize * NumParts + EltSize != Size)
+      return UnableToLegalize;
+
+    unsigned AccumDstReg = MRI.createGenericVirtualRegister(DstTy);
+    MIRBuilder.buildUndef(AccumDstReg);
+
+    for (unsigned Offset = 0; Offset < Size; Offset += NarrowSize) {
+      if (Offset + NarrowSize < Size) {
+        SmallVector<SrcOp, 4> SrcOps;
+        for (unsigned I = 1, E = MI.getNumOperands(); I != E; ++I) {
+          unsigned PartOpReg = MRI.createGenericVirtualRegister(NarrowTy);
+          MIRBuilder.buildExtract(PartOpReg, MI.getOperand(I).getReg(), Offset);
+          SrcOps.push_back(PartOpReg);
+        }
+
+        unsigned PartDstReg = MRI.createGenericVirtualRegister(NarrowTy);
+        MIRBuilder.buildInstr(Opc, {PartDstReg}, SrcOps, Flags);
+
+        unsigned PartInsertReg = MRI.createGenericVirtualRegister(DstTy);
+        MIRBuilder.buildInsert(PartInsertReg, AccumDstReg, PartDstReg, Offset);
+        AccumDstReg = PartInsertReg;
+        Offset += NarrowSize;
+      }
+    }
+
+    const unsigned ExtraOffset = NarrowSize * NumParts;
+    assert(ExtraOffset + EltSize == Size);
+
+    SmallVector<SrcOp, 4> SrcOps;
+    for (unsigned I = 1, E = MI.getNumOperands(); I != E; ++I) {
+      unsigned PartOpReg = MRI.createGenericVirtualRegister(EltTy);
+      MIRBuilder.buildExtract(PartOpReg, MI.getOperand(I).getReg(), ExtraOffset);
+      SrcOps.push_back(PartOpReg);
+    }
+
+    unsigned PartDstReg = MRI.createGenericVirtualRegister(EltTy);
+    MIRBuilder.buildInstr(Opc, {PartDstReg}, SrcOps, Flags);
+    MIRBuilder.buildInsert(DstReg, AccumDstReg, PartDstReg, ExtraOffset);
+    MI.eraseFromParent();
+
+    return Legalized;
+  }
+
   SmallVector<unsigned, 2> DstRegs, Src0Regs, Src1Regs, Src2Regs;
 
   extractParts(MI.getOperand(1).getReg(), NarrowTy, NumParts, Src0Regs);

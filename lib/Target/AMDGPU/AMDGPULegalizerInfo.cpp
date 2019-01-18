@@ -169,15 +169,8 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
       FPOpActions.legalFor({S16});
   }
 
-  if (ST.hasVOP3PInsts()) {
-    // FIXME: Remove when odd splits handled
-    FPOpActions.fewerElementsIf([](const LegalityQuery &Q) {
-        return Q.Types[0].isVector() &&
-               Q.Types[0].getNumElements() % 2 != 0;
-      }, scalarize(0));
+  if (ST.hasVOP3PInsts())
     FPOpActions.clampMaxNumElements(0, S16, 2);
-  }
-
   FPOpActions
     .scalarize(0)
     .clampScalar(0, ST.has16BitInsts() ? S16 : S32, S64);
@@ -400,8 +393,8 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     .legalIf([=](const LegalityQuery &Query) {
         const LLT &Ty0 = Query.Types[0];
         const LLT &Ty1 = Query.Types[1];
-        return (Ty0.getSizeInBits() % 32 == 0) &&
-               (Ty1.getSizeInBits() % 32 == 0);
+        return (Ty0.getSizeInBits() % 16 == 0) &&
+               (Ty1.getSizeInBits() % 16 == 0);
       });
 
   getActionDefinitionsBuilder(G_BUILD_VECTOR)

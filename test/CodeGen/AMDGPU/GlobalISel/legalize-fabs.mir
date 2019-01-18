@@ -228,12 +228,14 @@ body: |
     ; VI: S_NOP 0, implicit [[BUILD_VECTOR]](<3 x s16>)
     ; GFX9-LABEL: name: test_fabs_v3s16
     ; GFX9: [[DEF:%[0-9]+]]:_(<3 x s16>) = G_IMPLICIT_DEF
-    ; GFX9: [[UV:%[0-9]+]]:_(s16), [[UV1:%[0-9]+]]:_(s16), [[UV2:%[0-9]+]]:_(s16) = G_UNMERGE_VALUES [[DEF]](<3 x s16>)
-    ; GFX9: [[FABS:%[0-9]+]]:_(s16) = G_FABS [[UV]]
-    ; GFX9: [[FABS1:%[0-9]+]]:_(s16) = G_FABS [[UV1]]
-    ; GFX9: [[FABS2:%[0-9]+]]:_(s16) = G_FABS [[UV2]]
-    ; GFX9: [[BUILD_VECTOR:%[0-9]+]]:_(<3 x s16>) = G_BUILD_VECTOR [[FABS]](s16), [[FABS1]](s16), [[FABS2]](s16)
-    ; GFX9: S_NOP 0, implicit [[BUILD_VECTOR]](<3 x s16>)
+    ; GFX9: [[DEF1:%[0-9]+]]:_(<3 x s16>) = G_IMPLICIT_DEF
+    ; GFX9: [[EXTRACT:%[0-9]+]]:_(<2 x s16>) = G_EXTRACT [[DEF]](<3 x s16>), 0
+    ; GFX9: [[FABS:%[0-9]+]]:_(<2 x s16>) = G_FABS [[EXTRACT]]
+    ; GFX9: [[INSERT:%[0-9]+]]:_(<3 x s16>) = G_INSERT [[DEF1]], [[FABS]](<2 x s16>), 0
+    ; GFX9: [[EXTRACT1:%[0-9]+]]:_(s16) = G_EXTRACT [[DEF]](<3 x s16>), 32
+    ; GFX9: [[FABS1:%[0-9]+]]:_(s16) = G_FABS [[EXTRACT1]]
+    ; GFX9: [[INSERT1:%[0-9]+]]:_(<3 x s16>) = G_INSERT [[INSERT]], [[FABS1]](s16), 32
+    ; GFX9: S_NOP 0, implicit [[INSERT1]](<3 x s16>)
     %0:_(<3 x s16>) = G_IMPLICIT_DEF
     %1:_(<3 x s16>) = G_FABS %0
     S_NOP 0, implicit %1
