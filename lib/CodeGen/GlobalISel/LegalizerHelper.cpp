@@ -1387,6 +1387,9 @@ LegalizerHelper::fewerElementsVector(MachineInstr &MI, unsigned TypeIdx,
     MI.eraseFromParent();
     return Legalized;
   }
+  case TargetOpcode::G_AND:
+  case TargetOpcode::G_OR:
+  case TargetOpcode::G_XOR:
   case TargetOpcode::G_ADD:
   case TargetOpcode::G_MUL:
   case TargetOpcode::G_SMULH:
