@@ -148,7 +148,15 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
 
   getActionDefinitionsBuilder(G_FPEXT)
     .legalFor({{S64, S32}, {S32, S16}})
-    .lowerFor({{S64, S16}}); // FIXME: Implement
+    .lowerFor({{S64, S16}}) // FIXME: Implement
+    .fewerElementsIf(
+      [](const LegalityQuery &Query) {
+        return Query.Types[0].isVector();
+      },
+      [](const LegalityQuery &Query) {
+        return std::make_pair(
+          0, Query.Types[0].getElementType());
+      });
 
   getActionDefinitionsBuilder(G_FSUB)
     // Use actual fsub instruction
@@ -165,7 +173,15 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     .legalFor({{S64, S32}, {S32, S16}, {S64, S16},
                {S32, S1}, {S64, S1}, {S16, S1},
                // FIXME: Hack
-               {S128, S32}});
+               {S128, S32}})
+  .fewerElementsIf(
+      [](const LegalityQuery &Query) {
+        return Query.Types[0].isVector();
+      },
+      [](const LegalityQuery &Query) {
+        return std::make_pair(
+          0, Query.Types[0].getElementType());
+      });
 
   setAction({G_FPTOSI, S32}, Legal);
   setAction({G_FPTOSI, 1, S32}, Legal);

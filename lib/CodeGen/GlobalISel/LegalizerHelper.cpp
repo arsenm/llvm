@@ -1356,6 +1356,55 @@ LegalizerHelper::fewerElementsVector(MachineInstr &MI, unsigned TypeIdx,
     MI.eraseFromParent();
     return Legalized;
   }
+  case TargetOpcode::G_ZEXT:
+  case TargetOpcode::G_SEXT:
+  case TargetOpcode::G_ANYEXT:
+  case TargetOpcode::G_FPEXT: {
+    if (TypeIdx != 0)
+      return UnableToLegalize;
+
+    unsigned DstReg = MI.getOperand(0).getReg();
+    unsigned SrcReg = MI.getOperand(1).getReg();
+    LLT DstTy = MRI.getType(DstReg);
+    LLT SrcTy = MRI.getType(SrcReg);
+
+    LLT NarrowTy0 = NarrowTy;
+    LLT NarrowTy1;
+    unsigned NumParts;
+
+    if (NarrowTy.isScalar()) {
+      NumParts = DstTy.getNumElements();
+      NarrowTy1 = SrcTy.getElementType();
+    } else {
+      // Uneven breakdown not handled.
+      NumParts = DstTy.getNumElements() / NarrowTy.getNumElements();
+      if (NumParts * NarrowTy.getNumElements() != DstTy.getNumElements())
+        return UnableToLegalize;
+
+      NarrowTy1 = LLT::vector(NumParts, SrcTy.getElementType().getSizeInBits());
+    }
+
+    SmallVector<unsigned, 4> SrcRegs, DstRegs;
+    extractParts(SrcReg, NarrowTy1, NumParts, SrcRegs);
+
+    for (unsigned I = 0; I < NumParts; ++I) {
+      unsigned DstReg = MRI.createGenericVirtualRegister(NarrowTy0);
+      MachineInstr *NewInst = MIRBuilder.buildInstr(MI.getOpcode())
+        .addDef(DstReg)
+        .addUse(SrcRegs[I]);
+
+      NewInst->setFlags(MI.getFlags());
+      DstRegs.push_back(DstReg);
+    }
+
+    if (NarrowTy.isVector())
+      MIRBuilder.buildConcatVectors(DstReg, DstRegs);
+    else
+      MIRBuilder.buildBuildVector(DstReg, DstRegs);
+
+    MI.eraseFromParent();
+    return Legalized;
+  }
   }
 }
 
