@@ -29,10 +29,16 @@ LegalizeMutation LegalizeMutations::changeTo(unsigned TypeIdx,
 LegalizeMutation LegalizeMutations::widenScalarToNextPow2(unsigned TypeIdx,
                                                           unsigned Min) {
   return [=](const LegalityQuery &Query) {
-    unsigned NewSizeInBits =
-        1 << Log2_32_Ceil(Query.Types[TypeIdx].getSizeInBits());
+    LLT Ty = Query.Types[TypeIdx];
+    unsigned NewSizeInBits = 1 << Log2_32_Ceil(Ty.getScalarSizeInBits());
     if (NewSizeInBits < Min)
       NewSizeInBits = Min;
+
+    if (Ty.isVector()) {
+      return std::make_pair(TypeIdx,
+                            LLT::vector(Ty.getNumElements(), NewSizeInBits));
+    }
+
     return std::make_pair(TypeIdx, LLT::scalar(NewSizeInBits));
   };
 }
