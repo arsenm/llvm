@@ -395,7 +395,14 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
         const LLT &Ty1 = Query.Types[1];
         return (Ty0.getSizeInBits() % 16 == 0) &&
                (Ty1.getSizeInBits() % 16 == 0);
-      });
+      })
+    .widenScalarIf(
+      [=](const LegalityQuery &Query) {
+        const LLT &Ty0 = Query.Types[0];
+        const LLT &Ty1 = Query.Types[1];
+        return (Ty1.getScalarSizeInBits() < 16);
+      },
+      LegalizeMutations::widenScalarToNextPow2(1, 16));
 
   getActionDefinitionsBuilder(G_BUILD_VECTOR)
     .legalForCartesianProduct(AllS32Vectors, {S32})
