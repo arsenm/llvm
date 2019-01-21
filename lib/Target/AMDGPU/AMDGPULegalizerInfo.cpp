@@ -158,11 +158,29 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
 
   setAction({G_FRAME_INDEX, PrivatePtr}, Legal);
 
-  getActionDefinitionsBuilder(
+  auto &FPOpActions = getActionDefinitionsBuilder(
     { G_FADD, G_FMUL, G_FNEG, G_FABS, G_FMA})
-    .legalFor({S32, S64})
+    .legalFor({S32, S64});
+
+  if (ST.has16BitInsts()) {
+    if (ST.hasVOP3PInsts())
+      FPOpActions.legalFor({S16, V2S16});
+    else
+      FPOpActions.legalFor({S16});
+  }
+
+  if (ST.hasVOP3PInsts()) {
+    // FIXME: Remove when odd splits handled
+    FPOpActions.fewerElementsIf([](const LegalityQuery &Q) {
+        return Q.Types[0].isVector() &&
+               Q.Types[0].getNumElements() % 2 != 0;
+      }, scalarize(0));
+    FPOpActions.clampMaxNumElements(0, S16, 2);
+  }
+
+  FPOpActions
     .scalarize(0)
-    .clampScalar(0, S32, S64);
+    .clampScalar(0, ST.has16BitInsts() ? S16 : S32, S64);
 
   getActionDefinitionsBuilder(G_FPTRUNC)
     .legalFor({{S32, S64}, {S16, S32}});
