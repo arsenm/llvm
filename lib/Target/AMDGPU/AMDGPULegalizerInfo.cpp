@@ -36,6 +36,7 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
   const LLT S16 = LLT::scalar(16);
   const LLT S32 = LLT::scalar(32);
   const LLT S64 = LLT::scalar(64);
+  const LLT S128 = LLT::scalar(128);
   const LLT S256 = LLT::scalar(256);
   const LLT S512 = LLT::scalar(512);
 
@@ -162,7 +163,9 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
 
   getActionDefinitionsBuilder({G_SEXT, G_ZEXT, G_ANYEXT})
     .legalFor({{S64, S32}, {S32, S16}, {S64, S16},
-               {S32, S1}, {S64, S1}, {S16, S1}});
+               {S32, S1}, {S64, S1}, {S16, S1},
+               // FIXME: Hack
+               {S128, S32}});
 
   setAction({G_FPTOSI, S32}, Legal);
   setAction({G_FPTOSI, 1, S32}, Legal);
@@ -212,12 +215,30 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
     });
 
   getActionDefinitionsBuilder({G_LOAD, G_STORE})
+    .narrowScalarIf([](const LegalityQuery &Query) {
+        unsigned Size = Query.Types[0].getSizeInBits();
+        unsigned MemSize = Query.MMODescrs[0].SizeInBits;
+        return (Size > 32 && MemSize < Size);
+      },
+      [](const LegalityQuery &Query) {
+        return std::make_pair(0, LLT::scalar(32));
+      })
     .legalIf([=, &ST](const LegalityQuery &Query) {
         const LLT &Ty0 = Query.Types[0];
 
+        unsigned Size = Ty0.getSizeInBits();
+        unsigned MemSize = Query.MMODescrs[0].SizeInBits;
+        if (Size > 32 && MemSize < Size)
+          return false;
+
+        if (Ty0.isVector() && Size != MemSize)
+          return false;
+
         // TODO: Decompose private loads into 4-byte components.
         // TODO: Illegal flat loads on SI
-        switch (Ty0.getSizeInBits()) {
+        switch (MemSize) {
+        case 8:
+        case 16:
         case 32:
         case 64:
         case 128:
@@ -233,7 +254,8 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
         default:
           return false;
         }
-      });
+      })
+    .clampScalar(0, S32, S64);
 
 
   auto &ExtLoads = getActionDefinitionsBuilder({G_SEXTLOAD, G_ZEXTLOAD})
