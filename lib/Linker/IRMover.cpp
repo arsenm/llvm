@@ -1109,6 +1109,17 @@ void IRLinker::prepareCompileUnitsForImport() {
   }
 }
 
+static bool namedNodeShouldBeUniqued(StringRef Name) {
+  return StringSwitch<bool>(Name)
+    .Cases("llvm.ident",
+           "opencl.ocl.version",
+           "opencl.used.extensions",
+           "opencl.used.optional.core.features",
+           "opencl.compiler.options",
+           "opencl.spir.version", true)
+    .Default(false);
+}
+
 /// Insert all of the named MDNodes in Src into the Dest module.
 void IRLinker::linkNamedMDNodes() {
   const NamedMDNode *SrcModFlags = SrcM->getModuleFlagsMetadata();
@@ -1118,7 +1129,7 @@ void IRLinker::linkNamedMDNodes() {
       continue;
     NamedMDNode *DestNMD = DstM.getOrInsertNamedMetadata(NMD.getName());
 
-    if (NMD.getName() == "llvm.ident") {
+    if (namedNodeShouldBeUniqued(NMD.getName())) {
       StringSet<> UniqueIdents;
 
       // Unique the compiler IDs linked together.
