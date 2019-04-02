@@ -411,6 +411,10 @@ public:
     return (Generation)Gen;
   }
 
+  bool isGCN3Encoding() const {
+    return GCN3Encoding;
+  }
+
   unsigned getWavefrontSizeLog2() const {
     return Log2_32(WavefrontSize);
   }

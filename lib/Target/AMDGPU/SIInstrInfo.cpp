@@ -5587,22 +5587,9 @@ enum SIEncodingFamily {
   GFX9 = 5
 };
 
-static SIEncodingFamily subtargetEncodingFamily(const GCNSubtarget &ST) {
-  switch (ST.getGeneration()) {
-  default:
-    break;
-  case AMDGPUSubtarget::SOUTHERN_ISLANDS:
-  case AMDGPUSubtarget::SEA_ISLANDS:
-    return SIEncodingFamily::SI;
-  case AMDGPUSubtarget::VOLCANIC_ISLANDS:
-  case AMDGPUSubtarget::GFX9:
-    return SIEncodingFamily::VI;
-  }
-  llvm_unreachable("Unknown subtarget generation!");
-}
-
 int SIInstrInfo::pseudoToMCOpcode(int Opcode) const {
-  SIEncodingFamily Gen = subtargetEncodingFamily(ST);
+  SIEncodingFamily Gen
+    = ST.isGCN3Encoding() ? SIEncodingFamily::VI : SIEncodingFamily::SI;
 
   if ((get(Opcode).TSFlags & SIInstrFlags::renamedInGFX9) != 0 &&
     ST.getGeneration() >= AMDGPUSubtarget::GFX9)
