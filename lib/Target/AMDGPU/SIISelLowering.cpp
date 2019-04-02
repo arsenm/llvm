@@ -424,7 +424,7 @@ SITargetLowering::SITargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::FMAXNUM_IEEE, MVT::f64, Legal);
 
 
-  if (Subtarget->getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS) {
+  if (Subtarget->haveRoundOpsF64()) {
     setOperationAction(ISD::FTRUNC, MVT::f64, Legal);
     setOperationAction(ISD::FCEIL, MVT::f64, Legal);
     setOperationAction(ISD::FRINT, MVT::f64, Legal);
@@ -2829,7 +2829,7 @@ unsigned SITargetLowering::getRegisterByName(const char* RegName, EVT VT,
 
   }
 
-  if (Subtarget->getGeneration() == AMDGPUSubtarget::SOUTHERN_ISLANDS &&
+  if (!Subtarget->hasFlatAddressSpace() &&
       Subtarget->getRegisterInfo()->regsOverlap(Reg, AMDGPU::FLAT_SCR)) {
     report_fatal_error(Twine("invalid register \""
                              + StringRef(RegName)  + "\" for subtarget."));
@@ -4831,8 +4831,7 @@ SDValue SITargetLowering::lowerImage(SDValue Op,
 
       MVT StoreVT = VData.getSimpleValueType();
       if (StoreVT.getScalarType() == MVT::f16) {
-        if (Subtarget->getGeneration() < AMDGPUSubtarget::VOLCANIC_ISLANDS ||
-            !BaseOpcode->HasD16)
+        if (!Subtarget->hasD16Images() || !BaseOpcode->HasD16)
           return Op; // D16 is unsupported for this instruction
 
         IsD16 = true;
@@ -4845,8 +4844,7 @@ SDValue SITargetLowering::lowerImage(SDValue Op,
       // and whether packing is supported.
       MVT LoadVT = ResultTypes[0].getSimpleVT();
       if (LoadVT.getScalarType() == MVT::f16) {
-        if (Subtarget->getGeneration() < AMDGPUSubtarget::VOLCANIC_ISLANDS ||
-            !BaseOpcode->HasD16)
+        if (!Subtarget->hasD16Images() || !BaseOpcode->HasD16)
           return Op; // D16 is unsupported for this instruction
 
         IsD16 = true;
@@ -7043,7 +7041,7 @@ SDValue SITargetLowering::LowerFDIV64(SDValue Op, SelectionDAG &DAG) const {
 
   SDValue Scale;
 
-  if (Subtarget->getGeneration() == AMDGPUSubtarget::SOUTHERN_ISLANDS) {
+  if (!Subtarget->hasUsableDivScaleConditionOutput()) {
     // Workaround a hardware bug on SI where the condition output from div_scale
     // is not usable.
 
@@ -7157,7 +7155,7 @@ SDValue SITargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
     // out-of-bounds even if base + offsets is in bounds. Split vectorized
     // stores here to avoid emitting ds_write2_b32. We may re-combine the
     // store later in the SILoadStoreOptimizer.
-    if (Subtarget->getGeneration() == AMDGPUSubtarget::SOUTHERN_ISLANDS &&
+    if (!Subtarget->hasUsableDSOffset() &&
         NumElements == 2 && VT.getStoreSize() == 8 &&
         Store->getAlignment() < 8) {
       return SplitVectorStore(Op, DAG);

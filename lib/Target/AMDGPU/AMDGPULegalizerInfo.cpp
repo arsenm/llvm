@@ -402,7 +402,7 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
         unsigned MemSize = Query.MMODescrs[0].SizeInBits;
         return (MemSize == 96) &&
                Query.Types[0].isVector() &&
-               ST.getGeneration() < AMDGPUSubtarget::SEA_ISLANDS;
+               !ST.hasDwordx3LoadStores();
       },
       [=](const LegalityQuery &Query) {
         return std::make_pair(0, V2S32);
@@ -430,8 +430,7 @@ AMDGPULegalizerInfo::AMDGPULegalizerInfo(const GCNSubtarget &ST,
           return true;
 
         case 96:
-          // XXX hasLoadX3
-          return (ST.getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS);
+          return ST.hasDwordx3LoadStores();
 
         case 256:
         case 512:

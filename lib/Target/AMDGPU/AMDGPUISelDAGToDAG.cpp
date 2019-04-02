@@ -1002,7 +1002,7 @@ bool AMDGPUDAGToDAGISel::isDSOffsetLegal(SDValue Base, unsigned Offset,
       (OffsetBits == 8 && !isUInt<8>(Offset)))
     return false;
 
-  if (Subtarget->getGeneration() >= AMDGPUSubtarget::SEA_ISLANDS ||
+  if (Subtarget->hasUsableDSOffset() ||
       Subtarget->unsafeDSOffsetFoldingEnabled())
     return true;
 
@@ -1263,7 +1263,7 @@ bool AMDGPUDAGToDAGISel::SelectMUBUFAddr64(SDValue Addr, SDValue &SRsrc,
   SDValue Ptr, Offen, Idxen, Addr64;
 
   // addr64 bit was removed for volcanic islands.
-  if (Subtarget->getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS)
+  if (!Subtarget->hasAddr64())
     return false;
 
   if (!SelectMUBUF(Addr, Ptr, VAddr, SOffset, Offset, Offen, Idxen, Addr64,
@@ -2234,9 +2234,8 @@ SDValue AMDGPUDAGToDAGISel::getHi16Elt(SDValue In) const {
 }
 
 bool AMDGPUDAGToDAGISel::isVGPRImm(const SDNode * N) const {
-  if (Subtarget->getGeneration() < AMDGPUSubtarget::SOUTHERN_ISLANDS) {
-    return false;
-  }
+  assert(CurDAG->getTarget().getTargetTriple().getArch() == Triple::amdgcn);
+
   const SIRegisterInfo *SIRI =
     static_cast<const SIRegisterInfo *>(Subtarget->getRegisterInfo());
   const SIInstrInfo * SII =
