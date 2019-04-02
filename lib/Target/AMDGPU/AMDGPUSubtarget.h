@@ -293,6 +293,7 @@ protected:
   bool UnalignedBufferAccess;
   bool HasApertureRegs;
   bool EnableXNACK;
+  bool DoesNotSupportXNACK;
   bool TrapHandler;
 
   // Used as options.
