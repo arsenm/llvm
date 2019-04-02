@@ -430,6 +430,7 @@ int GCNHazardRecognizer::checkSoftClauseHazards(MachineInstr *MEM) {
     if (!MI)
       break;
 
+    // FIXME: This will miss a load in a bundle
     if (IsSMRD != SIInstrInfo::isSMRD(*MI))
       break;
 
