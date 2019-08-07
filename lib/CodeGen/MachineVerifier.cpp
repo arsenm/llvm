@@ -1371,6 +1371,24 @@ void MachineVerifier::verifyPreISelGenericInstruction(const MachineInstr *MI) {
 
     break;
   }
+  case TargetOpcode::G_SHUFFLE_VECTOR: {
+    const MachineOperand &MaskOp = MI->getOperand(3);
+    if (!MaskOp.isShuffleMask()) {
+      report("Incorrect mask operand type for G_SHUFFLE_VECTOR", MI);
+      break;
+    }
+
+    const Constant *Mask = MaskOp.getShuffleMask();
+    if (!isa<UndefValue>(Mask) && !isa<ConstantAggregateZero>(Mask) &&
+        !isa<ConstantDataVector>(Mask) && !isa<ConstantVector>(Mask) &&
+        !isa<ConstantInt>(Mask)) {
+      report("Invalid shufflemask constant type", MI);
+      break;
+    }
+
+    // TODO: Verify element numbers consistent
+    break;
+  }
   default:
     break;
   }

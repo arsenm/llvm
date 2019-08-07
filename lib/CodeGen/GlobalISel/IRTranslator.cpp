@@ -1920,7 +1920,8 @@ bool IRTranslator::translateShuffleVector(const User &U,
       .addDef(getOrCreateVReg(U))
       .addUse(getOrCreateVReg(*U.getOperand(0)))
       .addUse(getOrCreateVReg(*U.getOperand(1)))
-      .addUse(getOrCreateVReg(*U.getOperand(2)));
+      .addConstantIR(cast<Constant>(U.getOperand(2)));
+
   return true;
 }
 

@@ -955,7 +955,7 @@ def G_EXTRACT_VECTOR_ELT : GenericInstruction {
 // Generic shufflevector.
 def G_SHUFFLE_VECTOR: GenericInstruction {
   let OutOperandList = (outs type0:$dst);
-  let InOperandList = (ins type1:$v1, type1:$v2, type2:$mask);
+  let InOperandList = (ins type1:$v1, type1:$v2, unknown:$mask);
   let hasSideEffects = 0;
 }
 

@@ -333,6 +333,8 @@ bool MachineOperand::isIdenticalTo(const MachineOperand &Other) const {
     return getIntrinsicID() == Other.getIntrinsicID();
   case MachineOperand::MO_Predicate:
     return getPredicate() == Other.getPredicate();
+  case MachineOperand::MO_ShuffleMask:
+    return getShuffleMask() == Other.getShuffleMask();
   }
   llvm_unreachable("Invalid machine operand type");
 }
@@ -381,6 +383,8 @@ hash_code llvm::hash_value(const MachineOperand &MO) {
     return hash_combine(MO.getType(), MO.getTargetFlags(), MO.getIntrinsicID());
   case MachineOperand::MO_Predicate:
     return hash_combine(MO.getType(), MO.getTargetFlags(), MO.getPredicate());
+  case MachineOperand::MO_ShuffleMask:
+    return hash_combine(MO.getType(), MO.getTargetFlags(), MO.getShuffleMask());
   }
   llvm_unreachable("Invalid machine operand type");
 }
@@ -936,6 +940,69 @@ void MachineOperand::print(raw_ostream &OS, ModuleSlotTracker &MST,
        << CmpInst::getPredicateName(Pred) << ')';
     break;
   }
+  case MachineOperand::MO_ShuffleMask:
+    OS << "shufflemask(";
+    const Constant* C = getShuffleMask();
+    const int NumElts = C->getType()->getVectorNumElements();
+
+    auto *CAZ = dyn_cast<ConstantAggregateZero>(C);
+    auto *CDS = dyn_cast<ConstantDataSequential>(C);
+    auto *CV = dyn_cast<ConstantVector>(C);
+
+    assert(CAZ || CV || CDS || isa<UndefValue>(C));
+
+    StringRef Separator;
+    for (int I = 0, E = NumElts; I != E; ++I) {
+      OS << Separator;
+
+      if (CDS)
+        CDS->getElementAsConstant(I)->printAsOperand(OS, false, MST);
+      else if (CV)
+        CV->getOperand(I)->printAsOperand(OS, false, MST);
+      else if (CAZ)
+        OS << '0';
+      else
+        OS << "undef";
+
+      Separator = ", ";
+    }
+
+#if 0
+    if (isa<UndefValue>(C))
+      OS << "undef";
+    else if (auto *CAZ = dyn_cast<ConstantAggregateZero>(C)) {
+      StringRef Separator;
+      for (int I = 0, E = CAZ->getNumElements(); I != E; ++I) {
+        OS << Separator;
+        OS << '0';
+        Separator = ", ";
+      }
+
+    } else {
+      const auto *CDS = cast<ConstantDataSequential>(C);
+      StringRef Separator;
+      for (int I = 0, E = CDS->getNumElements(); I != E; ++I) {
+        OS << Separator;
+        CDS->getElementAsConstant(I)->printAsOperand(OS, false, MST);
+        Separator = ", ";
+      }
+    }
+#endif
+
+#if 0
+      const auto *CDS = cast<ConstantAggregate>(C);
+      StringRef Separator;
+      for (int I = 0, E = CDS->getNumElements(); I != E; ++I) {
+        OS << Separator;
+        CDS->getElementAsConstant(I)->printAsOperand(OS, false, MST);
+        Separator = ", ";
+      }
+#endif
+
+    //getConstantIR()->printAsOperand(OS, /*PrintType=*/false, MST);
+    OS << ')';
+    break;
+
   }
 }
 

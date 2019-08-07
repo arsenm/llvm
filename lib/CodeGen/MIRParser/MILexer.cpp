@@ -249,7 +249,8 @@ static MIToken::TokenKind getIdentifierKind(StringRef Identifier) {
       .Case("successors", MIToken::kw_successors)
       .Case("floatpred", MIToken::kw_floatpred)
       .Case("intpred", MIToken::kw_intpred)
-      .Case("pre-instr-symbol", MIToken::kw_pre_instr_symbol)
+      .Case("shufflemask", MIToken::kw_shufflemask)
+      .Case("preintr-instr-symbol", MIToken::kw_pre_instr_symbol)
       .Case("post-instr-symbol", MIToken::kw_post_instr_symbol)
       .Case("unknown-size", MIToken::kw_unknown_size)
       .Default(MIToken::Identifier);
@@ -568,6 +569,16 @@ static Cursor maybeLexNumericalLiteral(Cursor C, MIToken &Token) {
   StringRef StrVal = Range.upto(C);
   Token.reset(MIToken::IntegerLiteral, StrVal).setIntegerValue(APSInt(StrVal));
   return C;
+}
+
+static Cursor maybeLexVectorLiteral(Cursor C, MIToken &Token) {
+  if (C.peek() != '<')
+    return None;
+
+  auto Range = C;
+  C.advance();
+
+
 }
 
 static MIToken::TokenKind getMetadataKeywordKind(StringRef Identifier) {
